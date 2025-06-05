@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import testCardImg from "@/assets/images/card-img.jpg";
@@ -96,15 +96,15 @@ const allProperties = [
     bedrooms: 6,
     bathrooms: 5,
     area: 400,
-    image: "/assets/properties/property2.jpg",
+    image: testCardImg,
     featured: true,
     createdAt: "2025-05-15",
   },
 ];
 
 export function FeaturedProperties() {
-  const [visibleCount, setVisibleCount] = useState(4);
-  const [isLoading, setIsLoading] = useState(false);
+  // Chỉ hiển thị 8 properties đầu tiên
+  const featuredProperties = allProperties.slice(0, 8);
 
   // Function để tính thời gian đăng
   const getTimeAgo = (createdAt: string): string => {
@@ -131,33 +131,44 @@ export function FeaturedProperties() {
     }
   };
 
-  const handleLoadMore = () => {
-    setIsLoading(true);
-    // Simulate loading delay
-    setTimeout(() => {
-      setVisibleCount((prev) => Math.min(prev + 4, allProperties.length));
-      setIsLoading(false);
-    }, 500);
-  };
-
-  const visibleProperties = allProperties.slice(0, visibleCount);
-  const hasMore = visibleCount < allProperties.length;
-
   return (
     <section className="py-16">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
-            Bất Động Sản Nổi Bật
-          </h2>
-          <p className="text-gray-600">
-            Những dự án và căn hộ được quan tâm nhất
-          </p>
+        {/* Header với tiêu đề và link */}
+        <div className="flex justify-between items-end mb-12">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-800">
+              Bất Động Sản Nổi Bật
+            </h2>
+          </div>
+
+          {/* Nút xem thêm bên phải */}
+          <div>
+            <Link
+              href="/mua-ban"
+              className="text-red-600 hover:text-red-800 font-medium flex items-center gap-2 transition-colors duration-200"
+            >
+              Xem thêm
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                />
+              </svg>
+            </Link>
+          </div>
         </div>
 
-        {/* Grid 4 cards per row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 row-gap-8">
-          {visibleProperties.map((property) => (
+        {/* Grid 8 cards - 4 cards per row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {featuredProperties.map((property) => (
             <div
               key={property.id}
               className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
@@ -203,7 +214,6 @@ export function FeaturedProperties() {
 
               {/* Content */}
               <div className="p-4">
-                {/* Rest of the content remains the same */}
                 <h3 className="font-semibold text-base mb-2 line-clamp-2 h-12">
                   {property.title}
                 </h3>
@@ -294,73 +304,6 @@ export function FeaturedProperties() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Load More Button hoặc Navigate Button */}
-        <div className="text-center mt-8">
-          {hasMore ? (
-            <button
-              onClick={handleLoadMore}
-              disabled={isLoading}
-              className="px-8 py-3 border-2 text-black font-medium rounded-lg hover:bg-gray-100 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mx-auto gap-2 border-gray-300 hover:border-gray-400 cursor-pointer"
-            >
-              {isLoading ? (
-                <>
-                  <svg
-                    className="animate-spin w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  Đang tải...
-                </>
-              ) : (
-                <>
-                  Xem thêm
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </>
-              )}
-            </button>
-          ) : (
-            <Link
-              href="/mua-ban"
-              className="px-8 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-100 transition-all duration-300 flex items-center justify-center mx-auto gap-2 border w-[200px] mx-auto border-gray-300 hover:border-gray-400"
-            >
-              Xem tất cả
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                />
-              </svg>
-            </Link>
-          )}
         </div>
       </div>
     </section>

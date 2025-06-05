@@ -1,71 +1,127 @@
 "use client";
-import React from "react";
-import { useAppDispatch, useIsFavorite } from "@/store/hooks";
-import { toggleFavorite, FavoriteItem } from "@/store/slices/favoritesSlices";
+import React, { useState, useEffect } from "react";
+
+export interface FavoriteItem {
+  id: string;
+  type: "property" | "project";
+  title: string;
+  price: string;
+  location: string;
+  image: string;
+  slug: string;
+  area?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  propertyType?: string;
+}
 
 interface FavoriteButtonProps {
-  item: Omit<FavoriteItem, "addedAt">;
+  item: FavoriteItem;
   className?: string;
-  showText?: boolean;
   size?: "sm" | "md" | "lg";
 }
 
 export function FavoriteButton({
   item,
   className = "",
-  showText = false,
   size = "md",
 }: FavoriteButtonProps) {
-  const dispatch = useAppDispatch();
-  const isFavorite = useIsFavorite(item.id);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dispatch(toggleFavorite(item));
+  // Check if item is favorited on mount
+  useEffect(() => {
+    const favorites = getFavorites();
+    setIsFavorited(
+      favorites.some((fav) => fav.id === item.id && fav.type === item.type)
+    );
+  }, [item.id, item.type]);
+
+  const getFavorites = (): FavoriteItem[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem("real-estate-favorites");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveFavorites = (favorites: FavoriteItem[]) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("real-estate-favorites", JSON.stringify(favorites));
+    }
+  };
+
+  const handleToggle = async () => {
+    setIsLoading(true);
+
+    try {
+      const favorites = getFavorites();
+      const existingIndex = favorites.findIndex(
+        (fav) => fav.id === item.id && fav.type === item.type
+      );
+
+      let newFavorites: FavoriteItem[];
+      let newIsFavorited: boolean;
+
+      if (existingIndex >= 0) {
+        // Remove from favorites
+        newFavorites = favorites.filter((_, index) => index !== existingIndex);
+        newIsFavorited = false;
+      } else {
+        // Add to favorites
+        newFavorites = [...favorites, item];
+        newIsFavorited = true;
+      }
+
+      saveFavorites(newFavorites);
+      setIsFavorited(newIsFavorited);
+
+      // Show notification
+      showNotification(newIsFavorited ? "Đã lưu tin" : "Đã bỏ lưu tin");
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showNotification = (message: string) => {
+    // You can implement a toast notification here
+    const notification = document.createElement("div");
+    notification.textContent = message;
+    notification.className = `fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity`;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.style.opacity = "0";
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 300);
+    }, 2000);
   };
 
   const sizeClasses = {
-    sm: "w-6 h-6 text-xs",
-    md: "w-8 h-8 text-sm",
-    lg: "w-10 h-10 text-base",
-  };
-
-  const iconSize = {
-    sm: "text-xs",
-    md: "text-sm",
-    lg: "text-base",
+    sm: "w-8 h-8 text-sm",
+    md: "w-10 h-10 text-base",
+    lg: "w-12 h-12 text-lg",
   };
 
   return (
     <button
       onClick={handleToggle}
-      className={`
-        ${sizeClasses[size]}
-        flex items-center justify-center
-        rounded-full
-        transition-all duration-200
-        ${
-          isFavorite
-            ? "bg-red-500 text-white hover:bg-red-600"
-            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-        }
-        shadow-md hover:shadow-lg
-        ${className}
-      `}
-      title={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+      disabled={isLoading}
+      className={`${
+        sizeClasses[size]
+      } rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+        isFavorited
+          ? "bg-red-500 text-white hover:bg-red-600"
+          : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
+      title={isFavorited ? "Bỏ lưu tin" : "Lưu tin"}
     >
-      <i
-        className={`
-        ${isFavorite ? "fas fa-heart" : "far fa-heart"} 
-        ${iconSize[size]}
-      `}
-      ></i>
-      {showText && (
-        <span className="ml-1 text-xs font-medium">
-          {isFavorite ? "Đã thích" : "Yêu thích"}
-        </span>
-      )}
+      <i className={`${isFavorited ? "fas" : "far"} fa-heart`}></i>
     </button>
   );
 }

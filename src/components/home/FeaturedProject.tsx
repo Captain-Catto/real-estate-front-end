@@ -117,13 +117,39 @@ export function FeaturedProject() {
   return (
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Dự án nổi bật
-          </h2>
-          <p className="text-lg text-gray-600">
-            Khám phá những dự án bất động sản uy tín và chất lượng
-          </p>
+        {/* Header với layout flex - tiêu đề bên trái, nút bên phải */}
+        <div className="flex justify-between items-end mb-12">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Dự án nổi bật
+            </h2>
+            <p className="text-lg text-gray-600">
+              Khám phá những dự án bất động sản uy tín và chất lượng
+            </p>
+          </div>
+
+          {/* Nút xem tất cả bên phải */}
+          <div>
+            <Link
+              href="/du-an"
+              className="text-red-600 hover:text-red-800 font-medium flex items-center gap-2 transition-colors duration-200"
+            >
+              Xem tất cả
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                />
+              </svg>
+            </Link>
+          </div>
         </div>
 
         {/* React Slick Carousel */}
@@ -226,29 +252,6 @@ export function FeaturedProject() {
               </div>
             ))}
           </Slider>
-        </div>
-
-        {/* View All Button */}
-        <div className="text-center mt-8">
-          <Link
-            href="/du-an"
-            className="inline-flex items-center px-8 py-3 border-2 text-black font-medium rounded-lg hover:bg-gray-100 transition-all duration-300 border-gray-300 hover:border-gray-400"
-          >
-            Xem tất cả dự án
-            <svg
-              className="w-5 h-5 ml-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </Link>
         </div>
       </div>
     </section>
