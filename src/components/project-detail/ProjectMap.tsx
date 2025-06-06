@@ -49,15 +49,6 @@ export function ProjectMap({
     return `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${query}&zoom=15`;
   };
 
-  // Get directions URL
-  const getDirectionsUrl = () => {
-    const query = address
-      ? encodeURIComponent(address)
-      : `${latitude},${longitude}`;
-
-    return `https://www.google.com/maps/dir/?api=1&destination=${query}`;
-  };
-
   const insightTabs = [
     {
       key: "schools",
@@ -133,19 +124,6 @@ export function ProjectMap({
             </div>
           </div>
         )}
-
-        {/* Directions Button */}
-        <div className="absolute bottom-4 right-4">
-          <a
-            href={getDirectionsUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
-          >
-            <i className="fas fa-directions mr-2"></i>
-            Chỉ đường
-          </a>
-        </div>
       </div>
 
       {/* Location Insights */}
