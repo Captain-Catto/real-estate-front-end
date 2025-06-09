@@ -1,4 +1,4 @@
-import { FavoritesPage } from "@/components/favorites/FavoritesPage";
+import { Favorites } from "@/components/favorites/Favorites";
 
 export const metadata = {
   title: "Danh sách yêu thích | Real Estate",
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function FavoritesPageRoute() {
-  return <FavoritesPage />;
+  return <Favorites />;
 }

@@ -166,7 +166,7 @@ export function RelatedProperties({
       <h3 className="text-xl font-semibold mb-6">Bất động sản dành cho bạn</h3>
 
       {/* Property Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
         {visibleProperties.map((property) => (
           <PropertyCard key={property.id} property={property} />
         ))}

@@ -10,11 +10,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 bg-white shadow-sm border-b border-gray-200 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="fixed top-0 left-0 right-0 bg-white shadow-sm border-b border-gray-200 z-50 w-full">
+        <div className="w-full px-3 sm:px-4 lg:px-8 xl:container xl:mx-auto">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 min-w-0">
               <Logo />
             </div>
 
@@ -24,7 +24,7 @@ export default function Header() {
             </div>
 
             {/* Mobile Menu Button - ẩn từ xl trở lên */}
-            <div className="xl:hidden">
+            <div className="xl:hidden flex-shrink-0">
               <button
                 onClick={() => setIsSidebarOpen(true)}
                 className="p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
@@ -46,7 +46,7 @@ export default function Header() {
             </div>
 
             {/* Desktop User Actions - hiển thị từ xl trở lên */}
-            <div className="hidden xl:flex items-center">
+            <div className="hidden xl:flex items-center flex-shrink-0">
               <ActionButton />
             </div>
           </div>

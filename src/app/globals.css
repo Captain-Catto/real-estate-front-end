@@ -33,3 +33,65 @@ body {
     margin-left: 240px; /* Space for sidebar */
   }
 }
+
+/* Article content styling */
+.prose p {
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+.prose ul,
+.prose ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose figure {
+  margin: 1.5rem 0;
+}
+
+.prose figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+.prose figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: center;
+  font-style: italic;
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+.prose a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.prose a:hover {
+  text-decoration: underline;
+}
+
+/* WordPress block styles */
+.prose .wp-block-image {
+  margin: 1.5rem 0;
+}
+
+.prose .wp-block-image.size-full img {
+  width: 100%;
+  height: auto;
+}

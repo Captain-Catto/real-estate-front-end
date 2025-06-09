@@ -237,13 +237,13 @@ export default function Footer() {
                 Nhận thông tin mới nhất về bất động sản và các ưu đãi hấp dẫn
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="email"
                 placeholder="Nhập email của bạn..."
                 className="flex-1 px-4 py-2 rounded-lg bg-white border border-gray-600 text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <button className="px-6 py-2 text-white rounded-lg transition-colors font-medium bg-[#e03c31] hover:bg-[#c32b24] active:bg-[#a22a23] shadow-sm hover:shadow-md">
+              <button className="px-6 py-2 text-white rounded-lg transition-colors font-medium bg-[#e03c31] hover:bg-[#c32b24] active:bg-[#a22a23] shadow-sm hover:shadow-md whitespace-nowrap">
                 Đăng ký
               </button>
             </div>

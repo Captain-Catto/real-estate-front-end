@@ -582,7 +582,7 @@ export function ProjectDetail({ projectSlug }: ProjectDetailProps) {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="sticky top-0 z-40 bg-white border-b">
+      <div className="sticky top-16 z-40 bg-white border-b">
         <div className="container mx-auto px-4">
           <nav className="flex space-x-8 overflow-x-auto">
             {[

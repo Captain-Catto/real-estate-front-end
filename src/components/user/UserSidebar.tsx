@@ -45,7 +45,7 @@ export function UserSidebar() {
       id: "create-post",
       href: "/nguoi-ban/dang-tin",
       icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path
             fill="currentColor"
             fillRule="evenodd"
@@ -140,7 +140,7 @@ export function UserSidebar() {
     { href: "/tai-khoan/thong-tin-ca-nhan", title: "Thông tin cá nhân" },
     { href: "/tai-khoan/doi-mat-khau", title: "Đổi mật khẩu" },
     { href: "/tai-khoan/cai-dat", title: "Cài đặt" },
-    { href: "/yeu-thich", title: "Danh sách yêu thích" },
+    { href: "/tai-khoan/yeu-thich", title: "Danh sách yêu thích" },
     { href: "/dang-xuat", title: "Đăng xuất" },
   ];
 
@@ -154,109 +154,54 @@ export function UserSidebar() {
 
   return (
     <>
-      <style jsx>{`
-        .sidebar-item-hover:hover {
-          background: #f3f4f6 !important;
-          transform: translateY(-1px);
-        }
-
-        .sidebar-transition {
-          transition: all 0.3s ease;
-        }
-
-        .create-post-special {
-          background: linear-gradient(135deg, #ef4444, #dc2626);
-          border-radius: 50%;
-          color: white;
-          padding: 6px;
-          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-        }
-
-        .discount-badge {
-          position: absolute;
-          top: -8px;
-          right: -8px;
-          background: #ef4444;
-          color: white;
-          font-size: 9px;
-          font-weight: 700;
-          padding: 3px 6px;
-          border-radius: 12px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .mobile-nav-bottom {
-          box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .mobile-icon-plus {
-          background: #dc3545;
-          border-radius: 50%;
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 4px;
-          box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-        }
-
-        .mobile-icon-plus svg {
-          color: white;
-        }
-
-        @media (max-width: 1279px) {
-          body {
-            padding-bottom: 70px;
-          }
-        }
-      `}</style>
+      {/* Add global styles for body padding */}
+      <div className="hidden lg:block fixed top-0 left-0 w-24 h-full pointer-events-none z-0"></div>
 
       {/* Desktop Sidebar - Large screens only */}
-      <aside className="hidden xl:flex xl:flex-col xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-64 xl:bg-white xl:border-r xl:border-gray-200 xl:z-50">
+      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-24 lg:bg-white lg:border-r lg:border-gray-200 lg:z-50">
         {/* Logo Section */}
-        <div className="p-6 border-b border-gray-100">
-          <Link
-            href="/"
-            className="flex items-center space-x-3 text-decoration-none"
-          >
+        <div className="p-3 border-b border-gray-100">
+          <Link href="/" className="flex items-center justify-center">
             <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                 <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-800">BDS Portal</span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 py-2 px-2 flex flex-col">
           {desktopMenu.map((item) => {
             const isActive = checkActiveRoute(item.href);
 
             if (item.hasSubmenu) {
               return (
-                <div key={item.id} className="relative">
+                <div key={item.id} className="relative mb-1">
                   <button
                     onClick={toggleAccountMenu}
-                    className={`w-full flex flex-col items-center p-4 rounded-xl text-sm font-medium sidebar-transition sidebar-item-hover ${
+                    className={`w-full flex flex-col items-center p-2 rounded-lg text-xs font-medium transition-all duration-300 hover:bg-gray-50 hover:-translate-y-0.5 ${
                       isActive || isAccountMenuOpen
                         ? "bg-blue-50 text-blue-600"
-                        : "text-gray-600"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                   >
-                    <div className="mb-2">{item.icon}</div>
-                    <span>{item.title}</span>
+                    <div className="mb-1 flex items-center justify-center w-6 h-6">
+                      {item.icon}
+                    </div>
+                    <span className="text-center leading-tight">
+                      {item.title}
+                    </span>
                   </button>
 
                   {/* Desktop Account Submenu */}
                   {isAccountMenuOpen && (
-                    <div className="absolute left-full top-0 ml-2 w-56 bg-white rounded-lg shadow-xl border py-2 z-60">
+                    <div className="absolute left-full top-0 ml-2 w-56 bg-white rounded-lg shadow-xl border py-2 z-[70]">
                       {accountMenuItems.map((subItem, idx) => (
                         <Link
                           key={idx}
                           href={subItem.href}
-                          className={`block px-4 py-3 text-sm hover:bg-gray-50 sidebar-transition ${
+                          className={`block px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
                             checkActiveRoute(subItem.href)
                               ? "text-blue-600 bg-blue-50"
                               : "text-gray-700"
@@ -276,19 +221,27 @@ export function UserSidebar() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex flex-col items-center p-4 rounded-xl text-sm font-medium sidebar-transition sidebar-item-hover ${
-                  isActive ? "bg-blue-50 text-blue-600" : "text-gray-600"
+                className={`flex flex-col items-center p-2 mb-1 rounded-lg text-xs font-medium transition-all duration-300 hover:bg-gray-50 hover:-translate-y-0.5 ${
+                  isActive
+                    ? "bg-blue-50 text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                <div className="relative mb-2">
-                  <div className={item.special ? "create-post-special" : ""}>
-                    {item.icon}
-                  </div>
+                <div className="relative mb-1 flex items-center justify-center w-6 h-6">
+                  {item.special ? (
+                    <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-full p-1 shadow-lg shadow-red-500/30 w-6 h-6 flex items-center justify-center text-white">
+                      {item.icon}
+                    </div>
+                  ) : (
+                    item.icon
+                  )}
                   {item.badge && (
-                    <span className="discount-badge">{item.badge}</span>
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded text-[8px] leading-none shadow-sm">
+                      {item.badge}
+                    </span>
                   )}
                 </div>
-                <span>{item.title}</span>
+                <span className="text-center leading-tight">{item.title}</span>
               </Link>
             );
           })}
@@ -296,7 +249,7 @@ export function UserSidebar() {
       </aside>
 
       {/* Tablet/Mobile Bottom Navigation */}
-      <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 mobile-nav-bottom z-50">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
         <div className="flex items-center justify-around px-2 py-2">
           {tabletMenu.map((item) => {
             const isActive = checkActiveRoute(item.href);
@@ -306,31 +259,28 @@ export function UserSidebar() {
                 <div key={item.id} className="relative flex-1">
                   <button
                     onClick={toggleAccountMenu}
-                    className={`w-full flex flex-col items-center py-2 px-1 sidebar-transition ${
+                    className={`w-full flex flex-col items-center py-2 px-1 transition-colors ${
                       isActive || isAccountMenuOpen
                         ? "text-blue-600"
                         : "text-gray-500"
                     }`}
                   >
-                    <div
-                      className="mb-1 flex justify-content-center align-items-center"
-                      style={{ width: "24px", height: "24px" }}
-                    >
+                    <div className="mb-1 flex items-center justify-center w-6 h-6">
                       {item.icon}
                     </div>
-                    <span className="text-xs font-medium text-nowrap">
+                    <span className="text-xs font-medium whitespace-nowrap">
                       {item.title}
                     </span>
                   </button>
 
                   {/* Mobile Account Submenu */}
                   {isAccountMenuOpen && (
-                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-xl border py-2 z-60">
+                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-xl border py-2 z-[70]">
                       {accountMenuItems.map((subItem, idx) => (
                         <Link
                           key={idx}
                           href={subItem.href}
-                          className={`block px-4 py-3 text-sm hover:bg-gray-50 sidebar-transition ${
+                          className={`block px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
                             checkActiveRoute(subItem.href)
                               ? "text-blue-600 bg-blue-50"
                               : "text-gray-700"
@@ -350,32 +300,26 @@ export function UserSidebar() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex-1 flex flex-col items-center py-2 px-1 sidebar-transition ${
+                className={`flex-1 flex flex-col items-center py-2 px-1 transition-colors ${
                   isActive ? "text-blue-600" : "text-gray-500"
                 }`}
                 data-tour={item.special ? "sidebar-create-post" : undefined}
               >
                 <div className="flex flex-col items-center">
                   {item.special ? (
-                    <div className="mobile-icon-plus">
-                      <div
-                        className="flex justify-content-center align-items-center"
-                        style={{ width: "24px", height: "24px" }}
-                      >
+                    <div className="bg-red-600 rounded-full w-11 h-11 flex items-center justify-center mb-1 shadow-lg shadow-red-600/30">
+                      <div className="flex items-center justify-center w-6 h-6 text-white">
                         {item.icon}
                       </div>
                     </div>
                   ) : (
-                    <div
-                      className="mb-1 flex justify-content-center align-items-center"
-                      style={{ width: "24px", height: "24px" }}
-                    >
+                    <div className="mb-1 flex items-center justify-center w-6 h-6">
                       {item.icon}
                     </div>
                   )}
-                  <p className="text-xs font-medium text-nowrap mb-0">
+                  <span className="text-xs font-medium whitespace-nowrap">
                     {item.title}
-                  </p>
+                  </span>
                 </div>
               </Link>
             );
@@ -386,7 +330,7 @@ export function UserSidebar() {
       {/* Mobile Overlay for Account Menu */}
       {isAccountMenuOpen && (
         <div
-          className="xl:hidden fixed inset-0 bg-black bg-opacity-25 z-40"
+          className="lg:hidden fixed inset-0 z-40 backdrop-blur-sm"
           onClick={() => setIsAccountMenuOpen(false)}
         />
       )}

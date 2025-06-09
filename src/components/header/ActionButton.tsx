@@ -22,6 +22,34 @@ export default function ActionButton() {
   const [showFavoritesPopup, setShowFavoritesPopup] = useState(false);
   const favoritesRef = useRef<HTMLDivElement>(null);
 
+  // Mock data cho favorites - có thể lấy từ store/API
+  const [favoriteItems, setFavoriteItems] = useState([
+    {
+      id: "1",
+      title: "Bán nhà phố 3 tầng, khu vực Quận 1, TP.HCM",
+      price: "8.5 tỷ",
+      location: "Quận 1, TP.HCM",
+      image: "/assets/images/property-1.jpg",
+      addedAt: new Date().toISOString(),
+    },
+    {
+      id: "2",
+      title: "Cho thuê căn hộ cao cấp Vinhomes Central Park",
+      price: "25 triệu/tháng",
+      location: "Bình Thạnh, TP.HCM",
+      image: "/assets/images/property-2.jpg",
+      addedAt: new Date().toISOString(),
+    },
+    {
+      id: "3",
+      title: "Bán đất nền dự án Khang Điền, Bình Chánh",
+      price: "5.3 tỷ",
+      location: "Bình Chánh, TP.HCM",
+      image: "/assets/images/property-3.jpg",
+      addedAt: new Date().toISOString(),
+    },
+  ]);
+
   // State cho notification popup
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -30,6 +58,10 @@ export default function ActionButton() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     // TODO: Implement logout logic
+  };
+
+  const handleRemoveFavorite = (itemId: string) => {
+    setFavoriteItems((prev) => prev.filter((item) => item.id !== itemId));
   };
 
   // Handle click outside để đóng popup
@@ -64,7 +96,7 @@ export default function ActionButton() {
       <div className="relative" ref={favoritesRef}>
         <button
           onClick={() => setShowFavoritesPopup(!showFavoritesPopup)}
-          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group"
+          className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group relative"
           title="Danh sách tin đã lưu"
         >
           <svg
@@ -80,6 +112,15 @@ export default function ActionButton() {
               className="group-hover:fill-red-100"
             />
           </svg>
+
+          {/* Badge số lượng */}
+          {favoriteItems.length > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">
+                {favoriteItems.length > 9 ? "9+" : favoriteItems.length}
+              </span>
+            </span>
+          )}
         </button>
 
         {/* Popup Yêu thích */}
@@ -96,65 +137,167 @@ export default function ActionButton() {
           <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
             {/* Header */}
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-              <h3 className="text-sm font-semibold text-gray-800">
-                Tin đăng đã lưu
-              </h3>
-            </div>
-
-            {/* Content - Empty State */}
-            <div className="px-4 py-8">
-              <div className="text-center">
-                <div className="mb-4">
-                  <svg
-                    className="w-16 h-16 mx-auto text-gray-300"
-                    viewBox="0 0 100 100"
-                    fill="none"
-                  >
-                    <path
-                      d="M50 85L45 80C25 62 15 53 15 40C15 30 23 22 33 22C39 22 45 25 50 30C55 25 61 22 67 22C77 22 85 30 85 40C85 53 75 62 55 80L50 85Z"
-                      fill="currentColor"
-                      opacity="0.3"
-                    />
-                    <circle
-                      cx="70"
-                      cy="30"
-                      r="15"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeDasharray="3,3"
-                    />
-                    <path
-                      d="M65 25L75 35M75 25L65 35"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-500 text-sm">
-                  Bạn chưa lưu tin đăng nào
-                </p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Nhấn vào biểu tượng ♡ để lưu tin yêu thích
-                </p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-800">
+                  Tin đăng đã lưu
+                </h3>
+                {favoriteItems.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {favoriteItems.length} tin đăng
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Footer - Hidden when empty */}
-            <div className="hidden px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-              <Link
-                href="/favorites"
-                className="flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                onClick={() => setShowFavoritesPopup(false)}
-              >
-                <span>Xem tất cả</span>
-                <i className="fas fa-arrow-right text-xs"></i>
-              </Link>
-            </div>
+            {/* Content */}
+            {favoriteItems.length === 0 ? (
+              /* Empty State */
+              <div className="px-4 py-8">
+                <div className="text-center">
+                  <div className="mb-4">
+                    <svg
+                      className="w-16 h-16 mx-auto text-gray-300"
+                      viewBox="0 0 100 100"
+                      fill="none"
+                    >
+                      <path
+                        d="M50 85L45 80C25 62 15 53 15 40C15 30 23 22 33 22C39 22 45 25 50 30C55 25 61 22 67 22C77 22 85 30 85 40C85 53 75 62 55 80L50 85Z"
+                        fill="currentColor"
+                        opacity="0.3"
+                      />
+                      <circle
+                        cx="70"
+                        cy="30"
+                        r="15"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeDasharray="3,3"
+                      />
+                      <path
+                        d="M65 25L75 35M75 25L65 35"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Bạn chưa lưu tin đăng nào
+                  </p>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Nhấn vào biểu tượng ♡ để lưu tin yêu thích
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* List of favorites */
+              <>
+                <div className="max-h-80 overflow-y-auto">
+                  {favoriteItems.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex gap-3">
+                        {/* Image */}
+                        <div className="w-16 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-200">
+                          <Image
+                            src={item.image}
+                            alt={item.title}
+                            width={64}
+                            height={48}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback if image fails to load
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
+                            {item.title}
+                          </h4>
+                          <div className="text-sm font-semibold text-red-600 mb-1">
+                            {item.price}
+                          </div>
+                          <div className="flex items-center text-xs text-gray-500">
+                            <svg
+                              className="w-3 h-3 mr-1"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="truncate">{item.location}</span>
+                          </div>
+                        </div>
+
+                        {/* Remove button */}
+                        <button
+                          onClick={() => handleRemoveFavorite(item.id)}
+                          className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Bỏ lưu"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Show more items indicator */}
+                  {favoriteItems.length > 3 && (
+                    <div className="px-4 py-2 text-center text-xs text-gray-500 bg-gray-50">
+                      +{favoriteItems.length - 3} tin đăng khác
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer - Show when has items */}
+                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                  <Link
+                    href="/yeu-thich"
+                    className="flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium w-full py-1 rounded transition-colors hover:bg-blue-50"
+                    onClick={() => setShowFavoritesPopup(false)}
+                  >
+                    <span>Xem tất cả ({favoriteItems.length})</span>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </Link>
+                </div>
+              </>
+            )}
           </div>
         </Transition>
       </div>
 
+      {/* Rest of the component remains the same... */}
       {/* Notification Button - Chỉ hiển thị khi đã đăng nhập */}
       {isLoggedIn && (
         <div className="relative" ref={notificationRef}>
@@ -194,7 +337,7 @@ export default function ActionButton() {
             </span>
           </button>
 
-          {/* Notification Popup */}
+          {/* Notification Popup - unchanged */}
           <Transition
             show={showNotificationPopup}
             as={Fragment}
@@ -372,7 +515,7 @@ export default function ActionButton() {
 
                 <MenuItem>
                   <Link
-                    href="/favorites"
+                    href="/yeu-thich"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
                     <i className="fas fa-heart text-gray-500"></i>
@@ -436,6 +579,12 @@ export default function ActionButton() {
           className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
         >
           Test Logout
+        </button>
+        <button
+          onClick={() => setFavoriteItems([])}
+          className="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50"
+        >
+          Clear Favorites
         </button>
       </div>
     </div>

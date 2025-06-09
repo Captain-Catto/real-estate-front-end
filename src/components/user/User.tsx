@@ -1,4 +1,5 @@
 import { UserSidebar } from "./UserSidebar";
+import Footer from "../footer/Footer";
 
 export default function User() {
   return (
