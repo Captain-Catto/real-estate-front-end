@@ -14,6 +14,7 @@ export function Navbar() {
   const [isHoveringBuy, setIsHoveringBuy] = useState(false);
   const [isHoveringRent, setIsHoveringRent] = useState(false);
   const [isHoveringProject, setIsHoveringProject] = useState(false);
+  const [isHoveringNews, setIsHoveringNews] = useState(false);
 
   return (
     <ul className="flex list-none gap-4 md:gap-6 lg:gap-8 xl:gap-10 items-center">
@@ -411,13 +412,112 @@ export function Navbar() {
       </li>
 
       {/* Tin tức */}
-      <li className="hidden lg:block">
-        <Link
-          href="/tin-tuc"
-          className="no-underline text-black hover:text-[#e03c31] transition-colors duration-200 font-medium"
-        >
-          Tin tức
-        </Link>
+      <li
+        className="relative hidden lg:block"
+        onMouseEnter={() => setIsHoveringNews(true)}
+        onMouseLeave={() => setIsHoveringNews(false)}
+      >
+        <Menu as="div" className="relative inline-block text-left">
+          {({ open }) => (
+            <>
+              <MenuButton className="no-underline text-black hover:text-[#e03c31] transition-colors duration-200 font-medium flex items-center gap-1">
+                <Link href="/tin-tuc" className="no-underline text-inherit">
+                  Tin tức
+                </Link>
+                <svg
+                  className={`w-3 h-3 transition-transform ${
+                    open || isHoveringNews ? "rotate-180" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </MenuButton>
+
+              <Transition
+                show={open || isHoveringNews}
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <MenuItems
+                  static
+                  className="absolute left-0 mt-2 w-48 origin-top-left divide-y divide-gray-100 rounded-lg bg-white shadow-lg focus:outline-none z-50"
+                >
+                  <div className="px-1 py-1">
+                    <MenuItem>
+                      {({ focus }) => (
+                        <Link
+                          href="/tin-tuc/mua-ban"
+                          className={`${
+                            focus
+                              ? "bg-gray-50 text-[#e03c31]"
+                              : "text-gray-700"
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          Mua bán
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }) => (
+                        <Link
+                          href="/tin-tuc/cho-thue"
+                          className={`${
+                            focus
+                              ? "bg-gray-50 text-[#e03c31]"
+                              : "text-gray-700"
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          Cho thuê
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }) => (
+                        <Link
+                          href="/tin-tuc/tai-chinh"
+                          className={`${
+                            focus
+                              ? "bg-gray-50 text-[#e03c31]"
+                              : "text-gray-700"
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          Tài chính
+                        </Link>
+                      )}
+                    </MenuItem>
+                    <MenuItem>
+                      {({ focus }) => (
+                        <Link
+                          href="/tin-tuc/phong-thuy"
+                          className={`${
+                            focus
+                              ? "bg-gray-50 text-[#e03c31]"
+                              : "text-gray-700"
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          Phong thủy
+                        </Link>
+                      )}
+                    </MenuItem>
+                  </div>
+                </MenuItems>
+              </Transition>
+            </>
+          )}
+        </Menu>
       </li>
 
       {/* Liên hệ */}

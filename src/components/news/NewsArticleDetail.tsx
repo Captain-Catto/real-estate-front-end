@@ -36,9 +36,14 @@ interface PopularArticle {
 interface Props {
   article: Article;
   popularArticles: PopularArticle[];
+  category?: string;
 }
 
-export function NewsArticleDetail({ article, popularArticles }: Props) {
+export function NewsArticleDetail({
+  article,
+  popularArticles,
+  category,
+}: Props) {
   const [copiedLink, setCopiedLink] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -89,33 +94,28 @@ export function NewsArticleDetail({ article, popularArticles }: Props) {
     <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          {/* Breadcrumb */}
+          {/* Updated Breadcrumb */}
           <nav className="mb-6">
             <ol className="flex items-center space-x-2 text-sm text-gray-600">
               <li>
-                <Link href="/" className="hover:text-blue-600">
-                  Trang chủ
-                </Link>
+                <Link href="/">Trang chủ</Link>
               </li>
               <li>/</li>
               <li>
-                <Link href="/tin-tuc" className="hover:text-blue-600">
-                  Tin tức
-                </Link>
+                <Link href="/tin-tuc">Tin tức</Link>
               </li>
+              {category && (
+                <>
+                  <li>/</li>
+                  <li>
+                    <Link href={`/tin-tuc/${category}`}>
+                      {getCategoryName(category)}
+                    </Link>
+                  </li>
+                </>
+              )}
               <li>/</li>
-              <li>
-                <Link
-                  href={`/tin-tuc?category=${encodeURIComponent(
-                    article.category
-                  )}`}
-                  className="hover:text-blue-600"
-                >
-                  {article.category}
-                </Link>
-              </li>
-              <li>/</li>
-              <li className="text-gray-900 font-medium truncate max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+              <li className="text-gray-900 font-medium truncate">
                 {article.title}
               </li>
             </ol>
@@ -331,4 +331,15 @@ export function NewsArticleDetail({ article, popularArticles }: Props) {
       </div>
     </div>
   );
+}
+
+function getCategoryName(category: string) {
+  const names: { [key: string]: string } = {
+    "khu-vuc": "Khu vực",
+    "tai-chinh": "Tài chính",
+    "phong-thuy": "Phong thủy",
+    "mua-ban": "Mua bán",
+    "cho-thue": "Cho thuê",
+  };
+  return names[category] || category;
 }

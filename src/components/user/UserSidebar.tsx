@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function UserSidebar() {
+export default function UserSidebar() {
   const pathname = usePathname();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
@@ -11,7 +11,7 @@ export function UserSidebar() {
   const desktopMenu = [
     {
       id: "overview",
-      href: "/nguoi-ban/trang-chu",
+      href: "/nguoi-dung/tong-quan",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
@@ -24,7 +24,7 @@ export function UserSidebar() {
     },
     {
       id: "posts",
-      href: "/nguoi-ban/quan-ly-tin-rao-ban-cho-thue",
+      href: "/nguoi-dung/quan-ly-tin-rao-ban-cho-thue",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
@@ -43,7 +43,7 @@ export function UserSidebar() {
     },
     {
       id: "create-post",
-      href: "/nguoi-ban/dang-tin",
+      href: "/nguoi-dung/dang-tin",
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <path

@@ -515,21 +515,11 @@ export default function ActionButton() {
 
                 <MenuItem>
                   <Link
-                    href="/yeu-thich"
+                    href="/nap-tien"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
-                    <i className="fas fa-heart text-gray-500"></i>
-                    Tin đã lưu
-                  </Link>
-                </MenuItem>
-
-                <MenuItem>
-                  <Link
-                    href="/settings"
-                    className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
-                  >
-                    <i className="fas fa-cog text-gray-500"></i>
-                    Cài đặt
+                    <i className="fas fa-wallet text-gray-500"></i>
+                    Nạp tiền
                   </Link>
                 </MenuItem>
 
