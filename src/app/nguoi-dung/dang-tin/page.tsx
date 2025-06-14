@@ -9,6 +9,7 @@ import CreatePostModal from "@/components/modals/CreatePostModal/CreatePostModal
 import BasicInfoStep from "@/components/modals/EditPostModal/steps/BasicInfoStep";
 import ImageUploadStep from "@/components/modals/EditPostModal/steps/ImageUploadStep";
 import PackageSelectionStep from "@/components/modals/EditPostModal/steps/PackageSelectionStep";
+import UserHeader from "@/components/user/UserHeader";
 
 export default function DangTinPage() {
   const [isMobile, setIsMobile] = useState(false);
@@ -130,40 +131,12 @@ export default function DangTinPage() {
         <main className="flex-1 min-h-screen w-full">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6">
             <div className="bg-white rounded-lg shadow">
-              {/* Header */}
-              <div className="bg-white border-b border-gray-200 p-6 rounded-t-lg">
-                <div className="flex items-center justify-between">
-                  {/* Left Side - User Info */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                      <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">
-                          {userData.avatar}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-xs text-gray-600 mb-1">
-                          {userData.greeting}
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <p className="font-medium text-gray-900">
-                            {userData.name}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Side - Actions */}
-                  <div className="flex items-center gap-4">
-                    <Link href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue">
-                      <button className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                        Quản lý tin đăng
-                      </button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              {/* Header Section - Using Component */}
+              <UserHeader
+                userData={userData}
+                showNotificationButton={true}
+                showWalletButton={true}
+              />
 
               {/* Step Navigation */}
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
@@ -281,6 +254,116 @@ export default function DangTinPage() {
             </div>
           </div>
         </main>
+      </div>
+
+      {/* Mobile/Tablet Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+        <div className="grid grid-cols-5 py-2">
+          {/* Tổng quan */}
+          <Link
+            href="/nguoi-dung/tong-quan"
+            className="flex flex-col items-center py-2 px-1 text-blue-600 bg-blue-50"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mb-1"
+            >
+              <path
+                fill="currentColor"
+                d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
+              />
+            </svg>
+            <span className="text-xs font-medium">Tổng quan</span>
+          </Link>
+
+          {/* Quản lý tin */}
+          <Link
+            href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue"
+            className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mb-1"
+            >
+              <path
+                fill="currentColor"
+                fillRule="evenodd"
+                d="M3 5.75A2.75 2.75 0 0 1 5.75 3h12.5A2.75 2.75 0 0 1 21 5.75v12.5A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25zm8.14 2.452a.75.75 0 1 0-1.2-.9L8.494 9.23l-.535-.356a.75.75 0 1 0-.832 1.248l1.125.75a.75.75 0 0 0 1.016-.174zm2.668.048a.75.75 0 1 0 0 1.5h2.5a.75.75 0 0 0 0-1.5zm-2.668 5.953a.75.75 0 1 0-1.2-.9l-1.446 1.928-.535-.356a.75.75 0 0 0-.832 1.248l1.125.75a.75.75 0 0 0 1.016-.174zm2.61.047a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="text-xs">Quản lý</span>
+          </Link>
+
+          {/* Đăng tin */}
+          <Link
+            href="/nguoi-dung/dang-tin"
+            className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="mb-1"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M7.75 2C8.16421 2 8.5 2.33579 8.5 2.75V7H12.75C13.1642 7 13.5 7.33579 13.5 7.75C13.5 8.16421 13.1642 8.5 12.75 8.5H8.5V12.75C8.5 13.1642 8.16421 13.5 7.75 13.5C7.33579 13.5 7 13.1642 7 12.75V8.5H2.75C2.33579 8.5 2 8.16421 2 7.75C2 7.33579 2.33579 7 2.75 7H7V2.75C7 2.33579 7.33579 2 7.75 2Z"
+                fill="currentColor"
+              />
+            </svg>
+            <span className="text-xs">Đăng tin</span>
+          </Link>
+
+          {/* Nạp tiền */}
+          <Link
+            href="/nguoi-dung/khach-hang"
+            className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mb-1"
+            >
+              <path
+                fill="currentColor"
+                d="M12 2C13.1 2 14 2.9 14 4V5H16C17.1 5 18 5.9 18 7V19C18 20.1 17.1 21 16 21H8C6.9 21 6 20.1 6 19V7C6 5.9 6.9 5 8 5H10V4C10 2.9 10.9 2 12 2ZM10 7V19H14V7H10ZM8 7V19H8V7ZM16 7V19H16V7ZM12 9C13.1 9 14 9.9 14 11S13.1 13 12 13 10 12.1 10 11 10.9 9 12 9Z"
+              />
+            </svg>
+            <span className="text-xs">Khách hàng</span>
+          </Link>
+
+          {/* Tài khoản */}
+          <Link
+            href="/nguoi-dung/tai-khoan"
+            className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mb-1"
+            >
+              <path
+                fill="currentColor"
+                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+              />
+            </svg>
+            <span className="text-xs">Tài khoản</span>
+          </Link>
+        </div>
       </div>
 
       <div className="lg:pl-24">

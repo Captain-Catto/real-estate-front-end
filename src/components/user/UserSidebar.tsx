@@ -93,8 +93,8 @@ export default function UserSidebar() {
       title: "Khách hàng",
     },
     {
-      id: "membership",
-      href: "/goi-hoi-vien",
+      id: "wallet",
+      href: "/nguoi-dung/vi-tien",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <polygon
@@ -103,7 +103,7 @@ export default function UserSidebar() {
           />
         </svg>
       ),
-      title: "Gói Hội viên",
+      title: "Ví tiền",
       badge: "-39%",
       desktopOnly: true,
     },
@@ -133,14 +133,12 @@ export default function UserSidebar() {
     },
   ];
 
-  // Tablet/Mobile menu (5 items - exclude membership)
+  // Tablet/Mobile menu (5 items - exclude wallet)
   const tabletMenu = desktopMenu.filter((item) => !item.desktopOnly);
 
   const accountMenuItems = [
-    { href: "/tai-khoan/thong-tin-ca-nhan", title: "Thông tin cá nhân" },
-    { href: "/tai-khoan/doi-mat-khau", title: "Đổi mật khẩu" },
-    { href: "/tai-khoan/cai-dat", title: "Cài đặt" },
-    { href: "/tai-khoan/yeu-thich", title: "Danh sách yêu thích" },
+    { href: "/nguoi-dung/tai-khoan", title: "Thông tin cá nhân" },
+    { href: "/nguoi-dung/yeu-thich", title: "Danh sách yêu thích" },
     { href: "/dang-xuat", title: "Đăng xuất" },
   ];
 

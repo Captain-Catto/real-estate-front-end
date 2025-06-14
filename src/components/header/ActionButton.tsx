@@ -515,7 +515,7 @@ export default function ActionButton() {
 
                 <MenuItem>
                   <Link
-                    href="/nap-tien"
+                    href="/nguoi-dung/vi-tien"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
                     <i className="fas fa-wallet text-gray-500"></i>
