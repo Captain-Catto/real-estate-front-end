@@ -10,6 +10,7 @@ import {
   CogIcon,
   NewspaperIcon,
   CurrencyDollarIcon,
+  MapIcon,
 } from "@heroicons/react/24/outline";
 
 const menuItems = [
@@ -19,13 +20,8 @@ const menuItems = [
     icon: HomeIcon,
   },
   {
-    name: "Quản lý BĐS",
-    href: "/admin/properties",
-    icon: BuildingOfficeIcon,
-  },
-  {
     name: "Quản lý tin đăng",
-    href: "/admin/posts",
+    href: "/admin/quan-ly-tin-dang",
     icon: DocumentTextIcon,
   },
   {
@@ -35,12 +31,12 @@ const menuItems = [
   },
   {
     name: "Tin tức",
-    href: "/admin/news",
+    href: "/admin/quan-ly-tin-tuc",
     icon: NewspaperIcon,
   },
   {
     name: "Giao dịch",
-    href: "/admin/transactions",
+    href: "/admin/quan-ly-giao-dich",
     icon: CurrencyDollarIcon,
   },
   {
@@ -52,6 +48,17 @@ const menuItems = [
     name: "Cài đặt",
     href: "/admin/settings",
     icon: CogIcon,
+  },
+  {
+    name: "Quản lý địa chính",
+    href: "/admin/quan-ly-dia-chinh",
+    // sử dụng icon location pin hoặc map
+    icon: MapIcon,
+  },
+  {
+    name: "Quản lý dự án",
+    href: "/admin/quan-ly-du-an",
+    icon: BuildingOfficeIcon,
   },
 ];
 

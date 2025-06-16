@@ -4,9 +4,9 @@ import Image from "next/image";
 
 interface Developer {
   name: string;
-  logo: string;
-  phone: string;
-  email: string;
+  logo?: string;
+  phone?: string;
+  email?: string;
 }
 
 interface ContactBoxProps {
@@ -15,7 +15,7 @@ interface ContactBoxProps {
   projectName: string;
 }
 
-export function ContactBox({
+export default function ContactBox({
   developer,
   projectId,
   projectName,
@@ -38,7 +38,7 @@ export function ContactBox({
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setIsSubmitted(true);
     } catch (error) {
-      console.error("Error submitting form:", error);
+      alert("Có lỗi xảy ra, vui lòng thử lại!");
     } finally {
       setIsSubmitting(false);
     }
@@ -61,8 +61,8 @@ export function ContactBox({
         </div>
         <h3 className="text-lg font-semibold mb-2">Cảm ơn bạn!</h3>
         <p className="text-gray-600 mb-4">
-          Chúng tôi đã nhận được thông tin và sẽ liên hệ với bạn nhanh nhất có
-          thể về dự án này.
+          Chúng tôi đã nhận được thông tin và sẽ liên hệ với bạn sớm nhất về dự
+          án này.
         </p>
         <button
           onClick={() => setIsSubmitted(false)}
@@ -79,86 +79,78 @@ export function ContactBox({
       <div className="text-center mb-6">
         <h3 className="text-lg font-semibold mb-2">Liên hệ tư vấn miễn phí</h3>
         <p className="text-gray-600 text-sm">
-          Hãy để lại thông tin của bạn để nhận tư vấn và các cập nhật mới nhất
-          của dự án này
+          Để lại thông tin để nhận tư vấn và cập nhật mới nhất về dự án{" "}
+          <b>{projectName}</b>
         </p>
       </div>
 
       {/* Developer Info */}
-      <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 rounded-lg">
-        <Image
-          src={developer.logo}
-          alt={developer.name}
-          width={40}
-          height={40}
-          className="rounded-lg object-cover"
-        />
-        <div className="flex-1">
-          <div className="font-medium text-sm">{developer.name}</div>
-          <div className="text-xs text-gray-500">Chủ đầu tư</div>
+      {developer && (
+        <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 rounded-lg">
+          {developer.logo && (
+            <Image
+              src={developer.logo}
+              alt={developer.name}
+              width={40}
+              height={40}
+              className="rounded-lg object-cover"
+            />
+          )}
+          <div className="flex-1">
+            <div className="font-medium text-sm">{developer.name}</div>
+            <div className="text-xs text-gray-500">Chủ đầu tư</div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Contact Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <input
-            type="text"
-            name="fullName"
-            placeholder="Họ tên *"
-            value={formData.fullName}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Số điện thoại *"
-            value={formData.phone}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <textarea
-            name="message"
-            placeholder="Lời nhắn"
-            value={formData.message}
-            onChange={handleInputChange}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-        </div>
-
+        <input
+          type="text"
+          name="fullName"
+          placeholder="Họ tên *"
+          value={formData.fullName}
+          onChange={handleInputChange}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="tel"
+          name="phone"
+          placeholder="Số điện thoại *"
+          value={formData.phone}
+          onChange={handleInputChange}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleInputChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <textarea
+          name="message"
+          placeholder="Lời nhắn"
+          value={formData.message}
+          onChange={handleInputChange}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+        />
         <div className="text-xs text-gray-500">
-          Bằng việc gửi thông tin, bạn đồng ý với{" "}
+          Khi gửi thông tin, bạn đồng ý với{" "}
           <a
             href="/chinh-sach-bao-mat"
             className="text-blue-600 hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             chính sách bảo mật
-          </a>{" "}
-          và cho phép chúng tôi thu thập, xử lý, chia sẻ thông tin này tới chủ
-          đầu tư để liên lạc với bạn.
+          </a>
+          .
         </div>
-
         <button
           type="submit"
           disabled={isSubmitting}
@@ -180,21 +172,24 @@ export function ContactBox({
 
       {/* Quick Contact Options */}
       <div className="mt-6 pt-6 border-t space-y-3">
-        <a
-          href={`tel:${developer.phone}`}
-          className="flex items-center justify-center space-x-2 w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          <i className="fas fa-phone"></i>
-          <span>Gọi ngay</span>
-        </a>
-
-        <a
-          href={`mailto:${developer.email}`}
-          className="flex items-center justify-center space-x-2 w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <i className="fas fa-envelope"></i>
-          <span>Gửi email</span>
-        </a>
+        {developer && developer.phone && (
+          <a
+            href={`tel:${developer.phone}`}
+            className="flex items-center justify-center space-x-2 w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <i className="fas fa-phone"></i>
+            <span>Gọi ngay</span>
+          </a>
+        )}
+        {developer && developer.email && (
+          <a
+            href={`mailto:${developer.email}`}
+            className="flex items-center justify-center space-x-2 w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <i className="fas fa-envelope"></i>
+            <span>Gửi email</span>
+          </a>
+        )}
       </div>
     </div>
   );

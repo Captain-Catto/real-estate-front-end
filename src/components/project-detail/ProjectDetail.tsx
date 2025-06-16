@@ -5,8 +5,8 @@ import Image, { StaticImageData } from "next/image";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "./Breadcrumb";
 import { ProjectGallery } from "./ProjectGallery";
-import { ProjectMap } from "./ProjectMap";
-import { ContactBox } from "./ContactBox";
+import ProjectMap from "./ProjectMap";
+import ContactBox from "./ContactBox";
 import { RelatedProjects } from "./RelatedProjects";
 import { ProjectListings } from "./ProjectListings";
 import { ProjectPaymentCalculator } from "./ProjectPaymentCalculator";
@@ -113,31 +113,6 @@ const MOCK_PROJECTS: Record<string, Project> = {
       "Đơn vị thiết kế": "Foster + Partners",
       "Hướng chính": "Đông Nam",
       "Loại hình": "Căn hộ chung cư cao cấp",
-    },
-    locationInsights: {
-      schools: [
-        { name: "Trường Quốc tế ISHCMC", distance: "800m" },
-        { name: "Trường ĐH RMIT", distance: "2.5km" },
-        { name: "Trường mầm non Sakura", distance: "500m" },
-      ],
-      hospitals: [
-        { name: "Bệnh viện Columbia Asia", distance: "1.2km" },
-        { name: "Phòng khám Family Medical", distance: "600m" },
-      ],
-      supermarkets: [
-        { name: "Vincom Mega Mall", distance: "800m" },
-        { name: "Metro An Phú", distance: "1km" },
-        { name: "Satra Mart", distance: "400m" },
-      ],
-      parks: [
-        { name: "Công viên Landmark 81", distance: "3km" },
-        { name: "Công viên Tao Đàn", distance: "8km" },
-      ],
-      restaurants: [
-        { name: "The Deck Saigon", distance: "1.5km" },
-        { name: "Pizza 4P's Thảo Điền", distance: "1km" },
-        { name: "Starbucks An Phú", distance: "600m" },
-      ],
     },
     faqs: [
       {
@@ -354,7 +329,7 @@ const MOCK_PROJECTS: Record<string, Project> = {
   },
 };
 
-export function ProjectDetail({ projectSlug }: ProjectDetailProps) {
+export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("info");
@@ -749,7 +724,6 @@ export function ProjectDetail({ projectSlug }: ProjectDetailProps) {
                 longitude={project.longitude}
                 title={project.name}
                 address={project.fullLocation}
-                locationInsights={project.locationInsights}
               />
             </section>
 

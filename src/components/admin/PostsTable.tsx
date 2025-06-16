@@ -131,6 +131,11 @@ export default function PostsTable({
     }
   };
 
+  const handleViewClick = (post: Post) => {
+    // chuyển hướng đến trang chi tiết
+    window.location.href = `/admin/quan-ly-tin-dang/${post.id}`;
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow">
@@ -235,8 +240,8 @@ export default function PostsTable({
                     <div className="flex items-center justify-end space-x-2">
                       {/* View Button */}
                       <button
-                        onClick={() => onView(post)}
-                        className="text-blue-600 hover:text-blue-900"
+                        onClick={() => handleViewClick(post)}
+                        className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
                         title="Xem chi tiết"
                       >
                         <EyeIcon className="w-4 h-4" />
