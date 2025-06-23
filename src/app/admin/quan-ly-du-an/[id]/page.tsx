@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import ProjectLexicalEditor from "@/components/admin/ProjectLexicalEditor";
+import QuillEditor from "@/components/admin/QuillEditor";
 import { PencilIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useParams } from "next/navigation";
 import Image, { StaticImageData } from "next/image";
@@ -756,14 +756,237 @@ export default function AdminProjectEditPage() {
 
                   {/* Tab: Mô tả chi tiết */}
                   {activeTab === "description" && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Mô tả dự án
-                      </label>
-                      <ProjectLexicalEditor
-                        value={project.description}
-                        onChange={handleDescriptionChange}
-                      />
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Mô tả dự án
+                        </label>
+                        <QuillEditor
+                          value={project.description}
+                          onChange={handleDescriptionChange}
+                          placeholder="Nhập mô tả chi tiết về dự án..."
+                          height="400px"
+                          className="w-full"
+                          imageQuality={0.7}
+                          maxImageWidth={600}
+                        />
+                      </div>
+
+                      {/* Preview Section - Sửa class name */}
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">
+                          Xem trước mô tả:
+                        </h4>
+                        <div className="bg-white border border-gray-200 rounded-lg p-6">
+                          {project.description ? (
+                            <div
+                              className="description-preview"
+                              dangerouslySetInnerHTML={{
+                                __html: project.description,
+                              }}
+                            />
+                          ) : (
+                            <p className="text-gray-400 italic">
+                              Chưa có mô tả. Hãy nhập nội dung ở trên để xem
+                              trước.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* CSS cho preview */}
+                      <style jsx global>{`
+                        .description-preview {
+                          line-height: 1.7;
+                          color: #374151;
+                        }
+
+                        .description-preview h1 {
+                          font-size: 2rem !important;
+                          font-weight: 700 !important;
+                          margin-bottom: 1.5rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.2 !important;
+                        }
+
+                        .description-preview h2 {
+                          font-size: 1.5rem !important;
+                          font-weight: 600 !important;
+                          margin-bottom: 1.25rem !important;
+                          margin-top: 2rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.3 !important;
+                        }
+
+                        .description-preview h3 {
+                          font-size: 1.25rem !important;
+                          font-weight: 600 !important;
+                          margin-bottom: 1rem !important;
+                          margin-top: 1.5rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.4 !important;
+                        }
+
+                        .description-preview h4 {
+                          font-size: 1.125rem !important;
+                          font-weight: 600 !important;
+                          margin-bottom: 0.75rem !important;
+                          margin-top: 1.25rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.4 !important;
+                        }
+
+                        .description-preview h5 {
+                          font-size: 1rem !important;
+                          font-weight: 600 !important;
+                          margin-bottom: 0.5rem !important;
+                          margin-top: 1rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.5 !important;
+                        }
+
+                        .description-preview h6 {
+                          font-size: 0.875rem !important;
+                          font-weight: 600 !important;
+                          margin-bottom: 0.5rem !important;
+                          margin-top: 1rem !important;
+                          color: #1f2937 !important;
+                          line-height: 1.5 !important;
+                        }
+
+                        .description-preview p {
+                          margin-bottom: 1rem !important;
+                          line-height: 1.7 !important;
+                          color: #374151 !important;
+                        }
+
+                        .description-preview strong,
+                        .description-preview b {
+                          font-weight: 700 !important;
+                          color: #1f2937 !important;
+                        }
+
+                        .description-preview em,
+                        .description-preview i {
+                          font-style: italic !important;
+                          color: #4b5563 !important;
+                        }
+
+                        .description-preview u {
+                          text-decoration: underline !important;
+                        }
+
+                        .description-preview ul {
+                          margin-bottom: 1rem !important;
+                          padding-left: 1.5rem !important;
+                          list-style-type: disc !important;
+                        }
+
+                        .description-preview ol {
+                          margin-bottom: 1rem !important;
+                          padding-left: 1.5rem !important;
+                          list-style-type: decimal !important;
+                        }
+
+                        .description-preview li {
+                          margin-bottom: 0.5rem !important;
+                          line-height: 1.6 !important;
+                          color: #374151 !important;
+                        }
+
+                        .description-preview blockquote {
+                          border-left: 4px solid #3b82f6 !important;
+                          padding-left: 1rem !important;
+                          margin: 1.5rem 0 !important;
+                          color: #6b7280 !important;
+                          font-style: italic !important;
+                          background-color: #f8fafc !important;
+                          padding: 1rem !important;
+                          border-radius: 0.375rem !important;
+                        }
+
+                        .description-preview a {
+                          color: #2563eb !important;
+                          text-decoration: underline !important;
+                          font-weight: 500 !important;
+                        }
+
+                        .description-preview a:hover {
+                          color: #1d4ed8 !important;
+                          text-decoration: none !important;
+                        }
+
+                        .description-preview img {
+                          max-width: 100% !important;
+                          height: auto !important;
+                          margin: 1.5rem 0 !important;
+                          border-radius: 0.5rem !important;
+                          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+                        }
+
+                        .description-preview pre {
+                          background-color: #1f2937 !important;
+                          color: #f9fafb !important;
+                          padding: 1rem !important;
+                          border-radius: 0.5rem !important;
+                          font-family: "Courier New", monospace !important;
+                          font-size: 0.875rem !important;
+                          margin: 1.5rem 0 !important;
+                          overflow-x: auto !important;
+                          line-height: 1.5 !important;
+                        }
+
+                        .description-preview hr {
+                          border: none !important;
+                          border-top: 2px solid #e5e7eb !important;
+                          margin: 2rem 0 !important;
+                        }
+
+                        .description-preview table {
+                          width: 100% !important;
+                          border-collapse: collapse !important;
+                          margin: 1.5rem 0 !important;
+                        }
+
+                        .description-preview th,
+                        .description-preview td {
+                          border: 1px solid #e5e7eb !important;
+                          padding: 0.75rem !important;
+                          text-align: left !important;
+                        }
+
+                        .description-preview th {
+                          background-color: #f9fafb !important;
+                          font-weight: 600 !important;
+                          color: #1f2937 !important;
+                        }
+
+                        .description-preview code {
+                          background-color: #f3f4f6 !important;
+                          color: #dc2626 !important;
+                          padding: 0.125rem 0.25rem !important;
+                          border-radius: 0.25rem !important;
+                          font-family: "Courier New", monospace !important;
+                          font-size: 0.875rem !important;
+                        }
+
+                        /* Đảm bảo text alignment */
+                        .description-preview * {
+                          direction: ltr !important;
+                          text-align: left !important;
+                        }
+
+                        .description-preview [style*="text-align: center"] {
+                          text-align: center !important;
+                        }
+
+                        .description-preview [style*="text-align: right"] {
+                          text-align: right !important;
+                        }
+
+                        .description-preview [style*="text-align: justify"] {
+                          text-align: justify !important;
+                        }
+                      `}</style>
                     </div>
                   )}
 

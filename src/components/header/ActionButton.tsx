@@ -9,14 +9,11 @@ import {
   MenuItem,
   Transition,
 } from "@headlessui/react";
+import { useAuth } from "@/store/hooks";
 
 export default function ActionButton() {
-  // State để mô phỏng trạng thái đăng nhập
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState({
-    name: "Nguyễn Văn A",
-    avatar: "/assets/images/avatar.jpg", // hoặc null nếu không có avatar
-  });
+  // Sử dụng authentication thực tế từ Redux
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   // State cho popup yêu thích
   const [showFavoritesPopup, setShowFavoritesPopup] = useState(false);
@@ -55,9 +52,14 @@ export default function ActionButton() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    // TODO: Implement logout logic
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Có thể redirect hoặc reload page sau khi logout
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   const handleRemoveFavorite = (itemId: string) => {
@@ -89,6 +91,15 @@ export default function ActionButton() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showFavoritesPopup, showNotificationPopup]);
+
+  // Hiển thị loading state khi đang kiểm tra authentication
+  if (loading) {
+    return (
+      <div className="flex items-center gap-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-4">
@@ -297,9 +308,8 @@ export default function ActionButton() {
         </Transition>
       </div>
 
-      {/* Rest of the component remains the same... */}
       {/* Notification Button - Chỉ hiển thị khi đã đăng nhập */}
-      {isLoggedIn && (
+      {isAuthenticated && user && (
         <div className="relative" ref={notificationRef}>
           <button
             onClick={() => setShowNotificationPopup(!showNotificationPopup)}
@@ -337,7 +347,7 @@ export default function ActionButton() {
             </span>
           </button>
 
-          {/* Notification Popup - unchanged */}
+          {/* Notification Popup */}
           <Transition
             show={showNotificationPopup}
             as={Fragment}
@@ -452,8 +462,8 @@ export default function ActionButton() {
         </div>
       )}
 
-      {/* Conditional rendering based on login status */}
-      {isLoggedIn ? (
+      {/* Conditional rendering based on authentication status */}
+      {isAuthenticated && user ? (
         /* User Info & Menu với HeadlessUI */
         <Menu as="div" className="relative">
           <MenuButton className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-opacity-50 data-[open]:bg-gray-50">
@@ -462,23 +472,40 @@ export default function ActionButton() {
               {user.avatar ? (
                 <Image
                   src={user.avatar}
-                  alt={user.name}
+                  alt={user.username}
                   width={32}
                   height={32}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <i className="fas fa-user text-gray-600 text-sm"></i>
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">
+                    {user.username?.charAt(0).toUpperCase() ||
+                      user.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
               )}
             </div>
 
             {/* User Name */}
             <span className="text-sm font-medium text-gray-700 max-w-24 truncate">
-              {user.name}
+              {user.username || user.email?.split("@")[0]}
             </span>
 
             {/* Dropdown Icon */}
-            <i className="fas fa-chevron-down text-xs text-gray-500 transition-transform duration-200 data-[open]:rotate-180"></i>
+            <svg
+              className="w-3 h-3 text-gray-500 transition-transform duration-200 group-data-[open]:rotate-180"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
           </MenuButton>
 
           {/* Dropdown Menu với Transition */}
@@ -495,20 +522,50 @@ export default function ActionButton() {
               <div className="py-2">
                 <MenuItem>
                   <Link
-                    href="/profile"
+                    href="/nguoi-dung/tai-khoan"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
-                    <i className="fas fa-user text-gray-500"></i>
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
                     Thông tin cá nhân
                   </Link>
                 </MenuItem>
 
                 <MenuItem>
                   <Link
-                    href="/my-properties"
+                    href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
-                    <i className="fas fa-home text-gray-500"></i>
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 5v4M16 5v4"
+                      />
+                    </svg>
                     Tin đăng của tôi
                   </Link>
                 </MenuItem>
@@ -518,8 +575,42 @@ export default function ActionButton() {
                     href="/nguoi-dung/vi-tien"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
-                    <i className="fas fa-wallet text-gray-500"></i>
-                    Nạp tiền
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                    Ví tiền
+                  </Link>
+                </MenuItem>
+
+                <MenuItem>
+                  <Link
+                    href="/yeu-thich"
+                    className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
+                  >
+                    <svg
+                      className="w-4 h-4 text-gray-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                    Yêu thích
                   </Link>
                 </MenuItem>
 
@@ -530,7 +621,19 @@ export default function ActionButton() {
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 flex items-center gap-2 data-[focus]:bg-red-50"
                   >
-                    <i className="fas fa-sign-out-alt text-red-500"></i>
+                    <svg
+                      className="w-4 h-4 text-red-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
                     Đăng xuất
                   </button>
                 </MenuItem>
@@ -555,28 +658,6 @@ export default function ActionButton() {
           </Link>
         </div>
       )}
-
-      {/* Test buttons - Remove in production */}
-      <div className="ml-4 flex gap-2">
-        <button
-          onClick={() => setIsLoggedIn(true)}
-          className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-        >
-          Test Login
-        </button>
-        <button
-          onClick={() => setIsLoggedIn(false)}
-          className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-        >
-          Test Logout
-        </button>
-        <button
-          onClick={() => setFavoriteItems([])}
-          className="px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50"
-        >
-          Clear Favorites
-        </button>
-      </div>
     </div>
   );
 }

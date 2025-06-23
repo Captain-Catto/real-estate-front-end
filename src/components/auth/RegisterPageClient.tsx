@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/store/hooks";
 
 export default function RegisterPageClient() {
+  const router = useRouter();
+  const { register, loading, error, isAuthenticated, clearError } = useAuth();
+
   // State cho form đăng ký
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -11,11 +16,53 @@ export default function RegisterPageClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Xử lý đăng ký đơn giản
-  const handleRegister = (e: React.FormEvent) => {
+  // Clear error khi component unmount hoặc form thay đổi
+  useEffect(() => {
+    return () => {
+      clearError();
+    };
+  }, [clearError]);
+
+  // Redirect nếu đã đăng nhập
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, router]);
+
+  // Xử lý đăng ký
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Register clicked:", { email, password, confirmPassword });
-    // TODO: Implement register logic later
+    clearError(); // Clear previous errors
+
+    // Validation
+    if (password !== confirmPassword) {
+      // Có thể dispatch một action để set error, hoặc dùng local state
+      alert("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    if (password.length < 6) {
+      alert("Mật khẩu phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    try {
+      // Sử dụng email làm username tạm thời (có thể cập nhật backend sau)
+      const result = await register({
+        username: email.split("@")[0], // Lấy phần trước @ làm username
+        email,
+        password,
+      });
+
+      // Check if register was successful
+      if (result.meta.requestStatus === "fulfilled") {
+        // Redux sẽ tự động redirect thông qua useEffect ở trên
+        console.log("Register successful");
+      }
+    } catch (error) {
+      console.error("Register error:", error);
+    }
   };
 
   return (
@@ -23,6 +70,12 @@ export default function RegisterPageClient() {
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg">
           <h1 className="text-3xl font-bold mb-6 text-center">Đăng ký</h1>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-6">
             {/* Email field */}
@@ -33,10 +86,12 @@ export default function RegisterPageClient() {
               <input
                 type="email"
                 id="email"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e03c31] focus:border-transparent"
                 placeholder="example@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
               />
             </div>
 
@@ -49,15 +104,19 @@ export default function RegisterPageClient() {
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e03c31] focus:border-transparent"
                   placeholder="Nhập mật khẩu"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <svg
@@ -101,15 +160,18 @@ export default function RegisterPageClient() {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   id="confirmPassword"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e03c31] focus:border-transparent"
                   placeholder="Nhập lại mật khẩu"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  disabled={loading}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={loading}
                 >
                   {showConfirmPassword ? (
                     <svg
@@ -144,15 +206,10 @@ export default function RegisterPageClient() {
             {/* Register button */}
             <button
               type="submit"
-              className="w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] active:bg-[#b01f16] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "rgb(200, 40, 30)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "rgb(224, 60, 49)";
-              }}
+              disabled={loading}
+              className="w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] active:bg-[#b01f16] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Đăng ký
+              {loading ? "Đang đăng ký..." : "Đăng ký"}
             </button>
 
             {/* Login link */}

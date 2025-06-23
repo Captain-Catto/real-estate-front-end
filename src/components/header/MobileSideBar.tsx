@@ -10,6 +10,7 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
+import { useAuth } from "@/store/hooks";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,6 +18,17 @@ interface SidebarProps {
 }
 
 export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      onClose();
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
   return (
     <Transition show={isOpen}>
       <Dialog as="div" className="relative z-50 xl:hidden" onClose={onClose}>
@@ -90,20 +102,68 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                             />
                           </svg>
                         </button>
-                      </div>
 
-                      <div className="flex gap-2">
-                        <button className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm">
-                          Đăng nhập
-                        </button>
-                        <button className="flex-1 px-4 py-2 bg-red-600 text-white rounded text-sm">
-                          Đăng ký
-                        </button>
+                        {/* User info hiển thị khi đã đăng nhập */}
+                        {isAuthenticated && user && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                              <span className="text-white text-sm font-medium">
+                                {user.username?.charAt(0).toUpperCase() ||
+                                  user.email?.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {user.username || user.email?.split("@")[0]}
+                            </span>
+                          </div>
+                        )}
                       </div>
+                      {isAuthenticated && user ? (
+                        /* Authenticated user actions */
+                        <div className="space-y-2">
+                          <Link
+                            href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue"
+                            className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors text-center block"
+                            onClick={onClose}
+                          >
+                            Đăng tin
+                          </Link>
+                          <button
+                            onClick={handleLogout}
+                            className="w-full px-4 py-2 border border-red-300 text-red-600 rounded text-sm font-medium hover:bg-red-50 transition-colors"
+                          >
+                            Đăng xuất
+                          </button>
+                        </div>
+                      ) : (
+                        /* Guest user actions */
+                        <>
+                          <div className="flex gap-2">
+                            <Link
+                              href="/login"
+                              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm text-center hover:bg-gray-50 transition-colors"
+                              onClick={onClose}
+                            >
+                              Đăng nhập
+                            </Link>
+                            <Link
+                              href="/register"
+                              className="flex-1 px-4 py-2 bg-red-600 text-white rounded text-sm text-center hover:bg-red-700 transition-colors"
+                              onClick={onClose}
+                            >
+                              Đăng ký
+                            </Link>
+                          </div>
 
-                      <button className="w-full mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm">
-                        Đăng tin
-                      </button>
+                          <Link
+                            href="/dang-tin"
+                            className="w-full mt-3 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm block text-center hover:bg-gray-50 transition-colors"
+                            onClick={onClose}
+                          >
+                            Đăng tin
+                          </Link>
+                        </>
+                      )}
                     </div>
 
                     {/* Menu Items */}

@@ -6,31 +6,30 @@ import Footer from "@/components/footer/Footer";
 import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import UserHeader from "@/components/user/UserHeader";
+import { useAuth } from "@/store/hooks";
+import { useRouter } from "next/navigation";
 
 export default function ThongTinCaNhanPage() {
-  // Mock user data - Thêm role để check admin
-  const [userData, setUserData] = useState({
-    name: "Lê Quang Trí Đạt",
-    phone: "0901234567",
-    email: "lequangtridat@example.com",
-    avatar: "Đ",
-    balance: "450.000 đ",
-    greeting: "Chào buổi sáng 🌤",
-    joinDate: "15/03/2023",
-    role: "admin", // Thêm role - có thể là "admin" hoặc "user"
-  });
+  const router = useRouter();
+  const { user, isAuthenticated, loading, updateProfile, isInitialized } =
+    useAuth();
 
-  // Bỏ các state notification không cần thiết vì đã có trong UserHeader
-  // const [showNotificationPopup, setShowNotificationPopup] = useState(false);
-  // const mobileNotificationRef = useRef<HTMLDivElement>(null);
+  const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3005/api";
+
+  // Redirect nếu chưa đăng nhập - CHỈ sau khi đã initialize xong
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, isInitialized, router]);
 
   // Form states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [profileForm, setProfileForm] = useState({
-    name: userData.name,
-    phone: userData.phone,
-    email: userData.email,
+    username: user?.username || "",
+    email: user?.email || "",
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -39,12 +38,50 @@ export default function ThongTinCaNhanPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Bỏ mock notifications và useEffect không cần thiết
-  // const notifications = [...];
-  // useEffect(() => {...}, []);
+  // Update form khi user data thay đổi
+  useEffect(() => {
+    if (user) {
+      setProfileForm({
+        username: user.username || "",
+        email: user.email || "",
+      });
+    }
+  }, [user]);
 
-  // Check if user is admin
-  const isAdmin = userData.role === "admin";
+  // Format user data để tương thích với UserHeader
+  const userData = user
+    ? {
+        name: user.username || user.email?.split("@")[0] || "User",
+        avatar:
+          user.avatar ||
+          user.username?.charAt(0).toUpperCase() ||
+          user.email?.charAt(0).toUpperCase() ||
+          "U",
+        balance: "0 đ",
+        greeting: getGreeting(),
+        email: user.email,
+        joinDate: formatDate(user.createdAt),
+        role: user.role,
+      }
+    : null;
+
+  const isAdmin = user?.role === "admin";
+
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Chào buổi sáng 🌅";
+    if (hour < 18) return "Chào buổi chiều ☀️";
+    return "Chào buổi tối 🌙";
+  }
+
+  function formatDate(dateString: string) {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
 
   const handleProfileFormChange = (field: string, value: string) => {
     setProfileForm((prev) => ({
@@ -61,23 +98,41 @@ export default function ThongTinCaNhanPage() {
   };
 
   const handleSaveProfile = async () => {
+    if (!user) return;
+
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Update user data
-      setUserData((prev) => ({
-        ...prev,
-        name: profileForm.name,
-        phone: profileForm.phone,
+      console.log("Updating profile with data:", {
+        username: profileForm.username,
         email: profileForm.email,
-      }));
+      });
+      const response = await fetch(API_BASE_URL + `/auth/profile`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({
+          username: profileForm.username,
+          email: profileForm.email,
+        }),
+      });
+      console.log("Response status:", response.status);
 
-      setIsEditingProfile(false);
-      alert("Cập nhật thông tin thành công!");
+      if (response.ok) {
+        const data = await response.json();
+        updateProfile({
+          username: profileForm.username,
+          email: profileForm.email,
+        });
+        setIsEditingProfile(false);
+        alert("Cập nhật thông tin thành công!");
+      } else {
+        throw new Error("Failed to update profile");
+      }
     } catch (error) {
+      console.error("Error updating profile:", error);
       alert("Có lỗi xảy ra khi cập nhật thông tin!");
     } finally {
       setIsSubmitting(false);
@@ -98,17 +153,32 @@ export default function ThongTinCaNhanPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
+      const response = await fetch(API_BASE_URL + `/auth/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
       });
-      setIsChangingPassword(false);
-      alert("Đổi mật khẩu thành công!");
+
+      if (response.ok) {
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setIsChangingPassword(false);
+        alert("Đổi mật khẩu thành công!");
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to change password");
+      }
     } catch (error) {
+      console.error("Error changing password:", error);
       alert("Có lỗi xảy ra khi đổi mật khẩu!");
     } finally {
       setIsSubmitting(false);
@@ -116,11 +186,12 @@ export default function ThongTinCaNhanPage() {
   };
 
   const cancelEdit = () => {
-    setProfileForm({
-      name: userData.name,
-      phone: userData.phone,
-      email: userData.email,
-    });
+    if (user) {
+      setProfileForm({
+        username: user.username || "",
+        email: user.email || "",
+      });
+    }
     setIsEditingProfile(false);
   };
 
@@ -132,6 +203,42 @@ export default function ThongTinCaNhanPage() {
     });
     setIsChangingPassword(false);
   };
+
+  // Loading state - hiển thị loading khi chưa initialize xong HOẶC đang loading
+  if (!isInitialized || loading || (!user && isAuthenticated)) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Nếu chưa đăng nhập và đã initialize xong, không render gì (sẽ redirect)
+  if (isInitialized && !isAuthenticated) {
+    return null;
+  }
+
+  // Nếu không có user data, hiển thị error
+  if (!user || !userData) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">
+            Không thể tải thông tin người dùng
+          </p>
+          <button
+            onClick={() => router.push("/login")}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Đăng nhập lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -209,10 +316,18 @@ export default function ThongTinCaNhanPage() {
                         // View Mode
                         <div className="space-y-6">
                           <div className="flex items-center gap-4">
-                            <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-semibold text-2xl">
-                                {userData.avatar}
-                              </span>
+                            <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center">
+                              {user.avatar ? (
+                                <img
+                                  src={user.avatar}
+                                  alt={userData.name}
+                                  className="w-full h-full rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-white font-semibold text-2xl">
+                                  {userData.avatar}
+                                </span>
+                              )}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
@@ -243,7 +358,7 @@ export default function ThongTinCaNhanPage() {
                                   />
                                 </svg>
                                 <span className="text-sm text-green-600">
-                                  Tài khoản đã xác thực
+                                  Tài khoản đã đăng ký
                                 </span>
                               </div>
                             </div>
@@ -252,22 +367,22 @@ export default function ThongTinCaNhanPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Họ và tên
+                                Tên người dùng
                               </label>
                               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <span className="text-gray-900">
-                                  {userData.name}
+                                  {user.username || "Chưa cập nhật"}
                                 </span>
                               </div>
                             </div>
 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Số điện thoại
+                                User ID
                               </label>
                               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                <span className="text-gray-900">
-                                  {userData.phone}
+                                <span className="text-gray-900 font-mono text-sm">
+                                  {user.id}
                                 </span>
                               </div>
                             </div>
@@ -278,10 +393,34 @@ export default function ThongTinCaNhanPage() {
                               </label>
                               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <span className="text-gray-900">
-                                  {userData.email}
+                                  {user.email}
                                 </span>
                               </div>
                             </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Ngày tạo tài khoản
+                              </label>
+                              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <span className="text-gray-900">
+                                  {formatDate(user.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {user.updatedAt && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Cập nhật lần cuối
+                                </label>
+                                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                  <span className="text-gray-900">
+                                    {formatDate(user.updatedAt)}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Role Field - Chỉ hiển thị cho admin */}
                             {isAdmin && (
@@ -304,38 +443,31 @@ export default function ThongTinCaNhanPage() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Họ và tên *
+                                Tên người dùng *
                               </label>
                               <input
                                 type="text"
-                                value={profileForm.name}
+                                value={profileForm.username}
                                 onChange={(e) =>
                                   handleProfileFormChange(
-                                    "name",
+                                    "username",
                                     e.target.value
                                   )
                                 }
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Nhập họ và tên"
+                                placeholder="Nhập tên người dùng"
                               />
                             </div>
 
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Số điện thoại *
+                                User ID
                               </label>
-                              <input
-                                type="tel"
-                                value={profileForm.phone}
-                                onChange={(e) =>
-                                  handleProfileFormChange(
-                                    "phone",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Nhập số điện thoại"
-                              />
+                              <div className="p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                                <span className="text-gray-500 font-mono text-sm">
+                                  {user.id} (Không thể thay đổi)
+                                </span>
+                              </div>
                             </div>
 
                             <div className="sm:col-span-2">
@@ -410,17 +542,17 @@ export default function ThongTinCaNhanPage() {
                                 />
                               </svg>
                               <span className="text-sm font-medium text-green-800">
-                                Mật khẩu được bảo mật
+                                Tài khoản được bảo mật
                               </span>
                             </div>
                             <p className="text-sm text-green-700 mt-1">
-                              Lần đổi mật khẩu cuối: 15/05/2024
+                              Tài khoản đã được đăng ký và xác thực
                             </p>
                           </div>
 
                           <div className="space-y-3">
                             <h3 className="font-medium text-gray-900">
-                              Khuyến nghị bảo mật
+                              Thông tin bảo mật
                             </h3>
                             <div className="space-y-2 text-sm text-gray-600">
                               <div className="flex items-center gap-2">
@@ -436,7 +568,7 @@ export default function ThongTinCaNhanPage() {
                                     d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
                                   />
                                 </svg>
-                                <span>Mật khẩu đủ mạnh</span>
+                                <span>Email đã xác thực</span>
                               </div>
                               <div className="flex items-center gap-2">
                                 <svg
@@ -451,7 +583,7 @@ export default function ThongTinCaNhanPage() {
                                     d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
                                   />
                                 </svg>
-                                <span>Email đã xác thực</span>
+                                <span>Tài khoản đã được tạo</span>
                               </div>
                               {isAdmin && (
                                 <div className="flex items-center gap-2">
@@ -480,7 +612,7 @@ export default function ThongTinCaNhanPage() {
                                 >
                                   <path
                                     fill="currentColor"
-                                    d="M13 17h-2v-6h2v6zm0-8h-2V7h2v2zm-1-5.99L12 2C6.47 2 2 6.48 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                                    d="M13 17h-2v-6h2v6zm0-8h-2V7h2v2zm-1-5.99L12 2C6.47 2 2 6.48 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8 8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
                                   />
                                 </svg>
                                 <span>Bật xác thực 2 bước (khuyến nghị)</span>
@@ -583,7 +715,7 @@ export default function ThongTinCaNhanPage() {
         </main>
       </div>
 
-      {/* Mobile/Tablet Bottom Navigation */}
+      {/* Mobile/Tablet Bottom Navigation - giữ nguyên */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
         <div className="grid grid-cols-5 py-2">
           {/* Tổng quan */}
@@ -630,7 +762,7 @@ export default function ThongTinCaNhanPage() {
 
           {/* Đăng tin */}
           <Link
-            href="/dang-tin"
+            href="/nguoi-dung/dang-tin"
             className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
           >
             <svg
