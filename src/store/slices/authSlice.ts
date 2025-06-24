@@ -11,6 +11,7 @@ export interface User {
   username: string;
   email: string;
   avatar?: string;
+  role?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -40,8 +41,8 @@ export const loginAsync = createAsyncThunk(
       const response = await authService.login(credentials);
       if (response.success) {
         return {
-          user: response.data.user,
-          tokens: response.data.tokens,
+          user: response.data?.user,
+          accessToken: response.data?.accessToken,
         };
       } else {
         return rejectWithValue(response.message);
@@ -59,8 +60,8 @@ export const registerAsync = createAsyncThunk(
       const response = await authService.register(userData);
       if (response.success) {
         return {
-          user: response.data.user,
-          tokens: response.data.tokens,
+          user: response.data?.user,
+          accessToken: response.data?.accessToken,
         };
       } else {
         return rejectWithValue(response.message);
@@ -284,15 +285,24 @@ const authSlice = createSlice({
           state.user = null;
           state.isAuthenticated = false;
           localStorage.removeItem("accessToken");
-          localStorage.removeItem("refreshToken");
         }
       });
+
     // Update Profile
-    builder.addCase(updateProfileAsync.fulfilled, (state, action) => {
-      state.loading = false;
-      state.user = action.payload;
-      state.error = null;
-    });
+    builder
+      .addCase(updateProfileAsync.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfileAsync.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.error = null;
+      })
+      .addCase(updateProfileAsync.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
   },
 });
 

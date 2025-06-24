@@ -11,6 +11,7 @@ interface CreatePostModalProps {
   formData: any;
   selectedImages: File[];
   selectedPackage: any;
+  isSubmitting?: boolean;
   nextStep: () => void;
   prevStep: () => void;
   updateFormData: (updates: any) => void;
@@ -26,6 +27,7 @@ export default function CreatePostModal({
   formData,
   selectedImages,
   selectedPackage,
+  isSubmitting = false,
   nextStep,
   prevStep,
   updateFormData,
@@ -57,41 +59,40 @@ export default function CreatePostModal({
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 backdrop-blur-sm" aria-hidden="true" />
-      <div className="fixed inset-0 overflow-y-auto">
-        <div className="flex min-h-full items-center justify-center p-4">
-          <Dialog.Panel className="w-full max-w-4xl bg-white rounded-lg shadow-xl overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <Dialog.Title className="text-xl font-semibold text-gray-900">
+    <Dialog
+      open={isOpen}
+      onClose={isSubmitting ? () => {} : onClose}
+      className="relative z-50"
+    >
+      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <Dialog.Panel className="mx-auto max-w-4xl w-full bg-white rounded-lg shadow-xl max-h-[90vh] flex flex-col">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <Dialog.Title className="text-lg font-semibold text-gray-900">
                 Đăng tin bất động sản
               </Dialog.Title>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  className="text-gray-500"
+              {!isSubmitting && (
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M18 6L6 18M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
 
-            {/* Step Indicator */}
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+            {/* Steps */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between max-w-lg">
                 {steps.map((step, index) => (
                   <div key={step.number} className="flex items-center">
                     <div
@@ -105,11 +106,10 @@ export default function CreatePostModal({
                         <svg
                           width="16"
                           height="16"
-                          viewBox="0 0 24 24"
                           fill="none"
+                          stroke="currentColor"
                         >
                           <path
-                            stroke="currentColor"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth="3"
@@ -121,7 +121,7 @@ export default function CreatePostModal({
                       )}
                     </div>
                     <span
-                      className={`ml-2 text-sm font-medium ${
+                      className={`ml-2 text-sm ${
                         currentStep >= step.number
                           ? "text-gray-900"
                           : "text-gray-500"
@@ -142,31 +142,33 @@ export default function CreatePostModal({
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Content */}
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              {currentStep === 1 && (
-                <BasicInfoStep
-                  formData={formData}
-                  updateFormData={updateFormData}
-                />
-              )}
-              {currentStep === 2 && (
-                <ImageUploadStep
-                  selectedImages={selectedImages}
-                  setSelectedImages={setSelectedImages}
-                />
-              )}
-              {currentStep === 3 && (
-                <PackageSelectionStep
-                  selectedPackage={selectedPackage}
-                  setSelectedPackage={setSelectedPackage}
-                />
-              )}
-            </div>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {currentStep === 1 && (
+              <BasicInfoStep
+                formData={formData}
+                updateFormData={updateFormData}
+              />
+            )}
+            {currentStep === 2 && (
+              <ImageUploadStep
+                selectedImages={selectedImages}
+                setSelectedImages={setSelectedImages}
+              />
+            )}
+            {currentStep === 3 && (
+              <PackageSelectionStep
+                selectedPackage={selectedPackage}
+                setSelectedPackage={setSelectedPackage}
+              />
+            )}
+          </div>
 
-            {/* Footer */}
-            <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+          {/* Footer */}
+          <div className="flex-shrink-0 border-t border-gray-200 px-6 py-4">
+            <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
                 Bước {currentStep} / {totalSteps}
               </div>
@@ -175,7 +177,8 @@ export default function CreatePostModal({
                 {currentStep > 1 && (
                   <button
                     onClick={prevStep}
-                    className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Quay lại
                   </button>
@@ -184,7 +187,7 @@ export default function CreatePostModal({
                 {currentStep < totalSteps ? (
                   <button
                     onClick={nextStep}
-                    disabled={!canProceed()}
+                    disabled={!canProceed() || isSubmitting}
                     className="px-6 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Tiếp tục
@@ -192,16 +195,19 @@ export default function CreatePostModal({
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    disabled={!canProceed()}
-                    className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!canProceed() || isSubmitting}
+                    className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Đăng tin
+                    {isSubmitting && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    )}
+                    {isSubmitting ? "Đang đăng tin..." : "Đăng tin"}
                   </button>
                 )}
               </div>
             </div>
-          </Dialog.Panel>
-        </div>
+          </div>
+        </Dialog.Panel>
       </div>
     </Dialog>
   );

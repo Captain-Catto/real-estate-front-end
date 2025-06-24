@@ -7,15 +7,17 @@ import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import UserHeader from "@/components/user/UserHeader";
 import { useAuth } from "@/store/hooks";
+import { updateProfileAsync } from "@/store/slices/authSlice";
+import { useAppDispatch } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 
 export default function ThongTinCaNhanPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading, updateProfile, isInitialized } =
-    useAuth();
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated, loading, isInitialized } = useAuth();
 
   const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3005/api";
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
   // Redirect nếu chưa đăng nhập - CHỈ sau khi đã initialize xong
   useEffect(() => {
@@ -103,35 +105,23 @@ export default function ThongTinCaNhanPage() {
     setIsSubmitting(true);
 
     try {
-      console.log("Updating profile with data:", {
-        username: profileForm.username,
-        email: profileForm.email,
-      });
-      const response = await fetch(API_BASE_URL + `/auth/profile`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-        body: JSON.stringify({
+      // Sử dụng Redux thunk thay vì gọi API trực tiếp
+      const result = await dispatch(
+        updateProfileAsync({
           username: profileForm.username,
           email: profileForm.email,
-        }),
-      });
-      console.log("Response status:", response.status);
+        })
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        updateProfile({
-          username: profileForm.username,
-          email: profileForm.email,
-        });
+      if (updateProfileAsync.fulfilled.match(result)) {
         setIsEditingProfile(false);
         alert("Cập nhật thông tin thành công!");
       } else {
-        throw new Error("Failed to update profile");
+        throw new Error(
+          (result.payload as string) || "Failed to update profile"
+        );
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error);
       alert("Có lỗi xảy ra khi cập nhật thông tin!");
     } finally {

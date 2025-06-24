@@ -1,57 +1,59 @@
-export interface Post {
-  id: string;
-  title: string;
-  type: "ban" | "cho-thue";
-  status: string;
-  price: string;
-  area: string;
-  location: string;
-  createdDate: string;
-  expiryDate: string;
-  views: number;
-  image: string;
-  featured: boolean;
-  rejectionReason?: string;
-  rejectionDate?: string;
-}
-
-export interface EditPostForm {
-  // Thông tin chính
+export interface CreatePostRequest {
   type: "ban" | "cho-thue";
   category: string;
+  title: string;
+  description: string;
+  address: string;
   area: string;
   price: string;
   currency: string;
-
-  // Thông tin khác
   legalDocs: string;
   furniture: string;
   bedrooms: number;
   bathrooms: number;
-  floors: number;
-  houseDirection: string;
-  balconyDirection: string;
-  roadWidth: string;
-  frontWidth: string;
-
-  // Thông tin liên hệ
+  floors?: number;
+  houseDirection?: string;
+  balconyDirection?: string;
+  roadWidth?: string;
+  frontWidth?: string;
   contactName: string;
   email: string;
   phone: string;
+  packageId: string;
+  packageDuration: number;
+  images: string[];
+}
 
-  // Tiêu đề & mô tả
+export interface Post {
+  id: string;
+  userId: string;
+  type: "ban" | "cho-thue";
+  category: string;
   title: string;
   description: string;
-
-  // Địa chỉ
   address: string;
+  area: string;
+  price: string;
+  currency: string;
+  status: string;
+  images: string[];
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+  views: number;
+  contactName: string;
+  email: string;
+  phone: string;
+  packageId: string;
+  packageDuration: number;
 }
 
 export interface Package {
   id: string;
   name: string;
   price: number;
-  duration: number;
+  duration: number; // days
   features: string[];
   isPopular?: boolean;
+  color?: string;
 }

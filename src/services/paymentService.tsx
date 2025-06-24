@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3005/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 export interface CreateVNPayPaymentRequest {
   amount: number;
@@ -54,6 +54,7 @@ const getAuthHeaders = (): HeadersInit => {
 
 // Helper function để xử lý response
 const handleResponse = async (response: Response) => {
+  console.log("Response status:", response.status);
   if (!response.ok) {
     const errorData = await response
       .json()
@@ -78,6 +79,7 @@ export const paymentService = {
         body: JSON.stringify(data),
       }
     );
+    console.log("Creating VNPay payment URL:", data);
 
     return handleResponse(response);
   },

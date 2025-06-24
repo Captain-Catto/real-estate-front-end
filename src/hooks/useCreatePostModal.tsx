@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { postService, CreatePostData } from "@/services/postsService";
+import { useAuth } from "@/store/hooks";
 
 interface FormData {
   // Basic Info
@@ -13,6 +15,11 @@ interface FormData {
   furniture: string;
   bedrooms: number;
   bathrooms: number;
+  floors: number;
+  houseDirection: string;
+  balconyDirection: string;
+  roadWidth: string;
+  frontWidth: string;
   contactName: string;
   email: string;
   phone: string;
@@ -22,12 +29,14 @@ interface FormData {
 
 export function useCreatePostModal() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form data state
+  // Form data state với thông tin user thật
   const [formData, setFormData] = useState<FormData>({
     type: "ban",
     category: "Nhà riêng",
@@ -39,14 +48,27 @@ export function useCreatePostModal() {
     furniture: "Đầy đủ",
     bedrooms: 0,
     bathrooms: 0,
-    contactName: "",
-    email: "",
-    phone: "",
+    floors: 0,
+    houseDirection: "",
+    balconyDirection: "",
+    roadWidth: "",
+    frontWidth: "",
+    contactName: user?.username || "",
+    email: user?.email || "",
+    phone: "", // Có thể lấy từ user profile nếu có
     title: "",
     description: "",
   });
 
   const openModal = () => {
+    // Reset form với thông tin user hiện tại
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        contactName: user.username || "",
+        email: user.email || "",
+      }));
+    }
     setIsOpen(true);
     setCurrentStep(1);
   };
@@ -69,8 +91,13 @@ export function useCreatePostModal() {
         furniture: "Đầy đủ",
         bedrooms: 0,
         bathrooms: 0,
-        contactName: "",
-        email: "",
+        floors: 0,
+        houseDirection: "",
+        balconyDirection: "",
+        roadWidth: "",
+        frontWidth: "",
+        contactName: user?.username || "",
+        email: user?.email || "",
         phone: "",
         title: "",
         description: "",
@@ -94,30 +121,77 @@ export function useCreatePostModal() {
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
+  // Map category Vietnamese -> English
+  const mapCategoryToEnglish = (category: string) => {
+    switch (category) {
+      case "Nhà riêng":
+        return "house";
+      case "Chung cư":
+        return "apartment";
+      case "Nhà mặt phố":
+        return "townhouse";
+      case "Biệt thự":
+        return "villa";
+      case "Đất":
+        return "land";
+      case "Căn hộ dịch vụ":
+        return "serviced-apartment";
+      // Thêm các trường hợp khác nếu cần
+      default:
+        return category;
+    }
+  };
+
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
-      console.log("Submitting post data:", {
-        formData,
-        selectedImages,
-        selectedPackage,
-      });
+      // Validate required fields
+      if (
+        !formData.title ||
+        !formData.address ||
+        !formData.price ||
+        !formData.area
+      ) {
+        throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc");
+      }
 
-      // TODO: Call API to create post
-      // const response = await createPost({
-      //   ...formData,
-      //   images: selectedImages,
-      //   package: selectedPackage,
-      // });
+      if (selectedImages.length === 0) {
+        throw new Error("Vui lòng chọn ít nhất một hình ảnh");
+      }
 
-      // Show success message
-      alert("Đăng tin thành công!");
+      if (!selectedPackage) {
+        throw new Error("Vui lòng chọn gói đăng tin");
+      }
 
-      // Close modal and redirect
-      closeModal();
-      router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
-    } catch (error) {
+      // Map category sang tiếng Anh
+      const mappedCategory = mapCategoryToEnglish(formData.category);
+
+      // Chuẩn bị dữ liệu bài viết
+      const postData: CreatePostData = {
+        ...formData,
+        category: mappedCategory,
+        packageId: selectedPackage.id,
+        packageDuration: selectedPackage.duration,
+      };
+
+      // Gửi request, selectedImages là File[]
+      const result = await postService.createPost(postData, selectedImages);
+
+      if (result && result.success) {
+        alert("Đăng tin thành công! Tin đăng của bạn đang chờ duyệt.");
+        closeModal();
+        router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+      } else {
+        throw new Error(result?.message || "Có lỗi xảy ra khi đăng tin");
+      }
+    } catch (error: any) {
       console.error("Error creating post:", error);
-      alert("Có lỗi xảy ra khi đăng tin!");
+      alert(error.message || "Có lỗi xảy ra khi đăng tin!");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -127,6 +201,7 @@ export function useCreatePostModal() {
     formData,
     selectedImages,
     selectedPackage,
+    isSubmitting,
     openModal,
     closeModal,
     nextStep,
