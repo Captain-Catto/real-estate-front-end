@@ -11,6 +11,7 @@ import { DisplayMap } from "./DisplayMap";
 import { RelatedProperties } from "./RelatedProperties";
 
 export function PropertyDetail({ property }: PropertyDetailProps) {
+  console.log("Rendering PropertyDetail with property:", property);
   const favoriteItem = {
     id: property.id,
     type: "property" as const,
@@ -181,7 +182,16 @@ export function PropertyDetail({ property }: PropertyDetailProps) {
           <div className="lg:col-span-1">
             {/* Contact Box - Desktop Version */}
             <div className="hidden lg:block">
-              <ContactBox agent={property.agent} propertyId={property.id} />
+              <ContactBox
+                author={{
+                  username: property.author.username,
+                  phone: property.author.phoneNumber || "Không rõ",
+                  email: property.author.email,
+                  avatar: property.author.avatar || "/default-avatar.png",
+                  totalListings: property.author.totalListings || 0,
+                }}
+                propertyId={property.id}
+              />
             </div>
 
             {/* Project Info - Desktop Only */}
@@ -217,7 +227,16 @@ export function PropertyDetail({ property }: PropertyDetailProps) {
 
       {/* Contact Box - Mobile/Tablet Version Fixed Bottom */}
       <div className="lg:hidden">
-        <ContactBox agent={property.agent} propertyId={property.id} />
+        <ContactBox
+          author={{
+            username: property.author.username,
+            phone: property.author.phoneNumber || "Không rõ",
+            email: property.author.email,
+            avatar: property.author.avatar || "/default-avatar.png",
+            totalListings: property.author.totalListings || 0,
+          }}
+          propertyId={property.id}
+        />
       </div>
     </div>
   );

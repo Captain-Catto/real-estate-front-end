@@ -248,7 +248,7 @@ export function SearchSection() {
   const router = useRouter();
 
   // States
-  const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
+  const [searchType, setSearchType] = useState<"buy" | "cho-thue" | "project">(
     "buy"
   );
   const [selectedCity, setSelectedCity] = useState<number>(79); // TP.HCM default
@@ -408,7 +408,7 @@ export function SearchSection() {
     switch (searchType) {
       case "buy":
         return sellPropertyTypes;
-      case "rent":
+      case "cho-thue":
         return rentPropertyTypes;
       case "project":
         return projectPropertyTypes;
@@ -421,7 +421,7 @@ export function SearchSection() {
     switch (searchType) {
       case "buy":
         return sellPriceRanges;
-      case "rent":
+      case "cho-thue":
         return rentPriceRanges;
       case "project":
         return projectPriceRanges;
@@ -743,14 +743,14 @@ export function SearchSection() {
         </button>
         <button
           onClick={() => {
-            setSearchType("rent");
+            setSearchType("cho-thue");
             setSelectedPropertyTypes([]);
             setSelectedPrice("");
             setSelectedDistricts([]);
             setLocationSearch("");
           }}
           className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-sm sm:text-base ${
-            searchType === "rent"
+            searchType === "cho-thue"
               ? "text-blue-600 border-b-2 border-blue-600"
               : "text-gray-600"
           }`}
@@ -859,7 +859,7 @@ export function SearchSection() {
               ref={locationSuggestionsRef}
             >
               <div className="flex-1 flex flex-col p-3 gap-2">
-                {/* Selected Districts Badges - Only for buy/rent */}
+                {/* Selected Districts Badges - Only for buy/cho-thue */}
                 {searchType !== "project" && selectedDistricts.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {selectedDistricts.map((district) => (
@@ -1040,7 +1040,7 @@ export function SearchSection() {
                       )}
                     </>
                   ) : (
-                    // District suggestions for buy/rent tabs (existing logic)
+                    // District suggestions for buy/cho-thue tabs (existing logic)
                     filteredDistricts.length > 0 && (
                       <>
                         <div className="p-2 border-b border-gray-200">

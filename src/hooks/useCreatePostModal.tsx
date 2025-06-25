@@ -7,7 +7,12 @@ interface FormData {
   // Basic Info
   type: "ban" | "cho-thue";
   category: string;
-  address: string;
+  location: {
+    province: string;
+    district: string;
+    ward: string;
+    street?: string;
+  };
   area: string;
   price: string;
   currency: string;
@@ -40,7 +45,12 @@ export function useCreatePostModal() {
   const [formData, setFormData] = useState<FormData>({
     type: "ban",
     category: "Nhà riêng",
-    address: "",
+    location: {
+      province: "",
+      district: "",
+      ward: "",
+      street: "",
+    },
     area: "",
     price: "",
     currency: "VND",
@@ -83,7 +93,12 @@ export function useCreatePostModal() {
       setFormData({
         type: "ban",
         category: "Nhà riêng",
-        address: "",
+        location: {
+          province: "",
+          district: "",
+          ward: "",
+          street: "",
+        },
         area: "",
         price: "",
         currency: "VND",
@@ -149,12 +164,7 @@ export function useCreatePostModal() {
 
     try {
       // Validate required fields
-      if (
-        !formData.title ||
-        !formData.address ||
-        !formData.price ||
-        !formData.area
-      ) {
+      if (!formData.title || !formData.price || !formData.area) {
         throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc");
       }
 
@@ -175,8 +185,16 @@ export function useCreatePostModal() {
         category: mappedCategory,
         packageId: selectedPackage.id,
         packageDuration: selectedPackage.duration,
+        location: {
+          province: formData.location?.province || "",
+          district: formData.location?.district || "",
+          ward: formData.location?.ward || "",
+          street: formData.location?.street || "",
+          // Có thể thêm project nếu backend có
+        },
+        type: formData.type,
       };
-
+      console.log("Post data to be sent:", postData);
       // Gửi request, selectedImages là File[]
       const result = await postService.createPost(postData, selectedImages);
 

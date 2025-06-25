@@ -3,25 +3,29 @@ import React, { useState } from "react";
 import Image from "next/image";
 
 interface ContactBoxProps {
-  agent: {
-    id: string;
-    name: string;
+  author: {
+    id?: string;
+    username: string;
     avatar?: string;
     phone: string;
     email?: string;
-    totalListings: number;
+    totalListings?: number;
   };
   propertyId: string;
 }
 
-export function ContactBox({ agent, propertyId }: ContactBoxProps) {
+export function ContactBox({ author, propertyId }: ContactBoxProps) {
+  console.log("ContactBox rendered with author:", author);
   const [showPhone, setShowPhone] = useState(false);
 
   const handleShowPhone = () => {
     setShowPhone(true);
   };
 
-  const maskedPhone = agent.phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 ***");
+  const maskedPhone = author?.phone.replace(
+    /(\d{4})(\d{3})(\d{3})/,
+    "$1 $2 ***"
+  );
 
   return (
     <>
@@ -29,20 +33,22 @@ export function ContactBox({ agent, propertyId }: ContactBoxProps) {
       <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 sticky top-6">
         <h3 className="text-lg font-semibold mb-3">Liên hệ</h3>
 
-        {/* Agent Info */}
+        {/* author Info */}
         <div className="flex items-center space-x-3 mb-4">
           <div className="relative w-12 h-12 flex-shrink-0">
             <Image
-              src={agent.avatar || "/images/default-avatar.png"}
-              alt={agent.name}
+              src={author?.avatar || "/images/default-avatar.png"}
+              alt={author?.username}
               fill
               className="rounded-full object-cover"
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-base truncate">{agent.name}</h4>
+            <h4 className="font-medium text-base truncate">
+              {author.username}
+            </h4>
             <p className="text-gray-500 text-xs">
-              {agent.totalListings} tin đăng
+              {author.totalListings} tin đăng
             </p>
           </div>
         </div>
@@ -54,12 +60,12 @@ export function ContactBox({ agent, propertyId }: ContactBoxProps) {
             className="w-full bg-blue-600 text-white py-2.5 px-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm"
           >
             <i className="fas fa-phone text-xs"></i>
-            <span>{showPhone ? agent.phone : `Hiện số`}</span>
+            <span>{showPhone ? author?.phone : `Hiện số`}</span>
           </button>
 
           <button
             onClick={() =>
-              window.open(`https://zalo.me/${agent.phone.replace(/\D/g, "")}`)
+              window.open(`https://zalo.me/${author?.phone.replace(/\D/g, "")}`)
             }
             className="w-full bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-1 text-sm"
           >
@@ -67,7 +73,7 @@ export function ContactBox({ agent, propertyId }: ContactBoxProps) {
             <span>Chat Zalo</span>
           </button>
 
-          {agent.email && (
+          {author.email && (
             <button
               onClick={() => window.open(`mailto:${agent.email}`)}
               className="w-full bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 text-sm"
@@ -87,16 +93,18 @@ export function ContactBox({ agent, propertyId }: ContactBoxProps) {
             <div className="flex items-center space-x-2 flex-1 min-w-0">
               <div className="relative w-10 h-10 flex-shrink-0">
                 <Image
-                  src={agent.avatar || "/images/default-avatar.png"}
-                  alt={agent.name}
+                  src={author.avatar || "/images/default-avatar.png"}
+                  alt={author.username}
                   fill
                   className="rounded-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm truncate">{agent.name}</h4>
+                <h4 className="font-medium text-sm truncate">
+                  {author.username}
+                </h4>
                 <p className="text-gray-500 text-xs">
-                  {agent.totalListings} tin đăng
+                  {author.totalListings} tin đăng
                 </p>
               </div>
             </div>
@@ -126,9 +134,9 @@ export function ContactBox({ agent, propertyId }: ContactBoxProps) {
                 <span className="hidden sm:inline">Zalo</span>
               </button>
 
-              {agent.email && (
+              {author.email && (
                 <button
-                  onClick={() => window.open(`mailto:${agent.email}`)}
+                  onClick={() => window.open(`mailto:${author.email}`)}
                   className="flex-1 flex items-center justify-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-1 text-sm"
                 >
                   <i className="fas fa-envelope text-xs"></i>

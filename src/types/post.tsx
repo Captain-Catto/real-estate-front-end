@@ -46,6 +46,12 @@ export interface Post {
   phone: string;
   packageId: string;
   packageDuration: number;
+  author: {
+    username: string;
+    phoneNumber: string;
+    email: string;
+    avatar?: string;
+  };
 }
 
 export interface Package {

@@ -66,7 +66,13 @@ export default function EditPostModal({
     switch (currentStep) {
       case 1:
         return (
-          formData.title && formData.address && formData.price && formData.area
+          formData.title &&
+          formData.location &&
+          formData.location.province &&
+          formData.location.district &&
+          formData.location.ward &&
+          formData.price &&
+          formData.area
         );
       case 2:
         return selectedImages.length > 0;

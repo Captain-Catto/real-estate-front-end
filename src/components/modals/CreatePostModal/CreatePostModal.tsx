@@ -18,6 +18,10 @@ interface CreatePostModalProps {
   setSelectedImages: (images: File[]) => void;
   setSelectedPackage: (pkg: any) => void;
   handleSubmit: () => void;
+  provinces: any[]; // Thêm dòng này
+  districts: any[]; // Thêm dòng này
+  wards: any[]; // Thêm dòng này
+  locationLoading: boolean; // Thêm dòng này
 }
 
 export default function CreatePostModal({
@@ -34,6 +38,10 @@ export default function CreatePostModal({
   setSelectedImages,
   setSelectedPackage,
   handleSubmit,
+  provinces,
+  districts,
+  wards,
+  locationLoading,
 }: CreatePostModalProps) {
   const steps = [
     { number: 1, title: "Thông tin cơ bản" },
@@ -47,7 +55,13 @@ export default function CreatePostModal({
     switch (currentStep) {
       case 1:
         return (
-          formData.title && formData.address && formData.price && formData.area
+          formData.title &&
+          formData.location &&
+          formData.location.province &&
+          formData.location.district &&
+          formData.location.ward &&
+          formData.price &&
+          formData.area
         );
       case 2:
         return selectedImages.length > 0;
@@ -150,6 +164,10 @@ export default function CreatePostModal({
               <BasicInfoStep
                 formData={formData}
                 updateFormData={updateFormData}
+                provinces={provinces}
+                districts={districts}
+                wards={wards}
+                locationLoading={locationLoading}
               />
             )}
             {currentStep === 2 && (

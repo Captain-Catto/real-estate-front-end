@@ -1,14 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { EditPostForm } from "@/types/Post";
-import locationData from "../../../../../locationVN.json";
+import { Location } from "@/types/location";
+import { EditPostForm } from "@/types/editPost";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 interface BasicInfoStepProps {
-  formData: EditPostForm;
+  formData: EditPostForm & {
+    location: {
+      province?: string;
+      district?: string;
+      ward?: string;
+      street?: string;
+      project?: string;
+    };
+  };
   updateFormData: (updates: Partial<EditPostForm>) => void;
+  provinces: Location[];
+  districts: Location[];
+  wards: Location[];
+  locationLoading: boolean;
 }
 
-// Mock data cho dự án
-const mockProjects = [
+interface Project {
+  id: number;
+  name: string;
+  district: string;
+  city: string;
+}
+
+const mockProjects: Project[] = [
   {
     id: 1,
     name: "Vinhomes Grand Park",
@@ -50,206 +71,216 @@ const mockProjects = [
 export default function BasicInfoStep({
   formData,
   updateFormData,
+  provinces,
+  districts,
+  wards,
+  locationLoading,
 }: BasicInfoStepProps) {
-  // Location states
-  const [selectedProvince, setSelectedProvince] = useState("");
-  const [selectedDistrict, setSelectedDistrict] = useState("");
-  const [selectedWard, setSelectedWard] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [selectedProject, setSelectedProject] = useState("");
-
-  // Dropdown data
-  const [districts, setDistricts] = useState<any[]>([]);
-  const [wards, setWards] = useState<any[]>([]);
-  const [availableProjects, setAvailableProjects] = useState<any[]>([]);
-
-  // Dropdown visibility
+  const [selectedProvince, setSelectedProvince] = useState(
+    formData.location?.province || ""
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState(
+    formData.location?.district || ""
+  );
+  const [selectedWard, setSelectedWard] = useState(
+    formData.location?.ward || ""
+  );
+  const [streetAddress, setStreetAddress] = useState(
+    formData.location?.street || ""
+  );
+  const [selectedProject, setSelectedProject] = useState(
+    formData.location?.project || ""
+  );
   const [showProjects, setShowProjects] = useState(false);
+  const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
 
-  // Handle province change
+  // Sync state with formData/props
+  useEffect(() => {
+    setSelectedProvince(formData.location?.province || "");
+    setSelectedDistrict(formData.location?.district || "");
+    setSelectedWard(formData.location?.ward || "");
+    setStreetAddress(formData.location?.street || "");
+    setSelectedProject(formData.location?.project || "");
+  }, [formData.location, provinces, districts, wards]);
+
+  // Update available projects when province/district thay đổi
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict) {
+      setAvailableProjects(
+        mockProjects.filter(
+          (p) =>
+            p.district === selectedDistrict &&
+            p.city ===
+              provinces.find((prov) => prov.code === selectedProvince)?.codename
+        )
+      );
+    } else {
+      setAvailableProjects([]);
+    }
+  }, [selectedProvince, selectedDistrict, provinces]);
+
+  // Handle change
   const handleProvinceChange = (provinceCode: string) => {
     setSelectedProvince(provinceCode);
     setSelectedDistrict("");
     setSelectedWard("");
     setSelectedProject("");
-    setWards([]);
-    setAvailableProjects([]);
-
-    const province = locationData.find((p) => p.codename === provinceCode);
-    const newDistricts = province ? province.districts || [] : [];
-    setDistricts(newDistricts);
-
-    // Cập nhật địa chỉ với province mới - truyền data trực tiếp
-    updateAddress({
-      street: streetAddress,
-      project: "",
-      ward: "",
-      district: "",
-      province: provinceCode,
-      provinceData: province,
-      districtData: null,
-      wardData: null,
-      projectData: null,
+    updateFormData({
+      location: {
+        ...formData.location,
+        province: provinceCode,
+        district: "",
+        ward: "",
+        project: "",
+      },
     });
   };
 
-  // Handle district change
   const handleDistrictChange = (districtCode: string) => {
     setSelectedDistrict(districtCode);
     setSelectedWard("");
     setSelectedProject("");
-
-    const district = districts.find((d) => d.short_codename === districtCode);
-    const newWards = district ? district.wards || [] : [];
-    const newProjects = mockProjects.filter(
-      (p) => p.district === districtCode && p.city === selectedProvince
-    );
-
-    setWards(newWards);
-    setAvailableProjects(newProjects);
-
-    // Cập nhật địa chỉ với district mới - truyền data trực tiếp
-    const province = locationData.find((p) => p.codename === selectedProvince);
-    updateAddress({
-      street: streetAddress,
-      project: "",
-      ward: "",
-      district: districtCode,
-      province: selectedProvince,
-      provinceData: province,
-      districtData: district,
-      wardData: null,
-      projectData: null,
+    updateFormData({
+      location: {
+        ...formData.location,
+        province: selectedProvince,
+        district: districtCode,
+        ward: "",
+        project: "",
+      },
     });
   };
 
-  // Handle ward change
   const handleWardChange = (wardCode: string) => {
     setSelectedWard(wardCode);
-
-    const province = locationData.find((p) => p.codename === selectedProvince);
-    const district = districts.find(
-      (d) => d.short_codename === selectedDistrict
-    );
-    const ward = wards.find((w) => w.short_codename === wardCode);
-
-    updateAddress({
-      street: streetAddress,
-      project: selectedProject,
-      ward: wardCode,
-      district: selectedDistrict,
-      province: selectedProvince,
-      provinceData: province,
-      districtData: district,
-      wardData: ward,
-      projectData: selectedProject
-        ? availableProjects.find((p) => p.id.toString() === selectedProject)
-        : null,
+    updateFormData({
+      location: {
+        ...formData.location,
+        province: selectedProvince,
+        district: selectedDistrict,
+        ward: wardCode,
+      },
     });
   };
 
-  // Handle street address change
   const handleStreetChange = (street: string) => {
     setStreetAddress(street);
-
-    const province = locationData.find((p) => p.codename === selectedProvince);
-    const district = districts.find(
-      (d) => d.short_codename === selectedDistrict
-    );
-    const ward = wards.find((w) => w.short_codename === selectedWard);
-
-    updateAddress({
-      street,
-      project: selectedProject,
-      ward: selectedWard,
-      district: selectedDistrict,
-      province: selectedProvince,
-      provinceData: province,
-      districtData: district,
-      wardData: ward,
-      projectData: selectedProject
-        ? availableProjects.find((p) => p.id.toString() === selectedProject)
-        : null,
+    updateFormData({
+      location: {
+        ...formData.location,
+        street,
+      },
     });
   };
 
-  // Handle project change
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId);
-
-    const province = locationData.find((p) => p.codename === selectedProvince);
-    const district = districts.find(
-      (d) => d.short_codename === selectedDistrict
-    );
-    const ward = wards.find((w) => w.short_codename === selectedWard);
     const project = projectId
       ? availableProjects.find((p) => p.id.toString() === projectId)
       : null;
-
-    updateAddress({
-      street: streetAddress,
-      project: projectId,
-      ward: selectedWard,
-      district: selectedDistrict,
-      province: selectedProvince,
-      provinceData: province,
-      districtData: district,
-      wardData: ward,
-      projectData: project,
+    updateFormData({
+      location: {
+        ...formData.location,
+        project: project?.name || "",
+      },
     });
   };
 
-  // Update full address với data được truyền trực tiếp
-  const updateAddress = ({
-    street,
-    project,
-    ward,
-    district,
-    province,
-    provinceData,
-    districtData,
-    wardData,
-    projectData,
-  }: {
-    street: string;
-    project: string;
-    ward: string;
-    district: string;
-    province: string;
-    provinceData: any;
-    districtData: any;
-    wardData: any;
-    projectData: any;
-  }) => {
-    const addressParts = [];
+  // AI Title/Description
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
 
-    // Thêm street address nếu có
-    if (street && street.trim()) {
-      addressParts.push(street.trim());
+  const generateTitleWithAI = async () => {
+    if (!formData.type || !formData.category || !formData.location?.province) {
+      alert("Vui lòng chọn loại hình giao dịch, loại BĐS và tỉnh/thành phố.");
+      return;
     }
-
-    // Thêm project nếu có
-    if (project && projectData) {
-      addressParts.push(`Dự án ${projectData.name}`);
+    try {
+      setIsGeneratingTitle(true);
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken)
+        throw new Error("Bạn cần đăng nhập để sử dụng tính năng này.");
+      const propertyData = {
+        type: formData.type === "ban" ? "Bán" : "Cho thuê",
+        category: formData.category,
+        area: formData.area,
+        location: {
+          street: formData.location.street,
+          ward: formData.location.ward,
+          district: formData.location.district,
+          province: formData.location.province,
+        },
+        price: formData.price,
+        currency: formData.currency,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        houseDirection: formData.houseDirection,
+      };
+      const response = await fetch(`${API_BASE_URL}/ai/generate-title`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(propertyData),
+      });
+      if (!response.ok) throw new Error("Không thể tạo tiêu đề.");
+      const data = await response.json();
+      updateFormData({ title: data.title });
+    } catch (error) {
+      alert("Có lỗi xảy ra khi tạo tiêu đề. Vui lòng thử lại.");
+    } finally {
+      setIsGeneratingTitle(false);
     }
+  };
 
-    // Thêm ward nếu có
-    if (ward && wardData) {
-      addressParts.push(`Phường ${wardData.short_codename.replace(/_/g, " ")}`);
+  const generateDescriptionWithAI = async () => {
+    if (!formData.type || !formData.category || !formData.location?.province) {
+      alert("Vui lòng chọn loại hình giao dịch, loại BĐS và tỉnh/thành phố.");
+      return;
     }
-
-    // Thêm district nếu có
-    if (district && districtData) {
-      addressParts.push(districtData.name);
+    try {
+      setIsGeneratingDescription(true);
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken)
+        throw new Error("Bạn cần đăng nhập để sử dụng tính năng này.");
+      const propertyData = {
+        type: formData.type === "ban" ? "Bán" : "Cho thuê",
+        category: formData.category,
+        area: formData.area,
+        location: {
+          street: formData.location.street,
+          ward: formData.location.ward,
+          district: formData.location.district,
+          province: formData.location.province,
+        },
+        price: formData.price,
+        currency: formData.currency,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        furniture: formData.furniture,
+        legalDocs: formData.legalDocs,
+        houseDirection: formData.houseDirection,
+        balconyDirection: formData.balconyDirection,
+        roadWidth: formData.roadWidth,
+        frontWidth: formData.frontWidth,
+      };
+      const response = await fetch(`${API_BASE_URL}/ai/generate-description`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(propertyData),
+      });
+      if (!response.ok) throw new Error("Không thể tạo mô tả.");
+      const data = await response.json();
+      updateFormData({ description: data.description });
+    } catch (error) {
+      alert("Có lỗi xảy ra khi tạo mô tả. Vui lòng thử lại.");
+    } finally {
+      setIsGeneratingDescription(false);
     }
-
-    // Thêm province nếu có
-    if (province && provinceData) {
-      addressParts.push(provinceData.name);
-    }
-
-    const fullAddress = addressParts.join(", ");
-    updateFormData({ address: fullAddress });
   };
 
   return (
@@ -266,20 +297,6 @@ export default function BasicInfoStep({
                 : "border-gray-200 hover:border-gray-300"
             }`}
           >
-            <svg
-              width="24"
-              height="24"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="text-gray-800"
-            >
-              <path
-                fill="currentColor"
-                fillRule="evenodd"
-                d="M2 4.75A2.75 2.75 0 0 1 4.75 2h6.412c.729 0 1.428.29 1.944.805l8.01 8.01a2.75 2.75 0 0 1 0 3.89l-6.411 6.411a2.75 2.75 0 0 1-3.89 0l-8.01-8.01A2.75 2.75 0 0 1 2 11.162zM7.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3"
-                clipRule="evenodd"
-              />
-            </svg>
             <span className="font-medium">Bán</span>
           </button>
           <button
@@ -290,113 +307,111 @@ export default function BasicInfoStep({
                 : "border-gray-200 hover:border-gray-300"
             }`}
           >
-            <svg
-              width="24"
-              height="24"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="text-gray-800"
-            >
-              <path
-                fill="currentColor"
-                fillRule="evenodd"
-                d="M14.998 3.85a5.15 5.15 0 0 0-4.929 6.646c.09.3.01.626-.212.848l-5.965 5.964a.15.15 0 0 0-.044.106V20c0 .083.068.15.15.15h2.15V19c0-.47.381-.85.85-.85h1.15V17c0-.47.381-.85.85-.85h1.648l2.008-2.008a.85.85 0 0 1 .848-.212 5.15 5.15 0 1 0 1.496-10.08M8.148 9a6.85 6.85 0 1 1 5.364 6.688L11.6 17.601a.85.85 0 0 1-.602.249h-1.15V19c0 .47-.38.85-.85.85h-1.15V21c0 .47-.38.85-.85.85h-3A1.85 1.85 0 0 1 2.148 20v-2.586c0-.49.195-.961.542-1.308l5.62-5.62A7 7 0 0 1 8.148 9m6-2c0-.47.381-.85.85-.85A2.85 2.85 0 0 1 17.848 9a.85.85 0 1 1-1.7 0 1.15 1.15 0 0 0-1.15-1.15.85.85 0 0 1-.85-.85"
-                clipRule="evenodd"
-              />
-            </svg>
             <span className="font-medium">Cho thuê</span>
           </button>
         </div>
       </div>
 
-      {/* Địa chỉ BĐS */}
+      {/* Địa chỉ */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Địa chỉ BĐS</h3>
         <div className="space-y-4">
-          {/* Tỉnh/Thành phố */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="province"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tỉnh/Thành phố <span className="text-red-500">*</span>
             </label>
             <select
+              id="province"
               value={selectedProvince}
               onChange={(e) => handleProvinceChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              disabled={locationLoading}
             >
               <option value="">Chọn Tỉnh/Thành phố</option>
-              {locationData.map((province) => (
-                <option key={province.code} value={province.codename}>
+              {provinces.map((province) => (
+                <option key={province.code} value={province.code}>
                   {province.name}
                 </option>
               ))}
             </select>
           </div>
-
-          {/* Quận/Huyện */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="district"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Quận/Huyện <span className="text-red-500">*</span>
             </label>
             <select
+              id="district"
               value={selectedDistrict}
               onChange={(e) => handleDistrictChange(e.target.value)}
-              disabled={!selectedProvince}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              disabled={!selectedProvince || locationLoading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="">Chọn Quận/Huyện</option>
-              {districts.map((district) => (
-                <option key={district.code} value={district.short_codename}>
+              {(Array.isArray(districts) ? districts : []).map((district) => (
+                <option key={district.code} value={district.code}>
                   {district.name}
                 </option>
               ))}
             </select>
           </div>
-
-          {/* Phường/Xã */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="ward"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Phường/Xã <span className="text-red-500">*</span>
             </label>
             <select
+              id="ward"
               value={selectedWard}
               onChange={(e) => handleWardChange(e.target.value)}
-              disabled={!selectedDistrict}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              disabled={!selectedDistrict || locationLoading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="">Chọn Phường/Xã</option>
-              {wards.map((ward, index) => (
-                <option key={index} value={ward.short_codename}>
-                  {ward.short_codename.replace(/_/g, " ")}
+              {wards.map((ward) => (
+                <option key={ward.code} value={ward.code}>
+                  {ward.name}
                 </option>
               ))}
             </select>
           </div>
-
-          {/* Đường/Phố */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="street"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Đường/Phố
             </label>
             <input
+              id="street"
               type="text"
               value={streetAddress}
               onChange={(e) => handleStreetChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               placeholder="Nhập tên đường, số nhà (không bắt buộc)"
             />
           </div>
-
-          {/* Dự án */}
           {availableProjects.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="project"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Dự án
               </label>
               <div className="relative">
                 <button
+                  id="project"
                   type="button"
                   onClick={() => setShowProjects(!showProjects)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-left bg-white flex items-center justify-between"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left bg-white flex items-center justify-between"
                 >
                   <span
                     className={
@@ -425,7 +440,6 @@ export default function BasicInfoStep({
                     />
                   </svg>
                 </button>
-
                 {showProjects && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     <div
@@ -453,7 +467,7 @@ export default function BasicInfoStep({
                           <div className="text-sm text-gray-500">
                             {
                               districts.find(
-                                (d) => d.short_codename === project.district
+                                (d) => d.codename === project.district
                               )?.name
                             }
                           </div>
@@ -481,32 +495,46 @@ export default function BasicInfoStep({
               </p>
             </div>
           )}
-
-          {/* Địa chỉ đầy đủ (hiển thị) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="full-address"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Địa chỉ đầy đủ
             </label>
-            <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 min-h-[40px]">
-              {formData.address ||
+            <div
+              id="full-address"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 min-h-[40px]"
+            >
+              {[
+                formData.location?.street,
+                formData.location?.project,
+                formData.location?.ward,
+                formData.location?.district,
+                formData.location?.province,
+              ]
+                .filter(Boolean)
+                .join(", ") ||
                 "Địa chỉ sẽ được tạo tự động khi bạn chọn các thông tin trên"}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Thông tin chính */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Thông tin chính
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Loại BĐS */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="category"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Loại BĐS
             </label>
             <select
+              id="category"
               value={formData.category}
               onChange={(e) => updateFormData({ category: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -519,13 +547,16 @@ export default function BasicInfoStep({
             </select>
           </div>
 
-          {/* Diện tích */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="area"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Diện tích
             </label>
             <div className="relative">
               <input
+                id="area"
                 type="number"
                 value={formData.area}
                 onChange={(e) => updateFormData({ area: e.target.value })}
@@ -536,12 +567,15 @@ export default function BasicInfoStep({
             </div>
           </div>
 
-          {/* Mức giá */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="price"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Mức giá
             </label>
             <input
+              id="price"
               type="text"
               value={formData.price}
               onChange={(e) => updateFormData({ price: e.target.value })}
@@ -550,12 +584,15 @@ export default function BasicInfoStep({
             />
           </div>
 
-          {/* Đơn vị */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="currency"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Đơn vị
             </label>
             <select
+              id="currency"
               value={formData.currency}
               onChange={(e) => updateFormData({ currency: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -567,18 +604,20 @@ export default function BasicInfoStep({
         </div>
       </div>
 
-      {/* Thông tin khác */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Thông tin khác
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Giấy tờ pháp lý */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="legalDocs"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Giấy tờ pháp lý
             </label>
             <select
+              id="legalDocs"
               value={formData.legalDocs}
               onChange={(e) => updateFormData({ legalDocs: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -588,12 +627,15 @@ export default function BasicInfoStep({
             </select>
           </div>
 
-          {/* Nội thất */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="furniture"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Nội thất
             </label>
             <select
+              id="furniture"
               value={formData.furniture}
               onChange={(e) => updateFormData({ furniture: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
@@ -604,109 +646,112 @@ export default function BasicInfoStep({
             </select>
           </div>
 
-          {/* Số phòng ngủ */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số phòng ngủ
+            <label
+              htmlFor="houseDirection"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Hướng nhà
             </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  updateFormData({
-                    bedrooms: Math.max(0, formData.bedrooms - 1),
-                  })
-                }
-                disabled={formData.bedrooms === 0}
-                className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    fill="currentColor"
-                    fillRule="evenodd"
-                    d="M3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-              <span className="text-center w-8">{formData.bedrooms}</span>
-              <button
-                type="button"
-                onClick={() =>
-                  updateFormData({ bedrooms: formData.bedrooms + 1 })
-                }
-                className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    fill="currentColor"
-                    fillRule="evenodd"
-                    d="M12 3a.75.75 0 0 1 .75.75v7.5h7.5a.75.75 0 0 1 0 1.5h-7.5v7.5a.75.75 0 0 1-1.5 0v-7.5h-7.5a.75.75 0 0 1 0-1.5h7.5v-7.5A.75.75 0 0 1 12 3"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
+            <select
+              id="houseDirection"
+              value={formData.houseDirection}
+              onChange={(e) =>
+                updateFormData({ houseDirection: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="">Chọn hướng</option>
+              <option value="Đông">Đông</option>
+              <option value="Tây">Tây</option>
+              <option value="Nam">Nam</option>
+              <option value="Bắc">Bắc</option>
+              <option value="Đông Bắc">Đông Bắc</option>
+              <option value="Tây Bắc">Tây Bắc</option>
+              <option value="Đông Nam">Đông Nam</option>
+              <option value="Tây Nam">Tây Nam</option>
+            </select>
           </div>
 
-          {/* Số phòng tắm */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Số phòng tắm
+            <label
+              htmlFor="balconyDirection"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Hướng ban công
             </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  updateFormData({
-                    bathrooms: Math.max(0, formData.bathrooms - 1),
-                  })
-                }
-                disabled={formData.bathrooms === 0}
-                className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50 disabled:opacity-50"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    fill="currentColor"
-                    fillRule="evenodd"
-                    d="M3 12a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 0 1.5H3.75A.75.75 0 0 1 3 12"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-              <span className="text-center w-8">{formData.bathrooms}</span>
-              <button
-                type="button"
-                onClick={() =>
-                  updateFormData({ bathrooms: formData.bathrooms + 1 })
-                }
-                className="w-10 h-10 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    fill="currentColor"
-                    fillRule="evenodd"
-                    d="M12 3a.75.75 0 0 1 .75.75v7.5h7.5a.75.75 0 0 1 0 1.5h-7.5v7.5a.75.75 0 0 1-1.5 0v-7.5h-7.5a.75.75 0 0 1 0-1.5h7.5v-7.5A.75.75 0 0 1 12 3"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
-            </div>
+            <select
+              id="balconyDirection"
+              value={formData.balconyDirection}
+              onChange={(e) =>
+                updateFormData({ balconyDirection: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="">Chọn hướng</option>
+              <option value="Đông">Đông</option>
+              <option value="Tây">Tây</option>
+              <option value="Nam">Nam</option>
+              <option value="Bắc">Bắc</option>
+              <option value="Đông Bắc">Đông Bắc</option>
+              <option value="Tây Bắc">Tây Bắc</option>
+              <option value="Đông Nam">Đông Nam</option>
+              <option value="Tây Nam">Tây Nam</option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="roadWidth"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Độ rộng đường (m)
+            </label>
+            <input
+              id="roadWidth"
+              type="number"
+              value={formData.roadWidth}
+              onChange={(e) => updateFormData({ roadWidth: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Nhập độ rộng đường trước nhà"
+              min={0}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="frontWidth"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Mặt tiền (m)
+            </label>
+            <input
+              id="frontWidth"
+              type="number"
+              value={formData.frontWidth}
+              onChange={(e) => updateFormData({ frontWidth: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Nhập chiều rộng mặt tiền"
+              min={0}
+            />
           </div>
         </div>
       </div>
 
-      {/* Thông tin liên hệ */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Thông tin liên hệ
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="contactName"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tên liên hệ
             </label>
             <input
+              id="contactName"
               type="text"
               value={formData.contactName}
               onChange={(e) => updateFormData({ contactName: e.target.value })}
@@ -715,10 +760,14 @@ export default function BasicInfoStep({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Email
             </label>
             <input
+              id="email"
               type="email"
               value={formData.email}
               onChange={(e) => updateFormData({ email: e.target.value })}
@@ -727,10 +776,14 @@ export default function BasicInfoStep({
             />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="phone"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Số điện thoại
             </label>
             <input
+              id="phone"
               type="tel"
               value={formData.phone}
               onChange={(e) => updateFormData({ phone: e.target.value })}
@@ -741,41 +794,153 @@ export default function BasicInfoStep({
         </div>
       </div>
 
-      {/* Tiêu đề & Mô tả */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">
           Tiêu đề & Mô tả
         </h3>
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="title"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tiêu đề
             </label>
-            <textarea
-              value={formData.title}
-              onChange={(e) => updateFormData({ title: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="Mô tả ngắn gọn về loại hình bất động sản, diện tích, địa chỉ"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Tối thiểu 30 ký tự, tối đa 99 ký tự
-            </p>
+            <div className="flex flex-col space-y-2">
+              <textarea
+                id="title"
+                value={formData.title}
+                onChange={(e) => updateFormData({ title: e.target.value })}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                placeholder="Mô tả ngắn gọn về loại hình bất động sản, diện tích, địa chỉ"
+              />
+              <button
+                type="button"
+                onClick={generateTitleWithAI}
+                className="self-end px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
+                disabled={isGeneratingTitle}
+              >
+                {isGeneratingTitle ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4 text-blue-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>Đang tạo...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    <span>Tạo tiêu đề bằng AI</span>
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500">
+                Tối thiểu 30 ký tự, tối đa 99 ký tự
+              </p>
+            </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Mô tả
             </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => updateFormData({ description: e.target.value })}
-              rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder="Mô tả chi tiết về loại hình bất động sản, vị trí, diện tích, tiện ích..."
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Tối thiểu 30 ký tự, tối đa 3000 ký tự
-            </p>
+            <div className="flex flex-col space-y-2">
+              <textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) =>
+                  updateFormData({ description: e.target.value })
+                }
+                rows={6}
+                maxLength={1500}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                placeholder="Mô tả chi tiết về loại hình bất động sản, vị trí, diện tích, tiện ích..."
+              />
+              <button
+                type="button"
+                onClick={generateDescriptionWithAI}
+                className="self-end px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
+                disabled={isGeneratingDescription}
+              >
+                {isGeneratingDescription ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4 text-blue-600"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>Đang tạo...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    <span>Tạo mô tả bằng AI</span>
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500">
+                Tối thiểu 30 ký tự, tối đa 500 ký tự
+              </p>
+            </div>
           </div>
         </div>
       </div>

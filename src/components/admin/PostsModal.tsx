@@ -163,7 +163,7 @@ export default function PostModal({
                               <p className="text-xs text-gray-500">Giá</p>
                               <p className="text-sm font-medium">
                                 {formatPrice(post.price)} VNĐ
-                                {post.type === "rent" && "/tháng"}
+                                {post.type === "cho-thue" && "/tháng"}
                               </p>
                             </div>
                           </div>

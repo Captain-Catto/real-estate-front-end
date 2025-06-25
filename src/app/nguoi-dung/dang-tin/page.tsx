@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import Footer from "@/components/footer/Footer";
@@ -12,17 +12,57 @@ import PackageSelectionStep from "@/components/modals/EditPostModal/steps/Packag
 import UserHeader from "@/components/user/UserHeader";
 import { useAuth } from "@/store/hooks";
 import { useRouter } from "next/navigation";
+import { locationService } from "@/services/locationService";
 
 export default function DangTinPage() {
   const router = useRouter();
   const { user, isAuthenticated, loading, isInitialized } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
-  const createModal = useCreatePostModal();
+  // Sử dụng useRef để tránh vòng lặp vô hạn
+  const [hasOpened, setHasOpened] = useState(false);
+  const hasOpenedRef = useRef(false);
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [locationLoading, setLocationLoading] = useState(false);
+
+  const {
+    isOpen,
+    openModal,
+    closeModal,
+    currentStep,
+    formData,
+    selectedImages,
+    selectedPackage,
+    nextStep,
+    prevStep,
+    updateFormData,
+    setSelectedImages,
+    setSelectedPackage,
+    handleSubmit,
+  } = useCreatePostModal();
+
+  // Ensure formData has all required properties for EditPostForm
+  const completeFormData = {
+    ...formData,
+    address: formData.address || "",
+    packageId: formData.packageId || "",
+    packageDuration: formData.packageDuration || 0,
+    images: formData.images || [],
+    location: {
+      province: formData.location?.province,
+      district: formData.location?.district,
+      ward: formData.location?.ward,
+      street: formData.location?.street,
+      project: formData.location?.project,
+    },
+  };
 
   // Redirect nếu chưa đăng nhập
   useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
+    if (isInitialized && !isAuthenticated && !hasOpenedRef.current) {
       router.push("/login");
+      hasOpenedRef.current = true;
     }
   }, [isAuthenticated, isInitialized, router]);
 
@@ -36,6 +76,81 @@ export default function DangTinPage() {
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
+
+  // Lấy danh sách tỉnh/thành khi mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLocationLoading(true);
+      try {
+        const data = await locationService.getProvinces();
+        setProvinces(data);
+      } catch (error) {
+        // handle error
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // Lấy quận/huyện khi chọn tỉnh
+  useEffect(() => {
+    if (formData.location?.province) {
+      setDistricts([]);
+      setWards([]);
+      const fetchDistricts = async () => {
+        setLocationLoading(true);
+        try {
+          const data = await locationService.getDistricts(
+            formData.location.province
+          );
+          setDistricts(data);
+        } catch (error) {
+          // handle error
+        } finally {
+          setLocationLoading(false);
+        }
+      };
+      fetchDistricts();
+    }
+  }, [formData.location?.province]);
+
+  // Lấy phường/xã khi chọn quận/huyện
+  useEffect(() => {
+    if (formData.location?.province && formData.location?.district) {
+      setWards([]);
+      const fetchWards = async () => {
+        setLocationLoading(true);
+        try {
+          const data = await locationService.getWards(
+            formData.location.province,
+            formData.location.district
+          );
+          setWards(data);
+        } catch (error) {
+          // handle error
+        } finally {
+          setLocationLoading(false);
+        }
+      };
+      fetchWards();
+    }
+  }, [formData.location?.province, formData.location?.district]);
+
+  // Auto open modal on mobile - SỬA PHẦN NÀY
+  useEffect(() => {
+    if (
+      isMobile &&
+      isAuthenticated &&
+      !isOpen &&
+      !hasOpenedRef.current &&
+      isInitialized
+    ) {
+      hasOpenedRef.current = true;
+      setHasOpened(true);
+      openModal();
+    }
+  }, [isMobile, isAuthenticated, isInitialized, isOpen]);
 
   // Format user data từ Redux store
   const userData = user
@@ -65,31 +180,21 @@ export default function DangTinPage() {
     { number: 3, title: "Gói đăng tin" },
   ];
 
+  // Sửa lại canProceed để dùng biến đã destructured
   const canProceed = () => {
-    switch (createModal.currentStep) {
+    switch (currentStep) {
       case 1:
         return (
-          createModal.formData.title &&
-          createModal.formData.address &&
-          createModal.formData.price &&
-          createModal.formData.area
+          formData.title && formData.location && formData.price && formData.area
         );
-        console.log("check form data", createModal.formData);
       case 2:
-        return createModal.selectedImages.length > 0;
+        return selectedImages.length > 0;
       case 3:
-        return createModal.selectedPackage;
+        return selectedPackage;
       default:
         return false;
     }
   };
-
-  // Auto open modal on mobile
-  useEffect(() => {
-    if (isMobile && !createModal.isOpen && isAuthenticated) {
-      createModal.openModal();
-    }
-  }, [isMobile, isAuthenticated]);
 
   // Loading state
   if (!isInitialized || loading) {
@@ -154,7 +259,7 @@ export default function DangTinPage() {
               Bắt đầu đăng tin để bán hoặc cho thuê bất động sản của bạn
             </p>
             <button
-              onClick={createModal.openModal}
+              onClick={openModal}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Bắt đầu đăng tin
@@ -163,18 +268,22 @@ export default function DangTinPage() {
         </div>
 
         <CreatePostModal
-          isOpen={createModal.isOpen}
-          onClose={createModal.closeModal}
-          currentStep={createModal.currentStep}
-          formData={createModal.formData}
-          selectedImages={createModal.selectedImages}
-          selectedPackage={createModal.selectedPackage}
-          nextStep={createModal.nextStep}
-          prevStep={createModal.prevStep}
-          updateFormData={createModal.updateFormData}
-          setSelectedImages={createModal.setSelectedImages}
-          setSelectedPackage={createModal.setSelectedPackage}
-          handleSubmit={createModal.handleSubmit}
+          isOpen={isOpen}
+          onClose={closeModal}
+          currentStep={currentStep}
+          formData={formData}
+          selectedImages={selectedImages}
+          selectedPackage={selectedPackage}
+          nextStep={nextStep}
+          prevStep={prevStep}
+          updateFormData={updateFormData}
+          setSelectedImages={setSelectedImages}
+          setSelectedPackage={setSelectedPackage}
+          handleSubmit={handleSubmit}
+          provinces={provinces}
+          districts={districts}
+          wards={wards}
+          locationLoading={locationLoading}
         />
       </>
     );
@@ -207,12 +316,12 @@ export default function DangTinPage() {
                     <div key={step.number} className="flex items-center">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                          createModal.currentStep >= step.number
+                          currentStep >= step.number
                             ? "bg-blue-600 text-white"
                             : "bg-gray-200 text-gray-600"
                         }`}
                       >
-                        {createModal.currentStep > step.number ? (
+                        {currentStep > step.number ? (
                           <svg
                             width="16"
                             height="16"
@@ -233,7 +342,7 @@ export default function DangTinPage() {
                       </div>
                       <span
                         className={`ml-2 text-sm font-medium ${
-                          createModal.currentStep >= step.number
+                          currentStep >= step.number
                             ? "text-gray-900"
                             : "text-gray-500"
                         }`}
@@ -241,13 +350,7 @@ export default function DangTinPage() {
                         {step.title}
                       </span>
                       {index < steps.length - 1 && (
-                        <div
-                          className={`w-8 h-0.5 mx-4 ${
-                            createModal.currentStep > step.number
-                              ? "bg-blue-600"
-                              : "bg-gray-200"
-                          }`}
-                        />
+                        <span className="mx-4 h-1 w-8 bg-gray-300 rounded"></span>
                       )}
                     </div>
                   ))}
@@ -257,22 +360,26 @@ export default function DangTinPage() {
               {/* Content */}
               <div className="p-6">
                 <div className="max-w-4xl mx-auto">
-                  {createModal.currentStep === 1 && (
+                  {currentStep === 1 && (
                     <BasicInfoStep
-                      formData={createModal.formData}
-                      updateFormData={createModal.updateFormData}
+                      formData={formData}
+                      updateFormData={updateFormData}
+                      provinces={provinces}
+                      districts={districts}
+                      wards={wards}
+                      locationLoading={locationLoading}
                     />
                   )}
-                  {createModal.currentStep === 2 && (
+                  {currentStep === 2 && (
                     <ImageUploadStep
-                      selectedImages={createModal.selectedImages}
-                      setSelectedImages={createModal.setSelectedImages}
+                      selectedImages={selectedImages}
+                      setSelectedImages={setSelectedImages}
                     />
                   )}
-                  {createModal.currentStep === 3 && (
+                  {currentStep === 3 && (
                     <PackageSelectionStep
-                      selectedPackage={createModal.selectedPackage}
-                      setSelectedPackage={createModal.setSelectedPackage}
+                      selectedPackage={selectedPackage}
+                      setSelectedPackage={setSelectedPackage}
                     />
                   )}
                 </div>
@@ -281,22 +388,22 @@ export default function DangTinPage() {
               {/* Footer */}
               <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
                 <div className="text-sm text-gray-600">
-                  Bước {createModal.currentStep} / {steps.length}
+                  Bước {currentStep} / {steps.length}
                 </div>
 
                 <div className="flex gap-3">
-                  {createModal.currentStep > 1 && (
+                  {currentStep > 1 && (
                     <button
-                      onClick={createModal.prevStep}
+                      onClick={prevStep}
                       className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       Quay lại
                     </button>
                   )}
 
-                  {createModal.currentStep < steps.length ? (
+                  {currentStep < steps.length ? (
                     <button
-                      onClick={createModal.nextStep}
+                      onClick={nextStep}
                       disabled={!canProceed()}
                       className="px-6 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -304,7 +411,7 @@ export default function DangTinPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={createModal.handleSubmit}
+                      onClick={handleSubmit}
                       disabled={!canProceed()}
                       className="px-6 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >

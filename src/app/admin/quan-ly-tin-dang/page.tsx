@@ -20,7 +20,7 @@ const PostsService = {
       {
         id: "BDS001",
         title: "Bán căn hộ 2PN Vinhomes Central Park Q.Bình Thạnh",
-        type: "sale",
+        type: "ban",
         category: "apartment",
         location: "Quận Bình Thạnh, TP.HCM",
         price: "3500000000",
@@ -40,7 +40,7 @@ const PostsService = {
       {
         id: "BDS002",
         title: "Cho thuê biệt thự đơn lập Phú Mỹ Hưng",
-        type: "rent",
+        type: "cho-thue",
         category: "villa",
         location: "Quận 7, TP.HCM",
         price: "50000000",
@@ -58,7 +58,7 @@ const PostsService = {
       {
         id: "BDS003",
         title: "Bán nhà mặt tiền đường Nguyễn Văn Cừ",
-        type: "sale",
+        type: "ban",
         category: "house",
         location: "Quận 5, TP.HCM",
         price: "12000000000",

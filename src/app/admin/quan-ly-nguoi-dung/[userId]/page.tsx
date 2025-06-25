@@ -52,7 +52,7 @@ interface User {
 interface Post {
   id: string;
   title: string;
-  type: "sale" | "rent";
+  type: "ban" | "cho-thue";
   category: string;
   location: string;
   price: string;
@@ -145,7 +145,7 @@ const UserDetailService = {
       {
         id: "BDS001",
         title: "Bán căn hộ 2PN Vinhomes Central Park Q.Bình Thạnh",
-        type: "sale",
+        type: "ban",
         category: "apartment",
         location: "Quận Bình Thạnh, TP.HCM",
         price: "3500000000",
@@ -161,7 +161,7 @@ const UserDetailService = {
       {
         id: "BDS002",
         title: "Cho thuê nhà phố 3 tầng tại Quận 7",
-        type: "rent",
+        type: "cho-thue",
         category: "house",
         location: "Quận 7, TP.HCM",
         price: "25000000",
@@ -177,7 +177,7 @@ const UserDetailService = {
       {
         id: "BDS003",
         title: "Bán đất nền dự án Saigon Mystery Villas",
-        type: "sale",
+        type: "ban",
         category: "land",
         location: "Quận 2, TP.HCM",
         price: "5200000000",
@@ -879,7 +879,7 @@ export default function UserDetailPage() {
                                 <div className="text-sm text-gray-900">
                                   <div className="font-medium">
                                     {formatPrice(post.price)}{" "}
-                                    {post.type === "sale" ? "VNĐ" : "VNĐ/tháng"}
+                                    {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                                   </div>
                                   <div className="text-gray-500">
                                     {post.area}m² • {post.location}

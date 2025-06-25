@@ -7,7 +7,7 @@ import testImg from "@/assets/images/card-img.jpg";
 
 interface Listing {
   id: string;
-  type: "sale" | "rent";
+  type: "ban" | "cho-thue";
   title: string;
   price: number;
   area: number;
@@ -36,7 +36,7 @@ export function ProjectListings({
 }: ProjectListingsProps) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"all" | "sale" | "rent">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "ban" | "cho-thue">("all");
   const [sortBy, setSortBy] = useState("newest");
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function ProjectListings({
         const mockListings: Listing[] = [
           {
             id: "1",
-            type: "sale",
+            type: "ban",
             title: "Căn hộ 2PN, view sông, nội thất đầy đủ",
             price: 3200000000,
             area: 78,
@@ -66,7 +66,7 @@ export function ProjectListings({
           },
           {
             id: "2",
-            type: "rent",
+            type: "cho-thue",
             title: "Cho thuê căn hộ 3PN, full nội thất cao cấp",
             price: 25000000,
             area: 95,
@@ -173,14 +173,14 @@ export function ProjectListings({
         {[
           { key: "all", label: "Tất cả", count: listings.length },
           {
-            key: "sale",
+            key: "ban",
             label: "Bán",
-            count: listings.filter((l) => l.type === "sale").length,
+            count: listings.filter((l) => l.type === "ban").length,
           },
           {
-            key: "rent",
+            key: "cho-thue",
             label: "Cho thuê",
-            count: listings.filter((l) => l.type === "rent").length,
+            count: listings.filter((l) => l.type === "cho-thue").length,
           },
         ].map((tab) => (
           <button
@@ -231,12 +231,12 @@ export function ProjectListings({
                     <div className="absolute top-2 left-2">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${
-                          listing.type === "sale"
+                          listing.type === "ban"
                             ? "bg-red-100 text-red-600"
                             : "bg-blue-100 text-blue-600"
                         }`}
                       >
-                        {listing.type === "sale" ? "Bán" : "Cho thuê"}
+                        {listing.type === "ban" ? "Bán" : "Cho thuê"}
                       </span>
                     </div>
                     {listing.images.length > 1 && (
@@ -333,7 +333,7 @@ export function ProjectListings({
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-auto">
                       <div className="text-lg sm:text-xl font-bold text-red-600">
                         {formatPrice(listing.price)}
-                        {listing.type === "rent" && (
+                        {listing.type === "cho-thue" && (
                           <span className="text-sm font-normal">/tháng</span>
                         )}
                       </div>

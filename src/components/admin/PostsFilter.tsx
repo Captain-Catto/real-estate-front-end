@@ -81,8 +81,8 @@ export default function PostsFilter({
             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">Tất cả loại</option>
-            <option value="sale">Bán</option>
-            <option value="rent">Cho thuê</option>
+            <option value="ban">Bán</option>
+            <option value="cho-thue">Cho thuê</option>
           </select>
         </div>
 

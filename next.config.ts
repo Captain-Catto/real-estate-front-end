@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ["maps.googleapis.com", "maps.google.com"],
+    domains: [
+      "maps.googleapis.com",
+      "maps.google.com",
+      "datlqt-real-estate.s3.ap-southeast-2.amazonaws.com",
+    ],
   },
   // Allow iframe từ Google Maps
   async headers() {

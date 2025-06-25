@@ -118,7 +118,7 @@ export default function AdminPostDetail({
   };
 
   const getTypeName = (type: string) => {
-    return type === "sale" ? "Bán" : "Cho thuê";
+    return type === "ban" ? "Bán" : "Cho thuê";
   };
 
   const handleReject = () => {
@@ -287,7 +287,7 @@ export default function AdminPostDetail({
                 </div>
                 <div className="font-bold text-green-800">
                   {formatPrice(post.price)}{" "}
-                  {post.type === "sale" ? "VNĐ" : "VNĐ/tháng"}
+                  {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                 </div>
               </div>
 

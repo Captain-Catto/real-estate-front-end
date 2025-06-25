@@ -12,7 +12,7 @@ import {
 interface Post {
   id: string;
   title: string;
-  type: "sale" | "rent";
+  type: "ban" | "cho-thue";
   category: string;
   location: string;
   price: string;
@@ -208,7 +208,7 @@ export default function PostsTable({
                     <div className="text-sm text-gray-900">
                       <div className="font-medium">
                         {formatPrice(post.price)}{" "}
-                        {post.type === "sale" ? "VNĐ" : "VNĐ/tháng"}
+                        {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                       </div>
                       <div className="text-gray-500">
                         {post.area}m² • {post.location}

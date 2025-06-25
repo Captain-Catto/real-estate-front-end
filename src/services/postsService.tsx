@@ -9,10 +9,15 @@ export interface CreatePostData {
   category: string;
   title: string;
   description: string;
-  address: string;
   area: string;
   price: string;
   currency: string;
+  location: {
+    province: string;
+    district: string;
+    ward: string;
+    street: string;
+  };
 
   // Property Details
   legalDocs: string;
@@ -94,9 +99,14 @@ class PostService {
   async createPost(postData: CreatePostData, imageFiles: File[]): Promise<any> {
     const makeRequest = async () => {
       const formData = new FormData();
+      console.log("Creating post with data:", postData);
       Object.entries(postData).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          formData.append(key, value as string);
+          if (key === "location" && typeof value === "object") {
+            formData.append(key, JSON.stringify(value)); // <-- stringify location
+          } else {
+            formData.append(key, value as string);
+          }
         }
       });
       for (const file of imageFiles) {
@@ -216,6 +226,23 @@ class PostService {
       return await response.json();
     } catch (error) {
       console.error("Error fetching packages:", error);
+      throw error;
+    }
+  }
+  // getpostbyid
+  async getPostById(postId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}`);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch post");
+      }
+      const data = await response.json();
+      console.log("Fetched post data:", data);
+      return data.data.post;
+    } catch (error) {
+      console.error("Error fetching post by ID:", error);
       throw error;
     }
   }
