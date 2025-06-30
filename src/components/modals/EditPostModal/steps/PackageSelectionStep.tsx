@@ -9,6 +9,17 @@ interface PackageSelectionStepProps {
 // Mock packages data
 const packages: Package[] = [
   {
+    id: "free",
+    name: "Gói Miễn Phí",
+    price: 0,
+    duration: 7,
+    features: [
+      "Hiển thị tin đăng 7 ngày",
+      "Xuất hiện trong kết quả tìm kiếm",
+      "Hỗ trợ khách hàng cơ bản",
+    ],
+  },
+  {
     id: "basic",
     name: "Gói Cơ Bản",
     price: 50000,
@@ -66,7 +77,7 @@ export default function PackageSelectionStep({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {packages.map((pkg) => (
           <div
             key={pkg.id}
@@ -177,28 +188,6 @@ export default function PackageSelectionStep({
           </div>
         </div>
       )}
-
-      {/* Free Option */}
-      <div className="border border-gray-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h5 className="font-medium text-gray-900">Đăng tin miễn phí</h5>
-            <p className="text-sm text-gray-600">
-              Hiển thị cơ bản trong 7 ngày
-            </p>
-          </div>
-          <button
-            onClick={() => setSelectedPackage(null)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedPackage === null
-                ? "bg-gray-800 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {selectedPackage === null ? "Đã chọn" : "Chọn"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

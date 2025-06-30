@@ -22,16 +22,10 @@ const API_BASE_URL =
 export const locationService = {
   getProvinces: async (retryCount = 3): Promise<LocationData> => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
       const res = await fetch(`${API_BASE_URL}/locations/provinces`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
       });
       const result = await res.json();
@@ -67,34 +61,38 @@ export const locationService = {
     retryCount = 3
   ): Promise<LocationData> => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
+      console.log(`Fetching districts for province: ${provinceCode}`);
 
-      const res = await fetch(
+      const response = await fetch(
         `${API_BASE_URL}/locations/districts/${provinceCode}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
         }
       );
 
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        throw new Error("Session expired. Please login again.");
+      if (!response.ok) {
+        console.error(`Failed to fetch districts: ${response.status}`);
+
+        // For debugging, try to get the error response body
+        try {
+          const errorBody = await response.text();
+          console.error("Error response:", errorBody);
+        } catch (e) {
+          console.error("Could not parse error response");
+        }
+
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      const result = await response.json();
 
-      const result = await res.json();
-      console.log("Districts result:", result);
+      if (!result.success || !result.data) {
+        console.error("Unexpected API response format:", result);
+        return [];
+      }
 
       return result.data;
     } catch (error) {

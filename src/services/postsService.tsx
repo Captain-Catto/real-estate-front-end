@@ -149,14 +149,16 @@ class PostService {
   async getUserPosts(page: number = 1, limit: number = 10): Promise<any> {
     try {
       const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/posts/my-posts?page=${page}&limit=${limit}`
+        `${API_BASE_URL}/posts/my?page=${page}&limit=${limit}`
       );
 
       if (!response.ok) {
         throw new Error("Failed to fetch user posts");
       }
+      const result = await response.json();
+      console.log("getuserpost result", result);
 
-      return await response.json();
+      return result;
     } catch (error) {
       console.error("Error fetching user posts:", error);
       throw error;
@@ -246,6 +248,77 @@ class PostService {
       throw error;
     }
   }
-}
+  // get posts by category (public)
+  async getPostByCategory(category: string): Promise<any> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/posts/category/${category}`
+      );
 
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch posts by category");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching posts by category:", error);
+      throw error;
+    }
+  }
+
+  // tìm bài viết
+  async searchPosts(filters = {}, page = 1, limit = 20): Promise<any> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", String(page));
+      queryParams.append("limit", String(limit));
+
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          if (Array.isArray(value)) {
+            // Special handling for districts - need to join with commas
+            if (key === "districts") {
+              queryParams.append(key, value.join(","));
+            } else {
+              // Normal handling for other array values
+              value.forEach((item) => {
+                queryParams.append(key, String(item));
+              });
+            }
+          } else {
+            queryParams.append(key, String(value));
+          }
+        }
+      });
+
+      console.log(
+        "API Query:",
+        `${API_BASE_URL}/posts/search?${queryParams.toString()}`
+      );
+
+      const response = await fetch(
+        `${API_BASE_URL}/posts/search?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error searching posts:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+}
 export const postService = new PostService();

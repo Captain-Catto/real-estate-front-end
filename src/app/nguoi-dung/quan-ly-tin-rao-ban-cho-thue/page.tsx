@@ -7,117 +7,15 @@ import UserSidebar from "@/components/user/UserSidebar";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
 import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import UserHeader from "@/components/user/UserHeader";
-
-// Mock data for posts
-const mockPosts = [
-  {
-    id: "BDS001",
-    title: "Bán căn hộ 2PN tại Vinhomes Central Park, Q. Bình Thạnh",
-    type: "ban",
-    status: "7", // Đang hiển thị
-    price: "5.2 tỷ",
-    area: "75m²",
-    location: "Quận Bình Thạnh, TP.HCM",
-    createdDate: "2025-06-08",
-    expiryDate: "2025-07-08",
-    views: 245,
-    image: "/api/placeholder/300/200",
-    featured: true,
-  },
-  {
-    id: "BDS002",
-    title: "Cho thuê biệt thự đơn lập Phú Mỹ Hưng, Q7",
-    type: "cho-thue",
-    status: "6", // Chờ hiển thị
-    price: "35 triệu/tháng",
-    area: "250m²",
-    location: "Quận 7, TP.HCM",
-    createdDate: "2025-06-09",
-    expiryDate: "2025-07-09",
-    views: 89,
-    image: "/api/placeholder/300/200",
-    featured: false,
-  },
-  {
-    id: "BDS003",
-    title: "Bán nhà mặt tiền đường Nguyễn Văn Cừ, Q5",
-    type: "ban",
-    status: "2", // Chờ duyệt
-    price: "12.5 tỷ",
-    area: "120m²",
-    location: "Quận 5, TP.HCM",
-    createdDate: "2025-06-10",
-    expiryDate: "2025-07-10",
-    views: 0,
-    image: "/api/placeholder/300/200",
-    featured: false,
-  },
-  {
-    id: "BDS004",
-    title: "Cho thuê căn hộ Studio The Gold View, Q4",
-    type: "cho-thue",
-    status: "10", // Sắp hết hạn
-    price: "18 triệu/tháng",
-    area: "45m²",
-    location: "Quận 4, TP.HCM",
-    createdDate: "2025-06-05",
-    expiryDate: "2025-06-15",
-    views: 156,
-    image: "/api/placeholder/300/200",
-    featured: true,
-  },
-  {
-    id: "BDS005",
-    title: "Bán đất nền dự án Saigon Mystery Villas, Q2",
-    type: "ban",
-    status: "8", // Hết hạn
-    price: "85 triệu/m²",
-    area: "200m²",
-    location: "Quận 2, TP.HCM",
-    createdDate: "2025-06-04",
-    expiryDate: "2025-05-20",
-    views: 324,
-    image: "/api/placeholder/300/200",
-    featured: false,
-  },
-  {
-    id: "BDS006",
-    title: "Cho thuê văn phòng cao cấp Bitexco Financial Tower",
-    type: "cho-thue",
-    status: "5", // Không duyệt
-    price: "120 triệu/tháng",
-    area: "500m²",
-    location: "Quận 1, TP.HCM",
-    createdDate: "2025-06-06",
-    expiryDate: "2025-07-06",
-    views: 67,
-    image: "/api/placeholder/300/200",
-    featured: false,
-    rejectionReason:
-      "Hình ảnh không rõ ràng, thiếu thông tin pháp lý về quyền sở hữu", // THÊM LÝ DO TỪ CHỐI
-    rejectionDate: "2025-06-07", // THÊM NGÀY TỪ CHỐI
-  },
-  // THÊM MỘT BÀI ĐĂNG KHÔNG DUYỆT KHÁC
-  {
-    id: "BDS007",
-    title: "Bán căn hộ chung cư Landmark 81, Q. Bình Thạnh",
-    type: "ban",
-    status: "5", // Không duyệt
-    price: "15 tỷ",
-    area: "120m²",
-    location: "Quận Bình Thạnh, TP.HCM",
-    createdDate: "2025-06-03",
-    expiryDate: "2025-07-03",
-    views: 23,
-    image: "/api/placeholder/300/200",
-    featured: false,
-    rejectionReason:
-      "Giá cả không phù hợp với thị trường, thiếu giấy tờ chứng minh quyền sở hữu",
-    rejectionDate: "2025-06-04",
-  },
-];
+import { postService } from "@/services/postsService";
+import { useAuth } from "@/store/hooks";
+import { useRouter } from "next/navigation";
 
 export default function QuanLyTinPage() {
+  const router = useRouter();
+  const { user, isInitialized } = useAuth();
+  const editModal = useEditPostModal();
+
   // Mock user data
   const userData = {
     name: "Lê Quang Trí Đạt",
@@ -126,7 +24,10 @@ export default function QuanLyTinPage() {
     greeting: "Chào buổi sáng 🌤",
   };
 
-  const editModal = useEditPostModal();
+  // State cho post
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // State cho notification popup
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
@@ -147,127 +48,91 @@ export default function QuanLyTinPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
-  // State cho delete confirmation - CHỈ CẦN STATE ĐƠN GIẢN
+  // State cho delete confirmation
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [deletePostTitle, setDeletePostTitle] = useState<string>("");
+
+  // Tự động đẩy về login nếu chưa đăng nhập
+  useEffect(() => {
+    if (isInitialized && !user) {
+      router.push("/login");
+    }
+  }, [user, isInitialized, router]);
 
   // Handle edit post
   const handleEditPost = (post: any) => {
     editModal.openModal(post);
   };
 
-  // Handle delete post - ĐƠN GIẢN HÓA
+  // Handle delete post
   const handleDeletePost = (postId: string, postTitle: string) => {
     setDeletePostId(postId);
     setDeletePostTitle(postTitle);
     setShowDeleteModal(true);
   };
 
-  // Confirm delete - XÓA VĨNH VIỄN
+  // Confirm delete
   const confirmDelete = () => {
     if (!deletePostId) return;
-
-    console.log(`Deleting post ${deletePostId}`);
     // Thực tế sẽ gọi API để xóa tin đăng
-    // await deletePost(deletePostId);
-
     setShowDeleteModal(false);
     setDeletePostId(null);
     setDeletePostTitle("");
-
     // Có thể reload data hoặc update state
   };
 
-  // Filter options với count thực tế - CẬP NHẬT COUNT
+  // Filter options với count thực tế
   const filterOptions = [
-    { id: "0", label: "Tất cả", count: mockPosts.length }, // 7 bài đăng
+    { id: "all", label: "Tất cả", count: posts.length },
     {
-      id: "8",
-      label: "Hết hạn",
-      count: mockPosts.filter((p) => p.status === "8").length, // 1
-    },
-    {
-      id: "10",
-      label: "Sắp hết hạn",
-      count: mockPosts.filter((p) => p.status === "10").length, // 1
-    },
-    {
-      id: "7",
+      id: "active",
       label: "Đang hiển thị",
-      count: mockPosts.filter((p) => p.status === "7").length, // 1
+      count: posts.filter((p) => p.status === "active").length,
     },
     {
-      id: "6",
-      label: "Chờ hiển thị",
-      count: mockPosts.filter((p) => p.status === "6").length, // 1
-    },
-    {
-      id: "3",
-      label: "Chờ xuất bản",
-      count: mockPosts.filter((p) => p.status === "3").length, // 0
-    },
-    {
-      id: "2",
+      id: "pending",
       label: "Chờ duyệt",
-      count: mockPosts.filter((p) => p.status === "2").length, // 1
+      count: posts.filter((p) => p.status === "pending").length,
     },
     {
-      id: "12",
-      label: "Chờ thanh toán",
-      count: mockPosts.filter((p) => p.status === "12").length, // 0
+      id: "inactive",
+      label: "Hết hạn",
+      count: posts.filter((p) => p.status === "inactive").length,
     },
     {
-      id: "5",
+      id: "denied",
       label: "Không duyệt",
-      count: mockPosts.filter((p) => p.status === "5").length, // 2
+      count: posts.filter((p) => p.status === "denied").length,
     },
     {
-      id: "9",
+      id: "removed",
       label: "Đã hạ",
-      count: mockPosts.filter((p) => p.status === "9").length, // 0
+      count: posts.filter((p) => p.status === "removed").length,
     },
-  ];
-
-  // Type options
-  const typeOptions = [
-    { id: "all", label: "Tất cả loại tin" },
-    { id: "ban", label: "Tin bán" },
-    { id: "cho-thue", label: "Tin cho thuê" },
-  ];
-
-  // Date range options
-  const dateRangeOptions = [
-    { id: "7", label: "7 ngày qua" },
-    { id: "30", label: "30 ngày qua" },
-    { id: "custom", label: "Tùy chọn" },
   ];
 
   // Filter posts based on current filters
-  const filteredPosts = mockPosts.filter((post) => {
+  const filteredPosts = posts.filter((post) => {
     // Filter by status
-    if (activeFilter !== "0" && post.status !== activeFilter) {
+    if (activeFilter !== "all" && post.status !== activeFilter) {
       return false;
     }
-
     // Filter by type
     if (filterType !== "all" && post.type !== filterType) {
       return false;
     }
-
     // Filter by search
     if (
       searchValue &&
-      !post.title.toLowerCase().includes(searchValue.toLowerCase()) &&
-      !post.id.toLowerCase().includes(searchValue.toLowerCase())
+      !post.title?.toLowerCase().includes(searchValue.toLowerCase()) &&
+      !post._id?.toLowerCase().includes(searchValue.toLowerCase())
     ) {
       return false;
     }
-
     // Filter by date range
-    const postDate = new Date(post.createdDate);
+    const postDate = new Date(post.createdAt);
     const now = new Date();
-
     if (filterDateRange === "7") {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       if (postDate < sevenDaysAgo) return false;
@@ -283,9 +148,43 @@ export default function QuanLyTinPage() {
       const endDate = new Date(customEndDate);
       if (postDate < startDate || postDate > endDate) return false;
     }
-
     return true;
   });
+
+  // Type options
+  const typeOptions = [
+    { id: "all", label: "Tất cả loại tin" },
+    { id: "ban", label: "Tin bán" },
+    { id: "cho-thue", label: "Tin cho thuê" },
+  ];
+
+  // Date range options
+  const dateRangeOptions = [
+    { id: "7", label: "7 ngày qua" },
+    { id: "30", label: "30 ngày qua" },
+    { id: "custom", label: "Tùy chọn" },
+  ];
+
+  // Lấy bài viết từ API khi load trang
+  useEffect(() => {
+    let ignore = false;
+    setLoading(true);
+    setError(null);
+    PostService.getUserPosts(1, 50)
+      .then((res) => {
+        const apiPosts = res.data?.posts || res.posts || res.data || [];
+        if (!ignore) setPosts(apiPosts);
+      })
+      .catch((err) => {
+        if (!ignore) setError(err.message || "Lỗi khi tải bài viết");
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Handle click outside để đóng popup
   useEffect(() => {
@@ -350,27 +249,37 @@ export default function QuanLyTinPage() {
     [showFilterModal, showFilterPopup]
   );
 
-  // Get status label and color
-  const getStatusInfo = (statusId: string) => {
-    const status = filterOptions.find((opt) => opt.id === statusId);
-    const colors = {
-      "7": "bg-green-100 text-green-800", // Đang hiển thị
-      "6": "bg-blue-100 text-blue-800", // Chờ hiển thị
-      "2": "bg-yellow-100 text-yellow-800", // Chờ duyệt
-      "3": "bg-purple-100 text-purple-800", // Chờ xuất bản
-      "5": "bg-red-100 text-red-800", // Không duyệt
-      "8": "bg-gray-100 text-gray-800", // Hết hạn
-      "9": "bg-gray-100 text-gray-800", // Đã hạ
-      "10": "bg-orange-100 text-orange-800", // Sắp hết hạn
-      "12": "bg-indigo-100 text-indigo-800", // Chờ thanh toán
+  // Map trạng thái sang label và màu
+  const getStatusLabelAndColor = (statusId: string) => {
+    const statusMap: Record<string, { label: string; colorClass: string }> = {
+      active: {
+        label: "Đang hiển thị",
+        colorClass: "bg-green-100 text-green-800",
+      },
+      pending: {
+        label: "Chờ duyệt",
+        colorClass: "bg-yellow-100 text-yellow-800",
+      },
+      denied: { label: "Không duyệt", colorClass: "bg-red-100 text-red-800" },
+      inactive: { label: "Hết hạn", colorClass: "bg-gray-100 text-gray-800" },
+      removed: { label: "Đã hạ", colorClass: "bg-gray-100 text-gray-600" },
     };
-
-    return {
-      label: status?.label || "Không xác định",
-      colorClass:
-        colors[statusId as keyof typeof colors] || "bg-gray-100 text-gray-800",
-    };
+    return (
+      statusMap[statusId] || {
+        label: "Không xác định",
+        colorClass: "bg-gray-100 text-gray-800",
+      }
+    );
   };
+
+  if (!isInitialized) {
+    // Có thể show spinner hoặc loading UI
+    return <div>Đang kiểm tra đăng nhập...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
 
   // Filter Content Component
   const FilterContent = ({
@@ -544,7 +453,7 @@ export default function QuanLyTinPage() {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow w-full">
           {/* Header Section - Chỉ sử dụng UserHeader component */}
           <UserHeader
             userData={userData}
@@ -659,13 +568,17 @@ export default function QuanLyTinPage() {
               </div>
             </div>
 
-            {filteredPosts.length > 0 ? (
+            {loading ? (
+              <div>Đang tải bài viết...</div>
+            ) : error ? (
+              <div className="text-red-600">{error}</div>
+            ) : filteredPosts.length > 0 ? (
               <div className="space-y-4">
                 {filteredPosts.map((post) => {
-                  const statusInfo = getStatusInfo(post.status);
+                  const statusInfo = getStatusLabelAndColor(post.status);
                   return (
                     <div
-                      key={post.id}
+                      key={post._id}
                       className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex flex-col lg:flex-row gap-4">
@@ -688,7 +601,7 @@ export default function QuanLyTinPage() {
                                 {post.title}
                               </Link>{" "}
                               <p className="text-sm text-gray-600">
-                                Mã tin: {post.id}
+                                Mã tin: {post._id}
                               </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -706,7 +619,7 @@ export default function QuanLyTinPage() {
                           </div>
 
                           {/* THÊM PHẦN HIỂN THỊ LÝ DO KHÔNG DUYỆT */}
-                          {post.status === "5" && post.rejectionReason && (
+                          {post.status === "denied" && post.rejectionReason && (
                             <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                               <div className="flex items-start gap-2">
                                 <svg
@@ -769,11 +682,12 @@ export default function QuanLyTinPage() {
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <p className="text-sm text-gray-600">
                               <span className="font-medium">Địa chỉ:</span>{" "}
-                              {post.location}
+                              {post.location.street}, {post.location.ward},{" "}
+                              {post.location.district}, {post.location.province}
                             </p>
 
                             <div className="flex gap-2">
-                              {post.status === "5" ? (
+                              {post.status === "denied" ? (
                                 <>
                                   <button
                                     onClick={() => handleEditPost(post)}
@@ -783,7 +697,7 @@ export default function QuanLyTinPage() {
                                   </button>
                                   <button
                                     onClick={() =>
-                                      handleDeletePost(post.id, post.title)
+                                      handleDeletePost(post._id, post.title)
                                     }
                                     className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
                                   >
@@ -800,7 +714,7 @@ export default function QuanLyTinPage() {
                                   </button>
                                   <button
                                     onClick={() =>
-                                      handleDeletePost(post.id, post.title)
+                                      handleDeletePost(post._id, post.title)
                                     }
                                     className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors"
                                   >

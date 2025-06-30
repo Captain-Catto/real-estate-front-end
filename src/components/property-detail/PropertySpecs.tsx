@@ -6,8 +6,8 @@ interface PropertySpecsProps {
     area: string;
     bedrooms: number;
     bathrooms: number;
-    direction: string;
-    legalStatus: string;
+    houseDirection: string;
+    legalDocs: string;
     furniture: string;
     floor?: number;
     yearBuilt?: number;
@@ -43,12 +43,12 @@ export function PropertySpecs({ property }: PropertySpecsProps) {
     {
       icon: "fas fa-compass",
       label: "Hướng nhà",
-      value: property.direction,
+      value: property.houseDirection,
     },
     {
       icon: "fas fa-file-contract",
       label: "Pháp lý",
-      value: property.legalStatus,
+      value: property.legalDocs,
     },
     {
       icon: "fas fa-couch",

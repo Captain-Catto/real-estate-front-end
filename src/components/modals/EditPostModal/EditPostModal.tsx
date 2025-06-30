@@ -38,7 +38,7 @@ export default function EditPostModal({
   // Xác định trạng thái tin đăng - CHUẨN HÓA STATUS CODES
   const isExpired = editingPost?.status === "8"; // Hết hạn - cần chọn gói mới
   const isRejected = editingPost?.status === "5"; // Không duyệt - đã charge, ko cần chọn gói
-  const isActive = editingPost?.status === "7"; // Đang hiển thị - chỉ edit
+  const isActive = editingPost?.status === "active"; // Đang hiển thị - chỉ edit
   const isPending = editingPost?.status === "2"; // Chờ duyệt - chỉ edit
   const isWaitingDisplay = editingPost?.status === "6"; // Chờ hiển thị - chỉ edit
   const isWaitingPublish = editingPost?.status === "3"; // Chờ xuất bản - chỉ edit

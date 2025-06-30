@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "frame-src 'self' https://www.google.com https://maps.google.com https://www.youtube.com;",
+              "frame-src 'self' https://www.openstreetmap.org/ https://www.youtube.com;",
           },
         ],
       },

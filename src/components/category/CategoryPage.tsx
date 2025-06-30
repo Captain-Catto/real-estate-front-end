@@ -1,169 +1,39 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { Breadcrumb } from "@/components/property-detail/Breadcrumb";
-import { Pagination } from "@/components/common/Pagination";
-import testCardImg from "@/assets/images/card-img.jpg";
-import { Menu, Transition, Disclosure } from "@headlessui/react";
+import Link from "next/link";
+import { PropertyCard } from "@/components/common/PropertyCard";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import SearchSection from "@/components/home/SearchSection";
+import { locationService } from "@/services/locationService";
+import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
+import Header from "@/components/header/Header";
+import Footer from "@/components/footer/Footer";
+import { setLoading } from "@/store/slices/favoritesSlices";
+
+function classNames(...classes: string[]) {
+  return classes.filter(Boolean).join(" ");
+}
 
 interface CategoryPageProps {
   title: string;
   totalCount: number;
   categoryType: "ban" | "cho-thue";
   location?: string;
-}
-
-// Mock data for properties with multiple images
-const mockProperties = [
-  {
-    id: "1",
-    title: "Bán căn hộ 1PN + 1, 1WC tại The Sapphire 1, 43m2, 2,45 tỷ",
-    price: "2,45 tỷ",
-    location: "Gia Lâm, Hà Nội",
-    images: [
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-    ],
-    slug: "ban-can-ho-the-sapphire-1",
-    area: "43m²",
-    bedrooms: 1,
-    bathrooms: 1,
-    propertyType: "Chung cư",
-  },
-  {
-    id: "2",
-    title: "Trực tiếp CĐT Vinhomes - Quỹ căn cuối cùng dự án Vinhomes Cổ Loa",
-    price: "23 tỷ",
-    location: "Đông Anh, Hà Nội",
-    images: [testCardImg, testCardImg, testCardImg, testCardImg, testCardImg],
-    slug: "ban-biet-thu-vinhomes-co-loa",
-    area: "75m²",
-    bedrooms: 4,
-    bathrooms: 4,
-    propertyType: "Biệt thự",
-  },
-  {
-    id: "3",
-    title: "Quỹ căn giá rẻ nhất tại Vinhomes Wonder City cơ hội vàng",
-    price: "13,2 tỷ",
-    location: "Đan Phượng, Hà Nội",
-    images: [
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-    ],
-    slug: "ban-lien-ke-vinhomes-wonder-city",
-    area: "88m²",
-    bedrooms: 4,
-    bathrooms: 3,
-    propertyType: "Liền kề",
-  },
-  {
-    id: "4",
-    title: "Chỉ Từ 700 Triệu Sở Hữu Căn Hộ View Biển Mỹ Khê",
-    price: "2,45 tỷ",
-    location: "Sơn Trà, Đà Nẵng",
-    images: [testCardImg, testCardImg, testCardImg],
-    slug: "ban-can-ho-view-bien-my-khe",
-    area: "34m²",
-    bedrooms: 1,
-    bathrooms: 1,
-    propertyType: "Condotel",
-  },
-  {
-    id: "5",
-    title: "Mở bán căn hộ Citi Grand, Quận 2, TP. HCM",
-    price: "2,9 tỷ",
-    location: "Quận 2, Hồ Chí Minh",
-    images: [
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-      testCardImg,
-    ],
-    slug: "ban-can-ho-citi-grand",
-    area: "55m²",
-    bedrooms: 2,
-    bathrooms: 2,
-    propertyType: "Chung cư",
-  },
-  {
-    id: "6",
-    title: "Căn hộ cao cấp The Felix giá chỉ từ 1tỷ5/căn",
-    price: "1,5 tỷ",
-    location: "Thuận An, Bình Dương",
-    images: [testCardImg, testCardImg, testCardImg, testCardImg],
-    slug: "ban-can-ho-the-felix",
-    area: "46m²",
-    bedrooms: 2,
-    bathrooms: 1,
-    propertyType: "Chung cư",
-  },
-];
-
-const sortOptions = [
-  { value: "0", label: "Mặc định" },
-  { value: "8", label: "Tin xác thực xếp trước" },
-  { value: "2", label: "Giá thấp đến cao" },
-  { value: "3", label: "Giá cao đến thấp" },
-  { value: "6", label: "Giá/m² thấp đến cao" },
-  { value: "7", label: "Giá/m² cao đến thấp" },
-  { value: "4", label: "Diện tích nhỏ đến lớn" },
-  { value: "5", label: "Diện tích lớn đến nhỏ" },
-];
-
-const priceOptions = [
-  { label: "Thỏa thuận", href: "#" },
-  { label: "Dưới 500 triệu", href: "#" },
-  { label: "500 - 800 triệu", href: "#" },
-  { label: "800 triệu - 1 tỷ", href: "#" },
-  { label: "1 - 2 tỷ", href: "#" },
-  { label: "2 - 3 tỷ", href: "#" },
-  { label: "3 - 5 tỷ", href: "#" },
-  { label: "5 - 7 tỷ", href: "#" },
-  { label: "7 - 10 tỷ", href: "#" },
-  { label: "10 - 20 tỷ", href: "#" },
-  { label: "20 - 30 tỷ", href: "#" },
-  { label: "30 - 40 tỷ", href: "#" },
-  { label: "40 - 60 tỷ", href: "#" },
-  { label: "Trên 60 tỷ", href: "#" },
-];
-
-const areaOptions = [
-  { label: "Dưới 30 m²", href: "#" },
-  { label: "30 - 50 m²", href: "#" },
-  { label: "50 - 80 m²", href: "#" },
-  { label: "80 - 100 m²", href: "#" },
-  { label: "100 - 150 m²", href: "#" },
-  { label: "150 - 200 m²", href: "#" },
-  { label: "200 - 250 m²", href: "#" },
-  { label: "250 - 300 m²", href: "#" },
-  { label: "300 - 500 m²", href: "#" },
-  { label: "Trên 500 m²", href: "#" },
-];
-
-const bedroomOptions = [
-  { label: "1 phòng ngủ", href: "#" },
-  { label: "2 phòng ngủ", href: "#" },
-  { label: "3 phòng ngủ", href: "#" },
-  { label: "4 phòng ngủ", href: "#" },
-  { label: "5+ phòng ngủ", href: "#" },
-];
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
+  activeFilters?: {
+    propertyType?: string;
+    city?: string;
+    districts?: string[];
+    price?: string;
+    area?: string;
+  };
+  searchParams?: {
+    [key: string]: string | string[] | undefined;
+  };
+  slug?: string;
+  searchResults?: any[];
+  loading?: boolean;
 }
 
 export function CategoryPage({
@@ -171,18 +41,105 @@ export function CategoryPage({
   totalCount,
   categoryType,
   location,
+  activeFilters = {},
+  searchParams = {},
+  slug = "",
+  searchResults = [],
+  loading = false,
 }: CategoryPageProps) {
+  const router = useRouter();
   const [sortBy, setSortBy] = useState("0");
   const [currentPage, setCurrentPage] = useState(1);
   const [formattedCount, setFormattedCount] = useState(totalCount.toString());
   const [weeklyViews, setWeeklyViews] = useState("0");
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedDistricts, setSelectedDistricts] = useState<any[]>([]);
+  const [cityDistricts, setCityDistricts] = useState<any[]>([]);
+  const [isComponentLoaded, setIsComponentLoaded] = useState(false);
 
   const itemsPerPage = 20;
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+  // Đánh dấu component đã load xong sau khi fetch xong provinces và districts
+  useEffect(() => {
+    console.log("Checking if component should be loaded");
+    console.log("provinces.length:", provinces.length);
+    console.log("searchParams.city:", searchParams.city);
+    console.log("cityDistricts:", cityDistricts);
+    console.log("selectedDistricts:", selectedDistricts);
+
+    if (
+      provinces.length > 0 &&
+      (!searchParams.city || cityDistricts.length > 0)
+    ) {
+      console.log("Setting isComponentLoaded to true");
+
+      setIsComponentLoaded(true);
+    }
+  }, [provinces, cityDistricts, searchParams.city, selectedDistricts]);
+
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const provincesData = await locationService.getProvinces();
+        setProvinces(provincesData);
+      } catch (error) {
+        console.error("Failed to fetch provinces:", error);
+      }
+    };
+
+    fetchProvinces();
+  }, []);
+
+  // Tải dữ liệu quận/huyện khi có city trong URL
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (searchParams.city && provinces.length > 0) {
+        try {
+          const cityCode =
+            typeof searchParams.city === "string" ? searchParams.city : "";
+
+          // Find city in provinces
+          const cityData = provinces.find((p) => p.codename === cityCode);
+          if (cityData) {
+            setSelectedCity(cityData.code);
+
+            // Fetch districts for selected city
+            const districtsData = await locationService.getDistricts(cityCode);
+            setCityDistricts(districtsData);
+
+            // Handle district selection
+            if (searchParams.districts) {
+              const selectedDistrictCodes = Array.isArray(
+                searchParams.districts
+              )
+                ? searchParams.districts
+                : searchParams.districts.split(",");
+
+              // Map district codes to objects
+              if (districtsData?.length > 0) {
+                const selectedDistObjs = districtsData.filter((d) =>
+                  selectedDistrictCodes.includes(d.codename)
+                );
+
+                setSelectedDistricts(selectedDistObjs);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch districts:", error);
+        }
+      }
+    };
+
+    fetchDistricts();
+  }, [searchParams.city, searchParams.districts, provinces]);
 
   // Format numbers consistently on client side to avoid hydration mismatch
   useEffect(() => {
     setFormattedCount(new Intl.NumberFormat("vi-VN").format(totalCount));
-    // Mock weekly views calculation (in real app, this would come from API)
+    // Mock weekly views calculation
     const weeklyViewCount = Math.floor(totalCount * 0.15);
     setWeeklyViews(new Intl.NumberFormat("vi-VN").format(weeklyViewCount));
   }, [totalCount]);
@@ -192,647 +149,519 @@ export function CategoryPage({
     { label: "Trang chủ", href: "/" },
     {
       label: categoryType === "ban" ? "Bán" : "Cho thuê",
-      href: categoryType === "ban" ? "/mua-ban" : "/cho-thue",
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`,
     },
-    ...(location ? [{ label: location, href: "#" }] : []),
-    { label: "Tất cả BĐS trên toàn quốc", href: "#", isActive: true },
   ];
 
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
+  // Add city to breadcrumb if available
+  if (activeFilters.city) {
+    breadcrumbItems.push({
+      label: activeFilters.city,
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}?city=${
+        searchParams.city
+      }`,
+    });
+  }
+
+  // Add property type to breadcrumb
+  if (activeFilters.propertyType) {
+    breadcrumbItems.push({
+      label: activeFilters.propertyType,
+      href: "#",
+      isActive: true,
+    });
+  } else {
+    breadcrumbItems.push({
+      label: "Tất cả BĐS",
+      href: "#",
+      isActive: true,
+    });
+  }
+
+  // Sort options
+  const sortOptions = [
+    { value: "0", label: "Thông thường" },
+    { value: "1", label: "Tin mới nhất" },
+    { value: "2", label: "Giá thấp đến cao" },
+    { value: "3", label: "Giá cao đến thấp" },
+    { value: "4", label: "Diện tích bé đến lớn" },
+    { value: "5", label: "Diện tích lớn đến bé" },
+  ];
+
+  // Handle removing a filter
+  const handleRemoveFilter = (filterType: string, value?: string) => {
+    const newSearchParams = { ...searchParams };
+
+    switch (filterType) {
+      case "city":
+        delete newSearchParams.city;
+        delete newSearchParams.districts;
+        break;
+
+      case "district":
+        if (value && newSearchParams.districts) {
+          if (typeof newSearchParams.districts === "string") {
+            // Nếu chỉ có 1 quận được chọn
+            if (newSearchParams.districts === value) {
+              delete newSearchParams.districts;
+            }
+          } else {
+            // Nếu có nhiều quận được chọn (mảng)
+            const updatedDistricts = (
+              newSearchParams.districts as string[]
+            ).filter((d) => d !== value);
+
+            if (updatedDistricts.length === 0) {
+              delete newSearchParams.districts;
+            } else if (updatedDistricts.length === 1) {
+              // Nếu chỉ còn lại 1 quận
+              newSearchParams.districts = updatedDistricts[0];
+            } else {
+              newSearchParams.districts = updatedDistricts;
+            }
+          }
+        }
+        break;
+
+      case "category":
+        delete newSearchParams.category;
+        break;
+
+      case "price":
+        delete newSearchParams.price;
+        break;
+
+      case "area":
+        delete newSearchParams.area;
+        break;
+    }
+
+    // Convert to query string and navigate
+    const queryString = new URLSearchParams(
+      newSearchParams as Record<string, string>
+    ).toString();
+
+    // Luôn chuyển đến URL gốc với query params
+    const path = `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`;
+    router.push(queryString ? `${path}?${queryString}` : path);
   };
 
-  const getCurrentSortLabel = () => {
-    return (
-      sortOptions.find((option) => option.value === sortBy)?.label || "Mặc định"
-    );
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+
+    // Update URL with page parameter
+    const newSearchParams = { ...searchParams, page: page.toString() };
+    const queryString = new URLSearchParams(
+      newSearchParams as Record<string, string>
+    ).toString();
+    const path = `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`;
+    router.push(`${path}?${queryString}`);
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
+  // Generate pagination array
+  const getPaginationItems = () => {
+    const pages = [];
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+      // Show all pages if we have 5 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always include the first page
+      pages.push(1);
+
+      // Calculate start and end based on current page
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(currentPage + 1, totalPages - 1);
+
+      // Adjust to show 3 pages in the middle
+      const pagesToShow = 3;
+      if (end - start + 1 < pagesToShow) {
+        if (start === 2) {
+          end = Math.min(start + pagesToShow - 1, totalPages - 1);
+        } else if (end === totalPages - 1) {
+          start = Math.max(end - pagesToShow + 1, 2);
+        }
+      }
+
+      // Add ellipsis if needed before middle pages
+      if (start > 2) {
+        pages.push("...");
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      // Add ellipsis if needed after middle pages
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+
+      // Always include the last page
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  const formatPriceDisplay = (priceSlug: string): string => {
+    // Map price slugs to readable text
+    const priceDisplayMap: Record<string, string> = {
+      "duoi-500-trieu": "Dưới 500 triệu",
+      "500-800-trieu": "500 - 800 triệu",
+      "800-trieu-1-ty": "800 triệu - 1 tỷ",
+      "1-2-ty": "1 - 2 tỷ",
+      "2-3-ty": "2 - 3 tỷ",
+      "3-5-ty": "3 - 5 tỷ",
+      "5-7-ty": "5 - 7 tỷ",
+      "7-10-ty": "7 - 10 tỷ",
+      "10-20-ty": "10 - 20 tỷ",
+      "20-30-ty": "20 - 30 tỷ",
+      "30-40-ty": "30 - 40 tỷ",
+      "40-60-ty": "40 - 60 tỷ",
+      "tren-60-ty": "Trên 60 tỷ",
+    };
+    return priceDisplayMap[priceSlug] || priceSlug;
+  };
+
+  const formatAreaDisplay = (areaSlug: string): string => {
+    // Map area slugs to readable text
+    const areaDisplayMap: Record<string, string> = {
+      "duoi-30-m2": "Dưới 30 m²",
+      "30-50-m2": "30 - 50 m²",
+      "50-80-m2": "50 - 80 m²",
+      "80-100-m2": "80 - 100 m²",
+      "100-150-m2": "100 - 150 m²",
+      "150-200-m2": "150 - 200 m²",
+      "200-250-m2": "200 - 250 m²",
+      "250-300-m2": "250 - 300 m²",
+      "300-500-m2": "300 - 500 m²",
+      "tren-500-m2": "Trên 500 m²",
+    };
+    return areaDisplayMap[areaSlug] || areaSlug;
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        {/* Breadcrumb */}
-        <div className="bg-white rounded-lg p-4 mb-6">
-          <Breadcrumb items={breadcrumbItems} />
+    <>
+      <Header />
+      <main className="bg-gray-100 min-h-screen pb-8">
+        {/* Breadcrumb - Giữ nguyên chiều rộng container */}
+        <div className="container mx-auto px-4 py-3">
+          <nav className="flex text-xs text-gray-600 max-w-6xl mx-auto">
+            {breadcrumbItems.map((item, index) => (
+              <React.Fragment key={index}>
+                {index > 0 && (
+                  <ChevronRightIcon className="h-3 w-3 mx-2 self-center text-gray-400" />
+                )}
+                {item.isActive ? (
+                  <span className="text-gray-900 font-medium">
+                    {item.label}
+                  </span>
+                ) : (
+                  <Link href={item.href} className="hover:text-blue-600">
+                    {item.label}
+                  </Link>
+                )}
+              </React.Fragment>
+            ))}
+          </nav>
         </div>
 
-        {/* Page Title */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">{title}</h1>
-
-        {/* Total Count, Weekly Views and Sort in one row */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            {/* Left side - Count and Views */}
-            <div className="space-y-2">
-              <div>
-                <span className="text-gray-600">
-                  Hiện có{" "}
-                  <span className="font-semibold text-gray-900">
-                    {formattedCount}
-                  </span>{" "}
-                  bất động sản.
-                </span>
+        {/* Title Section - Đồng bộ chiều rộng với max-w-6xl */}
+        <div className=" py-4 mb-4 ">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+              <div className="flex gap-1 text-sm text-gray-600 mt-1">
+                <span>{formattedCount} bất động sản</span>
+                <span className="mx-1">•</span>
+                <span>{weeklyViews} lượt xem tuần qua</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <svg
-                  className="w-4 h-4 text-blue-600"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
+            </div>
+          </div>
+        </div>
+
+        {/* Search Section - Đã có max-w-6xl */}
+        <div className="container mx-auto px-4 mb-5">
+          <SearchSection
+            initialSearchType={categoryType === "ban" ? "buy" : "rent"}
+            initialCity={selectedCity}
+            initialDistricts={selectedDistricts}
+            initialCategory={slug || ""}
+            initialPrice={(searchParams.price as string) || ""}
+            initialArea={(searchParams.area as string) || ""}
+            provinces={provinces}
+            cityDistricts={cityDistricts}
+          />
+        </div>
+
+        {/* Active Filters - Thêm max-w-6xl */}
+        {(activeFilters.city ||
+          selectedDistricts.length > 0 ||
+          activeFilters.propertyType ||
+          searchParams.price ||
+          searchParams.area) && (
+          <div className="container mx-auto px-4 mb-4">
+            <div className="bg-white rounded-lg shadow-sm p-3 max-w-6xl mx-auto">
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm text-gray-700">Đang lọc theo:</span>
+
+                {/* City Filter */}
+                {activeFilters.city && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <i className="fas fa-map-marker-alt text-xs mr-1"></i>
+                    {activeFilters.city}
+                    <button
+                      onClick={() => handleRemoveFilter("city")}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </span>
+                )}
+
+                {/* District Filters - Sử dụng cả activeFilters.districts và selectedDistricts */}
+                {/* Hiển thị từ selectedDistricts (state) */}
+                {selectedDistricts.map((district, idx) => (
+                  <span
+                    key={`selected-${district.code || idx}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                  >
+                    <i className="fas fa-map-marker-alt text-xs mr-1"></i>
+                    {district.name}
+                    <button
+                      onClick={() => {
+                        handleRemoveFilter("district", district.codename);
+                      }}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </span>
+                ))}
+
+                {/* Hiển thị từ activeFilters.districts (props) khi chưa có selectedDistricts */}
+                {selectedDistricts.length === 0 &&
+                  activeFilters.districts &&
+                  activeFilters.districts.map(
+                    (districtName: string, idx: number) => (
+                      <span
+                        key={`active-${idx}`}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                      >
+                        <i className="fas fa-map-marker-alt text-xs mr-1"></i>
+                        {districtName}
+                        <button
+                          onClick={() => {
+                            // Tìm district code từ tên district
+                            const district = districts.find(
+                              (d) => d.name === districtName
+                            );
+                            if (district) {
+                              handleRemoveFilter("district", district.codename);
+                            }
+                          }}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </span>
+                    )
+                  )}
+
+                {/* Property Type Filter */}
+                {activeFilters.propertyType && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+                    <i className="fas fa-home text-xs mr-1"></i>
+                    {activeFilters.propertyType}
+                    <button
+                      onClick={() => handleRemoveFilter("category")}
+                      className="ml-1 text-orange-600 hover:text-orange-800"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </span>
+                )}
+
+                {/* Price Filter */}
+                {searchParams.price && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <i className="fas fa-tag text-xs mr-1"></i>
+                    {activeFilters.price ||
+                      formatPriceDisplay(searchParams.price as string)}
+                    <button
+                      onClick={() => handleRemoveFilter("price")}
+                      className="ml-1 text-green-600 hover:text-green-800"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </span>
+                )}
+
+                {/* Area Filter */}
+                {searchParams.area && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                    <i className="fas fa-ruler-combined text-xs mr-1"></i>
+                    {activeFilters.area ||
+                      formatAreaDisplay(searchParams.area as string)}
+                    <button
+                      onClick={() => handleRemoveFilter("area")}
+                      className="ml-1 text-purple-600 hover:text-purple-800"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </span>
+                )}
+
+                {/* Clear All Button */}
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`
+                    )
+                  }
+                  className="text-sm text-red-600 hover:text-red-800 font-medium ml-auto"
                 >
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path
-                    fillRule="evenodd"
-                    d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-sm text-gray-600">
-                  <span className="font-medium text-blue-600">
-                    {weeklyViews}
-                  </span>{" "}
-                  lượt xem trong tuần này
-                </span>
+                  Xóa tất cả
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Area - Thêm max-w-6xl */}
+        <div className="container mx-auto px-4">
+          {/* Main Content */}
+          <div className="max-w-6xl mx-auto">
+            {/* Filter and Sort Bar */}
+            <div className="bg-white rounded-lg shadow-sm p-3 mb-4 flex flex-wrap items-center justify-end">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Sắp xếp:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="text-sm border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Right side - Sort Dropdown */}
-            <div className="w-full sm:w-auto">
-              <Menu as="div" className="relative">
-                <div>
-                  <Menu.Button className="flex items-center justify-between w-full px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <span className="text-sm text-gray-700">
-                      {getCurrentSortLabel()}
-                    </span>
-                    <svg
-                      className="w-4 h-4 text-gray-500 ml-2 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </Menu.Button>
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-12 h-12 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
+                <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+              </div>
+            ) : searchResults.length === 0 ? (
+              // Empty State
+              <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <MagnifyingGlassIcon className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">
+                  Không tìm thấy kết quả
+                </h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  Không tìm thấy bất động sản phù hợp với các tiêu chí đã chọn.
+                  Hãy thử điều chỉnh lại bộ lọc.
+                </p>
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`
+                    )
+                  }
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 inline-flex items-center"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Property Listings */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                  {searchResults.map((property) => (
+                    <PropertyCard key={property._id} property={property} />
+                  ))}
                 </div>
 
-                <Transition
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
-                >
-                  <Menu.Items className="absolute left-0 sm:right-0 z-50 mt-2 w-full sm:w-64 origin-top-left sm:origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <div className="py-1">
-                      {sortOptions.map((option) => (
-                        <Menu.Item key={option.value}>
-                          {({ active }) => (
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center my-6">
+                    <nav className="flex items-center space-x-1">
+                      <button
+                        onClick={() =>
+                          currentPage > 1 && handlePageChange(currentPage - 1)
+                        }
+                        disabled={currentPage === 1}
+                        className={`px-2 py-2 rounded-md text-sm ${
+                          currentPage === 1
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className="sr-only">Trang trước</span>
+                        &lsaquo;
+                      </button>
+
+                      {getPaginationItems().map((page, index) => (
+                        <React.Fragment key={index}>
+                          {page === "..." ? (
+                            <span className="px-2 py-2 text-gray-500">...</span>
+                          ) : (
                             <button
-                              onClick={() => handleSortChange(option.value)}
-                              className={classNames(
-                                active
-                                  ? "bg-gray-100 text-gray-900"
-                                  : "text-gray-700",
-                                sortBy === option.value
-                                  ? "bg-blue-50 text-blue-600"
-                                  : "",
-                                "block w-full text-left px-4 py-2 text-sm"
-                              )}
+                              onClick={() =>
+                                typeof page === "number" &&
+                                handlePageChange(page)
+                              }
+                              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                                currentPage === page
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white text-gray-700 hover:bg-gray-50"
+                              }`}
                             >
-                              {option.label}
+                              {page}
                             </button>
                           )}
-                        </Menu.Item>
+                        </React.Fragment>
                       ))}
-                    </div>
-                  </Menu.Items>
-                </Transition>
-              </Menu>
-            </div>
-          </div>
-        </div>
 
-        {/* Main Content with Sidebar */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Property Listings */}
-          <div className="flex-1 min-w-0">
-            <div className="grid grid-cols-1 gap-4 mb-8">
-              {mockProperties.map((property) => (
-                <div
-                  key={property.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  {/* Mobile Layout */}
-                  <div className="block sm:hidden">
-                    <a href={`/property/${property.slug}`} className="block">
-                      {/* Main Image */}
-                      <div className="relative h-48 w-full">
-                        <Image
-                          src={property.images[0]}
-                          alt={property.title}
-                          className="w-full h-full object-cover"
-                          fill
-                          sizes="(max-width: 640px) 100vw, 50vw"
-                          priority={property.id === "1"}
-                        />
-                        {/* VIP Badge */}
-                        <div className="absolute top-2 left-2">
-                          <span className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
-                            VIP VÀNG
-                          </span>
-                        </div>
-                        {/* Image Count Badge */}
-                        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          {property.images.length}
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        {/* Title */}
-                        <h3 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2 leading-tight">
-                          {property.title}
-                        </h3>
-
-                        {/* Price and Details */}
-                        <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-sm text-gray-600 mb-3">
-                          <span className="text-red-600 font-semibold text-lg whitespace-nowrap">
-                            {property.price}
-                          </span>
-                          <span className="text-gray-400">·</span>
-                          <span className="whitespace-nowrap">
-                            {property.area}
-                          </span>
-                          <span className="text-gray-400">·</span>
-                          <span className="whitespace-nowrap text-xs">
-                            26,38 triệu/m²
-                          </span>
-                        </div>
-
-                        {/* Location */}
-                        <div className="flex items-start text-gray-600 mb-3">
-                          <svg
-                            className="w-4 h-4 mr-1 flex-shrink-0 mt-0.5"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span className="text-sm leading-tight">
-                            {property.location}
-                          </span>
-                        </div>
-
-                        {/* Bottom Contact Row */}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                          <div>
-                            <p className="text-xs text-gray-500">
-                              Đăng hôm nay
-                            </p>
-                          </div>
-                          <div>
-                            <button
-                              className="border border-gray-300 p-2 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Handle favorite logic here
-                              }}
-                              aria-label="Thêm vào yêu thích"
-                            >
-                              <svg
-                                className="w-4 h-4 text-gray-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-
-                  {/* Desktop Layout */}
-                  <div className="hidden sm:flex">
-                    <a
-                      href={`/property/${property.slug}`}
-                      className="flex w-full"
-                    >
-                      {/* Property Images */}
-                      <div className="w-48 flex-shrink-0">
-                        {/* Main Image */}
-                        <div className="relative h-32">
-                          <Image
-                            src={property.images[0]}
-                            alt={property.title}
-                            className="w-full h-full object-cover"
-                            fill
-                            sizes="192px"
-                          />
-                          {/* VIP Badge */}
-                          <div className="absolute top-2 left-2">
-                            <span className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
-                              VIP VÀNG
-                            </span>
-                          </div>
-                          {/* Image Count Badge */}
-                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center">
-                            <svg
-                              className="w-3 h-3 mr-1"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            {property.images.length}
-                          </div>
-                        </div>
-                        {/* Thumbnail images */}
-                        <div className="grid grid-cols-3 h-16 gap-1 mt-1">
-                          {property.images.slice(1, 4).map((image, index) => (
-                            <div key={index} className="relative">
-                              <Image
-                                src={image}
-                                alt={`${property.title} - ${index + 2}`}
-                                className="w-full h-full object-cover"
-                                fill
-                                sizes="64px"
-                              />
-                              {/* Overlay for last image if there are more than 4 images */}
-                              {index === 2 && property.images.length > 4 && (
-                                <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center">
-                                  <span className="text-white text-xs font-medium">
-                                    +{property.images.length - 4}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Property Info */}
-                      <div className="flex-1 p-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          <span className="line-clamp-2">{property.title}</span>
-                        </h3>
-
-                        {/* Price and Details */}
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
-                          <span className="text-red-600 font-semibold text-lg">
-                            {property.price}
-                          </span>
-                          <span>·</span>
-                          <span>{property.area}</span>
-                          <span className="hidden sm:inline">·</span>
-                          <span className="hidden sm:inline">
-                            {property.bedrooms} PN
-                          </span>
-                          <span className="hidden sm:inline">·</span>
-                          <span className="hidden sm:inline">
-                            {property.bathrooms} WC
-                          </span>
-                        </div>
-
-                        {/* Location */}
-                        <div className="flex items-center text-gray-600 mb-3">
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <span className="text-sm">{property.location}</span>
-                        </div>
-
-                        {/* Description - Hidden on mobile */}
-                        <p className="text-gray-600 text-sm mb-3 hidden sm:block">
-                          <span className="line-clamp-2">
-                            Căn hộ chung cư cao cấp với đầy đủ tiện nghi, vị trí
-                            thuận lợi, giao thông kết nối dễ dàng. Căn hộ được
-                            thiết kế hiện đại, phù hợp cho gia đình trẻ và nhà
-                            đầu tư.
-                          </span>
-                        </p>
-
-                        {/* Agent Info and Contact */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                              <span className="text-gray-600 text-xs font-medium">
-                                A
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                Nguyễn Văn A
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Đăng hôm nay
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <button
-                              className="border border-gray-300 p-1.5 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Handle favorite logic here
-                              }}
-                              aria-label="Thêm vào yêu thích"
-                            >
-                              <svg
-                                className="w-4 h-4 text-gray-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              className="mt-6"
-            />
-          </div>
-
-          {/* Sidebar Filters - Hidden on tablet and below */}
-          <div className="w-80 flex-shrink-0 hidden lg:block">
-            {/* Price Filter */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-              <Disclosure defaultOpen={true}>
-                {({ open }) => (
-                  <div>
-                    <Disclosure.Button className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md">
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        Lọc theo khoảng giá
-                      </h2>
-                      <svg
-                        className={`w-5 h-5 text-gray-500 transition-transform ${
-                          open ? "rotate-180" : ""
+                      <button
+                        onClick={() =>
+                          currentPage < totalPages &&
+                          handlePageChange(currentPage + 1)
+                        }
+                        disabled={currentPage === totalPages}
+                        className={`px-2 py-2 rounded-md text-sm ${
+                          currentPage === totalPages
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-700 hover:bg-gray-50"
                         }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </Disclosure.Button>
-
-                    <Transition
-                      enter="transition duration-100 ease-out"
-                      enterFrom="transform scale-95 opacity-0"
-                      enterTo="transform scale-100 opacity-100"
-                      leave="transition duration-75 ease-out"
-                      leaveFrom="transform scale-100 opacity-100"
-                      leaveTo="transform scale-95 opacity-0"
-                    >
-                      <Disclosure.Panel className="mt-4 space-y-1">
-                        {priceOptions.map((item, index) => (
-                          <a
-                            key={index}
-                            href={item.href}
-                            className="block text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-3 py-2 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                          >
-                            {item.label}
-                          </a>
-                        ))}
-                      </Disclosure.Panel>
-                    </Transition>
+                        <span className="sr-only">Trang sau</span>
+                        &rsaquo;
+                      </button>
+                    </nav>
                   </div>
                 )}
-              </Disclosure>
-            </div>
-
-            {/* Area Filter */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-              <Disclosure defaultOpen={true}>
-                {({ open }) => (
-                  <div>
-                    <Disclosure.Button className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md">
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        Lọc theo diện tích
-                      </h2>
-                      <svg
-                        className={`w-5 h-5 text-gray-500 transition-transform ${
-                          open ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </Disclosure.Button>
-
-                    <Transition
-                      enter="transition duration-100 ease-out"
-                      enterFrom="transform scale-95 opacity-0"
-                      enterTo="transform scale-100 opacity-100"
-                      leave="transition duration-75 ease-out"
-                      leaveFrom="transform scale-100 opacity-100"
-                      leaveTo="transform scale-95 opacity-0"
-                    >
-                      <Disclosure.Panel className="mt-4 space-y-1">
-                        {areaOptions.map((item, index) => (
-                          <a
-                            key={index}
-                            href={item.href}
-                            className="block text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-3 py-2 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                          >
-                            {item.label}
-                          </a>
-                        ))}
-                      </Disclosure.Panel>
-                    </Transition>
-                  </div>
-                )}
-              </Disclosure>
-            </div>
-
-            {/* Bedroom Filter */}
-            <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-              <Disclosure defaultOpen={true}>
-                {({ open }) => (
-                  <div>
-                    <Disclosure.Button className="flex items-center justify-between w-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-md">
-                      <h2 className="text-lg font-semibold text-gray-900">
-                        Lọc theo số phòng ngủ
-                      </h2>
-                      <svg
-                        className={`w-5 h-5 text-gray-500 transition-transform ${
-                          open ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </Disclosure.Button>
-
-                    <Transition
-                      enter="transition duration-100 ease-out"
-                      enterFrom="transform scale-95 opacity-0"
-                      enterTo="transform scale-100 opacity-100"
-                      leave="transition duration-75 ease-out"
-                      leaveFrom="transform scale-100 opacity-100"
-                      leaveTo="transform scale-95 opacity-0"
-                    >
-                      <Disclosure.Panel className="mt-4 space-y-1">
-                        {bedroomOptions.map((item, index) => (
-                          <a
-                            key={index}
-                            href={item.href}
-                            className="block text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-3 py-2 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                          >
-                            {item.label}
-                          </a>
-                        ))}
-                      </Disclosure.Panel>
-                    </Transition>
-                  </div>
-                )}
-              </Disclosure>
-            </div>
+              </>
+            )}
           </div>
         </div>
-
-        {/* SEO Description */}
-        <div className="mt-12 bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            {title} Trên Batdongsan.com.vn Tháng 6/2025
-          </h2>
-          <div className="text-gray-600 space-y-4">
-            <p>
-              Trong thời gian gần đây, nhu cầu{" "}
-              {categoryType === "ban" ? "mua bán" : "cho thuê"} bất động sản tại
-              Việt Nam đang tăng cao. Với những lợi thế về mặt địa lý, Việt Nam
-              được nhiều người tìm tới để lựa chọn bất động sản, đáp ứng được
-              những nhu cầu sinh hoạt của gia đình.
-            </p>
-
-            {/* Weekly Views Statistics Box */}
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-5 h-5 text-blue-600"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path
-                      fillRule="evenodd"
-                      d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-blue-900">
-                    Thống kê lượt xem tuần này
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    <span className="font-semibold">{weeklyViews}</span> người
-                    đã xem các tin đăng trong tuần qua
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <h3 className="text-lg font-semibold text-gray-900 mt-6 mb-3">
-              Những lưu ý khi {categoryType === "ban" ? "mua bán" : "cho thuê"}{" "}
-              bất động sản
-            </h3>
-
-            <ul className="list-disc list-inside space-y-2 text-gray-600">
-              <li>Xác định mục tiêu và nhu cầu sử dụng bất động sản</li>
-              <li>Cân đối ngân sách phù hợp với khả năng tài chính</li>
-              <li>Xem xét yếu tố vị trí và tiện ích xung quanh</li>
-              <li>So sánh giá cả thị trường từ nhiều nguồn</li>
-              <li>Kiểm tra pháp lý đầy đủ và hợp lệ</li>
-              <li>Kiểm tra trực tiếp tình trạng bất động sản</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { useAuth } from "@/store/hooks";
 import { updateProfileAsync } from "@/store/slices/authSlice";
 import { useAppDispatch } from "@/store/hooks";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function ThongTinCaNhanPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function ThongTinCaNhanPage() {
   const [profileForm, setProfileForm] = useState({
     username: user?.username || "",
     email: user?.email || "",
+    phoneNumber: user?.phoneNumber || "",
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
@@ -46,6 +48,7 @@ export default function ThongTinCaNhanPage() {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
+        phoneNumber: user?.phoneNumber || "",
       });
     }
   }, [user]);
@@ -110,6 +113,7 @@ export default function ThongTinCaNhanPage() {
         updateProfileAsync({
           username: profileForm.username,
           email: profileForm.email,
+          phoneNumber: profileForm.phoneNumber,
         })
       );
 
@@ -180,6 +184,7 @@ export default function ThongTinCaNhanPage() {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
+        phoneNumber: user?.phoneNumber || "",
       });
     }
     setIsEditingProfile(false);
@@ -308,10 +313,12 @@ export default function ThongTinCaNhanPage() {
                           <div className="flex items-center gap-4">
                             <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center">
                               {user.avatar ? (
-                                <img
+                                <Image
                                   src={user.avatar}
-                                  alt={userData.name}
-                                  className="w-full h-full rounded-full object-cover"
+                                  alt="Avatar"
+                                  width={80}
+                                  height={80}
+                                  className="rounded-full object-cover"
                                 />
                               ) : (
                                 <span className="text-white font-semibold text-2xl">
@@ -384,6 +391,18 @@ export default function ThongTinCaNhanPage() {
                               <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                 <span className="text-gray-900">
                                   {user.email}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              {/* sdt */}
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Số điện thoại
+                              </label>
+                              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <span className="text-gray-900">
+                                  {user.phoneNumber || "Chưa cập nhật"}
                                 </span>
                               </div>
                             </div>
@@ -475,6 +494,25 @@ export default function ThongTinCaNhanPage() {
                                 }
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Nhập email"
+                              />
+                            </div>
+
+                            {/* sdt */}
+                            <div className="sm:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Số điện thoại
+                              </label>
+                              <input
+                                type="text"
+                                value={profileForm.phoneNumber}
+                                onChange={(e) =>
+                                  handleProfileFormChange(
+                                    "phoneNumber",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Nhập số điện thoại (tùy chọn)"
                               />
                             </div>
                           </div>

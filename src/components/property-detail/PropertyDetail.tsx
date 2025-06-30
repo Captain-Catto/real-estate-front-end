@@ -149,7 +149,7 @@ export function PropertyDetail({ property }: PropertyDetailProps) {
                 </div>
                 <div className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-gray-600 text-xs mb-1">Mã tin</div>
-                  <div className="font-medium">{property.code}</div>
+                  <div className="font-medium">{property.id}</div>
                 </div>
               </div>
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import type { LatLngExpression } from "leaflet";
+import "leaflet/dist/leaflet.css";
+import dynamic from "next/dynamic";
 
 interface BasicInfoStepProps {
   formData: EditPostForm & {
@@ -94,16 +95,31 @@ export default function BasicInfoStep({
   const [showProjects, setShowProjects] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
 
-  // Sync state with formData/props
+  const [latLng, setLatLng] = useState<{
+    osmData?: {
+      lat?: string;
+      lon?: string;
+      boundingbox?: string[];
+      display_name?: string;
+    };
+  } | null>(null);
+  const [isLoadingMap, setIsLoadingMap] = useState(false);
+
+  const MapView = dynamic(() => import("@/components/common/MapView"), {
+    ssr: false, // Quan trọng: không render ở server
+    loading: () => (
+      <div className="bg-gray-100 animate-pulse h-[300px] rounded-lg"></div>
+    ),
+  });
+
   useEffect(() => {
     setSelectedProvince(formData.location?.province || "");
     setSelectedDistrict(formData.location?.district || "");
     setSelectedWard(formData.location?.ward || "");
     setStreetAddress(formData.location?.street || "");
     setSelectedProject(formData.location?.project || "");
-  }, [formData.location, provinces, districts, wards]);
+  }, [formData.location]);
 
-  // Update available projects when province/district thay đổi
   useEffect(() => {
     if (selectedProvince && selectedDistrict) {
       setAvailableProjects(
@@ -119,7 +135,6 @@ export default function BasicInfoStep({
     }
   }, [selectedProvince, selectedDistrict, provinces]);
 
-  // Handle change
   const handleProvinceChange = (provinceCode: string) => {
     setSelectedProvince(provinceCode);
     setSelectedDistrict("");
@@ -143,7 +158,6 @@ export default function BasicInfoStep({
     updateFormData({
       location: {
         ...formData.location,
-        province: selectedProvince,
         district: districtCode,
         ward: "",
         project: "",
@@ -156,8 +170,6 @@ export default function BasicInfoStep({
     updateFormData({
       location: {
         ...formData.location,
-        province: selectedProvince,
-        district: selectedDistrict,
         ward: wardCode,
       },
     });
@@ -186,106 +198,80 @@ export default function BasicInfoStep({
     });
   };
 
-  // AI Title/Description
-  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-
-  const generateTitleWithAI = async () => {
-    if (!formData.type || !formData.category || !formData.location?.province) {
-      alert("Vui lòng chọn loại hình giao dịch, loại BĐS và tỉnh/thành phố.");
-      return;
-    }
+  const fetchLatLng = async () => {
+    setIsLoadingMap(true);
     try {
-      setIsGeneratingTitle(true);
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken)
-        throw new Error("Bạn cần đăng nhập để sử dụng tính năng này.");
-      const propertyData = {
-        type: formData.type === "ban" ? "Bán" : "Cho thuê",
-        category: formData.category,
-        area: formData.area,
-        location: {
-          street: formData.location.street,
-          ward: formData.location.ward,
-          district: formData.location.district,
-          province: formData.location.province,
-        },
-        price: formData.price,
-        currency: formData.currency,
-        bedrooms: formData.bedrooms,
-        bathrooms: formData.bathrooms,
-        houseDirection: formData.houseDirection,
-      };
-      const response = await fetch(`${API_BASE_URL}/ai/generate-title`, {
-        method: "POST",
+      if (!selectedProvince || !selectedDistrict || !selectedWard) return;
+
+      const province = provinces.find(
+        (p) => String(p.code) === String(selectedProvince)
+      );
+      const district = districts.find(
+        (d) => String(d.code) === String(selectedDistrict)
+      );
+      const ward = wards.find((w) => String(w.code) === String(selectedWard));
+
+      if (!province || !district || !ward) return;
+
+      const fullAddress = [
+        streetAddress,
+        ward.name,
+        district.name,
+        province.name,
+        "Việt Nam",
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        fullAddress
+      )}&countrycodes=VN&limit=1`;
+      const response = await fetch(url, {
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          "User-Agent": "RealEstateApp/1.0 (contact@yourapp.com)",
         },
-        body: JSON.stringify(propertyData),
       });
-      if (!response.ok) throw new Error("Không thể tạo tiêu đề.");
       const data = await response.json();
-      updateFormData({ title: data.title });
+
+      if (data.length > 0) {
+        // Lưu trữ toàn bộ data từ OSM để sử dụng
+        setLatLng({
+          osmData: {
+            lat: data[0].lat,
+            lon: data[0].lon,
+            boundingbox: data[0].boundingbox,
+            display_name: data[0].display_name,
+          },
+        });
+        console.log("osmdata", latLng?.osmData);
+      } else {
+        // Fallback nếu không tìm thấy
+        setLatLng({
+          osmData: {
+            lat: "10.7769",
+            lon: "106.7009",
+            display_name: "Vị trí mặc định",
+          },
+        });
+      }
     } catch (error) {
-      alert("Có lỗi xảy ra khi tạo tiêu đề. Vui lòng thử lại.");
+      console.error("Error fetching lat/lng:", error);
+      setLatLng(null);
     } finally {
-      setIsGeneratingTitle(false);
+      setIsLoadingMap(false);
     }
   };
 
-  const generateDescriptionWithAI = async () => {
-    if (!formData.type || !formData.category || !formData.location?.province) {
-      alert("Vui lòng chọn loại hình giao dịch, loại BĐS và tỉnh/thành phố.");
-      return;
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict && selectedWard) {
+      fetchLatLng();
+    } else {
+      setLatLng(null);
     }
-    try {
-      setIsGeneratingDescription(true);
-      const accessToken = localStorage.getItem("accessToken");
-      if (!accessToken)
-        throw new Error("Bạn cần đăng nhập để sử dụng tính năng này.");
-      const propertyData = {
-        type: formData.type === "ban" ? "Bán" : "Cho thuê",
-        category: formData.category,
-        area: formData.area,
-        location: {
-          street: formData.location.street,
-          ward: formData.location.ward,
-          district: formData.location.district,
-          province: formData.location.province,
-        },
-        price: formData.price,
-        currency: formData.currency,
-        bedrooms: formData.bedrooms,
-        bathrooms: formData.bathrooms,
-        furniture: formData.furniture,
-        legalDocs: formData.legalDocs,
-        houseDirection: formData.houseDirection,
-        balconyDirection: formData.balconyDirection,
-        roadWidth: formData.roadWidth,
-        frontWidth: formData.frontWidth,
-      };
-      const response = await fetch(`${API_BASE_URL}/ai/generate-description`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(propertyData),
-      });
-      if (!response.ok) throw new Error("Không thể tạo mô tả.");
-      const data = await response.json();
-      updateFormData({ description: data.description });
-    } catch (error) {
-      alert("Có lỗi xảy ra khi tạo mô tả. Vui lòng thử lại.");
-    } finally {
-      setIsGeneratingDescription(false);
-    }
-  };
+  }, [selectedProvince, selectedDistrict, selectedWard, streetAddress]);
 
   return (
     <div className="space-y-8">
-      {/* Nhu cầu */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Nhu cầu</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -312,7 +298,6 @@ export default function BasicInfoStep({
         </div>
       </div>
 
-      {/* Địa chỉ */}
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-4">Địa chỉ BĐS</h3>
         <div className="space-y-4">
@@ -507,17 +492,41 @@ export default function BasicInfoStep({
               className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 min-h-[40px]"
             >
               {[
-                formData.location?.street,
-                formData.location?.project,
-                formData.location?.ward,
-                formData.location?.district,
-                formData.location?.province,
+                streetAddress,
+                selectedProject
+                  ? availableProjects.find(
+                      (p) => p.id.toString() === selectedProject
+                    )?.name
+                  : "",
+                wards.find((w) => String(w.code) === String(selectedWard))
+                  ?.name,
+                districts.find(
+                  (d) => String(d.code) === String(selectedDistrict)
+                )?.name,
+                provinces.find(
+                  (p) => String(p.code) === String(selectedProvince)
+                )?.name,
               ]
                 .filter(Boolean)
                 .join(", ") ||
                 "Địa chỉ sẽ được tạo tự động khi bạn chọn các thông tin trên"}
             </div>
           </div>
+          {/* {latLng && (
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">Vị trí trên bản đồ</h4>
+              <div
+                key={`map-${selectedProvince}-${selectedDistrict}-${selectedWard}-${Date.now()}`}
+              >
+                <MapView osmData={latLng.osmData} />
+              </div>
+              {latLng.osmData?.display_name && (
+                <p className="mt-2 text-sm text-gray-500">
+                  {latLng.osmData.display_name}
+                </p>
+              )}
+            </div>
+          )} */}
         </div>
       </div>
 
@@ -546,7 +555,6 @@ export default function BasicInfoStep({
               <option value="Văn phòng">Văn phòng</option>
             </select>
           </div>
-
           <div>
             <label
               htmlFor="area"
@@ -566,7 +574,6 @@ export default function BasicInfoStep({
               <span className="absolute right-3 top-2 text-gray-500">m²</span>
             </div>
           </div>
-
           <div>
             <label
               htmlFor="price"
@@ -583,7 +590,6 @@ export default function BasicInfoStep({
               placeholder="Nhập giá"
             />
           </div>
-
           <div>
             <label
               htmlFor="currency"
@@ -626,7 +632,6 @@ export default function BasicInfoStep({
               <option value="Giấy tờ khác">Giấy tờ khác</option>
             </select>
           </div>
-
           <div>
             <label
               htmlFor="furniture"
@@ -645,7 +650,6 @@ export default function BasicInfoStep({
               <option value="Không nội thất">Không nội thất</option>
             </select>
           </div>
-
           <div>
             <label
               htmlFor="houseDirection"
@@ -672,7 +676,6 @@ export default function BasicInfoStep({
               <option value="Tây Nam">Tây Nam</option>
             </select>
           </div>
-
           <div>
             <label
               htmlFor="balconyDirection"
@@ -699,7 +702,6 @@ export default function BasicInfoStep({
               <option value="Tây Nam">Tây Nam</option>
             </select>
           </div>
-
           <div>
             <label
               htmlFor="roadWidth"
@@ -717,7 +719,6 @@ export default function BasicInfoStep({
               min={0}
             />
           </div>
-
           <div>
             <label
               htmlFor="frontWidth"
@@ -806,68 +807,17 @@ export default function BasicInfoStep({
             >
               Tiêu đề
             </label>
-            <div className="flex flex-col space-y-2">
-              <textarea
-                id="title"
-                value={formData.title}
-                onChange={(e) => updateFormData({ title: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                placeholder="Mô tả ngắn gọn về loại hình bất động sản, diện tích, địa chỉ"
-              />
-              <button
-                type="button"
-                onClick={generateTitleWithAI}
-                className="self-end px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
-                disabled={isGeneratingTitle}
-              >
-                {isGeneratingTitle ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 text-blue-600"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <span>Đang tạo...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    <span>Tạo tiêu đề bằng AI</span>
-                  </>
-                )}
-              </button>
-              <p className="text-xs text-gray-500">
-                Tối thiểu 30 ký tự, tối đa 99 ký tự
-              </p>
-            </div>
+            <textarea
+              id="title"
+              value={formData.title}
+              onChange={(e) => updateFormData({ title: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+              placeholder="Mô tả ngắn gọn về loại hình bất động sản, diện tích, địa chỉ"
+            />
+            <p className="text-xs text-gray-500">
+              Tối thiểu 30 ký tự, tối đa 99 ký tự
+            </p>
           </div>
           <div>
             <label
@@ -876,71 +826,18 @@ export default function BasicInfoStep({
             >
               Mô tả
             </label>
-            <div className="flex flex-col space-y-2">
-              <textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) =>
-                  updateFormData({ description: e.target.value })
-                }
-                rows={6}
-                maxLength={1500}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                placeholder="Mô tả chi tiết về loại hình bất động sản, vị trí, diện tích, tiện ích..."
-              />
-              <button
-                type="button"
-                onClick={generateDescriptionWithAI}
-                className="self-end px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2"
-                disabled={isGeneratingDescription}
-              >
-                {isGeneratingDescription ? (
-                  <>
-                    <svg
-                      className="animate-spin h-4 w-4 text-blue-600"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <span>Đang tạo...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    <span>Tạo mô tả bằng AI</span>
-                  </>
-                )}
-              </button>
-              <p className="text-xs text-gray-500">
-                Tối thiểu 30 ký tự, tối đa 500 ký tự
-              </p>
-            </div>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => updateFormData({ description: e.target.value })}
+              rows={6}
+              maxLength={1500}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+              placeholder="Mô tả chi tiết về loại hình bất động sản, vị trí, diện tích, tiện ích..."
+            />
+            <p className="text-xs text-gray-500">
+              Tối thiểu 30 ký tự, tối đa 500 ký tự
+            </p>
           </div>
         </div>
       </div>

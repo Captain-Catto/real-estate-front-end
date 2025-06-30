@@ -1,266 +1,55 @@
 "use client";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import locationData from "../../../locationVN.json";
-
-interface PropertyTypeChild {
-  value: string;
-  label: string;
-  slug: string;
-}
-
-interface PropertyType {
-  value: string;
-  label: string;
-  icon: string;
-  slug: string;
-  children?: PropertyTypeChild[];
-}
-
-// Cập nhật interface để có slug
-interface PriceRange {
-  value: string;
-  label: string;
-  slug?: string;
-}
+import { Tab } from "@headlessui/react";
+import { locationService } from "@/services/locationService";
+import { categoryService, Category } from "@/services/categoryService";
+import { priceRangeService, PriceRange } from "@/services/priceService";
+import { areaService, AreaRange } from "@/services/areaService";
 
 interface SelectedDistrict {
-  code: number;
+  code: string;
   name: string;
+  codename?: string;
 }
 
-interface SelectedPropertyType {
-  value: string;
-  label: string;
-  slug: string;
+interface SearchSectionProps {
+  initialSearchType?: "buy" | "rent" | "project";
+  initialCity?: string | null;
+  initialDistricts?: any[];
+  initialCategory?: string;
+  initialPrice?: string;
+  initialArea?: string;
+  provinces?: any[];
+  cityDistricts?: any[];
 }
 
-// Map từ JSON data - lấy 6 thành phố chính
-const popularCities = [
-  { code: 79, name: "Hồ Chí Minh" }, // TP.HCM
-  { code: 1, name: "Hà Nội" },
-  { code: 48, name: "Đà Nẵng" },
-  { code: 74, name: "Bình Dương" },
-  { code: 75, name: "Đồng Nai" },
-  { code: 56, name: "Khánh Hòa" },
-];
-
-// Property types cho từng tab với slug
-const sellPropertyTypes: PropertyType[] = [
-  { value: "", label: "Tất cả nhà đất", icon: "🏠", slug: "tat-ca" },
-  {
-    value: "324",
-    label: "Căn hộ chung cư",
-    icon: "🏢",
-    slug: "can-ho-chung-cu",
-  },
-  {
-    value: "650",
-    label: "Chung cư mini, căn hộ dịch vụ",
-    icon: "🏨",
-    slug: "chung-cu-mini",
-  },
-  {
-    value: "362",
-    label: "Các loại nhà bán",
-    icon: "🏘️",
-    slug: "nha-ban",
-    children: [
-      { value: "41", label: "Nhà riêng", slug: "nha-rieng" },
-      {
-        value: "325",
-        label: "Nhà biệt thự, liền kề",
-        slug: "biet-thu-lien-ke",
-      },
-      { value: "163", label: "Nhà mặt phố", slug: "nha-mat-pho" },
-      {
-        value: "575",
-        label: "Shophouse, nhà phố thương mại",
-        slug: "shophouse",
-      },
-    ],
-  },
-  {
-    value: "361",
-    label: "Các loại đất bán",
-    icon: "🌿",
-    slug: "dat-ban",
-    children: [
-      { value: "40", label: "Đất nền dự án", slug: "dat-nen-du-an" },
-      { value: "283", label: "Bán đất", slug: "ban-dat" },
-    ],
-  },
-  {
-    value: "44",
-    label: "Trang trại, khu nghỉ dưỡng",
-    icon: "🏞️",
-    slug: "trang-trai-khu-nghi-duong",
-    children: [{ value: "562", label: "Condotel", slug: "condotel" }],
-  },
-  { value: "45", label: "Kho, nhà xưởng", icon: "🏭", slug: "kho-nha-xuong" },
-  {
-    value: "48",
-    label: "Bất động sản khác",
-    icon: "📍",
-    slug: "bat-dong-san-khac",
-  },
-];
-
-const rentPropertyTypes: PropertyType[] = [
-  { value: "", label: "Tất cả nhà đất", icon: "🏠", slug: "tat-ca" },
-  {
-    value: "326",
-    label: "Căn hộ chung cư",
-    icon: "🏢",
-    slug: "can-ho-chung-cu",
-  },
-  {
-    value: "651",
-    label: "Chung cư mini, căn hộ dịch vụ",
-    icon: "🏨",
-    slug: "chung-cu-mini",
-  },
-  { value: "52", label: "Nhà riêng", icon: "🏠", slug: "nha-rieng" },
-  {
-    value: "577",
-    label: "Nhà biệt thự, liền kề",
-    icon: "🏘️",
-    slug: "biet-thu-lien-ke",
-  },
-  { value: "51", label: "Nhà mặt phố", icon: "🏪", slug: "nha-mat-pho" },
-  { value: "57", label: "Nhà trọ, phòng trọ", icon: "🏨", slug: "nha-tro" },
-  {
-    value: "576",
-    label: "Shophouse, nhà phố thương mại",
-    icon: "🏬",
-    slug: "shophouse",
-  },
-  { value: "50", label: "Văn phòng", icon: "🏢", slug: "van-phong" },
-  { value: "55", label: "Cửa hàng, ki ốt", icon: "🏪", slug: "cua-hang" },
-  {
-    value: "53",
-    label: "Kho, nhà xưởng, đất",
-    icon: "🏭",
-    slug: "kho-nha-xuong",
-  },
-  {
-    value: "59",
-    label: "Bất động sản khác",
-    icon: "📍",
-    slug: "bat-dong-san-khac",
-  },
-];
-
-const projectPropertyTypes: PropertyType[] = [
-  { value: "", label: "Tất cả dự án", icon: "🏗️", slug: "tat-ca-du-an" },
-  {
-    value: "324",
-    label: "Căn hộ chung cư",
-    icon: "🏢",
-    slug: "can-ho-chung-cu",
-  },
-  {
-    value: "325",
-    label: "Cao ốc văn phòng",
-    icon: "🏬",
-    slug: "cao-oc-van-phong",
-  },
-  {
-    value: "326",
-    label: "Trung tâm thương mại",
-    icon: "🛒",
-    slug: "trung-tam-thuong-mai",
-  },
-  { value: "327", label: "Khu đô thị mới", icon: "🏙️", slug: "khu-do-thi-moi" },
-  { value: "328", label: "Khu phức hợp", icon: "🏘️", slug: "khu-phuc-hop" },
-  { value: "329", label: "Nhà ở xã hội", icon: "🏠", slug: "nha-o-xa-hoi" },
-  { value: "330", label: "Khu nghỉ dưỡng", icon: "🏖️", slug: "khu-nghi-duong" },
-  {
-    value: "331",
-    label: "Khu công nghiệp",
-    icon: "🏭",
-    slug: "khu-cong-nghiep",
-  },
-];
-
-// Cập nhật price ranges để có slug
-const sellPriceRanges: PriceRange[] = [
-  { value: "", label: "Tất cả mức giá" },
-  { value: "1", label: "Dưới 500 triệu", slug: "duoi-500-trieu" },
-  { value: "2", label: "500 - 800 triệu", slug: "500-800-trieu" },
-  { value: "3", label: "800 triệu - 1 tỷ", slug: "800-trieu-1-ty" },
-  { value: "4", label: "1 - 2 tỷ", slug: "1-2-ty" },
-  { value: "5", label: "2 - 3 tỷ", slug: "2-3-ty" },
-  { value: "6", label: "3 - 5 tỷ", slug: "3-5-ty" },
-  { value: "7", label: "5 - 7 tỷ", slug: "5-7-ty" },
-  { value: "8", label: "7 - 10 tỷ", slug: "7-10-ty" },
-  { value: "9", label: "10 - 20 tỷ", slug: "10-20-ty" },
-  { value: "10", label: "20 - 30 tỷ", slug: "20-30-ty" },
-  { value: "11", label: "30 - 40 tỷ", slug: "30-40-ty" },
-  { value: "12", label: "40 - 60 tỷ", slug: "40-60-ty" },
-  { value: "13", label: "Trên 60 tỷ", slug: "tren-60-ty" },
-  { value: "0", label: "Thỏa thuận", slug: "thoa-thuan" },
-];
-
-const rentPriceRanges: PriceRange[] = [
-  { value: "", label: "Tất cả mức giá" },
-  { value: "1", label: "Dưới 1 triệu", slug: "duoi-1-trieu" },
-  { value: "2", label: "1 - 3 triệu", slug: "1-3-trieu" },
-  { value: "3", label: "3 - 5 triệu", slug: "3-5-trieu" },
-  { value: "4", label: "5 - 10 triệu", slug: "5-10-trieu" },
-  { value: "5", label: "10 - 40 triệu", slug: "10-40-trieu" },
-  { value: "6", label: "40 - 70 triệu", slug: "40-70-trieu" },
-  { value: "7", label: "70 - 100 triệu", slug: "70-100-trieu" },
-  { value: "8", label: "Trên 100 triệu", slug: "tren-100-trieu" },
-  { value: "0", label: "Thỏa thuận", slug: "thoa-thuan" },
-];
-
-const projectPriceRanges: PriceRange[] = [
-  { value: "", label: "Tất cả mức giá" },
-  { value: "1", label: "Dưới 1 tỷ", slug: "duoi-1-ty" },
-  { value: "2", label: "1 - 2 tỷ", slug: "1-2-ty" },
-  { value: "3", label: "2 - 3 tỷ", slug: "2-3-ty" },
-  { value: "4", label: "3 - 5 tỷ", slug: "3-5-ty" },
-  { value: "5", label: "5 - 7 tỷ", slug: "5-7-ty" },
-  { value: "6", label: "7 - 10 tỷ", slug: "7-10-ty" },
-  { value: "7", label: "10 - 20 tỷ", slug: "10-20-ty" },
-  { value: "8", label: "20 - 30 tỷ", slug: "20-30-ty" },
-  { value: "9", label: "30 - 50 tỷ", slug: "30-50-ty" },
-  { value: "10", label: "Trên 50 tỷ", slug: "tren-50-ty" },
-  { value: "0", label: "Thỏa thuận", slug: "thoa-thuan" },
-];
-
-const areaRanges: PriceRange[] = [
-  { value: "", label: "Tất cả diện tích" },
-  { value: "1", label: "Dưới 30 m²", slug: "duoi-30-m2" },
-  { value: "2", label: "30 - 50 m²", slug: "30-50-m2" },
-  { value: "3", label: "50 - 80 m²", slug: "50-80-m2" },
-  { value: "4", label: "80 - 100 m²", slug: "80-100-m2" },
-  { value: "5", label: "100 - 150 m²", slug: "100-150-m2" },
-  { value: "6", label: "150 - 200 m²", slug: "150-200-m2" },
-  { value: "7", label: "200 - 250 m²", slug: "200-250-m2" },
-  { value: "8", label: "250 - 300 m²", slug: "250-300-m2" },
-  { value: "9", label: "300 - 500 m²", slug: "300-500-m2" },
-  { value: "10", label: "Trên 500 m²", slug: "tren-500-m2" },
-];
-
-export function SearchSection() {
+export default function SearchSection({
+  initialSearchType = "buy",
+  initialCity = null,
+  initialDistricts = [],
+  initialCategory = "",
+  initialPrice = "",
+  initialArea = "",
+  provinces = [],
+  cityDistricts = [],
+}: SearchSectionProps) {
   const router = useRouter();
 
   // States
-  const [searchType, setSearchType] = useState<"buy" | "cho-thue" | "project">(
-    "buy"
+  const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
+    initialSearchType
   );
-  const [selectedCity, setSelectedCity] = useState<number>(79); // TP.HCM default
-  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<
-    SelectedPropertyType[]
-  >([]);
-  const [selectedPrice, setSelectedPrice] = useState<string>("");
-  const [selectedArea, setSelectedArea] = useState<string>("");
+  const [selectedCity, setSelectedCity] = useState<string | null>(initialCity);
+  const [selectedCityDistricts, setSelectedCityDistricts] =
+    useState<any[]>(cityDistricts);
+  const [selectedDistricts, setSelectedDistricts] =
+    useState<SelectedDistrict[]>(initialDistricts);
+  const [selectedPropertyType, setSelectedPropertyType] =
+    useState<string>(initialCategory);
+  const [selectedPrice, setSelectedPrice] = useState<string>(initialPrice);
+  const [selectedArea, setSelectedArea] = useState<string>(initialArea);
   const [locationSearch, setLocationSearch] = useState<string>("");
-  const [selectedDistricts, setSelectedDistricts] = useState<
-    SelectedDistrict[]
-  >([]);
 
   // Dropdown states
   const [showCityDropdown, setShowCityDropdown] = useState<boolean>(false);
@@ -271,6 +60,15 @@ export function SearchSection() {
   const [showLocationSuggestions, setShowLocationSuggestions] =
     useState<boolean>(false);
 
+  // Lưu trữ toàn bộ tỉnh thành
+  const [locationData, setLocationData] = useState<any[]>(provinces);
+
+  // Dynamic data from services
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
+  const [areaRanges, setAreaRanges] = useState<AreaRange[]>([]);
+  const [loadingSearchOptions, setLoadingSearchOptions] = useState(true);
+
   // Refs for dropdowns
   const cityDropdownRef = useRef<HTMLDivElement>(null);
   const propertyDropdownRef = useRef<HTMLDivElement>(null);
@@ -278,7 +76,102 @@ export function SearchSection() {
   const areaDropdownRef = useRef<HTMLDivElement>(null);
   const locationSuggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Click outside handler
+  // Thêm fetch và thiết lập cho categories, priceRanges và areaRanges khi component mount
+  useEffect(() => {
+    const fetchSearchOptions = async () => {
+      setLoadingSearchOptions(true);
+      try {
+        // Get the appropriate listing type
+        let listingType: "ban" | "cho-thue" | "project" = "ban";
+        if (searchType === "rent") listingType = "cho-thue";
+        if (searchType === "project") listingType = "project";
+
+        // Fetch data in parallel
+        const [categoriesData, priceRangesData, areaRangesData] =
+          await Promise.all([
+            categoryService.getByProjectType(searchType === "project"),
+            priceRangeService.getByType(listingType),
+            areaService.getAll(),
+          ]);
+
+        setCategories(categoriesData);
+        setPriceRanges(priceRangesData);
+        setAreaRanges(areaRangesData);
+
+        // Set initial values from URL params
+        if (initialCategory && categoriesData.length > 0) {
+          const foundCategory = categoriesData.find(
+            (cat) => cat.slug === initialCategory
+          );
+          if (foundCategory) {
+            setSelectedPropertyType(foundCategory.slug);
+          }
+        }
+
+        if (initialPrice && priceRangesData.length > 0) {
+          setSelectedPrice(initialPrice);
+        }
+
+        if (initialArea && areaRangesData.length > 0) {
+          setSelectedArea(initialArea);
+        }
+      } catch (error) {
+        console.error("Error fetching search options:", error);
+      } finally {
+        setLoadingSearchOptions(false);
+      }
+    };
+
+    fetchSearchOptions();
+  }, [searchType, initialCategory, initialPrice, initialArea]);
+
+  // Tải dữ liệu tỉnh thành nếu chưa được truyền vào
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        if (provinces.length === 0) {
+          const data = await locationService.getProvinces();
+          setLocationData(data);
+        } else {
+          setLocationData(provinces);
+        }
+      } catch (error) {
+        console.error("Failed to fetch provinces:", error);
+      }
+    };
+
+    fetchProvinces();
+  }, [provinces]);
+
+  // Tải quận/huyện khi có selectedCity mà chưa có cityDistricts
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (selectedCity && cityDistricts.length === 0) {
+        try {
+          // Tìm city theo code
+          const selectedCityData = locationData.find(
+            (city) => city.code === selectedCity
+          );
+          if (selectedCityData) {
+            const districts = await locationService.getDistricts(
+              selectedCityData.codename
+            );
+            setSelectedCityDistricts(districts);
+          }
+        } catch (error) {
+          console.error("Failed to fetch districts:", error);
+        }
+      } else if (cityDistricts.length > 0) {
+        setSelectedCityDistricts(cityDistricts);
+      }
+    };
+
+    if (locationData.length > 0) {
+      fetchDistricts();
+    }
+  }, [selectedCity, cityDistricts, locationData]);
+
+  // Xử lý click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Node;
@@ -319,255 +212,101 @@ export function SearchSection() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lấy danh sách quận/huyện của thành phố được chọn
-  const selectedCityDistricts = useMemo(() => {
-    const city = locationData.find((c) => c.code === selectedCity);
-    return city?.districts || [];
-  }, [selectedCity]);
+  useEffect(() => {
+    // Đồng bộ initialDistricts với selectedDistricts state
+    if (initialDistricts && initialDistricts.length > 0) {
+      setSelectedDistricts(initialDistricts);
+    }
+  }, [initialDistricts]);
 
-  // Filter districts based on search input
+  // Cập nhật selectedCityDistricts khi cityDistricts thay đổi
+  useEffect(() => {
+    if (cityDistricts && cityDistricts.length > 0) {
+      setSelectedCityDistricts(cityDistricts);
+    }
+  }, [cityDistricts]);
+
+  // Lấy danh sách quận/huyện đã được chọn
   const filteredDistricts = useMemo(() => {
     if (!locationSearch.trim()) return selectedCityDistricts;
+
     return selectedCityDistricts.filter((district) =>
       district.name.toLowerCase().includes(locationSearch.toLowerCase())
     );
   }, [selectedCityDistricts, locationSearch]);
 
-  // Mock projects data for search suggestions
-  const mockProjects = useMemo(
-    () => [
-      {
-        id: 1,
-        name: "Vinhomes Central Park",
-        developer: "Vingroup",
-        cityCode: 79,
-      },
-      {
-        id: 2,
-        name: "Masteri An Phú",
-        developer: "Thảo Điền Investment",
-        cityCode: 79,
-      },
-      { id: 3, name: "The Sun Avenue", developer: "Novaland", cityCode: 79 },
-      { id: 4, name: "Saigon Pearl", developer: "Saigon Pearl", cityCode: 79 },
-      { id: 5, name: "Landmark 81", developer: "Vinhomes", cityCode: 79 },
-      {
-        id: 6,
-        name: "Vinhomes Smart City",
-        developer: "Vingroup",
-        cityCode: 1,
-      },
-      { id: 7, name: "Sun Grand City", developer: "Sun Group", cityCode: 1 },
-      {
-        id: 8,
-        name: "The Manor Central Park",
-        developer: "Bitexco",
-        cityCode: 1,
-      },
-      {
-        id: 9,
-        name: "Muong Thanh Grand Da Nang",
-        developer: "Muong Thanh",
-        cityCode: 48,
-      },
-      {
-        id: 10,
-        name: "FLC Sea Tower Quy Nhon",
-        developer: "FLC Group",
-        cityCode: 56,
-      },
-    ],
-    []
-  );
-
-  // Filter projects for search suggestions
-  const filteredProjects = useMemo(() => {
-    if (searchType !== "project") return [];
-
-    // Nếu không có input, hiển thị một số dự án mẫu của city đó
-    if (!locationSearch.trim()) {
-      return mockProjects
-        .filter((project) => project.cityCode === selectedCity)
-        .slice(0, 5); // Hiển thị 5 dự án đầu tiên
-    }
-
-    // Filter by selected city first
-    const projectsInCity = mockProjects.filter(
-      (project) => project.cityCode === selectedCity
-    );
-
-    // Then filter by search query
-    return projectsInCity.filter(
-      (project) =>
-        project.name.toLowerCase().includes(locationSearch.toLowerCase()) ||
-        project.developer.toLowerCase().includes(locationSearch.toLowerCase())
-    );
-  }, [locationSearch, searchType, mockProjects, selectedCity]);
-
-  const getCurrentPropertyTypes = (): PropertyType[] => {
-    switch (searchType) {
-      case "buy":
-        return sellPropertyTypes;
-      case "cho-thue":
-        return rentPropertyTypes;
-      case "project":
-        return projectPropertyTypes;
-      default:
-        return sellPropertyTypes;
-    }
-  };
-
-  const getCurrentPriceRanges = (): PriceRange[] => {
-    switch (searchType) {
-      case "buy":
-        return sellPriceRanges;
-      case "cho-thue":
-        return rentPriceRanges;
-      case "project":
-        return projectPriceRanges;
-      default:
-        return sellPriceRanges;
-    }
-  };
-
+  // Lấy tên thành phố đã chọn
   const getSelectedCityLabel = (): string => {
-    const city = locationData.find((c) => c.code === selectedCity);
-    return city ? city.name : "Hồ Chí Minh";
+    if (selectedCity) {
+      const city = locationData.find((c) => c.code === selectedCity);
+      return city ? city.name : "Toàn quốc";
+    }
+    return locationData.length > 0 ? "Toàn quốc" : "Đang tải...";
   };
 
+  // Lấy tên loại bất động sản đã chọn
   const getSelectedPropertyLabel = (): string => {
-    if (selectedPropertyTypes.length === 0) {
-      switch (searchType) {
-        case "project":
-          return "Loại dự án";
-        default:
-          return "Loại nhà đất";
-      }
+    if (!selectedPropertyType || loadingSearchOptions) {
+      return searchType === "project" ? "Loại dự án" : "Loại nhà đất";
     }
 
-    if (selectedPropertyTypes.length === 1) {
-      return selectedPropertyTypes[0].label;
-    }
-
-    return `${selectedPropertyTypes.length} loại đã chọn`;
+    const category = categories.find((c) => c.slug === selectedPropertyType);
+    return category ? category.name : "Loại nhà đất";
   };
 
+  // Lấy tên mức giá đã chọn
   const getSelectedPriceLabel = (): string => {
-    if (!selectedPrice) return "Mức giá";
-    const priceRanges = getCurrentPriceRanges();
-    const price = priceRanges.find((p) => p.value === selectedPrice);
-    return price ? price.label : "Mức giá";
+    if (!selectedPrice || loadingSearchOptions) return "Mức giá";
+
+    const priceRange = priceRanges.find(
+      (p) => p.slug === selectedPrice || p.value === selectedPrice
+    );
+    return priceRange ? priceRange.name || priceRange.label : "Mức giá";
   };
 
+  // Lấy tên diện tích đã chọn
   const getSelectedAreaLabel = (): string => {
-    if (!selectedArea) return "Diện tích";
-    const area = areaRanges.find((a) => a.value === selectedArea);
-    return area ? area.label : "Diện tích";
+    if (!selectedArea || loadingSearchOptions) return "Diện tích";
+
+    const areaRange = areaRanges.find(
+      (a) => a.slug === selectedArea || a.value === selectedArea
+    );
+    return areaRange ? areaRange.name || areaRange.label : "Diện tích";
   };
 
-  // Handler functions
-  const handleCitySelect = (cityCode: number) => {
+  // Xử lý khi chọn thành phố
+  const handleCitySelect = (cityCode: string) => {
     setSelectedCity(cityCode);
     setLocationSearch("");
     setSelectedDistricts([]);
     setShowCityDropdown(false);
-  };
 
-  const handlePropertyTypeSelect = (
-    propertyType: PropertyType | PropertyTypeChild,
-    isChild = false
-  ) => {
-    const newPropertyType: SelectedPropertyType = {
-      value: propertyType.value,
-      label: propertyType.label,
-      slug: propertyType.slug,
+    // Tải lại quận/huyện khi đổi thành phố
+    const fetchDistrictsForCity = async () => {
+      try {
+        const cityData = locationData.find((city) => city.code === cityCode);
+        if (cityData) {
+          const districts = await locationService.getDistricts(
+            cityData.codename
+          );
+          setSelectedCityDistricts(districts);
+        }
+      } catch (error) {
+        console.error("Failed to fetch districts for new city:", error);
+      }
     };
 
-    // Check if already selected
-    const isSelected = selectedPropertyTypes.some(
-      (p) => p.value === propertyType.value
-    );
-
-    if (isSelected) {
-      // Remove if already selected
-      setSelectedPropertyTypes((prev) =>
-        prev.filter((p) => p.value !== propertyType.value)
-      );
-
-      // If it's a parent type with children, also remove all children
-      if (!isChild && "children" in propertyType && propertyType.children) {
-        setSelectedPropertyTypes((prev) =>
-          prev.filter(
-            (p) =>
-              !propertyType.children!.some((child) => child.value === p.value)
-          )
-        );
-      }
-
-      // If it's "Tất cả nhà đất" (value === ""), remove all
-      if (propertyType.value === "") {
-        setSelectedPropertyTypes([]);
-      }
-    } else {
-      // Special case: "Tất cả nhà đất" (value === "")
-      if (propertyType.value === "") {
-        // Select all property types
-        const allTypes: SelectedPropertyType[] = [];
-
-        getCurrentPropertyTypes().forEach((type) => {
-          if (type.value !== "") {
-            // Skip "Tất cả nhà đất" itself
-            allTypes.push({
-              value: type.value,
-              label: type.label,
-              slug: type.slug,
-            });
-
-            // Add children if exists
-            if (type.children) {
-              type.children.forEach((child) => {
-                allTypes.push({
-                  value: child.value,
-                  label: child.label,
-                  slug: child.slug,
-                });
-              });
-            }
-          }
-        });
-
-        setSelectedPropertyTypes(allTypes);
-      } else {
-        // Normal case: Add if not selected (no limit)
-        const typesToAdd = [newPropertyType];
-
-        // If it's a parent type with children, also select all children
-        if (!isChild && "children" in propertyType && propertyType.children) {
-          const childrenToAdd = propertyType.children
-            .filter(
-              (child) =>
-                // Only add children that aren't already selected
-                !selectedPropertyTypes.some((p) => p.value === child.value)
-            )
-            .map((child) => ({
-              value: child.value,
-              label: child.label,
-              slug: child.slug,
-            }));
-
-          typesToAdd.push(...childrenToAdd);
-        }
-
-        setSelectedPropertyTypes((prev) => [...prev, ...typesToAdd]);
-      }
-    }
+    fetchDistrictsForCity();
   };
 
-  // const handlePropertyTypeRemove = (value: string) => {
-  //   setSelectedPropertyTypes((prev) => prev.filter((p) => p.value !== value));
-  // };
+  // Xử lý khi chọn loại bất động sản
+  const handlePropertyTypeSelect = (categorySlug: string) => {
+    setSelectedPropertyType(categorySlug);
+    setShowPropertyDropdown(false);
+  };
 
-  const handleDistrictSelect = (district: { code: number; name: string }) => {
+  // Xử lý khi chọn quận/huyện
+  const handleDistrictSelect = (district: any) => {
     if (selectedDistricts.length >= 3) return;
 
     const alreadySelected = selectedDistricts.some(
@@ -580,15 +319,12 @@ export function SearchSection() {
     setShowLocationSuggestions(false);
   };
 
-  const handleDistrictRemove = (districtCode: number) => {
+  // Xử lý khi xóa quận/huyện
+  const handleDistrictRemove = (districtCode: string) => {
     setSelectedDistricts((prev) => prev.filter((d) => d.code !== districtCode));
   };
 
-  const handleProjectSelect = (projectName: string) => {
-    setLocationSearch(projectName);
-    setShowLocationSuggestions(false);
-  };
-
+  // Xử lý khi nhập vào ô tìm kiếm địa điểm
   const handleLocationInputChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -596,199 +332,131 @@ export function SearchSection() {
     setShowLocationSuggestions(e.target.value.length > 0);
   };
 
+  // Xử lý khi focus vào ô tìm kiếm địa điểm
   const handleLocationInputFocus = () => {
-    // Luôn hiển thị suggestions cho tất cả search types
     setShowLocationSuggestions(true);
   };
 
-  // Search handler
+  // Xử lý khi bấm nút tìm kiếm
   const handleSearch = () => {
-    let url = "";
-    const params = new URLSearchParams();
+    // Xác định base URL dựa trên loại tìm kiếm
+    const baseUrl =
+      searchType === "project"
+        ? "/du-an"
+        : searchType === "buy"
+        ? "/mua-ban"
+        : "/cho-thue";
 
-    // Determine base URL based on search type and selected property types
-    if (searchType === "project") {
-      url = "/du-an";
-    } else {
-      const baseUrl = searchType === "buy" ? "/mua-ban" : "/cho-thue";
+    // Tạo query params
+    const queryParams = new URLSearchParams();
 
-      if (selectedPropertyTypes.length > 0) {
-        // Use slug of first selected property type
-        url = `${baseUrl}/${selectedPropertyTypes[0].slug}`;
-      } else {
-        url = baseUrl;
+    // Thêm loại bất động sản (category)
+    if (selectedPropertyType) {
+      queryParams.set("category", selectedPropertyType);
+    }
+
+    // Thêm thành phố (city)
+    if (selectedCity) {
+      const selectedCityData = locationData.find(
+        (c) => c.code === selectedCity
+      );
+      if (selectedCityData) {
+        queryParams.set("city", selectedCityData.codename);
       }
     }
 
-    // Add other parameters in order: city -> districts -> price -> area -> query -> propertyId
-
-    // City - Always send city information using codename
-    const selectedCityData = locationData.find((c) => c.code === selectedCity);
-    if (selectedCityData) {
-      // Sử dụng codename thay vì code
-      params.append("city", selectedCityData.codename);
-    }
-
-    // Districts - Sử dụng codename thay vì code
+    // Thêm quận/huyện (districts)
     if (selectedDistricts.length > 0) {
       selectedDistricts.forEach((district) => {
-        // Tìm district trong data để lấy codename
-        const districtData = selectedCityDistricts.find(
-          (d) => d.code === district.code
-        );
-        if (districtData && districtData.codename) {
-          params.append("districts", districtData.codename);
-        } else {
-          // Fallback to code nếu không có codename
-          params.append("districts", district.code.toString());
-        }
+        queryParams.append("districts", district.codename || district.code);
       });
     }
 
-    // Price - Send slug instead of value
+    // Thêm giá (price)
     if (selectedPrice) {
-      const priceRanges = getCurrentPriceRanges();
-      const selectedPriceRange = priceRanges.find(
-        (p) => p.value === selectedPrice
-      );
-
-      if (selectedPriceRange && selectedPriceRange.slug) {
-        params.append("price", selectedPriceRange.slug);
-      } else {
-        // Fallback to value if no slug
-        params.append("price", selectedPrice);
-      }
+      queryParams.set("price", selectedPrice);
     }
 
-    // Area - Send slug instead of value
+    // Thêm diện tích (area)
     if (selectedArea && searchType !== "project") {
-      const selectedAreaRange = areaRanges.find(
-        (a) => a.value === selectedArea
-      );
-
-      if (selectedAreaRange && selectedAreaRange.slug) {
-        params.append("area", selectedAreaRange.slug);
-      } else {
-        // Fallback to value if no slug
-        params.append("area", selectedArea);
-      }
+      queryParams.set("area", selectedArea);
     }
 
-    // Query for projects
-    if (locationSearch && searchType === "project") {
-      params.append("q", locationSearch);
-    }
+    // Tạo URL cuối cùng và chuyển hướng
+    const queryString = queryParams.toString();
+    const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
-    // Property IDs - Only when multiple property types selected or no primary type in URL
-    if (selectedPropertyTypes.length > 1) {
-      // Multiple property types - include all except the first one (already in URL path)
-      const additionalPropertyIds = selectedPropertyTypes
-        .slice(1) // Skip first property type (already in URL path)
-        .map((p) => p.value)
-        .filter((v) => v !== "");
-
-      additionalPropertyIds.forEach((id) => {
-        params.append("propertyId", id);
-      });
-    }
-
-    // Build final URL
-    const queryString = params.toString();
-    const finalUrl = queryString ? `${url}?${queryString}` : url;
-
-    console.log("Navigating to:", finalUrl); // Debug log
-    console.log(
-      "Selected city:",
-      selectedCity,
-      "City name:",
-      selectedCityData?.name,
-      "City codename:",
-      selectedCityData?.codename
-    ); // Debug city
-    console.log(
-      "Selected districts:",
-      selectedDistricts.map((d) => {
-        const districtData = selectedCityDistricts.find(
-          (district) => district.code === d.code
-        );
-        return {
-          name: d.name,
-          code: d.code,
-          codename: districtData?.codename || "not-found",
-        };
-      })
-    ); // Debug districts
+    console.log("Navigating to URL:", finalUrl);
     router.push(finalUrl);
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 max-w-6xl mx-auto">
+    <div className="bg-white rounded-lg shadow-lg p-4 max-w-6xl mx-auto">
       {/* Search Tabs */}
-      <div className="flex mb-4 sm:mb-6 border-b">
-        <button
-          onClick={() => {
-            setSearchType("buy");
-            setSelectedPropertyTypes([]);
+      <div className="flex mb-4 border-b">
+        <Tab.Group
+          selectedIndex={["buy", "rent", "project"].indexOf(searchType)}
+          onChange={(index) => {
+            setSearchType(["buy", "rent", "project"][index] as any);
+            setSelectedPropertyType("");
             setSelectedPrice("");
-            setSelectedDistricts([]);
-            setLocationSearch("");
           }}
-          className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-sm sm:text-base ${
-            searchType === "buy"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600"
-          }`}
         >
-          Mua
-        </button>
-        <button
-          onClick={() => {
-            setSearchType("cho-thue");
-            setSelectedPropertyTypes([]);
-            setSelectedPrice("");
-            setSelectedDistricts([]);
-            setLocationSearch("");
-          }}
-          className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-sm sm:text-base ${
-            searchType === "cho-thue"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600"
-          }`}
-        >
-          Thuê
-        </button>
-        <button
-          onClick={() => {
-            setSearchType("project");
-            setSelectedPropertyTypes([]);
-            setSelectedPrice("");
-            setSelectedDistricts([]);
-            setLocationSearch("");
-          }}
-          className={`px-4 sm:px-6 py-2 sm:py-3 font-medium text-sm sm:text-base ${
-            searchType === "project"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600"
-          }`}
-        >
-          Dự án
-        </button>
+          <Tab.List className="flex space-x-4">
+            <Tab
+              className={({ selected }) => `
+              ${
+                selected
+                  ? "text-blue-600 font-medium border-b-2 border-blue-600"
+                  : "text-gray-600"
+              }
+              px-4 py-2 focus:outline-none whitespace-nowrap
+            `}
+            >
+              Mua bán
+            </Tab>
+            <Tab
+              className={({ selected }) => `
+              ${
+                selected
+                  ? "text-blue-600 font-medium border-b-2 border-blue-600"
+                  : "text-gray-600"
+              }
+              px-4 py-2 focus:outline-none whitespace-nowrap
+            `}
+            >
+              Cho thuê
+            </Tab>
+            <Tab
+              className={({ selected }) => `
+              ${
+                selected
+                  ? "text-blue-600 font-medium border-b-2 border-blue-600"
+                  : "text-gray-600"
+              }
+              px-4 py-2 focus:outline-none whitespace-nowrap
+            `}
+            >
+              Dự án
+            </Tab>
+          </Tab.List>
+        </Tab.Group>
       </div>
 
       {/* Search Form */}
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex flex-col gap-4">
         {/* Location Section */}
         <div className="w-full relative">
           <div className="border border-gray-300 rounded-lg bg-white flex flex-col sm:flex-row sm:items-center">
-            {/* City Selector - Hiển thị cho tất cả tabs */}
+            {/* City Selector */}
             <div className="flex items-center p-3 border-b sm:border-b-0 sm:border-r border-gray-200">
               <div className="relative flex-shrink-0" ref={cityDropdownRef}>
                 <button
                   onClick={() => setShowCityDropdown(!showCityDropdown)}
-                  className="flex items-center gap-2 px-2 sm:px-3 py-1 border border-gray-200 rounded text-xs sm:text-sm hover:bg-gray-50"
+                  className="flex items-center gap-2 px-3 py-1 border border-gray-200 rounded text-sm hover:bg-gray-50"
                 >
                   <i className="fas fa-map-marker-alt text-blue-600 text-xs"></i>
-                  <span className="font-medium text-xs text-black sm:text-sm">
+                  <span className="font-medium text-sm">
                     {getSelectedCityLabel()}
                   </span>
                   <i
@@ -800,18 +468,18 @@ export function SearchSection() {
 
                 {/* City Dropdown */}
                 {showCityDropdown && (
-                  <div className="absolute top-full left-0 mt-1 w-72 sm:w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-20 max-h-80 sm:max-h-96 overflow-y-auto">
-                    {/* Popular Cities */}
-                    <div className="p-3 sm:p-4">
-                      <div className="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
-                        Top tỉnh thành nổi bật
+                  <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+                    {/* Top Cities */}
+                    <div className="p-4">
+                      <div className="text-sm font-medium text-gray-700 mb-3">
+                        Tỉnh thành nổi bật
                       </div>
-                      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
-                        {popularCities.map((city) => (
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        {locationData.slice(0, 6).map((city) => (
                           <button
                             key={city.code}
                             onClick={() => handleCitySelect(city.code)}
-                            className={`relative h-12 sm:h-16 rounded-lg overflow-hidden text-white text-xs sm:text-sm font-medium ${
+                            className={`relative h-16 rounded-lg overflow-hidden text-white text-sm font-medium ${
                               selectedCity === city.code
                                 ? "ring-2 ring-blue-500"
                                 : ""
@@ -829,15 +497,15 @@ export function SearchSection() {
 
                     {/* All Cities */}
                     <div className="border-t border-gray-200">
-                      <div className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700">
+                      <div className="px-4 py-2 text-sm font-medium text-gray-700">
                         Tất cả tỉnh thành
                       </div>
-                      <div className="max-h-32 sm:max-h-48 overflow-y-auto">
+                      <div className="max-h-48 overflow-y-auto">
                         {locationData.map((city) => (
                           <button
                             key={city.code}
                             onClick={() => handleCitySelect(city.code)}
-                            className={`w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm hover:bg-gray-50 ${
+                            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
                               selectedCity === city.code
                                 ? "bg-blue-50 text-blue-600"
                                 : ""
@@ -859,7 +527,7 @@ export function SearchSection() {
               ref={locationSuggestionsRef}
             >
               <div className="flex-1 flex flex-col p-3 gap-2">
-                {/* Selected Districts Badges - Only for buy/cho-thue */}
+                {/* Selected Districts Badges */}
                 {searchType !== "project" && selectedDistricts.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {selectedDistricts.map((district) => (
@@ -887,7 +555,7 @@ export function SearchSection() {
 
                 {/* Input */}
                 <div className="flex items-center">
-                  <i className="fas fa-search text-gray-400 mr-2 sm:mr-3 text-xs sm:text-sm"></i>
+                  <i className="fas fa-search text-gray-400 mr-3 text-sm"></i>
                   <input
                     type="text"
                     value={locationSearch}
@@ -903,7 +571,7 @@ export function SearchSection() {
                     disabled={
                       searchType !== "project" && selectedDistricts.length >= 3
                     }
-                    className="flex-1 text-xs text-black sm:text-sm border-none outline-none bg-transparent disabled:text-gray-400"
+                    className="flex-1 text-sm border-none outline-none bg-transparent disabled:text-gray-400"
                   />
                 </div>
               </div>
@@ -911,203 +579,66 @@ export function SearchSection() {
               {/* Location Suggestions Dropdown */}
               {showLocationSuggestions && (
                 <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-30 max-h-80 overflow-y-auto">
-                  {searchType === "project" ? (
-                    // Project tab - hiển thị cả projects và districts
+                  {filteredDistricts.length > 0 ? (
                     <>
-                      {/* Project suggestions */}
-                      {filteredProjects.length > 0 && (
-                        <>
-                          <div className="p-2 border-b border-gray-200">
-                            <div className="text-xs sm:text-sm font-medium text-gray-700">
-                              {locationSearch.trim()
-                                ? `Dự án tìm kiếm trong ${getSelectedCityLabel()} (${
-                                    filteredProjects.length
-                                  } kết quả)`
-                                : `Dự án nổi bật trong ${getSelectedCityLabel()}`}
-                            </div>
-                          </div>
-                          {filteredProjects.map((project) => (
-                            <button
-                              key={project.id}
-                              onClick={() => handleProjectSelect(project.name)}
-                              className="w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-gray-50 text-black border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="flex items-center gap-2">
-                                <i className="fas fa-building text-blue-500"></i>
-                                <div>
-                                  <div className="font-medium">
-                                    {project.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {project.developer} •{" "}
-                                    {getSelectedCityLabel()}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </>
-                      )}
-
-                      {/* District suggestions for projects - if no project matches or empty search */}
-                      {filteredDistricts.length > 0 && (
-                        <>
-                          {/* Separator nếu có projects ở trên */}
-                          {filteredProjects.length > 0 && (
-                            <div className="border-t border-gray-300 mt-1"></div>
-                          )}
-
-                          <div className="p-2 border-b border-gray-200">
-                            <div className="text-xs sm:text-sm font-medium text-gray-700">
-                              Khu vực trong {getSelectedCityLabel()}
-                              {locationSearch.trim() && (
-                                <span className="text-gray-500 ml-1">
-                                  (có thể chọn để lọc dự án theo khu vực)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {filteredDistricts.slice(0, 5).map((district) => (
-                            <button
-                              key={district.code}
-                              onClick={() => {
-                                // For projects, we can add district to search or filter
-                                setLocationSearch((prev) =>
-                                  prev.trim()
-                                    ? `${prev.trim()}, ${district.name}`
-                                    : district.name
-                                );
-                                setShowLocationSuggestions(false);
-                              }}
-                              className="w-full px-3 py-2 text-left text-xs sm:text-sm hover:bg-gray-50 text-black border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="flex items-center gap-2">
-                                <i className="fas fa-map-marker-alt text-gray-400"></i>
-                                <div>
-                                  <div className="font-medium">
-                                    {district.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    Khu vực • {getSelectedCityLabel()}
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                          {filteredDistricts.length > 5 && (
-                            <div className="p-2 text-center">
-                              <span className="text-xs text-gray-500">
-                                Và {filteredDistricts.length - 5} khu vực
-                                khác...
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      )}
-
-                      {/* Empty state */}
-                      {filteredProjects.length === 0 &&
-                        filteredDistricts.length === 0 &&
-                        locationSearch.trim() && (
-                          <div className="p-4 text-center">
-                            <div className="text-gray-500 text-sm">
-                              <i className="fas fa-search text-gray-400 mb-2 text-lg block"></i>
-                              Không tìm thấy dự án hoặc khu vực nào phù hợp
-                            </div>
-                            <button
-                              onClick={() => setLocationSearch("")}
-                              className="text-blue-600 hover:text-blue-800 text-xs mt-2"
-                            >
-                              Xóa bộ lọc tìm kiếm
-                            </button>
-                          </div>
-                        )}
-
-                      {/* Footer suggestion */}
-                      {(filteredProjects.length > 0 ||
-                        filteredDistricts.length > 0) && (
-                        <div className="p-3 border-t border-gray-200 text-center bg-gray-50">
-                          <div className="text-xs text-gray-500">
-                            Không tìm thấy dự án phù hợp?
-                            <button
-                              onClick={() => router.push("/du-an")}
-                              className="text-blue-600 hover:text-blue-800 ml-1"
-                            >
-                              Xem tất cả dự án
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    // District suggestions for buy/cho-thue tabs (existing logic)
-                    filteredDistricts.length > 0 && (
-                      <>
-                        <div className="p-2 border-b border-gray-200">
-                          <div className="text-xs sm:text-sm font-medium text-gray-700">
-                            Quận/Huyện trong {getSelectedCityLabel()}
-                            {selectedDistricts.length > 0 && (
-                              <span className="text-blue-600 ml-1">
-                                (Đã chọn: {selectedDistricts.length}/3)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {filteredDistricts.map((district) => {
-                          const isSelected = selectedDistricts.some(
-                            (d) => d.code === district.code
-                          );
-                          const canSelect =
-                            selectedDistricts.length < 3 && !isSelected;
-
-                          return (
-                            <button
-                              key={district.code}
-                              onClick={() =>
-                                canSelect && handleDistrictSelect(district)
-                              }
-                              disabled={!canSelect}
-                              className={`w-full px-3 py-2 text-left text-xs sm:text-sm border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
-                                isSelected
-                                  ? "bg-blue-50 text-blue-600 cursor-default"
-                                  : canSelect
-                                  ? "hover:bg-gray-50 text-black cursor-pointer"
-                                  : "text-gray-400 cursor-not-allowed"
-                              }`}
-                            >
-                              <span className="flex items-center">
-                                <i
-                                  className={`fas fa-map-marker-alt mr-2 ${
-                                    isSelected
-                                      ? "text-blue-600"
-                                      : "text-gray-400"
-                                  }`}
-                                ></i>
-                                {district.name}
-                              </span>
-                              {isSelected && (
-                                <i className="fas fa-check text-blue-600 text-xs"></i>
-                              )}
-                              {!canSelect && !isSelected && (
-                                <span className="text-xs text-gray-400">
-                                  (Tối đa 3)
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-
-                        {/* Thống kê */}
-                        <div className="px-3 py-2 text-xs text-gray-500 text-center border-t border-gray-200">
-                          Hiển thị {filteredDistricts.length} quận/huyện
+                      <div className="p-2 border-b border-gray-200">
+                        <div className="text-sm font-medium text-gray-700">
+                          Quận/Huyện trong {getSelectedCityLabel()}
                           {selectedDistricts.length > 0 && (
                             <span className="text-blue-600 ml-1">
-                              • Đã chọn: {selectedDistricts.length}/3
+                              (Đã chọn: {selectedDistricts.length}/3)
                             </span>
                           )}
                         </div>
-                      </>
-                    )
+                      </div>
+                      {filteredDistricts.map((district) => {
+                        const isSelected = selectedDistricts.some(
+                          (d) => d.code === district.code
+                        );
+                        const canSelect =
+                          selectedDistricts.length < 3 && !isSelected;
+
+                        return (
+                          <button
+                            key={district.code}
+                            onClick={() =>
+                              canSelect && handleDistrictSelect(district)
+                            }
+                            disabled={!canSelect}
+                            className={`w-full px-3 py-2 text-left text-sm border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
+                              isSelected
+                                ? "bg-blue-50 text-blue-600 cursor-default"
+                                : canSelect
+                                ? "hover:bg-gray-50 cursor-pointer"
+                                : "text-gray-400 cursor-not-allowed"
+                            }`}
+                          >
+                            <span className="flex items-center">
+                              <i
+                                className={`fas fa-map-marker-alt mr-2 ${
+                                  isSelected ? "text-blue-600" : "text-gray-400"
+                                }`}
+                              ></i>
+                              {district.name}
+                            </span>
+                            {isSelected && (
+                              <i className="fas fa-check text-blue-600 text-xs"></i>
+                            )}
+                            {!canSelect && !isSelected && (
+                              <span className="text-xs text-gray-400">
+                                (Tối đa 3)
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <div className="p-4 text-center">
+                      <div className="text-gray-500 text-sm">
+                        Không tìm thấy quận/huyện phù hợp
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
@@ -1115,10 +646,9 @@ export function SearchSection() {
               <div className="p-2">
                 <button
                   onClick={handleSearch}
-                  className="px-3 sm:px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 whitespace-nowrap text-xs sm:text-sm"
+                  className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  <span className="hidden sm:inline">Tìm kiếm</span>
-                  <i className="fas fa-search sm:hidden"></i>
+                  Tìm kiếm
                 </button>
               </div>
             </div>
@@ -1127,13 +657,13 @@ export function SearchSection() {
 
         {/* Filter Row */}
         <div className="flex flex-col sm:flex-row gap-2">
-          {/* Property Type - Updated for multi-select without badges */}
+          {/* Property Type */}
           <div className="w-full sm:w-1/3 relative" ref={propertyDropdownRef}>
             <button
               onClick={() => setShowPropertyDropdown(!showPropertyDropdown)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500"
             >
-              <span className="text-xs text-black sm:text-sm truncate">
+              <span className="text-sm truncate">
                 {getSelectedPropertyLabel()}
               </span>
               <i
@@ -1144,135 +674,57 @@ export function SearchSection() {
             </button>
 
             {showPropertyDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 sm:max-h-80 overflow-hidden flex flex-col">
-                {/* Header - Fixed */}
-                <div className="p-2 sm:p-3 border-b border-gray-200 flex-shrink-0">
-                  <div className="text-xs sm:text-sm font-medium text-gray-700">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="p-3 border-b border-gray-200 flex-shrink-0">
+                  <div className="text-sm font-medium text-gray-700">
                     {searchType === "project" ? "Loại dự án" : "Loại nhà đất"}
-                    {selectedPropertyTypes.length > 0 && (
-                      <span className="text-blue-600 ml-1">
-                        ({selectedPropertyTypes.length} đã chọn)
-                      </span>
-                    )}
                   </div>
                 </div>
 
                 {/* Scrollable Content */}
-                <div className="flex-1 overflow-y-auto">
-                  {getCurrentPropertyTypes().map((type) => {
-                    const isSelected = selectedPropertyTypes.some(
-                      (p) => p.value === type.value
-                    );
+                {loadingSearchOptions ? (
+                  <div className="p-4 text-center">
+                    <div className="animate-pulse text-gray-500">
+                      Đang tải...
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto">
+                    {categories.map((category) => {
+                      const isSelected = selectedPropertyType === category.slug;
 
-                    // Check if all children are selected (for parent types)
-                    const allChildrenSelected = type.children
-                      ? type.children.every((child) =>
-                          selectedPropertyTypes.some(
-                            (p) => p.value === child.value
-                          )
-                        )
-                      : false;
-
-                    // Special case for "Tất cả nhà đất" - show as selected if all other types are selected
-                    let shouldShowAsSelected =
-                      isSelected || allChildrenSelected;
-
-                    if (type.value === "") {
-                      // Check if all other property types are selected
-                      const allOtherTypes = getCurrentPropertyTypes().filter(
-                        (t) => t.value !== ""
-                      );
-                      const allOtherTypesSelected = allOtherTypes.every(
-                        (otherType) => {
-                          // Check if this type is selected
-                          const typeSelected = selectedPropertyTypes.some(
-                            (p) => p.value === otherType.value
-                          );
-
-                          // If it has children, check if all children are selected
-                          if (otherType.children) {
-                            const allChildrenSelected =
-                              otherType.children.every((child) =>
-                                selectedPropertyTypes.some(
-                                  (p) => p.value === child.value
-                                )
-                              );
-                            return typeSelected || allChildrenSelected;
-                          }
-
-                          return typeSelected;
-                        }
-                      );
-
-                      shouldShowAsSelected = allOtherTypesSelected;
-                    }
-
-                    return (
-                      <div key={type.value}>
+                      return (
                         <button
-                          onClick={() => handlePropertyTypeSelect(type)}
-                          className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-50 flex items-center gap-2 border-b border-gray-100 ${
-                            shouldShowAsSelected ? "bg-blue-50" : ""
+                          key={category._id}
+                          onClick={() =>
+                            handlePropertyTypeSelect(category.slug)
+                          }
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 ${
+                            isSelected ? "bg-blue-50" : ""
                           }`}
                         >
-                          <span className="text-sm sm:text-lg">
-                            {type.icon}
-                          </span>
                           <span
-                            className={`text-xs sm:text-sm flex-1 ${
-                              shouldShowAsSelected
-                                ? "text-blue-600 font-medium"
-                                : "text-black"
+                            className={`text-sm ${
+                              isSelected ? "text-blue-600 font-medium" : ""
                             }`}
                           >
-                            {type.label}
+                            {category.name}
                           </span>
-                          {shouldShowAsSelected && (
-                            <i className="fas fa-check text-red-500 text-xs"></i>
+                          {isSelected && (
+                            <i className="fas fa-check text-blue-600 text-xs"></i>
                           )}
                         </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-                        {type.children &&
-                          type.children.map((child) => {
-                            const isChildSelected = selectedPropertyTypes.some(
-                              (p) => p.value === child.value
-                            );
-
-                            return (
-                              <button
-                                key={child.value}
-                                onClick={() =>
-                                  handlePropertyTypeSelect(child, true)
-                                }
-                                className={`w-full px-8 sm:px-12 py-1 sm:py-2 text-left hover:bg-gray-50 text-xs sm:text-sm border-b border-gray-50 flex items-center justify-between ${
-                                  isChildSelected ? "bg-blue-50" : ""
-                                }`}
-                              >
-                                <span
-                                  className={`${
-                                    isChildSelected
-                                      ? "text-blue-600 font-medium"
-                                      : "text-gray-600"
-                                  }`}
-                                >
-                                  {child.label}
-                                </span>
-                                {isChildSelected && (
-                                  <i className="fas fa-check text-red-500 text-xs"></i>
-                                )}
-                              </button>
-                            );
-                          })}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Footer với nút Áp dụng - Fixed */}
+                {/* Footer */}
                 <div className="p-3 border-t border-gray-200 flex justify-between items-center flex-shrink-0 bg-white">
                   <button
                     onClick={() => {
-                      setSelectedPropertyTypes([]);
+                      setSelectedPropertyType("");
                     }}
                     className="text-xs text-gray-500 hover:text-gray-700"
                   >
@@ -1280,7 +732,7 @@ export function SearchSection() {
                   </button>
                   <button
                     onClick={() => setShowPropertyDropdown(false)}
-                    className="px-4 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors"
+                    className="px-4 py-2 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors"
                   >
                     Áp dụng
                   </button>
@@ -1293,9 +745,9 @@ export function SearchSection() {
           <div className="w-full sm:w-1/3 relative" ref={priceDropdownRef}>
             <button
               onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500"
             >
-              <span className="text-xs text-black sm:text-sm truncate">
+              <span className="text-sm truncate">
                 {getSelectedPriceLabel()}
               </span>
               <i
@@ -1306,24 +758,50 @@ export function SearchSection() {
             </button>
 
             {showPriceDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 sm:max-h-80 overflow-y-auto">
-                <div className="p-2 sm:p-3 border-b border-gray-200">
-                  <div className="text-xs sm:text-sm font-medium text-gray-700">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                <div className="p-3 border-b border-gray-200">
+                  <div className="text-sm font-medium text-gray-700">
                     Mức giá
                   </div>
                 </div>
-                {getCurrentPriceRanges().map((price) => (
-                  <button
-                    key={price.value}
-                    onClick={() => {
-                      setSelectedPrice(price.value);
-                      setShowPriceDropdown(false);
-                    }}
-                    className="w-full px-3 sm:px-4 py-2 text-left hover:bg-gray-50 text-xs sm:text-sm text-black border-b border-gray-50"
-                  >
-                    {price.label}
-                  </button>
-                ))}
+
+                {loadingSearchOptions ? (
+                  <div className="p-4 text-center">
+                    <div className="animate-pulse text-gray-500">
+                      Đang tải...
+                    </div>
+                  </div>
+                ) : (
+                  priceRanges.map((price) => {
+                    const isPriceSelected =
+                      price.slug === selectedPrice ||
+                      price.value === selectedPrice;
+
+                    return (
+                      <button
+                        key={price._id}
+                        onClick={() => {
+                          setSelectedPrice(price.slug || price.value || "");
+                          setShowPriceDropdown(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-50 text-sm border-b border-gray-50 flex items-center justify-between ${
+                          isPriceSelected ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <span
+                          className={
+                            isPriceSelected ? "text-blue-600 font-medium" : ""
+                          }
+                        >
+                          {price.name || price.label}
+                        </span>
+                        {isPriceSelected && (
+                          <i className="fas fa-check text-blue-600 text-xs"></i>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>
@@ -1333,9 +811,9 @@ export function SearchSection() {
             <div className="w-full sm:w-1/3 relative" ref={areaDropdownRef}>
               <button
                 onClick={() => setShowAreaDropdown(!showAreaDropdown)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left bg-white flex justify-between items-center hover:border-blue-500"
               >
-                <span className="text-xs text-black sm:text-sm truncate">
+                <span className="text-sm truncate">
                   {getSelectedAreaLabel()}
                 </span>
                 <i
@@ -1346,24 +824,50 @@ export function SearchSection() {
               </button>
 
               {showAreaDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 sm:max-h-80 overflow-y-auto">
-                  <div className="p-2 sm:p-3 border-b border-gray-200">
-                    <div className="text-xs sm:text-sm font-medium text-gray-700">
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                  <div className="p-3 border-b border-gray-200">
+                    <div className="text-sm font-medium text-gray-700">
                       Diện tích
                     </div>
                   </div>
-                  {areaRanges.map((area) => (
-                    <button
-                      key={area.value}
-                      onClick={() => {
-                        setSelectedArea(area.value);
-                        setShowAreaDropdown(false);
-                      }}
-                      className="w-full px-3 sm:px-4 py-2 text-left hover:bg-gray-50 text-xs text-black sm:text-sm border-b border-gray-50"
-                    >
-                      {area.label}
-                    </button>
-                  ))}
+
+                  {loadingSearchOptions ? (
+                    <div className="p-4 text-center">
+                      <div className="animate-pulse text-gray-500">
+                        Đang tải...
+                      </div>
+                    </div>
+                  ) : (
+                    areaRanges.map((area) => {
+                      const isAreaSelected =
+                        area.slug === selectedArea ||
+                        area.value === selectedArea;
+
+                      return (
+                        <button
+                          key={area._id}
+                          onClick={() => {
+                            setSelectedArea(area.slug || area.value || "");
+                            setShowAreaDropdown(false);
+                          }}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-50 text-sm border-b border-gray-50 flex items-center justify-between ${
+                            isAreaSelected ? "bg-blue-50" : ""
+                          }`}
+                        >
+                          <span
+                            className={
+                              isAreaSelected ? "text-blue-600 font-medium" : ""
+                            }
+                          >
+                            {area.name || area.label}
+                          </span>
+                          {isAreaSelected && (
+                            <i className="fas fa-check text-blue-600 text-xs"></i>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>

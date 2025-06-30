@@ -10,6 +10,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  phoneNumber?: number;
   avatar?: string;
   role?: string;
   createdAt: string;
@@ -119,7 +120,7 @@ export const getProfileAsync = createAsyncThunk(
 export const updateProfileAsync = createAsyncThunk(
   "auth/updateProfile",
   async (
-    profileData: { username?: string; email?: string },
+    profileData: { username?: string; email?: string; phoneNumber?: number },
     { rejectWithValue }
   ) => {
     try {

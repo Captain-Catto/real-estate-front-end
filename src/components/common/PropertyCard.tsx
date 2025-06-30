@@ -6,93 +6,171 @@ import { FavoriteButton } from "./FavoriteButton";
 
 interface PropertyCardProps {
   property: {
-    id: string;
+    id?: string;
+    _id?: string;
     title: string;
-    price: string;
-    location: string;
-    image: string;
-    slug: string;
-    area?: string;
+    price: string | number;
+    location:
+      | string
+      | {
+          province?: string;
+          district?: string;
+          ward?: string;
+          street?: string;
+        };
+    images: string[] | string;
+    slug?: string;
+    area?: string | number;
     bedrooms?: number;
     bathrooms?: number;
     propertyType?: string;
+    category?: string;
+    createdAt?: string;
+    status?: string;
   };
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  // Xử lý id
+  const id = property.id || property._id || "";
+
+  // Xử lý location
+  const locationText =
+    typeof property.location === "string"
+      ? property.location
+      : [property.location?.district, property.location?.province]
+          .filter(Boolean)
+          .join(", ");
+
+  // Xử lý images
+  const imageUrl = Array.isArray(property.images)
+    ? property.images.length > 0
+      ? property.images[0]
+      : "/placeholder.jpg"
+    : property.images || "/placeholder.jpg";
+
+  // Xử lý slug
+  const slug = property.slug || id;
+
+  // Xử lý price
+  const formattedPrice =
+    typeof property.price === "number"
+      ? new Intl.NumberFormat("vi-VN").format(property.price) + " tỷ"
+      : property.price;
+
+  // Xử lý area
+  const formattedArea = property.area
+    ? typeof property.area === "number"
+      ? `${property.area} m²`
+      : property.area
+    : undefined;
+
   const favoriteItem = {
-    id: property.id,
+    id,
     type: "property" as const,
     title: property.title,
-    price: property.price,
-    location: property.location,
-    image: property.image,
-    slug: property.slug,
-    area: property.area,
+    price: formattedPrice,
+    location: locationText,
+    images: imageUrl,
+    slug,
+    area: formattedArea,
     bedrooms: property.bedrooms,
     bathrooms: property.bathrooms,
-    propertyType: property.propertyType,
+    propertyType: property.propertyType || property.category,
   };
 
+  // Format ngày đăng
+  const formattedDate = property.createdAt
+    ? `Đăng ${new Date(property.createdAt).toLocaleDateString("vi-VN")}`
+    : "";
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-shadow">
-      <div className="relative">
-        <Link href={`/chi-tiet/${property.slug}`}>
-          <div className="relative h-48">
+    <div className="bg-white rounded-lg shadow overflow-hidden flex border border-gray-200 hover:shadow-md transition-shadow">
+      {/* Left side - Image */}
+      <div className="relative w-1/3 md:w-1/4">
+        <Link href={`/chi-tiet/${slug}`}>
+          <div className="relative h-full min-h-[140px]">
             <Image
-              src={property.image}
+              src={imageUrl}
               alt={property.title}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              sizes="(max-width: 768px) 33vw, 25vw"
+              className="object-cover"
             />
+            {/* Status overlay if needed */}
+            {property.status === "expired" && (
+              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div className="bg-black bg-opacity-70 text-white px-4 py-2 text-sm font-semibold rounded">
+                  Tin đã hết hạn
+                </div>
+              </div>
+            )}
           </div>
         </Link>
-
-        {/* Favorite Button */}
-        <div className="absolute top-3 right-3">
-          <FavoriteButton item={favoriteItem} />
-        </div>
       </div>
 
-      <div className="p-4">
-        <Link href={`/chi-tiet/${property.slug}`}>
-          <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+      {/* Right side - Information */}
+      <div className="flex-1 p-3 md:p-4">
+        <Link href={`/chi-tiet/${slug}`}>
+          <h3 className="font-medium text-gray-900 mb-2 line-clamp-2 text-base md:text-lg hover:text-blue-600">
             {property.title}
           </h3>
         </Link>
 
-        <div className="text-red-600 font-semibold mb-2 text-lg">
-          {property.price}
-        </div>
-
-        <div className="flex items-center text-gray-600 mb-3">
-          <i className="fas fa-map-marker-alt mr-1 text-xs"></i>
-          <span className="text-sm">{property.location}</span>
-        </div>
-
-        {(property.area || property.bedrooms || property.bathrooms) && (
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            {property.area && (
-              <span className="flex items-center">
-                <i className="fas fa-ruler-combined mr-1"></i>
-                {property.area}
-              </span>
-            )}
-            {property.bedrooms && (
-              <span className="flex items-center">
-                <i className="fas fa-bed mr-1"></i>
-                {property.bedrooms} PN
-              </span>
-            )}
-            {property.bathrooms && (
-              <span className="flex items-center">
-                <i className="fas fa-bath mr-1"></i>
-                {property.bathrooms} WC
-              </span>
-            )}
+        <div className="flex flex-wrap gap-x-4 gap-y-2 mb-2">
+          {/* Price */}
+          <div className="text-red-600 font-semibold text-base md:text-lg">
+            {formattedPrice}
           </div>
-        )}
+
+          {/* Area */}
+          {formattedArea && (
+            <div className="text-gray-700 text-base flex items-center">
+              <span>•</span>
+              <span className="ml-2">{formattedArea}</span>
+            </div>
+          )}
+
+          {/* Bedrooms */}
+          {property.bedrooms && (
+            <div className="text-gray-700 text-base flex items-center">
+              <span>•</span>
+              <span className="ml-2">{property.bedrooms} PN</span>
+            </div>
+          )}
+        </div>
+
+        {/* Location */}
+        <div className="flex items-start text-gray-600 mb-3">
+          <svg
+            className="h-5 w-5 text-gray-500 mr-1 mt-0.5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+          <span className="text-sm line-clamp-1">{locationText}</span>
+        </div>
+
+        {/* Date */}
+        <div className="text-xs text-gray-500">{formattedDate}</div>
+      </div>
+
+      {/* Favorite Button */}
+      <div className="self-start p-2">
+        <FavoriteButton item={favoriteItem} />
       </div>
     </div>
   );
