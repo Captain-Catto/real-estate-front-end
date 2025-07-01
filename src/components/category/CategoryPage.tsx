@@ -4,27 +4,19 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { PropertyCard } from "@/components/common/PropertyCard";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import SearchSection from "@/components/home/SearchSection";
 import { locationService } from "@/services/locationService";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
-import Header from "@/components/header/Header";
-import Footer from "@/components/footer/Footer";
-import { setLoading } from "@/store/slices/favoritesSlices";
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
 
 interface CategoryPageProps {
   title: string;
   totalCount: number;
-  categoryType: "ban" | "cho-thue";
+  categoryType: "ban" | "thue";
   location?: string;
   activeFilters?: {
     propertyType?: string;
     city?: string;
-    districts?: string[];
+    districts?: string[] | any[];
     price?: string;
     area?: string;
   };
@@ -34,6 +26,7 @@ interface CategoryPageProps {
   slug?: string;
   searchResults?: any[];
   loading?: boolean;
+  onFilterRemove?: (filterType: string, value?: string) => void;
 }
 
 export function CategoryPage({
@@ -46,6 +39,7 @@ export function CategoryPage({
   slug = "",
   searchResults = [],
   loading = false,
+  onFilterRemove,
 }: CategoryPageProps) {
   const router = useRouter();
   const [sortBy, setSortBy] = useState("0");
@@ -55,30 +49,192 @@ export function CategoryPage({
   const [provinces, setProvinces] = useState<any[]>([]);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<any[]>([]);
-  const [cityDistricts, setCityDistricts] = useState<any[]>([]);
-  const [isComponentLoaded, setIsComponentLoaded] = useState(false);
+  const [districts, setDistricts] = useState<any[]>([]);
 
   const itemsPerPage = 20;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
-  // Đánh dấu component đã load xong sau khi fetch xong provinces và districts
-  useEffect(() => {
-    console.log("Checking if component should be loaded");
-    console.log("provinces.length:", provinces.length);
-    console.log("searchParams.city:", searchParams.city);
-    console.log("cityDistricts:", cityDistricts);
-    console.log("selectedDistricts:", selectedDistricts);
+ // Format price for display
+const formatPriceDisplay = (priceSlug: string): string => {
+  console.log("Formatting price slug:", priceSlug);
 
-    if (
-      provinces.length > 0 &&
-      (!searchParams.city || cityDistricts.length > 0)
-    ) {
-      console.log("Setting isComponentLoaded to true");
+  // Map price slugs to readable text
+  const priceDisplayMap: Record<string, string> = {
+    // Mức giá bán
+    "thoa-thuan-ban": "Thỏa thuận",
+    "duoi-500-trieu": "Dưới 500 triệu",
+    "500-800-trieu": "500 - 800 triệu",
+    "800-trieu-1-ty": "800 triệu - 1 tỷ",
+    "1-2-ty": "1 - 2 tỷ",
+    "2-3-ty": "2 - 3 tỷ",
+    "3-5-ty": "3 - 5 tỷ",
+    "5-7-ty": "5 - 7 tỷ",
+    "7-10-ty": "7 - 10 tỷ",
+    "10-20-ty": "10 - 20 tỷ",
+    "20-30-ty": "20 - 30 tỷ",
+    "30-40-ty": "30 - 40 tỷ",
+    "40-60-ty": "40 - 60 tỷ",
+    "tren-60-ty": "Trên 60 tỷ",
 
-      setIsComponentLoaded(true);
+    // Mức giá thuê - Slug
+    "thoa-thuan": "Thỏa thuận",
+    "thoa-thuan-thue": "Thỏa thuận",
+    "duoi-1-trieu": "Dưới 1 triệu",
+    "1-3-trieu": "1 - 3 triệu",
+    "3-5-trieu": "3 - 5 triệu",
+    "5-10-trieu": "5 - 10 triệu",
+    "10-15-trieu": "10 - 15 triệu",
+    "15-20-trieu": "15 - 20 triệu",
+    "20-30-trieu": "20 - 30 triệu",
+    "30-40-trieu": "30 - 40 triệu",
+    "40-50-trieu": "40 - 50 triệu",
+    "50-60-trieu": "50 - 60 triệu",
+    "60-80-trieu": "60 - 80 triệu",
+    "80-100-trieu": "80 - 100 triệu",
+    "tren-100-trieu": "Trên 100 triệu",
+    "tat-ca-thue": "Tất cả mức giá",
+
+    // Mức giá thuê - ID
+    "r0": "Thỏa thuận",
+    "r1": "Dưới 1 triệu",
+    "r2": "1 - 3 triệu",
+    "r3": "3 - 5 triệu",
+    "r4": "5 - 10 triệu",
+    "r5": "10 - 15 triệu",
+    "r6": "15 - 20 triệu",
+    "r7": "20 - 30 triệu",
+    "r8": "30 - 40 triệu",
+    "r9": "40 - 50 triệu",
+    "r10": "60 - 80 triệu",
+    "r11": "80 - 100 triệu",
+    "r12": "Trên 100 triệu",
+    "all_rent": "Tất cả mức giá"
+  };
+
+  // Check if it's in the map first
+  if (priceDisplayMap[priceSlug]) {
+    return priceDisplayMap[priceSlug];
+  }
+
+  // If not in the map, try to parse patterns
+  const patterns = {
+    duoi: /^duoi-(\d+)-trieu$/,
+    tu: /^tu-(\d+)-trieu$/,
+    tren: /^tren-(\d+)-trieu$/,
+    range: /^(\d+)-(\d+)-trieu$/,
+    ty_duoi: /^duoi-(\d+)-ty$/,
+    ty_tu: /^tu-(\d+)-ty$/,
+    ty_tren: /^tren-(\d+)-ty$/,
+    ty_range: /^(\d+)-(\d+)-ty$/,
+    r_id: /^r(\d+)$/ // Special pattern for r0, r1, r2...
+  };
+
+  // Check each pattern
+  for (const [type, pattern] of Object.entries(patterns)) {
+    const match = priceSlug.match(pattern);
+    if (match) {
+      // Handle specific patterns
+      if (type === "duoi") return `Dưới ${match[1]} triệu`;
+      if (type === "tu") return `Từ ${match[1]} triệu`;
+      if (type === "tren") return `Trên ${match[1]} triệu`;
+      if (type === "range") return `${match[1]} - ${match[2]} triệu`;
+      if (type === "ty_duoi") return `Dưới ${match[1]} tỷ`;
+      if (type === "ty_tu") return `Từ ${match[1]} tỷ`;
+      if (type === "ty_tren") return `Trên ${match[1]} tỷ`;
+      if (type === "ty_range") return `${match[1]} - ${match[2]} tỷ`;
+      
+      // Special handling for r-IDs based on your API data
+      if (type === "r_id") {
+        const rId = parseInt(match[1], 10);
+        switch (rId) {
+          case 0: return "Thỏa thuận";
+          case 1: return "Dưới 1 triệu";
+          case 2: return "1 - 3 triệu";
+          case 3: return "3 - 5 triệu";
+          case 4: return "5 - 10 triệu";
+          case 5: return "10 - 15 triệu";
+          case 6: return "15 - 20 triệu";
+          case 7: return "20 - 30 triệu";
+          case 8: return "30 - 40 triệu";
+          case 9: return "40 - 50 triệu";
+          case 10: return "60 - 80 triệu";
+          case 11: return "80 - 100 triệu";
+          case 12: return "Trên 100 triệu";
+          default: return `Giá mức ${rId}`;
+        }
+      }
     }
-  }, [provinces, cityDistricts, searchParams.city, selectedDistricts]);
+  }
 
+  // Fallback to basic formatting if no patterns match
+  return priceSlug
+    .replace(/-/g, " ")
+    .replace("trieu", "triệu")
+    .replace("ty", "tỷ")
+    .replace("thoa thuan", "Thỏa thuận");
+};
+
+  // Format area for display
+  const formatAreaDisplay = (areaSlug: string): string => {
+    const areaDisplayMap: Record<string, string> = {
+      "duoi-30-m2": "Dưới 30 m²",
+      "30-50-m2": "30 - 50 m²",
+      "50-80-m2": "50 - 80 m²",
+      "80-100-m2": "80 - 100 m²",
+      "100-150-m2": "100 - 150 m²",
+      "150-200-m2": "150 - 200 m²",
+      "200-250-m2": "200 - 250 m²",
+      "250-300-m2": "250 - 300 m²",
+      "300-500-m2": "300 - 500 m²",
+      "tren-500-m2": "Trên 500 m²",
+      "duoi-20-m2": "Dưới 20 m²",
+      "20-30-m2": "20 - 30 m²",
+      "70-90-m2": "70 - 90 m²",
+      "90-120-m2": "90 - 120 m²",
+      "120-150-m2": "120 - 150 m²",
+    };
+
+    if (!areaDisplayMap[areaSlug]) {
+      const pattern = /^([a-z]+)-([0-9]+)-([a-z0-9]+)(-m2)?$/;
+      if (pattern.test(areaSlug)) {
+        return areaSlug
+          .replace(/-m2$/, " m²")
+          .replace(/-/g, " ")
+          .replace(/m2$/, "m²");
+      }
+      return areaSlug.replace(/-/g, " ").replace(/m2$/, "m²");
+    }
+
+    return areaDisplayMap[areaSlug];
+  };
+
+  // Get city name from codename
+  const getCityNameFromCodename = (cityCodename: string): string => {
+    if (!provinces || provinces.length === 0) return cityCodename;
+    const province = provinces.find((p) => p.codename === cityCodename);
+    return province ? province.name : cityCodename;
+  };
+
+  // Get property type name from slug
+  const getPropertyTypeName = (slug: string): string => {
+    const propertyTypeMap: Record<string, string> = {
+      "nha-tro": "Nhà trọ, phòng trọ",
+      "can-ho-chung-cu": "Căn hộ chung cư",
+      "nha-rieng": "Nhà riêng",
+      "biet-thu-lien-ke": "Nhà biệt thự, liền kề",
+      "nha-mat-pho": "Nhà mặt phố",
+      shophouse: "Shophouse, nhà phố thương mại",
+      "dat-nen": "Đất nền",
+      "chung-cu-mini": "Chung cư mini, căn hộ dịch vụ",
+      "cua-hang": "Cửa hàng, ki ốt",
+      "kho-nha-xuong": "Kho, nhà xưởng, đất",
+      "bat-dong-san-khac": "Bất động sản khác",
+    };
+
+    return propertyTypeMap[slug] || "Bất động sản";
+  };
+
+  // Fetch provinces once on mount
   useEffect(() => {
     const fetchProvinces = async () => {
       try {
@@ -92,39 +248,37 @@ export function CategoryPage({
     fetchProvinces();
   }, []);
 
-  // Tải dữ liệu quận/huyện khi có city trong URL
+  // Fetch districts when there's city in URL
   useEffect(() => {
     const fetchDistricts = async () => {
       if (searchParams.city && provinces.length > 0) {
         try {
           const cityCode =
             typeof searchParams.city === "string" ? searchParams.city : "";
-
-          // Find city in provinces
           const cityData = provinces.find((p) => p.codename === cityCode);
+
           if (cityData) {
             setSelectedCity(cityData.code);
-
-            // Fetch districts for selected city
             const districtsData = await locationService.getDistricts(cityCode);
-            setCityDistricts(districtsData);
+            setDistricts(districtsData);
 
-            // Handle district selection
-            if (searchParams.districts) {
-              const selectedDistrictCodes = Array.isArray(
-                searchParams.districts
-              )
-                ? searchParams.districts
-                : searchParams.districts.split(",");
+            // Get selected districts from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectedDistrictCodes = Array.from(urlParams.entries())
+              .filter(([key]) => key === "districts")
+              .map(([_, value]) => value);
 
-              // Map district codes to objects
-              if (districtsData?.length > 0) {
-                const selectedDistObjs = districtsData.filter((d) =>
-                  selectedDistrictCodes.includes(d.codename)
-                );
+            if (districtsData?.length > 0 && selectedDistrictCodes.length > 0) {
+              const selectedDistObjs = selectedDistrictCodes
+                .map((code) => {
+                  const district = districtsData.find(
+                    (d) => d.codename === code
+                  );
+                  return district || null;
+                })
+                .filter(Boolean);
 
-                setSelectedDistricts(selectedDistObjs);
-              }
+              setSelectedDistricts(selectedDistObjs);
             }
           }
         } catch (error) {
@@ -134,17 +288,29 @@ export function CategoryPage({
     };
 
     fetchDistricts();
-  }, [searchParams.city, searchParams.districts, provinces]);
+  }, [searchParams.city, provinces]);
 
-  // Format numbers consistently on client side to avoid hydration mismatch
+  // Format numbers for display
   useEffect(() => {
     setFormattedCount(new Intl.NumberFormat("vi-VN").format(totalCount));
-    // Mock weekly views calculation
     const weeklyViewCount = Math.floor(totalCount * 0.15);
     setWeeklyViews(new Intl.NumberFormat("vi-VN").format(weeklyViewCount));
   }, [totalCount]);
 
-  // Breadcrumb items
+  // Handle sort and page changes
+  useEffect(() => {
+    if (searchParams.sort) {
+      setSortBy(searchParams.sort as string);
+    }
+    if (searchParams.page) {
+      const pageNum = parseInt(searchParams.page as string, 10);
+      if (!isNaN(pageNum) && pageNum > 0) {
+        setCurrentPage(pageNum);
+      }
+    }
+  }, [searchParams]);
+
+  // Create breadcrumb items
   const breadcrumbItems = [
     { label: "Trang chủ", href: "/" },
     {
@@ -153,7 +319,6 @@ export function CategoryPage({
     },
   ];
 
-  // Add city to breadcrumb if available
   if (activeFilters.city) {
     breadcrumbItems.push({
       label: activeFilters.city,
@@ -163,7 +328,6 @@ export function CategoryPage({
     });
   }
 
-  // Add property type to breadcrumb
   if (activeFilters.propertyType) {
     breadcrumbItems.push({
       label: activeFilters.propertyType,
@@ -188,98 +352,116 @@ export function CategoryPage({
     { value: "5", label: "Diện tích lớn đến bé" },
   ];
 
-  // Handle removing a filter
-  const handleRemoveFilter = (filterType: string, value?: string) => {
-    const newSearchParams = { ...searchParams };
+  // Handle sort change
+  const handleSortChange = (newSortValue: string) => {
+    setSortBy(newSortValue);
+    const newSearchParams = { ...searchParams, sort: newSortValue };
 
-    switch (filterType) {
-      case "city":
-        delete newSearchParams.city;
-        delete newSearchParams.districts;
-        break;
-
-      case "district":
-        if (value && newSearchParams.districts) {
-          if (typeof newSearchParams.districts === "string") {
-            // Nếu chỉ có 1 quận được chọn
-            if (newSearchParams.districts === value) {
-              delete newSearchParams.districts;
-            }
-          } else {
-            // Nếu có nhiều quận được chọn (mảng)
-            const updatedDistricts = (
-              newSearchParams.districts as string[]
-            ).filter((d) => d !== value);
-
-            if (updatedDistricts.length === 0) {
-              delete newSearchParams.districts;
-            } else if (updatedDistricts.length === 1) {
-              // Nếu chỉ còn lại 1 quận
-              newSearchParams.districts = updatedDistricts[0];
-            } else {
-              newSearchParams.districts = updatedDistricts;
-            }
-          }
-        }
-        break;
-
-      case "category":
-        delete newSearchParams.category;
-        break;
-
-      case "price":
-        delete newSearchParams.price;
-        break;
-
-      case "area":
-        delete newSearchParams.area;
-        break;
+    if (currentPage !== 1) {
+      newSearchParams.page = "1";
+      setCurrentPage(1);
     }
 
-    // Convert to query string and navigate
     const queryString = new URLSearchParams(
       newSearchParams as Record<string, string>
     ).toString();
 
-    // Luôn chuyển đến URL gốc với query params
     const path = `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`;
     router.push(queryString ? `${path}?${queryString}` : path);
   };
 
+  // Handle removing filters
+  const handleRemoveFilter = (filterType: string, value?: string) => {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    switch (filterType) {
+      case "city":
+        urlParams.delete("city");
+        urlParams.delete("districts");
+        setSelectedCity(null);
+        setSelectedDistricts([]);
+        break;
+
+      case "district":
+        if (value) {
+          const districtEntries = Array.from(urlParams.entries())
+            .filter(([key]) => key === "districts")
+            .map(([_, val]) => val);
+
+          const remainingDistricts = districtEntries.filter(
+            (code) => code !== value
+          );
+
+          if (districts && districts.length > 0) {
+            const updatedSelectedDistricts = selectedDistricts.filter(
+              (district) => district.codename !== value
+            );
+            setSelectedDistricts(updatedSelectedDistricts);
+          }
+
+          urlParams.delete("districts");
+          remainingDistricts.forEach((district) => {
+            urlParams.append("districts", district);
+          });
+        }
+        break;
+
+      case "category":
+      case "price":
+      case "area":
+        urlParams.delete(filterType);
+        break;
+
+      default:
+        if (filterType && typeof urlParams.get(filterType) !== "undefined") {
+          urlParams.delete(filterType);
+        }
+        break;
+    }
+
+    if (onFilterRemove) {
+      onFilterRemove(filterType, value);
+    }
+
+    if (currentPage !== 1) {
+      urlParams.set("page", "1");
+    }
+
+    const path = `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`;
+    router.push(
+      urlParams.toString() ? `${path}?${urlParams.toString()}` : path
+    );
+  };
+
   // Handle pagination
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    if (page === currentPage) return;
 
-    // Update URL with page parameter
-    const newSearchParams = { ...searchParams, page: page.toString() };
-    const queryString = new URLSearchParams(
-      newSearchParams as Record<string, string>
-    ).toString();
+    setCurrentPage(page);
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("page", page.toString());
+
     const path = `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`;
-    router.push(`${path}?${queryString}`);
+    router.push(`${path}?${urlParams.toString()}`);
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Generate pagination array
+  // Generate pagination items
   const getPaginationItems = () => {
     const pages = [];
     const maxPagesToShow = 5;
 
     if (totalPages <= maxPagesToShow) {
-      // Show all pages if we have 5 or fewer
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always include the first page
       pages.push(1);
 
-      // Calculate start and end based on current page
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(currentPage + 1, totalPages - 1);
 
-      // Adjust to show 3 pages in the middle
       const pagesToShow = 3;
       if (end - start + 1 < pagesToShow) {
         if (start === 2) {
@@ -289,70 +471,53 @@ export function CategoryPage({
         }
       }
 
-      // Add ellipsis if needed before middle pages
       if (start > 2) {
         pages.push("...");
       }
 
-      // Add middle pages
       for (let i = start; i <= end; i++) {
         pages.push(i);
       }
 
-      // Add ellipsis if needed after middle pages
       if (end < totalPages - 1) {
         pages.push("...");
       }
 
-      // Always include the last page
       pages.push(totalPages);
     }
 
     return pages;
   };
 
-  const formatPriceDisplay = (priceSlug: string): string => {
-    // Map price slugs to readable text
-    const priceDisplayMap: Record<string, string> = {
-      "duoi-500-trieu": "Dưới 500 triệu",
-      "500-800-trieu": "500 - 800 triệu",
-      "800-trieu-1-ty": "800 triệu - 1 tỷ",
-      "1-2-ty": "1 - 2 tỷ",
-      "2-3-ty": "2 - 3 tỷ",
-      "3-5-ty": "3 - 5 tỷ",
-      "5-7-ty": "5 - 7 tỷ",
-      "7-10-ty": "7 - 10 tỷ",
-      "10-20-ty": "10 - 20 tỷ",
-      "20-30-ty": "20 - 30 tỷ",
-      "30-40-ty": "30 - 40 tỷ",
-      "40-60-ty": "40 - 60 tỷ",
-      "tren-60-ty": "Trên 60 tỷ",
-    };
-    return priceDisplayMap[priceSlug] || priceSlug;
-  };
+  // Render district filters
+  const renderDistrictFilters = () => {
+    if (selectedDistricts && selectedDistricts.length > 0) {
+      return selectedDistricts.map((district, idx) => (
+        <span
+          key={`selected-${district.codename || idx}`}
+          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+        >
+          <i className="fas fa-map-marker-alt text-xs mr-1"></i>
+          {district.name}
+          <button
+            onClick={() => {
+              handleRemoveFilter("district", district.codename);
+            }}
+            className="ml-1 text-blue-600 hover:text-blue-800"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </span>
+      ));
+    }
 
-  const formatAreaDisplay = (areaSlug: string): string => {
-    // Map area slugs to readable text
-    const areaDisplayMap: Record<string, string> = {
-      "duoi-30-m2": "Dưới 30 m²",
-      "30-50-m2": "30 - 50 m²",
-      "50-80-m2": "50 - 80 m²",
-      "80-100-m2": "80 - 100 m²",
-      "100-150-m2": "100 - 150 m²",
-      "150-200-m2": "150 - 200 m²",
-      "200-250-m2": "200 - 250 m²",
-      "250-300-m2": "250 - 300 m²",
-      "300-500-m2": "300 - 500 m²",
-      "tren-500-m2": "Trên 500 m²",
-    };
-    return areaDisplayMap[areaSlug] || areaSlug;
+    return null;
   };
 
   return (
     <>
-      <Header />
       <main className="bg-gray-100 min-h-screen pb-8">
-        {/* Breadcrumb - Giữ nguyên chiều rộng container */}
+        {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-3">
           <nav className="flex text-xs text-gray-600 max-w-6xl mx-auto">
             {breadcrumbItems.map((item, index) => (
@@ -374,8 +539,8 @@ export function CategoryPage({
           </nav>
         </div>
 
-        {/* Title Section - Đồng bộ chiều rộng với max-w-6xl */}
-        <div className=" py-4 mb-4 ">
+        {/* Title Section */}
+        <div className="py-4 mb-4">
           <div className="container mx-auto px-4">
             <div className="max-w-6xl mx-auto">
               <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
@@ -388,24 +553,12 @@ export function CategoryPage({
           </div>
         </div>
 
-        {/* Search Section - Đã có max-w-6xl */}
-        <div className="container mx-auto px-4 mb-5">
-          <SearchSection
-            initialSearchType={categoryType === "ban" ? "buy" : "rent"}
-            initialCity={selectedCity}
-            initialDistricts={selectedDistricts}
-            initialCategory={slug || ""}
-            initialPrice={(searchParams.price as string) || ""}
-            initialArea={(searchParams.area as string) || ""}
-            provinces={provinces}
-            cityDistricts={cityDistricts}
-          />
-        </div>
-
-        {/* Active Filters - Thêm max-w-6xl */}
+        {/* Active Filters */}
         {(activeFilters.city ||
+          (Array.isArray(activeFilters.districts) &&
+            activeFilters.districts.length > 0) ||
           selectedDistricts.length > 0 ||
-          activeFilters.propertyType ||
+          searchParams.category ||
           searchParams.price ||
           searchParams.area) && (
           <div className="container mx-auto px-4 mb-4">
@@ -414,10 +567,10 @@ export function CategoryPage({
                 <span className="text-sm text-gray-700">Đang lọc theo:</span>
 
                 {/* City Filter */}
-                {activeFilters.city && (
+                {searchParams.city && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                     <i className="fas fa-map-marker-alt text-xs mr-1"></i>
-                    {activeFilters.city}
+                    {getCityNameFromCodename(searchParams.city as string)}
                     <button
                       onClick={() => handleRemoveFilter("city")}
                       className="ml-1 text-blue-600 hover:text-blue-800"
@@ -427,60 +580,14 @@ export function CategoryPage({
                   </span>
                 )}
 
-                {/* District Filters - Sử dụng cả activeFilters.districts và selectedDistricts */}
-                {/* Hiển thị từ selectedDistricts (state) */}
-                {selectedDistricts.map((district, idx) => (
-                  <span
-                    key={`selected-${district.code || idx}`}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                  >
-                    <i className="fas fa-map-marker-alt text-xs mr-1"></i>
-                    {district.name}
-                    <button
-                      onClick={() => {
-                        handleRemoveFilter("district", district.codename);
-                      }}
-                      className="ml-1 text-blue-600 hover:text-blue-800"
-                    >
-                      <XMarkIcon className="h-4 w-4" />
-                    </button>
-                  </span>
-                ))}
-
-                {/* Hiển thị từ activeFilters.districts (props) khi chưa có selectedDistricts */}
-                {selectedDistricts.length === 0 &&
-                  activeFilters.districts &&
-                  activeFilters.districts.map(
-                    (districtName: string, idx: number) => (
-                      <span
-                        key={`active-${idx}`}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                      >
-                        <i className="fas fa-map-marker-alt text-xs mr-1"></i>
-                        {districtName}
-                        <button
-                          onClick={() => {
-                            // Tìm district code từ tên district
-                            const district = districts.find(
-                              (d) => d.name === districtName
-                            );
-                            if (district) {
-                              handleRemoveFilter("district", district.codename);
-                            }
-                          }}
-                          className="ml-1 text-blue-600 hover:text-blue-800"
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
-                      </span>
-                    )
-                  )}
+                {/* District Filters */}
+                {renderDistrictFilters()}
 
                 {/* Property Type Filter */}
-                {activeFilters.propertyType && (
+                {searchParams.category && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
                     <i className="fas fa-home text-xs mr-1"></i>
-                    {activeFilters.propertyType}
+                    {getPropertyTypeName(searchParams.category as string)}
                     <button
                       onClick={() => handleRemoveFilter("category")}
                       className="ml-1 text-orange-600 hover:text-orange-800"
@@ -494,8 +601,7 @@ export function CategoryPage({
                 {searchParams.price && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                     <i className="fas fa-tag text-xs mr-1"></i>
-                    {activeFilters.price ||
-                      formatPriceDisplay(searchParams.price as string)}
+                    {formatPriceDisplay(searchParams.price as string)}
                     <button
                       onClick={() => handleRemoveFilter("price")}
                       className="ml-1 text-green-600 hover:text-green-800"
@@ -509,8 +615,7 @@ export function CategoryPage({
                 {searchParams.area && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
                     <i className="fas fa-ruler-combined text-xs mr-1"></i>
-                    {activeFilters.area ||
-                      formatAreaDisplay(searchParams.area as string)}
+                    {formatAreaDisplay(searchParams.area as string)}
                     <button
                       onClick={() => handleRemoveFilter("area")}
                       className="ml-1 text-purple-600 hover:text-purple-800"
@@ -522,11 +627,14 @@ export function CategoryPage({
 
                 {/* Clear All Button */}
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     router.push(
                       `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`
-                    )
-                  }
+                    );
+                    if (onFilterRemove) {
+                      onFilterRemove("all", undefined);
+                    }
+                  }}
                   className="text-sm text-red-600 hover:text-red-800 font-medium ml-auto"
                 >
                   Xóa tất cả
@@ -536,9 +644,8 @@ export function CategoryPage({
           </div>
         )}
 
-        {/* Content Area - Thêm max-w-6xl */}
+        {/* Content Area */}
         <div className="container mx-auto px-4">
-          {/* Main Content */}
           <div className="max-w-6xl mx-auto">
             {/* Filter and Sort Bar */}
             <div className="bg-white rounded-lg shadow-sm p-3 mb-4 flex flex-wrap items-center justify-end">
@@ -546,7 +653,7 @@ export function CategoryPage({
                 <span className="text-sm text-gray-600">Sắp xếp:</span>
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => handleSortChange(e.target.value)}
                   className="text-sm border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
                 >
                   {sortOptions.map((option) => (
@@ -591,7 +698,7 @@ export function CategoryPage({
             ) : (
               <>
                 {/* Property Listings */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-8">
                   {searchResults.map((property) => (
                     <PropertyCard key={property._id} property={property} />
                   ))}
@@ -661,7 +768,6 @@ export function CategoryPage({
           </div>
         </div>
       </main>
-      <Footer />
     </>
   );
 }

@@ -22,16 +22,23 @@ const API_BASE_URL =
 export const locationService = {
   getProvinces: async (retryCount = 3): Promise<LocationData> => {
     try {
+      // Thêm log để kiểm tra số lần thử lại
+      console.log(
+        `Attempting to fetch provinces (attempts left: ${retryCount})`
+      );
+
       const res = await fetch(`${API_BASE_URL}/locations/provinces`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
+        // Thêm timeout để tránh chờ quá lâu
+        signal: AbortSignal.timeout(5000), // 5 giây timeout
       });
+
       const result = await res.json();
 
       if (res.status === 401) {
-        // Token hết hạn hoặc không hợp lệ
         localStorage.removeItem("accessToken");
         window.location.href = "/login";
         throw new Error("Session expired. Please login again.");
@@ -45,17 +52,61 @@ export const locationService = {
         console.error("Unexpected API response format:", result);
         return [];
       }
+
+      // Thành công, trả về data
+      console.log("Successfully fetched provinces");
       return result.data;
     } catch (error) {
       console.error("Error fetching provinces:", error);
-      if (retryCount > 0) {
+
+      // Chỉ retry trong trường hợp có lỗi mạng thực sự
+      if (
+        retryCount > 0 &&
+        error instanceof TypeError &&
+        error.message === "Failed to fetch"
+      ) {
         console.log(`Retrying getProvinces... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
         return locationService.getProvinces(retryCount - 1);
       }
-      throw error;
+
+      // Nếu đã hết số lần thử hoặc không phải lỗi mạng, trả về mảng rỗng thay vì throw error
+      console.error(
+        "Max retries reached or non-network error. Returning empty array."
+      );
+      return [];
     }
   },
+
+  getProvinceWithSlug: async (
+    provinceSlug: string
+  ): Promise<Location | null> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/locations/provinces/${provinceSlug}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        console.error(`Failed to fetch province: ${response.status}`);
+        return null;
+      }
+      const result: ApiResponse<Location> = await response.json();
+      if (!result.success || !result.data) {
+        console.error("Unexpected API response format:", result);
+        return null;
+      }
+      return result.data;
+    } catch (error) {
+      console.error("Error fetching province with slug:", error);
+      return null;
+    }
+  },
+
   getDistricts: async (
     provinceCode: string,
     retryCount = 3

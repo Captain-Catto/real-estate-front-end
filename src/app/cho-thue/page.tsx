@@ -11,9 +11,10 @@ import SearchSection from "@/components/home/SearchSection";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
 
-export default function MuaBanPage() {
+export default function ChoThuePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  console.log("searchParams", searchParams);
 
   const [loading, setLoading] = useState(true);
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -25,32 +26,34 @@ export default function MuaBanPage() {
   const [initialProvinceObj, setInitialProvinceObj] = useState<any>(null);
   const [initialDistrictsObj, setInitialDistrictsObj] = useState<any[]>([]);
 
-  // Giữ lại useEffect đầu tiên và loại bỏ cái thứ hai
+  // Fetch location data and search results
   useEffect(() => {
     let isMounted = true;
 
     const fetchLocationData = async () => {
       setLoading(true);
       try {
-        // Lấy provinces
+        // Fetch provinces
         const provinceData = await locationService.getProvinces();
         if (!isMounted) return;
         setProvinces(provinceData);
 
-        // Lấy districts nếu có city trong URL
+        // Fetch districts if city is in URL
         const cityCode = searchParams.get("city");
         if (cityCode) {
           const districtData = await locationService.getDistricts(cityCode);
           if (!isMounted) return;
           setDistricts(districtData);
 
-          // QUAN TRỌNG: Lấy tất cả districts từ URL thay vì chỉ lấy một
+          // Get all districts from URL
           const urlParams = new URLSearchParams(window.location.search);
           const districtEntries = Array.from(urlParams.entries())
             .filter(([key]) => key === "districts")
             .map(([_, value]) => value);
 
-          // Tìm province và districts objects để truyền vào SearchSection
+          console.log("District entries from URL:", districtEntries);
+
+          // Find province and districts objects for SearchSection
           const selectedProvince = provinceData.find(
             (p) => p.codename === cityCode
           );
@@ -63,12 +66,12 @@ export default function MuaBanPage() {
             })
             .filter(Boolean);
 
-          // Sử dụng state để lưu trữ
+          // Save to state
           if (isMounted) {
             setInitialProvinceObj(selectedProvince);
             setInitialDistrictsObj(selectedDistricts);
 
-            // THÊM MỚI: Sửa activeFilters để có districtNames đầy đủ
+            // Update activeFilters with district names
             const districtNames = selectedDistricts.map((d) => d.name);
             setActiveFilters((prev) => ({
               ...prev,
@@ -80,9 +83,9 @@ export default function MuaBanPage() {
         console.error("Error fetching location data:", error);
       } finally {
         if (isMounted) {
-          // Luôn gọi searchProperties sau khi load xong location data
+          // Always call searchProperties after location data is loaded
           await searchProperties();
-          setLoading(false); // Đảm bảo setLoading(false) sau khi tất cả hoàn tất
+          setLoading(false);
         }
       }
     };
@@ -93,7 +96,7 @@ export default function MuaBanPage() {
     };
   }, [searchParams]);
 
-  // Trong useEffect xử lý searchParams
+  // Thêm useEffect để theo dõi thay đổi searchParams cho city và districts
   useEffect(() => {
     // Khi có thay đổi searchParams, reset initialProvinceObj và initialDistrictsObj
     // nếu city đã bị xóa
@@ -117,12 +120,13 @@ export default function MuaBanPage() {
     }
   }, [searchParams]);
 
-  // Thêm timeout để tránh trạng thái loading vô hạn
+  // Timeout to prevent infinite loading state
   useEffect(() => {
     if (loading) {
       const timer = setTimeout(() => {
+        console.log("Force ending loading state after timeout");
         setLoading(false);
-      }, 8000); // 8 giây timeout
+      }, 8000);
 
       return () => clearTimeout(timer);
     }
@@ -130,14 +134,12 @@ export default function MuaBanPage() {
 
   const searchProperties = async () => {
     try {
-      // Xử lý các tham số tìm kiếm
+      // Process search parameters
       const cityCode = searchParams.get("city");
       const category = searchParams.get("category");
 
-      // Xử lý districts - sửa lại cách lấy districts từ URL
+      // Process districts from URL
       let districtCodes: string[] = [];
-
-      // Đơn giản hóa cách lấy districts từ URL
       const urlParams = new URLSearchParams(window.location.search);
       const districtEntries = Array.from(urlParams.entries())
         .filter(([key]) => key === "districts")
@@ -145,11 +147,12 @@ export default function MuaBanPage() {
 
       if (districtEntries.length > 0) {
         districtCodes = districtEntries;
+        console.log("District codes from URL params:", districtCodes);
       }
 
       // API filters
       const apiFilters = {
-        type: "ban",
+        type: "thue", // Change to "thue" for rent page
         category: category || undefined,
         status: "active",
         city: cityCode || undefined,
@@ -158,7 +161,11 @@ export default function MuaBanPage() {
         area: searchParams.get("area") || undefined,
       };
 
-      // Khi không có tham số tìm kiếm, hiển thị tất cả hoặc trang mặc định
+      console.log("Searching with filters:", apiFilters);
+      console.log("Searching with filters:", apiFilters);
+      console.log("Price filter:", searchParams.get("price"));
+
+      // When no search params, display default
       if (
         !cityCode &&
         !category &&
@@ -166,12 +173,13 @@ export default function MuaBanPage() {
         !searchParams.get("price") &&
         !searchParams.get("area")
       ) {
-        setTitle("Mua bán bất động sản");
+        console.log("No search parameters, showing default listings");
+        setTitle("Cho thuê bất động sản");
         setActiveFilters({});
 
-        // Lấy tất cả bất động sản
+        // Get all rental properties
         const response = await postService.searchPosts({
-          type: "ban",
+          type: "thue",
           status: "active",
         });
 
@@ -188,6 +196,7 @@ export default function MuaBanPage() {
 
       // Normal search with filters
       const response = await postService.searchPosts(apiFilters);
+      console.log("Search response:", response);
 
       if (response.success) {
         setPropertyResults(response.data.posts || []);
@@ -198,7 +207,7 @@ export default function MuaBanPage() {
         setTotalCount(0);
       }
 
-      // Tạo tiêu đề và active filters
+      // Generate title and active filters
       generateTitleAndFilters();
     } catch (error) {
       console.error("Error in searchProperties:", error);
@@ -207,13 +216,13 @@ export default function MuaBanPage() {
     }
   };
 
-  // Hàm tạo tiêu đề và active filters dựa trên dữ liệu từ API
+  // Generate title and active filters based on API data
   const generateTitleAndFilters = () => {
-    // Lấy tên loại BĐS từ category param
+    // Get property type name from category param
     const categorySlug = searchParams.get("category") || "tat-ca";
     const propertyType = getPropertyTypeFromSlug(categorySlug);
 
-    // Lấy tên thành phố từ API data
+    // Get city name from API data
     let cityName = "";
     const city = searchParams.get("city");
     if (city) {
@@ -221,12 +230,12 @@ export default function MuaBanPage() {
       cityName = cityData?.name || "";
     }
 
-    // QUAN TRỌNG: Sử dụng initialDistrictsObj đã được xử lý trước đó
-    // để có tên đầy đủ của tất cả quận/huyện
+    // Use initialDistrictsObj for district names
     const districtNames = initialDistrictsObj.map((district) => district.name);
+    console.log("District names for display:", districtNames);
 
-    // Tạo tiêu đề
-    let newTitle = `Mua bán ${propertyType.toLowerCase()}`;
+    // Create title
+    let newTitle = `Cho thuê ${propertyType.toLowerCase()}`;
     if (cityName) {
       newTitle += ` tại ${cityName}`;
       if (districtNames.length > 0) {
@@ -237,7 +246,7 @@ export default function MuaBanPage() {
     }
     setTitle(newTitle);
 
-    // Tạo object active filters với district data đầy đủ
+    // Create active filters object
     setActiveFilters({
       propertyType,
       city: cityName,
@@ -247,10 +256,10 @@ export default function MuaBanPage() {
     });
   };
 
-  // Tạo object searchParamsObj để truyền vào CategoryPage
+  // Create searchParamsObj to pass to CategoryPage
   const searchParamsObj = Object.fromEntries(searchParams.entries());
 
-  // Hàm lấy tên loại BĐS từ slug
+  // Get property type name from slug
   function getPropertyTypeFromSlug(slug: string): string {
     const allPropertyTypes = [
       ...propertyTypeData.sell,
@@ -261,9 +270,10 @@ export default function MuaBanPage() {
     return propertyType?.name || "Bất động sản";
   }
 
-  // (Tương tự cho cho-thue/page.tsx)
-
+  // Thêm hàm xử lý khi filter bị xóa từ CategoryPage
   const handleFilterRemove = (filterType: string, value?: string) => {
+    console.log(`Filter removed: ${filterType}, value: ${value}`);
+
     if (filterType === "city") {
       // Reset city và districts
       setInitialProvinceObj(null);
@@ -285,6 +295,10 @@ export default function MuaBanPage() {
       // Reset area
       const urlParams = new URLSearchParams(window.location.search);
       urlParams.delete("area");
+    } else if (filterType === "all") {
+      // Reset tất cả filter
+      setInitialProvinceObj(null);
+      setInitialDistrictsObj([]);
     }
 
     // Đảm bảo SearchSection được cập nhật
@@ -310,9 +324,9 @@ export default function MuaBanPage() {
     <>
       <Header />
       <SearchSection
-        initialSearchType="buy"
-        initialCity={initialProvinceObj} // Đã được xử lý đúng cách
-        initialDistricts={initialDistrictsObj} // Đã được xử lý đúng cách
+        initialSearchType="rent"
+        initialCity={initialProvinceObj}
+        initialDistricts={initialDistrictsObj}
         initialCategory={searchParams.get("category") || ""}
         initialPrice={searchParams.get("price") || ""}
         initialArea={searchParams.get("area") || ""}
@@ -323,13 +337,13 @@ export default function MuaBanPage() {
       <CategoryPage
         title={title}
         totalCount={totalCount}
-        categoryType="ban"
+        categoryType="thue"
         activeFilters={activeFilters}
         searchParams={searchParamsObj}
         slug={searchParams.get("category") || ""}
         searchResults={propertyResults}
         loading={false}
-        onFilterRemove={handleFilterRemove}
+        onFilterRemove={handleFilterRemove} // Thêm prop này
       />
       <Footer />
     </>

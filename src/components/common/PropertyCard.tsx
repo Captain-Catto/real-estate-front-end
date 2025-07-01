@@ -31,6 +31,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  console.log("Rendering PropertyCard for:", property);
   // Xử lý id
   const id = property.id || property._id || "";
 

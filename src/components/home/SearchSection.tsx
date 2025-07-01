@@ -15,7 +15,7 @@ interface SelectedDistrict {
 
 interface SearchSectionProps {
   initialSearchType?: "buy" | "rent" | "project";
-  initialCity?: string | null;
+  initialCity?: any; // Thay đổi từ string sang object
   initialDistricts?: any[];
   initialCategory?: string;
   initialPrice?: string;
@@ -36,206 +36,482 @@ export default function SearchSection({
 }: SearchSectionProps) {
   const router = useRouter();
 
+  // Sử dụng ref để theo dõi việc khởi tạo
+  const isInitialized = useRef(false);
+  const fetchedCities = useRef<Set<string>>(new Set());
+  const hasUpdatedFromProps = useRef(false);
+
   // States
   const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
     initialSearchType
   );
-  const [selectedCity, setSelectedCity] = useState<string | null>(initialCity);
-  const [selectedCityDistricts, setSelectedCityDistricts] =
-    useState<any[]>(cityDistricts);
-  const [selectedDistricts, setSelectedDistricts] =
-    useState<SelectedDistrict[]>(initialDistricts);
-  const [selectedPropertyType, setSelectedPropertyType] =
-    useState<string>(initialCategory);
-  const [selectedPrice, setSelectedPrice] = useState<string>(initialPrice);
-  const [selectedArea, setSelectedArea] = useState<string>(initialArea);
-  const [locationSearch, setLocationSearch] = useState<string>("");
 
-  // Dropdown states
-  const [showCityDropdown, setShowCityDropdown] = useState<boolean>(false);
-  const [showPropertyDropdown, setShowPropertyDropdown] =
-    useState<boolean>(false);
-  const [showPriceDropdown, setShowPriceDropdown] = useState<boolean>(false);
-  const [showAreaDropdown, setShowAreaDropdown] = useState<boolean>(false);
-  const [showLocationSuggestions, setShowLocationSuggestions] =
-    useState<boolean>(false);
+  // Sử dụng useState với callback để khởi tạo state chỉ một lần
+  const [selectedCity, setSelectedCity] = useState<string | null>(() =>
+    initialCity ? initialCity.code : null
+  );
 
-  // Lưu trữ toàn bộ tỉnh thành
-  const [locationData, setLocationData] = useState<any[]>(provinces);
+  const [selectedDistricts, setSelectedDistricts] = useState<
+    SelectedDistrict[]
+  >(() =>
+    Array.isArray(initialDistricts) && initialDistricts.length > 0
+      ? initialDistricts.map((district) => ({
+          code: district.code || "",
+          name: district.name || "",
+          codename: district.codename || district.code || "",
+        }))
+      : []
+  );
 
-  // Dynamic data from services
+  const [selectedPropertyType, setSelectedPropertyType] = useState(
+    () => initialCategory || ""
+  );
+  const [selectedPrice, setSelectedPrice] = useState(() => initialPrice || "");
+  const [selectedArea, setSelectedArea] = useState(() => initialArea || "");
+
+  // Locations data
+  const [locationData, setLocationData] = useState<any[]>(
+    () => provinces || []
+  );
+  const [selectedCityDistricts, setSelectedCityDistricts] = useState<any[]>(
+    () => cityDistricts || []
+  );
+
+  // UI states
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
+  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
+  const [showAreaDropdown, setShowAreaDropdown] = useState(false);
+  const [loadingSearchOptions, setLoadingSearchOptions] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
   const [areaRanges, setAreaRanges] = useState<AreaRange[]>([]);
-  const [loadingSearchOptions, setLoadingSearchOptions] = useState(true);
 
-  // Refs for dropdowns
+  // Refs for clickaway
   const cityDropdownRef = useRef<HTMLDivElement>(null);
+  const locationSuggestionsRef = useRef<HTMLDivElement>(null);
   const propertyDropdownRef = useRef<HTMLDivElement>(null);
   const priceDropdownRef = useRef<HTMLDivElement>(null);
   const areaDropdownRef = useRef<HTMLDivElement>(null);
-  const locationSuggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Thêm fetch và thiết lập cho categories, priceRanges và areaRanges khi component mount
+  // Load provinces nếu không được truyền vào - CHẠY MỘT LẦN
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      if (!provinces || provinces.length === 0) {
+        try {
+          const data = await locationService.getProvinces();
+          setLocationData(data);
+        } catch (error) {
+          console.error("Failed to fetch provinces:", error);
+        }
+      }
+    };
+
+    fetchProvinces();
+    // Không có dependencies để đảm bảo chỉ chạy một lần
+  }, []);
+
+  // SAFE: Cập nhật từ prop initialCity khi prop thay đổi
+  useEffect(() => {
+    if (initialCity?.code && selectedCity !== initialCity.code) {
+      setSelectedCity(initialCity.code);
+    } else if (!initialCity && selectedCity !== null) {
+      setSelectedCity(null);
+    }
+  }, [initialCity]);
+
+  // SAFE: Cập nhật từ prop initialDistricts khi prop thay đổi
+  useEffect(() => {
+    if (
+      initialDistricts &&
+      Array.isArray(initialDistricts) &&
+      initialDistricts.length > 0
+    ) {
+      const newDistricts = initialDistricts.map((district) => ({
+        code: district.code || district.codename || "",
+        name: district.name || "",
+        codename: district.codename || district.code || "",
+      }));
+
+      // Chỉ cập nhật khi thực sự khác nhau
+      const currentCodes = selectedDistricts
+        .map((d) => d.code)
+        .sort()
+        .join(",");
+      const newCodes = newDistricts
+        .map((d) => d.code)
+        .sort()
+        .join(",");
+
+      if (currentCodes !== newCodes) {
+        setSelectedDistricts(newDistricts);
+      }
+    } else if (
+      initialDistricts &&
+      initialDistricts.length === 0 &&
+      selectedDistricts.length > 0
+    ) {
+      setSelectedDistricts([]);
+    }
+  }, [initialDistricts]);
+
+  // SAFE: Fetch districts khi selectedCity thay đổi - KHÔNG CÓ VÒNG LẶP
+  useEffect(() => {
+    // Nếu không có selectedCity, không làm gì cả
+    if (!selectedCity) {
+      return;
+    }
+
+    const fetchDistricts = async () => {
+      // Nếu đã fetch city này rồi, không fetch lại
+      if (fetchedCities.current.has(selectedCity)) {
+        return;
+      }
+
+      // Nếu đã có cityDistricts từ props
+      if (
+        cityDistricts &&
+        cityDistricts.length > 0 &&
+        initialCity?.code === selectedCity
+      ) {
+        setSelectedCityDistricts(cityDistricts);
+        fetchedCities.current.add(selectedCity);
+        return;
+      }
+
+      try {
+        const cityData = locationData.find(
+          (city) => city.code === selectedCity
+        );
+        if (cityData) {
+          const districts = await locationService.getDistricts(
+            cityData.codename
+          );
+          setSelectedCityDistricts(districts);
+          fetchedCities.current.add(selectedCity);
+        }
+      } catch (error) {
+        console.error("Failed to fetch districts:", error);
+      }
+    };
+
+    fetchDistricts();
+  }, [selectedCity, locationData]);
+
+  // SAFE: Fetch categories, price ranges, và areas - CHẠY KHI searchType THAY ĐỔI
   useEffect(() => {
     const fetchSearchOptions = async () => {
       setLoadingSearchOptions(true);
       try {
-        // Get the appropriate listing type
-        let listingType: "ban" | "cho-thue" | "project" = "ban";
-        if (searchType === "rent") listingType = "cho-thue";
-        if (searchType === "project") listingType = "project";
+        // 1. Fetch categories
+        const categoriesResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+          }/categories`
+        );
 
-        // Fetch data in parallel
-        const [categoriesData, priceRangesData, areaRangesData] =
-          await Promise.all([
-            categoryService.getByProjectType(searchType === "project"),
-            priceRangeService.getByType(listingType),
-            areaService.getAll(),
-          ]);
-
-        setCategories(categoriesData);
-        setPriceRanges(priceRangesData);
-        setAreaRanges(areaRangesData);
-
-        // Set initial values from URL params
-        if (initialCategory && categoriesData.length > 0) {
-          const foundCategory = categoriesData.find(
-            (cat) => cat.slug === initialCategory
+        if (!categoriesResponse.ok) {
+          throw new Error(
+            `Error fetching categories: ${categoriesResponse.status}`
           );
-          if (foundCategory) {
-            setSelectedPropertyType(foundCategory.slug);
+        }
+
+        const categoriesResult = await categoriesResponse.json();
+
+        // Filter categories theo searchType
+        let filteredCategories = [];
+        if (searchType === "project") {
+          filteredCategories =
+            categoriesResult.data?.categories?.filter((cat) => cat.isProject) ||
+            [];
+        } else {
+          filteredCategories =
+            categoriesResult.data?.categories?.filter(
+              (cat) => !cat.isProject
+            ) || [];
+        }
+
+        setCategories(filteredCategories);
+
+        // 2. Fetch price ranges
+        const priceTypeParam =
+          searchType === "buy"
+            ? "ban"
+            : searchType === "rent"
+            ? "thue"
+            : "project";
+
+        const priceResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+          }/price-ranges?type=${priceTypeParam}`
+        );
+
+        if (!priceResponse.ok) {
+          throw new Error(
+            `Error fetching price ranges: ${priceResponse.status}`
+          );
+        }
+
+        const priceResult = await priceResponse.json();
+        const priceRanges = priceResult.data?.priceRanges || [];
+
+        // Sort price ranges
+        const sortedPriceRanges = [...priceRanges].sort((a, b) => {
+          if (a.id === "all_rent") return -1;
+          if (b.id === "all_rent") return 1;
+          if (a.id === "0" || a.id === "r0") return -1;
+          if (b.id === "0" || b.id === "r0") return 1;
+
+          const getNumericId = (id: string): number => {
+            if (typeof id !== "string") return parseInt(id);
+            if (id.startsWith("r")) return parseInt(id.substring(1));
+            return parseInt(id);
+          };
+
+          const numA = getNumericId(a.id);
+          const numB = getNumericId(b.id);
+
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.id.localeCompare(b.id);
+        });
+
+        setPriceRanges(sortedPriceRanges);
+
+        // 3. Fetch area ranges (không cần cho projects)
+        if (searchType !== "project") {
+          const areaResponse = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_BASE_URL ||
+              "http://localhost:8080/api"
+            }/areas`
+          );
+
+          if (!areaResponse.ok) {
+            throw new Error(
+              `Error fetching area ranges: ${areaResponse.status}`
+            );
           }
+
+          const areaResult = await areaResponse.json();
+          const areaRanges = areaResult.data?.areas || [];
+          setAreaRanges(areaRanges);
+        } else {
+          setAreaRanges([]);
         }
 
-        if (initialPrice && priceRangesData.length > 0) {
-          setSelectedPrice(initialPrice);
-        }
+        // Update selected values dựa trên initialValues nếu cần
+        if (!hasUpdatedFromProps.current) {
+          // Cập nhật category nếu có initialCategory và categories đã tải
+          if (initialCategory && filteredCategories.length > 0) {
+            const matchingCategory = filteredCategories.find(
+              (cat) => cat.slug === initialCategory
+            );
+            if (matchingCategory) {
+              setSelectedPropertyType(matchingCategory.slug);
+            }
+          }
 
-        if (initialArea && areaRangesData.length > 0) {
-          setSelectedArea(initialArea);
+          // Cập nhật price nếu có initialPrice và priceRanges đã tải
+          if (initialPrice && sortedPriceRanges.length > 0) {
+            const matchingPrice = sortedPriceRanges.find(
+              (price) =>
+                price.slug === initialPrice || price.id === initialPrice
+            );
+            if (matchingPrice) {
+              setSelectedPrice(matchingPrice.slug || matchingPrice.id || "");
+            }
+          }
+
+          // Cập nhật area nếu có initialArea và areaRanges đã tải
+          if (
+            initialArea &&
+            searchType !== "project" &&
+            areaRanges.length > 0
+          ) {
+            const matchingArea = areaRanges.find(
+              (area) => area.slug === initialArea || area.id === initialArea
+            );
+            if (matchingArea) {
+              setSelectedArea(matchingArea.slug || matchingArea.id || "");
+            }
+          }
+
+          hasUpdatedFromProps.current = true;
         }
       } catch (error) {
-        console.error("Error fetching search options:", error);
+        console.error("Failed to fetch search options:", error);
+        setCategories([]);
+        setPriceRanges([]);
+        setAreaRanges([]);
       } finally {
         setLoadingSearchOptions(false);
       }
     };
 
     fetchSearchOptions();
-  }, [searchType, initialCategory, initialPrice, initialArea]);
+  }, [searchType]);
 
-  // Tải dữ liệu tỉnh thành nếu chưa được truyền vào
+  // SAFE: Theo dõi thay đổi category từ props
   useEffect(() => {
-    const fetchProvinces = async () => {
-      try {
-        if (provinces.length === 0) {
-          const data = await locationService.getProvinces();
-          setLocationData(data);
-        } else {
-          setLocationData(provinces);
-        }
-      } catch (error) {
-        console.error("Failed to fetch provinces:", error);
-      }
-    };
-
-    fetchProvinces();
-  }, [provinces]);
-
-  // Tải quận/huyện khi có selectedCity mà chưa có cityDistricts
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      if (selectedCity && cityDistricts.length === 0) {
-        try {
-          // Tìm city theo code
-          const selectedCityData = locationData.find(
-            (city) => city.code === selectedCity
-          );
-          if (selectedCityData) {
-            const districts = await locationService.getDistricts(
-              selectedCityData.codename
-            );
-            setSelectedCityDistricts(districts);
-          }
-        } catch (error) {
-          console.error("Failed to fetch districts:", error);
-        }
-      } else if (cityDistricts.length > 0) {
-        setSelectedCityDistricts(cityDistricts);
-      }
-    };
-
-    if (locationData.length > 0) {
-      fetchDistricts();
+    if (initialCategory !== selectedPropertyType) {
+      setSelectedPropertyType(initialCategory || "");
     }
-  }, [selectedCity, cityDistricts, locationData]);
+  }, [initialCategory]);
 
-  // Xử lý click outside
+  // SAFE: Theo dõi thay đổi price từ props
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
+    if (initialPrice !== selectedPrice) {
+      setSelectedPrice(initialPrice || "");
+    }
+  }, [initialPrice]);
 
+  // SAFE: Theo dõi thay đổi area từ props
+  useEffect(() => {
+    if (initialArea !== selectedArea) {
+      setSelectedArea(initialArea || "");
+    }
+  }, [initialArea]);
+
+  // SAFE: Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // City dropdown
       if (
         cityDropdownRef.current &&
-        !cityDropdownRef.current.contains(target)
+        !cityDropdownRef.current.contains(event.target as Node)
       ) {
         setShowCityDropdown(false);
       }
-      if (
-        propertyDropdownRef.current &&
-        !propertyDropdownRef.current.contains(target)
-      ) {
-        setShowPropertyDropdown(false);
-      }
-      if (
-        priceDropdownRef.current &&
-        !priceDropdownRef.current.contains(target)
-      ) {
-        setShowPriceDropdown(false);
-      }
-      if (
-        areaDropdownRef.current &&
-        !areaDropdownRef.current.contains(target)
-      ) {
-        setShowAreaDropdown(false);
-      }
+
+      // Location suggestions
       if (
         locationSuggestionsRef.current &&
-        !locationSuggestionsRef.current.contains(target)
+        !locationSuggestionsRef.current.contains(event.target as Node)
       ) {
         setShowLocationSuggestions(false);
       }
-    }
+
+      // Property type dropdown
+      if (
+        propertyDropdownRef.current &&
+        !propertyDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowPropertyDropdown(false);
+      }
+
+      // Price dropdown
+      if (
+        priceDropdownRef.current &&
+        !priceDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowPriceDropdown(false);
+      }
+
+      // Area dropdown
+      if (
+        areaDropdownRef.current &&
+        !areaDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowAreaDropdown(false);
+      }
+    };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    // Đồng bộ initialDistricts với selectedDistricts state
-    if (initialDistricts && initialDistricts.length > 0) {
-      setSelectedDistricts(initialDistricts);
-    }
-  }, [initialDistricts]);
-
-  // Cập nhật selectedCityDistricts khi cityDistricts thay đổi
-  useEffect(() => {
-    if (cityDistricts && cityDistricts.length > 0) {
-      setSelectedCityDistricts(cityDistricts);
-    }
-  }, [cityDistricts]);
-
-  // Lấy danh sách quận/huyện đã được chọn
+  // Filtered districts based on search
   const filteredDistricts = useMemo(() => {
-    if (!locationSearch.trim()) return selectedCityDistricts;
+    // Nếu không có selectedCity, không hiển thị districts
+    if (!selectedCity) {
+      return [];
+    }
 
+    if (!locationSearch || locationSearch.trim() === "") {
+      return selectedCityDistricts;
+    }
+
+    const searchLower = locationSearch.toLowerCase();
     return selectedCityDistricts.filter((district) =>
-      district.name.toLowerCase().includes(locationSearch.toLowerCase())
+      district.name.toLowerCase().includes(searchLower)
     );
-  }, [selectedCityDistricts, locationSearch]);
+  }, [locationSearch, selectedCityDistricts, selectedCity]);
 
-  // Lấy tên thành phố đã chọn
+  // Handlers
+  const handleCitySelect = (cityCode: string) => {
+    if (cityCode !== selectedCity) {
+      setSelectedDistricts([]);
+
+      // Không reset selectedCityDistricts ngay lập tức để tránh nhấp nháy UI
+      setSelectedCity(cityCode);
+      setShowCityDropdown(false);
+      setLocationSearch("");
+
+      // Không cần gọi fetchDistricts ở đây, useEffect sẽ tự động xử lý
+    } else {
+      // Nếu click lại city đã chọn, chỉ đóng dropdown
+      setShowCityDropdown(false);
+    }
+  };
+
+  const handleDistrictSelect = (district: any) => {
+    // Không cho phép chọn quá 3 quận/huyện
+    if (selectedDistricts.length >= 3) {
+      return;
+    }
+
+    // Kiểm tra đã chọn rồi chưa
+    const alreadySelected = selectedDistricts.some(
+      (d) => d.code === district.code || d.codename === district.codename
+    );
+
+    if (alreadySelected) {
+      return;
+    }
+
+    setSelectedDistricts((prev) => [
+      ...prev,
+      {
+        code: district.code,
+        name: district.name,
+        codename: district.codename || district.code,
+      },
+    ]);
+
+    setLocationSearch("");
+  };
+
+  const handleDistrictRemove = (districtCode: string) => {
+    setSelectedDistricts((prev) =>
+      prev.filter((district) => district.code !== districtCode)
+    );
+  };
+
+  const handleLocationInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setLocationSearch(e.target.value);
+  };
+
+  const handleLocationInputFocus = () => {
+    // Chỉ hiển thị suggestions nếu có thành phố được chọn
+    if (selectedCity) {
+      setShowLocationSuggestions(true);
+    } else {
+      // Nếu chưa chọn thành phố, hiển thị dropdown thành phố
+      setShowCityDropdown(true);
+    }
+  };
+
+  const handlePropertyTypeSelect = (propertyTypeSlug: string) => {
+    setSelectedPropertyType(propertyTypeSlug);
+    setShowPropertyDropdown(false);
+  };
+
+  // Helper functions for labels
   const getSelectedCityLabel = (): string => {
     if (selectedCity) {
       const city = locationData.find((c) => c.code === selectedCity);
@@ -244,102 +520,36 @@ export default function SearchSection({
     return locationData.length > 0 ? "Toàn quốc" : "Đang tải...";
   };
 
-  // Lấy tên loại bất động sản đã chọn
   const getSelectedPropertyLabel = (): string => {
-    if (!selectedPropertyType || loadingSearchOptions) {
-      return searchType === "project" ? "Loại dự án" : "Loại nhà đất";
+    if (selectedPropertyType) {
+      const category = categories.find((c) => c.slug === selectedPropertyType);
+      return category ? category.name : "Tất cả loại hình";
     }
-
-    const category = categories.find((c) => c.slug === selectedPropertyType);
-    return category ? category.name : "Loại nhà đất";
+    return "Tất cả loại hình";
   };
 
-  // Lấy tên mức giá đã chọn
   const getSelectedPriceLabel = (): string => {
-    if (!selectedPrice || loadingSearchOptions) return "Mức giá";
-
-    const priceRange = priceRanges.find(
-      (p) => p.slug === selectedPrice || p.value === selectedPrice
-    );
-    return priceRange ? priceRange.name || priceRange.label : "Mức giá";
+    if (selectedPrice) {
+      const price = priceRanges.find(
+        (p) => p.slug === selectedPrice || p.id === selectedPrice
+      );
+      return price ? price.name || price.label || "" : "Tất cả mức giá";
+    }
+    return "Tất cả mức giá";
   };
 
-  // Lấy tên diện tích đã chọn
   const getSelectedAreaLabel = (): string => {
-    if (!selectedArea || loadingSearchOptions) return "Diện tích";
-
-    const areaRange = areaRanges.find(
-      (a) => a.slug === selectedArea || a.value === selectedArea
-    );
-    return areaRange ? areaRange.name || areaRange.label : "Diện tích";
+    if (selectedArea) {
+      const area = areaRanges.find(
+        (a) => a.slug === selectedArea || a.id === selectedArea
+      );
+      return area ? area.name || area.label || "" : "Tất cả diện tích";
+    }
+    return "Tất cả diện tích";
   };
 
-  // Xử lý khi chọn thành phố
-  const handleCitySelect = (cityCode: string) => {
-    setSelectedCity(cityCode);
-    setLocationSearch("");
-    setSelectedDistricts([]);
-    setShowCityDropdown(false);
-
-    // Tải lại quận/huyện khi đổi thành phố
-    const fetchDistrictsForCity = async () => {
-      try {
-        const cityData = locationData.find((city) => city.code === cityCode);
-        if (cityData) {
-          const districts = await locationService.getDistricts(
-            cityData.codename
-          );
-          setSelectedCityDistricts(districts);
-        }
-      } catch (error) {
-        console.error("Failed to fetch districts for new city:", error);
-      }
-    };
-
-    fetchDistrictsForCity();
-  };
-
-  // Xử lý khi chọn loại bất động sản
-  const handlePropertyTypeSelect = (categorySlug: string) => {
-    setSelectedPropertyType(categorySlug);
-    setShowPropertyDropdown(false);
-  };
-
-  // Xử lý khi chọn quận/huyện
-  const handleDistrictSelect = (district: any) => {
-    if (selectedDistricts.length >= 3) return;
-
-    const alreadySelected = selectedDistricts.some(
-      (d) => d.code === district.code
-    );
-    if (alreadySelected) return;
-
-    setSelectedDistricts((prev) => [...prev, district]);
-    setLocationSearch("");
-    setShowLocationSuggestions(false);
-  };
-
-  // Xử lý khi xóa quận/huyện
-  const handleDistrictRemove = (districtCode: string) => {
-    setSelectedDistricts((prev) => prev.filter((d) => d.code !== districtCode));
-  };
-
-  // Xử lý khi nhập vào ô tìm kiếm địa điểm
-  const handleLocationInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setLocationSearch(e.target.value);
-    setShowLocationSuggestions(e.target.value.length > 0);
-  };
-
-  // Xử lý khi focus vào ô tìm kiếm địa điểm
-  const handleLocationInputFocus = () => {
-    setShowLocationSuggestions(true);
-  };
-
-  // Xử lý khi bấm nút tìm kiếm
+  // Search handler
   const handleSearch = () => {
-    // Xác định base URL dựa trên loại tìm kiếm
     const baseUrl =
       searchType === "project"
         ? "/du-an"
@@ -347,15 +557,12 @@ export default function SearchSection({
         ? "/mua-ban"
         : "/cho-thue";
 
-    // Tạo query params
     const queryParams = new URLSearchParams();
 
-    // Thêm loại bất động sản (category)
     if (selectedPropertyType) {
       queryParams.set("category", selectedPropertyType);
     }
 
-    // Thêm thành phố (city)
     if (selectedCity) {
       const selectedCityData = locationData.find(
         (c) => c.code === selectedCity
@@ -365,28 +572,23 @@ export default function SearchSection({
       }
     }
 
-    // Thêm quận/huyện (districts)
     if (selectedDistricts.length > 0) {
       selectedDistricts.forEach((district) => {
         queryParams.append("districts", district.codename || district.code);
       });
     }
 
-    // Thêm giá (price)
     if (selectedPrice) {
       queryParams.set("price", selectedPrice);
     }
 
-    // Thêm diện tích (area)
     if (selectedArea && searchType !== "project") {
       queryParams.set("area", selectedArea);
     }
 
-    // Tạo URL cuối cùng và chuyển hướng
     const queryString = queryParams.toString();
     const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
-    console.log("Navigating to URL:", finalUrl);
     router.push(finalUrl);
   };
 
@@ -397,9 +599,17 @@ export default function SearchSection({
         <Tab.Group
           selectedIndex={["buy", "rent", "project"].indexOf(searchType)}
           onChange={(index) => {
-            setSearchType(["buy", "rent", "project"][index] as any);
+            const newSearchType = ["buy", "rent", "project"][index] as
+              | "buy"
+              | "rent"
+              | "project";
+            setSearchType(newSearchType);
+            // Reset category và price khi đổi tab
             setSelectedPropertyType("");
             setSelectedPrice("");
+            if (newSearchType === "project") {
+              setSelectedArea("");
+            }
           }}
         >
           <Tab.List className="flex space-x-4">
@@ -561,15 +771,20 @@ export default function SearchSection({
                     value={locationSearch}
                     onChange={handleLocationInputChange}
                     onFocus={handleLocationInputFocus}
+                    onClick={handleLocationInputFocus} // Thêm onClick để hiển thị dropdown khi click
                     placeholder={
-                      searchType === "project"
+                      !selectedCity
+                        ? "Chọn tỉnh/thành phố trước"
+                        : searchType === "project"
                         ? `Nhập tên dự án trong ${getSelectedCityLabel()}...`
                         : selectedDistricts.length >= 3
                         ? "Đã chọn tối đa 3 quận"
                         : `Nhập quận/huyện trong ${getSelectedCityLabel()}...`
                     }
                     disabled={
-                      searchType !== "project" && selectedDistricts.length >= 3
+                      !selectedCity ||
+                      (searchType !== "project" &&
+                        selectedDistricts.length >= 3)
                     }
                     className="flex-1 text-sm border-none outline-none bg-transparent disabled:text-gray-400"
                   />
@@ -579,7 +794,13 @@ export default function SearchSection({
               {/* Location Suggestions Dropdown */}
               {showLocationSuggestions && (
                 <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-30 max-h-80 overflow-y-auto">
-                  {filteredDistricts.length > 0 ? (
+                  {!selectedCity ? (
+                    <div className="p-4 text-center">
+                      <div className="text-gray-500 text-sm">
+                        Vui lòng chọn tỉnh/thành phố trước
+                      </div>
+                    </div>
+                  ) : filteredDistricts.length > 0 ? (
                     <>
                       <div className="p-2 border-b border-gray-200">
                         <div className="text-sm font-medium text-gray-700">
@@ -593,14 +814,16 @@ export default function SearchSection({
                       </div>
                       {filteredDistricts.map((district) => {
                         const isSelected = selectedDistricts.some(
-                          (d) => d.code === district.code
+                          (d) =>
+                            d.code === district.code ||
+                            d.codename === district.codename
                         );
                         const canSelect =
                           selectedDistricts.length < 3 && !isSelected;
 
                         return (
                           <button
-                            key={district.code}
+                            key={district.code || district.codename}
                             onClick={() =>
                               canSelect && handleDistrictSelect(district)
                             }
@@ -633,6 +856,12 @@ export default function SearchSection({
                         );
                       })}
                     </>
+                  ) : selectedCityDistricts.length === 0 ? (
+                    <div className="p-4 text-center">
+                      <div className="text-gray-500 text-sm">
+                        Đang tải danh sách quận/huyện...
+                      </div>
+                    </div>
                   ) : (
                     <div className="p-4 text-center">
                       <div className="text-gray-500 text-sm">
@@ -691,32 +920,39 @@ export default function SearchSection({
                   </div>
                 ) : (
                   <div className="flex-1 overflow-y-auto">
-                    {categories.map((category) => {
-                      const isSelected = selectedPropertyType === category.slug;
+                    {categories.length === 0 && !loadingSearchOptions ? (
+                      <div className="p-4 text-center text-gray-500">
+                        Không có dữ liệu loại bất động sản
+                      </div>
+                    ) : (
+                      categories.map((category) => {
+                        const isSelected =
+                          selectedPropertyType === category.slug;
 
-                      return (
-                        <button
-                          key={category._id}
-                          onClick={() =>
-                            handlePropertyTypeSelect(category.slug)
-                          }
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 ${
-                            isSelected ? "bg-blue-50" : ""
-                          }`}
-                        >
-                          <span
-                            className={`text-sm ${
-                              isSelected ? "text-blue-600 font-medium" : ""
+                        return (
+                          <button
+                            key={category._id}
+                            onClick={() =>
+                              handlePropertyTypeSelect(category.slug)
+                            }
+                            className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 ${
+                              isSelected ? "bg-blue-50" : ""
                             }`}
                           >
-                            {category.name}
-                          </span>
-                          {isSelected && (
-                            <i className="fas fa-check text-blue-600 text-xs"></i>
-                          )}
-                        </button>
-                      );
-                    })}
+                            <span
+                              className={`text-sm ${
+                                isSelected ? "text-blue-600 font-medium" : ""
+                              }`}
+                            >
+                              {category.name}
+                            </span>
+                            {isSelected && (
+                              <i className="fas fa-check text-blue-600 text-xs"></i>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 )}
 
@@ -775,13 +1011,13 @@ export default function SearchSection({
                   priceRanges.map((price) => {
                     const isPriceSelected =
                       price.slug === selectedPrice ||
-                      price.value === selectedPrice;
+                      price.id === selectedPrice;
 
                     return (
                       <button
                         key={price._id}
                         onClick={() => {
-                          setSelectedPrice(price.slug || price.value || "");
+                          setSelectedPrice(price.slug || price.id || "");
                           setShowPriceDropdown(false);
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-50 text-sm border-b border-gray-50 flex items-center justify-between ${
@@ -840,14 +1076,13 @@ export default function SearchSection({
                   ) : (
                     areaRanges.map((area) => {
                       const isAreaSelected =
-                        area.slug === selectedArea ||
-                        area.value === selectedArea;
+                        area.slug === selectedArea || area.id === selectedArea;
 
                       return (
                         <button
                           key={area._id}
                           onClick={() => {
-                            setSelectedArea(area.slug || area.value || "");
+                            setSelectedArea(area.slug || area.id || "");
                             setShowAreaDropdown(false);
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-50 text-sm border-b border-gray-50 flex items-center justify-between ${

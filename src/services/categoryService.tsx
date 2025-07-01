@@ -6,19 +6,19 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  description?: string;
   isProject: boolean;
-  parentId?: string;
   __v?: number;
 }
 
 export interface CategoryResponse {
-  categories: Category[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
+  data: {
+    categories: Category[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
   };
 }
 

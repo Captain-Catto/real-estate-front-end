@@ -23,8 +23,6 @@ export default function ContactBox({
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
-    email: "",
-    message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -44,9 +42,7 @@ export default function ContactBox({
     }
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -103,7 +99,7 @@ export default function ContactBox({
         </div>
       )}
 
-      {/* Contact Form */}
+      {/* Contact Form - Simplified */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
@@ -123,22 +119,7 @@ export default function ContactBox({
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <textarea
-          name="message"
-          placeholder="Lời nhắn"
-          value={formData.message}
-          onChange={handleInputChange}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-        />
+
         <div className="text-xs text-gray-500">
           Khi gửi thông tin, bạn đồng ý với{" "}
           <a
@@ -163,34 +144,12 @@ export default function ContactBox({
             </>
           ) : (
             <>
-              <i className="fas fa-envelope mr-2"></i>
-              Liên hệ lại tôi
+              <i className="fas fa-headset mr-2"></i>
+              Liên hệ lại với tôi
             </>
           )}
         </button>
       </form>
-
-      {/* Quick Contact Options */}
-      <div className="mt-6 pt-6 border-t space-y-3">
-        {developer && developer.phone && (
-          <a
-            href={`tel:${developer.phone}`}
-            className="flex items-center justify-center space-x-2 w-full py-2 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <i className="fas fa-phone"></i>
-            <span>Gọi ngay</span>
-          </a>
-        )}
-        {developer && developer.email && (
-          <a
-            href={`mailto:${developer.email}`}
-            className="flex items-center justify-center space-x-2 w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <i className="fas fa-envelope"></i>
-            <span>Gửi email</span>
-          </a>
-        )}
-      </div>
     </div>
   );
 }

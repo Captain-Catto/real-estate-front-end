@@ -12,6 +12,8 @@ import { ProjectListings } from "./ProjectListings";
 import { ProjectPaymentCalculator } from "./ProjectPaymentCalculator";
 import { ProjectFAQ } from "./ProjectFAQ";
 import imgTest from "@/assets/images/card-img.jpg";
+import Header from "../header/Header";
+import Footer from "../footer/Footer";
 
 interface Project {
   id: string;
@@ -472,290 +474,297 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Breadcrumb */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <Breadcrumb items={breadcrumbItems} />
-        </div>
-      </div>
-
-      {/* Project Header */}
-      <div className="bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {project.name}
-              </h1>
-              <p className="text-gray-600 mb-4">
-                {project.address}.
-                <button
-                  onClick={() => handleTabClick("location")}
-                  className="text-blue-600 hover:text-blue-700 ml-1"
-                >
-                  Xem bản đồ
-                </button>
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <FavoriteButton item={favoriteItem} />
-              <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                <i className="fas fa-share-alt"></i>
-                <span>Chia sẻ</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Project Gallery */}
-          <ProjectGallery
-            images={project.images || []}
-            videos={project.videos}
-            title={project.name}
-          />
-
-          {/* Status Badge */}
-          <div className="mt-4">
-            <span
-              className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                project.status
-              )}`}
-            >
-              {project.status}
-            </span>
-          </div>
-
-          {/* Quick Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900">
-                {project.totalUnits}
-              </div>
-              <div className="text-sm text-gray-500">căn hộ</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900">
-                {project.area}
-              </div>
-              <div className="text-sm text-gray-500">diện tích</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900">
-                {project.numberOfTowers}
-              </div>
-              <div className="text-sm text-gray-500">tòa</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-900">
-                {project.density}
-              </div>
-              <div className="text-sm text-gray-500">mật độ xây dựng</div>
-            </div>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gray-50">
+        {/* Breadcrumb */}
+        <div className="bg-white border-b">
+          <div className="container mx-auto px-4 py-4">
+            <Breadcrumb items={breadcrumbItems} />
           </div>
         </div>
-      </div>
 
-      {/* Navigation Tabs */}
-      <div className="sticky top-16 z-40 bg-white border-b">
-        <div className="container mx-auto px-4">
-          <nav className="flex space-x-8 overflow-x-auto">
-            {[
-              {
-                id: "listings",
-                label: "Bán & Cho thuê",
-                subtitle: "Danh sách tin rao",
-              },
-              {
-                id: "info",
-                label: "Tổng quan",
-                subtitle: "Giới thiệu về dự án",
-              },
-              { id: "location", label: "Vị trí", subtitle: "Bản đồ dự án" },
-              {
-                id: "payment",
-                label: "Ước tính khoản vay",
-                subtitle: "Hỗ trợ tính lãi suất",
-              },
-              {
-                id: "faq",
-                label: "Câu hỏi thường gặp",
-                subtitle: "Hỗ trợ thắc mắc",
-              },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={`py-4 px-2 border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <div className="text-sm font-medium">{tab.label}</div>
-                <div className="text-xs text-gray-400">{tab.subtitle}</div>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Project Listings */}
-            <section id="listings">
-              <ProjectListings
-                projectId={project.id}
-                projectName={project.name}
-              />
-            </section>
-
-            {/* Project Overview */}
-            <section id="info" className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">
-                Tổng quan {project.name}
-              </h2>
-
-              {/* Specifications Table */}
-              <div className="mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(project.specifications || {}).map(
-                    ([key, value]) => (
-                      <div
-                        key={key}
-                        className="flex justify-between py-2 border-b"
-                      >
-                        <span className="text-gray-600">{key}:</span>
-                        <span className="font-medium">{value}</span>
-                      </div>
-                    )
-                  )}
-                </div>
-
-                {/* Toggle More Info */}
-                <button
-                  onClick={() => setShowMoreInfo(!showMoreInfo)}
-                  className="mt-4 text-blue-600 hover:text-blue-700 text-sm"
-                >
-                  {showMoreInfo ? "Thu gọn" : "Thông tin chi tiết"}
-                  <i
-                    className={`fas fa-chevron-${
-                      showMoreInfo ? "up" : "down"
-                    } ml-1`}
-                  ></i>
-                </button>
-
-                {showMoreInfo && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(project.specifications || {}).map(
-                        ([key, value]) => (
-                          <div key={key} className="flex justify-between py-2">
-                            <span className="text-gray-600">{key}:</span>
-                            <span className="font-medium">{value}</span>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="mb-6">
-                <div
-                  className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{
-                    __html: project.description || "",
-                  }}
-                />
-              </div>
-
-              {/* Facilities */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Tiện ích</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {(project.facilities || [])
-                    .slice(0, showMoreFacilities ? undefined : 8)
-                    .map((facility, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
-                      >
-                        <i className="fas fa-check-circle text-green-500 text-sm"></i>
-                        <span className="text-sm">{facility}</span>
-                      </div>
-                    ))}
-                </div>
-
-                {(project.facilities || []).length > 8 && (
+        {/* Project Header */}
+        <div className="bg-white">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  {project.name}
+                </h1>
+                <p className="text-gray-600 mb-4">
+                  {project.address}.
                   <button
-                    onClick={() => setShowMoreFacilities(!showMoreFacilities)}
+                    onClick={() => handleTabClick("location")}
+                    className="text-blue-600 hover:text-blue-700 ml-1"
+                  >
+                    Xem bản đồ
+                  </button>
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <FavoriteButton item={favoriteItem} />
+                <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  <i className="fas fa-share-alt"></i>
+                  <span>Chia sẻ</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Project Gallery */}
+            <ProjectGallery
+              images={project.images || []}
+              videos={project.videos}
+              title={project.name}
+            />
+
+            {/* Status Badge */}
+            <div className="mt-4">
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                  project.status
+                )}`}
+              >
+                {project.status}
+              </span>
+            </div>
+
+            {/* Quick Info */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {project.totalUnits}
+                </div>
+                <div className="text-sm text-gray-500">căn hộ</div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {project.area}
+                </div>
+                <div className="text-sm text-gray-500">diện tích</div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {project.numberOfTowers}
+                </div>
+                <div className="text-sm text-gray-500">tòa</div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">
+                  {project.density}
+                </div>
+                <div className="text-sm text-gray-500">mật độ xây dựng</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="sticky top-16 z-40 bg-white border-b">
+          <div className="container mx-auto px-4">
+            <nav className="flex space-x-8 overflow-x-auto">
+              {[
+                {
+                  id: "listings",
+                  label: "Bán & Cho thuê",
+                  subtitle: "Danh sách tin rao",
+                },
+                {
+                  id: "info",
+                  label: "Tổng quan",
+                  subtitle: "Giới thiệu về dự án",
+                },
+                { id: "location", label: "Vị trí", subtitle: "Bản đồ dự án" },
+                {
+                  id: "payment",
+                  label: "Ước tính khoản vay",
+                  subtitle: "Hỗ trợ tính lãi suất",
+                },
+                {
+                  id: "faq",
+                  label: "Câu hỏi thường gặp",
+                  subtitle: "Hỗ trợ thắc mắc",
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`py-4 px-2 border-b-2 transition-colors whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-blue-600 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <div className="text-sm font-medium">{tab.label}</div>
+                  <div className="text-xs text-gray-400">{tab.subtitle}</div>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Content */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Project Listings */}
+              <section id="listings">
+                <ProjectListings
+                  projectId={project.id}
+                  projectName={project.name}
+                />
+              </section>
+
+              {/* Project Overview */}
+              <section id="info" className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold mb-4">
+                  Tổng quan {project.name}
+                </h2>
+
+                {/* Specifications Table */}
+                <div className="mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(project.specifications || {}).map(
+                      ([key, value]) => (
+                        <div
+                          key={key}
+                          className="flex justify-between py-2 border-b"
+                        >
+                          <span className="text-gray-600">{key}:</span>
+                          <span className="font-medium">{value}</span>
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  {/* Toggle More Info */}
+                  <button
+                    onClick={() => setShowMoreInfo(!showMoreInfo)}
                     className="mt-4 text-blue-600 hover:text-blue-700 text-sm"
                   >
-                    {showMoreFacilities
-                      ? "Thu gọn"
-                      : `Xem thêm ${
-                          (project.facilities || []).length - 8
-                        } tiện ích`}
+                    {showMoreInfo ? "Thu gọn" : "Thông tin chi tiết"}
                     <i
                       className={`fas fa-chevron-${
-                        showMoreFacilities ? "up" : "down"
+                        showMoreInfo ? "up" : "down"
                       } ml-1`}
                     ></i>
                   </button>
-                )}
+
+                  {showMoreInfo && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(project.specifications || {}).map(
+                          ([key, value]) => (
+                            <div
+                              key={key}
+                              className="flex justify-between py-2"
+                            >
+                              <span className="text-gray-600">{key}:</span>
+                              <span className="font-medium">{value}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="mb-6">
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: project.description || "",
+                    }}
+                  />
+                </div>
+
+                {/* Facilities */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Tiện ích</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {(project.facilities || [])
+                      .slice(0, showMoreFacilities ? undefined : 8)
+                      .map((facility, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
+                        >
+                          <i className="fas fa-check-circle text-green-500 text-sm"></i>
+                          <span className="text-sm">{facility}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  {(project.facilities || []).length > 8 && (
+                    <button
+                      onClick={() => setShowMoreFacilities(!showMoreFacilities)}
+                      className="mt-4 text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      {showMoreFacilities
+                        ? "Thu gọn"
+                        : `Xem thêm ${
+                            (project.facilities || []).length - 8
+                          } tiện ích`}
+                      <i
+                        className={`fas fa-chevron-${
+                          showMoreFacilities ? "up" : "down"
+                        } ml-1`}
+                      ></i>
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {/* Location & Map */}
+              <section
+                id="location"
+                className="bg-white rounded-lg shadow-md p-6"
+              >
+                <h2 className="text-xl font-semibold mb-4">
+                  Vị trí dự án {project.name}
+                </h2>
+                <ProjectMap
+                  latitude={project.latitude}
+                  longitude={project.longitude}
+                  title={project.name}
+                  address={project.fullLocation}
+                />
+              </section>
+
+              {/* Payment Calculator */}
+              <section id="payment">
+                <ProjectPaymentCalculator />
+              </section>
+
+              {/* FAQ */}
+              <section id="faq">
+                <ProjectFAQ
+                  faqs={project.faqs || []}
+                  projectName={project.name}
+                />
+              </section>
+
+              {/* Related Projects */}
+              <RelatedProjects currentProjectId={project.id} />
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="sticky top-35 space-y-6">
+                <ContactBox
+                  developer={project.developer}
+                  projectId={project.id}
+                  projectName={project.name}
+                />
               </div>
-            </section>
-
-            {/* Location & Map */}
-            <section
-              id="location"
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h2 className="text-xl font-semibold mb-4">
-                Vị trí dự án {project.name}
-              </h2>
-              <ProjectMap
-                latitude={project.latitude}
-                longitude={project.longitude}
-                title={project.name}
-                address={project.fullLocation}
-              />
-            </section>
-
-            {/* Payment Calculator */}
-            <section id="payment">
-              <ProjectPaymentCalculator />
-            </section>
-
-            {/* FAQ */}
-            <section id="faq">
-              <ProjectFAQ
-                faqs={project.faqs || []}
-                projectName={project.name}
-              />
-            </section>
-
-            {/* Related Projects */}
-            <RelatedProjects currentProjectId={project.id} />
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              <ContactBox
-                developer={project.developer}
-                projectId={project.id}
-                projectName={project.name}
-              />
             </div>
           </div>
         </div>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }
