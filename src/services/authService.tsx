@@ -37,64 +37,132 @@ export interface ProfileResponse {
 }
 
 // Helper function để handle API calls với token refresh
-const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem("accessToken");
+export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+  try {
+    const token = localStorage.getItem("accessToken");
 
-  const defaultHeaders = {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
+    // Handle Content-Type properly - don't set for FormData
+    const isFormData = options.body instanceof FormData;
 
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-    credentials: "include", // Quan trọng: để gửi cookies
-  });
+    // Build headers carefully
+    const headers: HeadersInit = {};
 
-  // Nếu token expired, thử refresh
-  if (response.status === 401) {
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      // Retry với token mới
-      const newToken = localStorage.getItem("accessToken");
-      return fetch(url, {
-        ...options,
-        headers: {
-          ...defaultHeaders,
-          Authorization: `Bearer ${newToken}`,
-          ...options.headers,
-        },
-        credentials: "include",
-      });
+    // Only add Content-Type for JSON requests
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
     }
-  }
 
-  return response;
+    // Add Authorization if token exists
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // Merge with user-provided headers, but prioritize auth headers
+    const mergedHeaders = {
+      ...options.headers,
+      ...headers,
+    };
+
+    // Create the request config
+    const requestConfig: RequestInit = {
+      ...options,
+      headers: mergedHeaders,
+      credentials: "include",
+    };
+
+    console.log("Fetch request:", {
+      url,
+      method: options.method || "GET",
+      headers: mergedHeaders,
+    });
+
+    const response = await fetch(url, requestConfig);
+
+    // Handle 401 Unauthorized error
+    if (response.status === 401) {
+      console.log("Received 401 - Attempting token refresh");
+
+      try {
+        const refreshed = await refreshToken();
+
+        if (refreshed) {
+          // Get new token and retry with updated Authorization header
+          const newToken = localStorage.getItem("accessToken");
+
+          if (newToken) {
+            const newHeaders = {
+              ...mergedHeaders,
+              Authorization: `Bearer ${newToken}`,
+            };
+
+            console.log("Retrying with new token");
+            return fetch(url, {
+              ...requestConfig,
+              headers: newHeaders,
+            });
+          }
+        } else {
+          // Clear token on failed refresh
+          localStorage.removeItem("accessToken");
+
+          // Only redirect from browser context
+          if (typeof window !== "undefined") {
+            console.log("Token refresh failed - redirecting to login");
+            setTimeout(() => {
+              window.location.href = "/dang-nhap?session=expired";
+            }, 1000);
+          }
+        }
+      } catch (refreshError) {
+        console.error("Token refresh error:", refreshError);
+      }
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Network error in fetchWithAuth:", error);
+
+    // Return a controlled error response
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message:
+          "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.",
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
 };
 
 // Refresh token function
 export const refreshToken = async (): Promise<boolean> => {
   try {
+    console.log("Attempting to refresh token");
+
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
-      credentials: "include", // Gửi httpOnly cookie
-      headers: {
-        "Content-Type": "application/json",
-      },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.data.accessToken) {
-        localStorage.setItem("accessToken", data.data.accessToken);
-        return true;
-      }
+    if (!response.ok) {
+      console.error(`Refresh token failed with status: ${response.status}`);
+      localStorage.removeItem("accessToken");
+      return false;
     }
 
-    // Refresh failed, clear tokens
+    const data = await response.json();
+
+    if (data.success && data.data?.accessToken) {
+      console.log("Token refreshed successfully");
+      localStorage.setItem("accessToken", data.data.accessToken);
+      return true;
+    }
+
+    console.error("Refresh response missing token:", data);
     localStorage.removeItem("accessToken");
     return false;
   } catch (error) {

@@ -10,6 +10,7 @@ import { postService } from "@/services/postsService";
 import SearchSection from "@/components/home/SearchSection";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
+import { toast } from "sonner";
 
 export default function MuaBanPage() {
   const router = useRouter();

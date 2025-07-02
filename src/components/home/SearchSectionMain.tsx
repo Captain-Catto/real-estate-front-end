@@ -27,6 +27,15 @@ export default function SearchSectionMain() {
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
   const [selectedPrice, setSelectedPrice] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState("");
+  const [projectStatuses, setProjectStatuses] = useState([
+    { id: "sap-mo-ban", name: "Sắp mở bán" },
+    { id: "dang-mo-ban", name: "Đang mở bán" },
+    { id: "da-ban-giao", name: "Đã bàn giao" },
+  ]);
+  const [showProjectStatusDropdown, setShowProjectStatusDropdown] =
+    useState(false);
+  const projectStatusDropdownRef = useRef<HTMLDivElement>(null);
 
   // Locations data
   const [provinces, setProvinces] = useState<any[]>([]);
@@ -35,7 +44,8 @@ export default function SearchSectionMain() {
   // UI states
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-  const [locationSearch, setLocationSearch] = useState("");
+  const [citySearch, setCitySearch] = useState("");
+  const [districtSearch, setDistrictSearch] = useState("");
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
@@ -143,7 +153,6 @@ export default function SearchSectionMain() {
 
         // Sắp xếp khoảng giá theo thứ tự tăng dần
         const sortedPriceRanges = [...priceRanges].sort((a, b) => {
-          // Xử lý trường hợp đặc biệt: < X VNĐ
           if (a.minValue === 0 && b.minValue !== 0) return -1;
           if (b.minValue === 0 && a.minValue !== 0) return 1;
           return a.minValue - b.minValue;
@@ -226,6 +235,14 @@ export default function SearchSectionMain() {
       ) {
         setShowAreaDropdown(false);
       }
+
+      // Project Status dropdown - Đã được khai báo nhưng chưa được xử lý
+      if (
+        projectStatusDropdownRef.current &&
+        !projectStatusDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowProjectStatusDropdown(false);
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -234,55 +251,95 @@ export default function SearchSectionMain() {
     };
   }, []);
 
-  // Xử lý chọn tab tìm kiếm
+  // Cập nhật phần CSS animation để dropdown mở mượt mà hơn
+  useEffect(() => {
+    const styleElement = document.createElement("style");
+    styleElement.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.2s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
+  // Handlers
   const handleTabChange = (index: number) => {
     const types: ["buy", "rent", "project"] = ["buy", "rent", "project"];
-    setSearchType(types[index]);
+    const newType = types[index];
 
-    // Reset các lựa chọn
+    // Reset các lựa chọn giá, loại BĐS, diện tích, trạng thái
     setSelectedPropertyType("");
     setSelectedPrice("");
     setSelectedArea("");
+    setSelectedProjectStatus("");
+
+    // Nếu chuyển sang tab dự án và đã chọn nhiều quận/huyện, giữ lại quận/huyện đầu tiên
+    if (newType === "project" && selectedDistricts.length > 1) {
+      setSelectedDistricts([selectedDistricts[0]]);
+    }
+
+    // Cập nhật loại tìm kiếm
+    setSearchType(newType);
   };
 
-  // Xử lý chọn thành phố
   const handleCitySelect = (province: any) => {
     setSelectedCity(province.code);
     setSelectedDistricts([]);
     setShowCityDropdown(false);
-    setLocationSearch("");
+    setCitySearch("");
+    setDistrictSearch("");
   };
 
-  // Xử lý chọn quận/huyện
   const handleDistrictSelect = (district: any) => {
-    // Tối đa 3 quận/huyện được chọn
-    if (
-      selectedDistricts.length >= 3 &&
-      !selectedDistricts.some((d) => d.code === district.code)
-    ) {
-      return;
-    }
-
-    // Toggle chọn/bỏ chọn quận/huyện
-    const isSelected = selectedDistricts.some((d) => d.code === district.code);
-
-    if (isSelected) {
-      setSelectedDistricts(
-        selectedDistricts.filter((d) => d.code !== district.code)
-      );
-    } else {
+    if (searchType === "project") {
+      // Đối với dự án: chỉ cho phép chọn một quận/huyện (ghi đè)
       setSelectedDistricts([
-        ...selectedDistricts,
         {
           code: district.code,
           name: district.name,
           codename: district.codename,
         },
       ]);
+    } else {
+      // Đối với mua bán và cho thuê: cho phép chọn tối đa 3 quận/huyện
+      // Kiểm tra giới hạn 3 quận/huyện
+      if (
+        selectedDistricts.length >= 3 &&
+        !selectedDistricts.some((d) => d.code === district.code)
+      ) {
+        return;
+      }
+
+      // Toggle chọn/bỏ chọn quận/huyện
+      const isSelected = selectedDistricts.some(
+        (d) => d.code === district.code
+      );
+
+      if (isSelected) {
+        setSelectedDistricts(
+          selectedDistricts.filter((d) => d.code !== district.code)
+        );
+      } else {
+        setSelectedDistricts([
+          ...selectedDistricts,
+          {
+            code: district.code,
+            name: district.name,
+            codename: district.codename,
+          },
+        ]);
+      }
     }
   };
 
-  // Xử lý tìm kiếm
   const handleSearch = () => {
     // Xác định đường dẫn tìm kiếm dựa trên loại tìm kiếm
     let baseUrl;
@@ -302,6 +359,17 @@ export default function SearchSectionMain() {
 
     // Tạo query params
     const queryParams = new URLSearchParams();
+
+    // Thêm khoảng diện tích hoặc trạng thái dự án tùy thuộc vào searchType
+    if (searchType === "project") {
+      if (selectedProjectStatus) {
+        queryParams.append("status", selectedProjectStatus);
+      }
+    } else {
+      if (selectedArea) {
+        queryParams.append("area", selectedArea);
+      }
+    }
 
     // Thêm thành phố
     if (selectedCity) {
@@ -343,614 +411,758 @@ export default function SearchSectionMain() {
   };
 
   // Lọc quận/huyện dựa trên từ khóa tìm kiếm
-  const filteredDistricts = locationSearch
+  const filteredDistricts = districtSearch
     ? cityDistricts.filter((district) =>
-        district.name.toLowerCase().includes(locationSearch.toLowerCase())
+        district.name.toLowerCase().includes(districtSearch.toLowerCase())
       )
     : cityDistricts;
 
-  // Render các tab tìm kiếm
-  // Cập nhật giao diện phần tabs tìm kiếm
-  const renderTabs = () => (
-    <div className="mb-6">
-      <Tab.Group onChange={handleTabChange}>
-        <Tab.List className="flex rounded-lg border-b border-gray-200 overflow-hidden">
-          <Tab
-            className={({ selected }) =>
-              `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
-                selected
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
-              }`
-            }
-          >
-            <span className="flex items-center justify-center gap-2">
-              <i className="fas fa-home"></i>
-              Mua bán
-            </span>
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
-                selected
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
-              }`
-            }
-          >
-            <span className="flex items-center justify-center gap-2">
-              <i className="fas fa-key"></i>
-              Cho thuê
-            </span>
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
-                selected
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
-              }`
-            }
-          >
-            <span className="flex items-center justify-center gap-2">
-              <i className="fas fa-building"></i>
-              Dự án
-            </span>
-          </Tab>
-        </Tab.List>
-      </Tab.Group>
-    </div>
-  );
-
-  // Cập nhật giao diện phần dropdown chọn thành phố
-  const renderCityDropdown = () => (
-    <div className="relative" ref={cityDropdownRef}>
-      <button
-        onClick={() => setShowCityDropdown(!showCityDropdown)}
-        className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-      >
-        <i className="fas fa-map-marker-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-        <span
-          className={`${
-            selectedCity ? "text-gray-900 font-medium" : "text-gray-500"
-          } flex-1 text-left`}
-        >
-          {selectedCity
-            ? provinces.find((p) => p.code === selectedCity)?.name
-            : "Toàn quốc"}
-        </span>
-        <i
-          className={`fas fa-chevron-${
-            showCityDropdown ? "up" : "down"
-          } text-gray-400 group-hover:text-blue-500`}
-        ></i>
-      </button>
-
-      {showCityDropdown && (
-        <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-          <div className="p-3 border-b border-gray-100">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Tìm kiếm tỉnh/thành phố..."
-                value={locationSearch}
-                onChange={(e) => setLocationSearch(e.target.value)}
-                className="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            </div>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto">
-            {/* Tỉnh thành phổ biến */}
-            <div className="p-3 border-b border-gray-100">
-              <p className="text-xs text-gray-500 uppercase mb-2 font-medium">
-                Phổ biến
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {provinces.slice(0, 6).map((province) => (
-                  <button
-                    key={`popular-${province.code}`}
-                    className={`p-2 text-left rounded-md hover:bg-blue-50 transition-colors
-                    ${
-                      selectedCity === province.code
-                        ? "bg-blue-50 text-blue-600 font-medium"
-                        : "text-gray-700"
-                    }`}
-                    onClick={() => handleCitySelect(province)}
-                  >
-                    {province.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tất cả tỉnh thành */}
-            <div className="p-2">
-              <p className="text-xs text-gray-500 uppercase mb-2 px-2 font-medium">
-                Tất cả
-              </p>
-              <button
-                className={`w-full px-4 py-2 text-left rounded-md hover:bg-blue-50 transition-colors
-                ${
-                  !selectedCity
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-700"
-                }`}
-                onClick={() => {
-                  setSelectedCity(null);
-                  setSelectedDistricts([]);
-                  setShowCityDropdown(false);
-                  setLocationSearch("");
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-globe-asia text-gray-400"></i>
-                  Toàn quốc
-                </div>
-              </button>
-
-              {/* Provinces filtered by search */}
-              {provinces
-                .filter((province) =>
-                  province.name
-                    .toLowerCase()
-                    .includes(locationSearch.toLowerCase())
-                )
-                .map((province) => (
-                  <button
-                    key={province.code}
-                    className={`w-full px-4 py-2 text-left rounded-md hover:bg-blue-50 transition-colors
-                    ${
-                      selectedCity === province.code
-                        ? "bg-blue-50 text-blue-600 font-medium"
-                        : "text-gray-700"
-                    }`}
-                    onClick={() => handleCitySelect(province)}
-                  >
-                    {province.name}
-                  </button>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quận/huyện dropdown - Hiển thị khi đã chọn thành phố */}
-      {selectedCity && (
-        <div className="relative mt-3" ref={locationSuggestionsRef}>
-          <button
-            onClick={() => setShowLocationSuggestions(!showLocationSuggestions)}
-            className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200"
-          >
-            <i className="fas fa-map text-blue-500 mr-3 text-lg"></i>
-            <div className="flex flex-wrap gap-1.5 items-center flex-1 text-left">
-              {selectedDistricts.length > 0 ? (
-                selectedDistricts.map((district) => (
-                  <span
-                    key={district.code}
-                    className="bg-blue-100 text-blue-800 text-sm px-2.5 py-1 rounded-full flex items-center"
-                  >
-                    {district.name}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDistricts(
-                          selectedDistricts.filter(
-                            (d) => d.code !== district.code
-                          )
-                        );
-                      }}
-                      className="ml-1.5 hover:text-blue-700"
-                    >
-                      <i className="fas fa-times-circle"></i>
-                    </button>
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-500">Chọn quận/huyện</span>
-              )}
-            </div>
-            <i
-              className={`fas fa-chevron-${
-                showLocationSuggestions ? "up" : "down"
-              } text-gray-400`}
-            ></i>
-          </button>
-
-          {showLocationSuggestions && (
-            <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-              <div className="p-3 border-b border-gray-100">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm quận/huyện..."
-                    value={locationSearch}
-                    onChange={(e) => setLocationSearch(e.target.value)}
-                    className="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                </div>
-              </div>
-
-              <div className="max-h-60 overflow-y-auto">
-                {filteredDistricts.length > 0 ? (
-                  <div className="p-2">
-                    <div className="flex items-center justify-between mb-2 px-2">
-                      <p className="text-xs text-gray-500 uppercase font-medium">
-                        {provinces.find((p) => p.code === selectedCity)?.name ||
-                          "Quận/Huyện"}
-                      </p>
-                      {selectedDistricts.length > 0 && (
-                        <button
-                          className="text-xs text-blue-600 hover:underline"
-                          onClick={() => setSelectedDistricts([])}
-                        >
-                          Xóa tất cả
-                        </button>
-                      )}
-                    </div>
-
-                    {filteredDistricts.map((district) => {
-                      const isSelected = selectedDistricts.some(
-                        (d) => d.code === district.code
-                      );
-                      const canSelect =
-                        selectedDistricts.length < 3 || isSelected;
-
-                      return (
-                        <button
-                          key={district.code}
-                          onClick={() =>
-                            canSelect && handleDistrictSelect(district)
-                          }
-                          className={`w-full px-3 py-2.5 text-left flex items-center justify-between rounded-md
-                          ${
-                            isSelected
-                              ? "bg-blue-50 text-blue-700"
-                              : "hover:bg-gray-50"
-                          }
-                          ${!canSelect ? "opacity-50 cursor-not-allowed" : ""}`}
-                          disabled={!canSelect}
-                        >
-                          <span className="flex items-center gap-2">
-                            <i
-                              className={`fas fa-map-marker-alt ${
-                                isSelected ? "text-blue-500" : "text-gray-400"
-                              }`}
-                            ></i>
-                            {district.name}
-                          </span>
-                          {isSelected && (
-                            <i className="fas fa-check text-blue-500"></i>
-                          )}
-                          {!canSelect && !isSelected && (
-                            <span className="text-xs text-gray-400">
-                              (Tối đa 3)
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : cityDistricts.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <div className="animate-pulse">
-                      <i className="fas fa-spinner fa-spin text-blue-500 text-xl mb-2"></i>
-                      <p className="text-gray-500 text-sm">
-                        Đang tải danh sách quận/huyện...
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 text-center">
-                    <i className="fas fa-search text-gray-300 text-2xl mb-2"></i>
-                    <p className="text-gray-500 text-sm">
-                      Không tìm thấy quận/huyện phù hợp
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  // Cập nhật giao diện phần dropdown chọn loại bất động sản
-  const renderPropertyDropdown = () => (
-    <div className="relative" ref={propertyDropdownRef}>
-      <button
-        onClick={() => setShowPropertyDropdown(!showPropertyDropdown)}
-        className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-      >
-        <i className="fas fa-home text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-        <span
-          className={`${
-            selectedPropertyType ? "text-gray-900 font-medium" : "text-gray-500"
-          } flex-1 text-left`}
-        >
-          {selectedPropertyType
-            ? categories.find((c) => c.slug === selectedPropertyType)?.name
-            : "Loại bất động sản"}
-        </span>
-        <i
-          className={`fas fa-chevron-${
-            showPropertyDropdown ? "up" : "down"
-          } text-gray-400 group-hover:text-blue-500`}
-        ></i>
-      </button>
-
-      {showPropertyDropdown && (
-        <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-          <div className="p-3 border-b border-gray-100">
-            <p className="text-sm font-medium">Loại bất động sản</p>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto">
-            {/* All option */}
-            <button
-              className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-              ${
-                !selectedPropertyType
-                  ? "bg-blue-50 text-blue-600 font-medium"
-                  : "text-gray-700"
-              }`}
-              onClick={() => {
-                setSelectedPropertyType("");
-                setShowPropertyDropdown(false);
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <i className="fas fa-th-large text-gray-400"></i>
-                Tất cả loại bất động sản
-              </span>
-              {!selectedPropertyType && (
-                <i className="fas fa-check text-blue-500"></i>
-              )}
-            </button>
-
-            {/* Categories */}
-            {categories.map((category) => (
-              <button
-                key={category.slug}
-                className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-                ${
-                  selectedPropertyType === category.slug
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-700"
-                }`}
-                onClick={() => {
-                  setSelectedPropertyType(category.slug);
-                  setShowPropertyDropdown(false);
-                }}
-              >
-                <span>{category.name}</span>
-                {selectedPropertyType === category.slug && (
-                  <i className="fas fa-check text-blue-500"></i>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Cập nhật giao diện phần dropdown chọn khoảng giá
-  const renderPriceDropdown = () => (
-    <div className="relative" ref={priceDropdownRef}>
-      <button
-        onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-        className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-      >
-        <i className="fas fa-tag text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-        <span
-          className={`${
-            selectedPrice ? "text-gray-900 font-medium" : "text-gray-500"
-          } flex-1 text-left`}
-        >
-          {selectedPrice
-            ? priceRanges.find((p) => p.slug === selectedPrice)?.name
-            : "Khoảng giá"}
-        </span>
-        <i
-          className={`fas fa-chevron-${
-            showPriceDropdown ? "up" : "down"
-          } text-gray-400 group-hover:text-blue-500`}
-        ></i>
-      </button>
-
-      {showPriceDropdown && (
-        <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-          <div className="p-3 border-b border-gray-100">
-            <p className="text-sm font-medium">Khoảng giá</p>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto">
-            {/* All option */}
-            <button
-              className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-              ${
-                !selectedPrice
-                  ? "bg-blue-50 text-blue-600 font-medium"
-                  : "text-gray-700"
-              }`}
-              onClick={() => {
-                setSelectedPrice("");
-                setShowPriceDropdown(false);
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <i className="fas fa-money-bill-wave text-gray-400"></i>
-                Tất cả khoảng giá
-              </span>
-              {!selectedPrice && <i className="fas fa-check text-blue-500"></i>}
-            </button>
-
-            {/* Price ranges */}
-            {priceRanges.map((priceRange) => (
-              <button
-                key={priceRange.slug}
-                className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-                ${
-                  selectedPrice === priceRange.slug
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-700"
-                }`}
-                onClick={() => {
-                  setSelectedPrice(priceRange.slug);
-                  setShowPriceDropdown(false);
-                }}
-              >
-                <span>{priceRange.name}</span>
-                {selectedPrice === priceRange.slug && (
-                  <i className="fas fa-check text-blue-500"></i>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Cập nhật giao diện phần dropdown chọn diện tích
-  const renderAreaDropdown = () => (
-    <div className="relative" ref={areaDropdownRef}>
-      <button
-        onClick={() => setShowAreaDropdown(!showAreaDropdown)}
-        className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-      >
-        <i className="fas fa-ruler-combined text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-        <span
-          className={`${
-            selectedArea ? "text-gray-900 font-medium" : "text-gray-500"
-          } flex-1 text-left`}
-        >
-          {selectedArea
-            ? areaRanges.find((a) => a.slug === selectedArea)?.name
-            : "Diện tích"}
-        </span>
-        <i
-          className={`fas fa-chevron-${
-            showAreaDropdown ? "up" : "down"
-          } text-gray-400 group-hover:text-blue-500`}
-        ></i>
-      </button>
-
-      {showAreaDropdown && (
-        <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-          <div className="p-3 border-b border-gray-100">
-            <p className="text-sm font-medium">Diện tích</p>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto">
-            {/* All option */}
-            <button
-              className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-              ${
-                !selectedArea
-                  ? "bg-blue-50 text-blue-600 font-medium"
-                  : "text-gray-700"
-              }`}
-              onClick={() => {
-                setSelectedArea("");
-                setShowAreaDropdown(false);
-              }}
-            >
-              <span className="flex items-center gap-2">
-                <i className="fas fa-expand-arrows-alt text-gray-400"></i>
-                Tất cả diện tích
-              </span>
-              {!selectedArea && <i className="fas fa-check text-blue-500"></i>}
-            </button>
-
-            {/* Area ranges */}
-            {areaRanges.map((areaRange) => (
-              <button
-                key={areaRange.slug}
-                className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
-                ${
-                  selectedArea === areaRange.slug
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-700"
-                }`}
-                onClick={() => {
-                  setSelectedArea(areaRange.slug);
-                  setShowAreaDropdown(false);
-                }}
-              >
-                <span>{areaRange.name}</span>
-                {selectedArea === areaRange.slug && (
-                  <i className="fas fa-check text-blue-500"></i>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Cập nhật giao diện nút tìm kiếm
-  const renderSearchButton = () => (
-    <button
-      onClick={handleSearch}
-      className="w-full h-full min-h-[56px] px-6 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-lg group"
-    >
-      <i className="fas fa-search mr-2 group-hover:animate-pulse"></i>
-      Tìm kiếm
-    </button>
-  );
-
-  // Cập nhật phần CSS animation để dropdown mở mượt mà hơn
-  useEffect(() => {
-    // Thêm CSS animation cho các dropdown
-    const styleElement = document.createElement("style");
-    styleElement.textContent = `
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fadeIn {
-      animation: fadeIn 0.2s ease-out forwards;
-    }
-  `;
-    document.head.appendChild(styleElement);
-
-    return () => {
-      document.head.removeChild(styleElement);
-    };
-  }, []);
-
-  // Cập nhật phần return với layout mới
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 bg-white rounded-2xl shadow-lg">
       <div className="py-8">
         {/* Search Tabs */}
-        {renderTabs()}
+        <div className="mb-6">
+          <Tab.Group onChange={handleTabChange}>
+            <Tab.List className="flex rounded-lg border-b border-gray-200 overflow-hidden">
+              <Tab
+                className={({ selected }) =>
+                  `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
+                    selected
+                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
+                      : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <i className="fas fa-home"></i>
+                  Mua bán
+                </span>
+              </Tab>
+              <Tab
+                className={({ selected }) =>
+                  `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
+                    selected
+                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
+                      : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <i className="fas fa-key"></i>
+                  Cho thuê
+                </span>
+              </Tab>
+              <Tab
+                className={({ selected }) =>
+                  `flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ease-in-out ${
+                    selected
+                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
+                      : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
+                  }`
+                }
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <i className="fas fa-building"></i>
+                  Dự án
+                </span>
+              </Tab>
+            </Tab.List>
+          </Tab.Group>
+        </div>
 
-        {/* Search Form */}
+        {/* Search Form - Layout mới */}
         <div className="space-y-4">
+          {/* Hàng 1: Vị trí (province và district) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* City & District Selection */}
-            <div className="md:col-span-1">{renderCityDropdown()}</div>
+            {/* City selection - bên trái */}
+            <div className="w-full col-span-1">
+              <div className="relative" ref={cityDropdownRef}>
+                <button
+                  onClick={() => setShowCityDropdown(!showCityDropdown)}
+                  className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
+                >
+                  <i className="fas fa-map-marker-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                  <span
+                    className={`${
+                      selectedCity
+                        ? "text-gray-900 font-medium"
+                        : "text-gray-500"
+                    } flex-1 text-left`}
+                  >
+                    {selectedCity
+                      ? provinces.find((p) => p.code === selectedCity)?.name
+                      : "Toàn quốc"}
+                  </span>
+                  <i
+                    className={`fas fa-chevron-${
+                      showCityDropdown ? "up" : "down"
+                    } text-gray-400 group-hover:text-blue-500`}
+                  ></i>
+                </button>
 
-            {/* Property Type Selection */}
-            <div className="md:col-span-1">{renderPropertyDropdown()}</div>
+                {showCityDropdown && (
+                  <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                    <div className="p-3 border-b border-gray-100">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm tỉnh/thành phố..."
+                          value={citySearch}
+                          onChange={(e) => setCitySearch(e.target.value)}
+                          className="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                      </div>
+                    </div>
 
-            {/* Price Range Selection */}
-            <div className="md:col-span-1">{renderPriceDropdown()}</div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {/* Tỉnh thành phổ biến */}
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-xs text-gray-500 uppercase mb-2 font-medium">
+                          Phổ biến
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {provinces.slice(0, 6).map((province) => (
+                            <button
+                              key={`popular-${province.code}`}
+                              className={`p-2 text-left rounded-md hover:bg-blue-50 transition-colors
+                                ${
+                                  selectedCity === province.code
+                                    ? "bg-blue-50 text-blue-600 font-medium"
+                                    : "text-gray-700"
+                                }`}
+                              onClick={() => handleCitySelect(province)}
+                            >
+                              {province.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tất cả tỉnh thành */}
+                      <div className="p-2">
+                        <p className="text-xs text-gray-500 uppercase mb-2 px-2 font-medium">
+                          Tất cả
+                        </p>
+                        <button
+                          className={`w-full px-4 py-2 text-left rounded-md hover:bg-blue-50 transition-colors
+                            ${
+                              !selectedCity
+                                ? "bg-blue-50 text-blue-600 font-medium"
+                                : "text-gray-700"
+                            }`}
+                          onClick={() => {
+                            setSelectedCity(null);
+                            setSelectedDistricts([]);
+                            setShowCityDropdown(false);
+                            setLocationSearch("");
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <i className="fas fa-globe-asia text-gray-400"></i>
+                            Toàn quốc
+                          </div>
+                        </button>
+
+                        {/* Provinces filtered by search */}
+                        {provinces
+                          .filter((province) =>
+                            province.name
+                              .toLowerCase()
+                              .includes(citySearch.toLowerCase())
+                          )
+                          .map((province) => (
+                            <button
+                              key={province.code}
+                              className={`w-full px-4 py-2 text-left rounded-md hover:bg-blue-50 transition-colors
+                                ${
+                                  selectedCity === province.code
+                                    ? "bg-blue-50 text-blue-600 font-medium"
+                                    : "text-gray-700"
+                                }`}
+                              onClick={() => handleCitySelect(province)}
+                            >
+                              {province.name}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Districts selection - bên phải */}
+            <div className="w-full col-span-1 md:col-span-2">
+              {selectedCity ? (
+                <div className="relative" ref={locationSuggestionsRef}>
+                  <button
+                    onClick={() =>
+                      setShowLocationSuggestions(!showLocationSuggestions)
+                    }
+                    className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200"
+                  >
+                    <i className="fas fa-map-marker-alt text-blue-500 mr-3 text-lg"></i>
+                    <div className="flex flex-wrap gap-1.5 items-center flex-1 text-left">
+                      {selectedDistricts.length > 0 ? (
+                        selectedDistricts.map((district) => (
+                          <span
+                            key={district.code}
+                            className="bg-blue-100 text-blue-800 text-sm px-2.5 py-1 rounded-full flex items-center"
+                          >
+                            {district.name}
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedDistricts(
+                                  selectedDistricts.filter(
+                                    (d) => d.code !== district.code
+                                  )
+                                );
+                              }}
+                              className="ml-1.5 hover:text-blue-700 cursor-pointer"
+                            >
+                              <i className="fas fa-times-circle"></i>
+                            </span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500">Chọn quận/huyện</span>
+                      )}
+                    </div>
+                    <i
+                      className={`fas fa-chevron-${
+                        showLocationSuggestions ? "up" : "down"
+                      } text-gray-400`}
+                    ></i>
+                  </button>
+
+                  {showLocationSuggestions && (
+                    <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                      <div className="p-3 border-b border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">
+                            {provinces.find((p) => p.code === selectedCity)
+                              ?.name || "Quận/Huyện"}
+                          </p>
+                          {selectedDistricts.length > 0 && (
+                            <button
+                              className="text-xs text-blue-600 hover:underline"
+                              onClick={() => setSelectedDistricts([])}
+                            >
+                              Xóa tất cả
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="relative mt-2">
+                          <input
+                            type="text"
+                            placeholder="Tìm kiếm quận/huyện..."
+                            value={districtSearch}
+                            onChange={(e) => setDistrictSearch(e.target.value)}
+                            className="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                          <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                      </div>
+
+                      <div className="max-h-60 overflow-y-auto p-2">
+                        {filteredDistricts.length > 0 ? (
+                          <>
+                            {/* Hiện thị thông tin số quận đã chọn */}
+                            {/* Hiện thị thông tin số quận đã chọn */}
+                            <div className="flex items-center justify-between mb-2 px-2">
+                              <p className="text-xs text-gray-500">
+                                {searchType === "project" ? (
+                                  <span>Chọn một quận/huyện</span>
+                                ) : (
+                                  <>
+                                    <span className="font-medium">
+                                      {selectedDistricts.length}/3
+                                    </span>{" "}
+                                    quận đã chọn
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            {filteredDistricts.map((district) => {
+                              const isSelected = selectedDistricts.some(
+                                (d) => d.code === district.code
+                              );
+
+                              // Nếu là dự án, chỉ cho phép chọn 1 quận/huyện
+                              // Nếu đã có quận được chọn, chỉ cho phép bấm vào quận đó để bỏ chọn
+                              const canSelect =
+                                searchType === "project"
+                                  ? selectedDistricts.length === 0 || isSelected
+                                  : selectedDistricts.length < 3 || isSelected;
+
+                              return (
+                                <button
+                                  key={district.code}
+                                  onClick={() =>
+                                    canSelect && handleDistrictSelect(district)
+                                  }
+                                  className={`w-full px-3 py-2.5 text-left flex items-center justify-between rounded-md
+        ${isSelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}
+        ${!canSelect ? "opacity-50 cursor-not-allowed" : ""}`}
+                                  disabled={!canSelect}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <i
+                                      className={`fas fa-map-marker-alt ${
+                                        isSelected
+                                          ? "text-blue-500"
+                                          : "text-gray-400"
+                                      }`}
+                                    ></i>
+                                    {district.name}
+                                  </span>
+                                  {isSelected && (
+                                    <i className="fas fa-check text-blue-500"></i>
+                                  )}
+                                  {!canSelect && !isSelected && (
+                                    <span className="text-xs text-gray-400">
+                                      {searchType === "project"
+                                        ? "(Chỉ chọn 1)"
+                                        : "(Tối đa 3)"}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                            {/* Danh sách quận huyện */}
+                            {filteredDistricts.map((district) => {
+                              const isSelected = selectedDistricts.some(
+                                (d) => d.code === district.code
+                              );
+                              const canSelect =
+                                selectedDistricts.length < 3 || isSelected;
+
+                              return (
+                                <button
+                                  key={district.code}
+                                  onClick={() =>
+                                    canSelect && handleDistrictSelect(district)
+                                  }
+                                  className={`w-full px-3 py-2.5 text-left flex items-center justify-between rounded-md
+                                    ${
+                                      isSelected
+                                        ? "bg-blue-50 text-blue-700"
+                                        : "hover:bg-gray-50"
+                                    }
+                                    ${
+                                      !canSelect
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : ""
+                                    }`}
+                                  disabled={!canSelect}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    <i
+                                      className={`fas fa-map-marker-alt ${
+                                        isSelected
+                                          ? "text-blue-500"
+                                          : "text-gray-400"
+                                      }`}
+                                    ></i>
+                                    {district.name}
+                                  </span>
+                                  {isSelected && (
+                                    <i className="fas fa-check text-blue-500"></i>
+                                  )}
+                                  {!canSelect && !isSelected && (
+                                    <span className="text-xs text-gray-400">
+                                      (Tối đa 3)
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </>
+                        ) : cityDistricts.length === 0 ? (
+                          <div className="p-6 text-center">
+                            <div className="animate-pulse">
+                              <i className="fas fa-spinner fa-spin text-blue-500 text-xl mb-2"></i>
+                              <p className="text-gray-500 text-sm">
+                                Đang tải danh sách quận/huyện...
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-6 text-center">
+                            <i className="fas fa-search text-gray-300 text-2xl mb-2"></i>
+                            <p className="text-gray-500 text-sm">
+                              Không tìm thấy quận/huyện phù hợp
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-gray-50 text-gray-400">
+                  <i className="fas fa-map-marker-alt text-gray-400 mr-3 text-lg"></i>
+                  <span className="flex-1 text-left">
+                    Chọn tỉnh/thành phố trước
+                  </span>
+                  <i className="fas fa-lock text-gray-400"></i>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-stretch">
-            {/* Area Selection */}
-            <div className="md:col-span-1">{renderAreaDropdown()}</div>
+          {/* Hàng 2: Các lọc khác và nút tìm kiếm */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {/* Property Type */}
+            <div className="w-full">
+              <div className="relative" ref={propertyDropdownRef}>
+                <button
+                  onClick={() => setShowPropertyDropdown(!showPropertyDropdown)}
+                  className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
+                >
+                  <i className="fas fa-home text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                  <span
+                    className={`${
+                      selectedPropertyType
+                        ? "text-gray-900 font-medium"
+                        : "text-gray-500"
+                    } flex-1 text-left`}
+                  >
+                    {selectedPropertyType
+                      ? categories.find((c) => c.slug === selectedPropertyType)
+                          ?.name
+                      : "Loại bất động sản"}
+                  </span>
+                  <i
+                    className={`fas fa-chevron-${
+                      showPropertyDropdown ? "up" : "down"
+                    } text-gray-400 group-hover:text-blue-500`}
+                  ></i>
+                </button>
+
+                {showPropertyDropdown && (
+                  <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                    <div className="p-3 border-b border-gray-100">
+                      <p className="text-sm font-medium">Loại bất động sản</p>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto">
+                      <button
+                        className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                          ${
+                            !selectedPropertyType
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        onClick={() => {
+                          setSelectedPropertyType("");
+                          setShowPropertyDropdown(false);
+                        }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <i className="fas fa-th-large text-gray-400"></i>
+                          Tất cả loại bất động sản
+                        </span>
+                        {!selectedPropertyType && (
+                          <i className="fas fa-check text-blue-500"></i>
+                        )}
+                      </button>
+
+                      {categories.map((category) => (
+                        <button
+                          key={category.slug}
+                          className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                            ${
+                              selectedPropertyType === category.slug
+                                ? "bg-blue-50 text-blue-600 font-medium"
+                                : "text-gray-700"
+                            }`}
+                          onClick={() => {
+                            setSelectedPropertyType(category.slug);
+                            setShowPropertyDropdown(false);
+                          }}
+                        >
+                          <span>{category.name}</span>
+                          {selectedPropertyType === category.slug && (
+                            <i className="fas fa-check text-blue-500"></i>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Price Range */}
+            <div className="w-full">
+              <div className="relative" ref={priceDropdownRef}>
+                <button
+                  onClick={() => setShowPriceDropdown(!showPriceDropdown)}
+                  className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
+                >
+                  <i className="fas fa-tag text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                  <span
+                    className={`${
+                      selectedPrice
+                        ? "text-gray-900 font-medium"
+                        : "text-gray-500"
+                    } flex-1 text-left`}
+                  >
+                    {selectedPrice
+                      ? priceRanges.find((p) => p.slug === selectedPrice)?.name
+                      : "Khoảng giá"}
+                  </span>
+                  <i
+                    className={`fas fa-chevron-${
+                      showPriceDropdown ? "up" : "down"
+                    } text-gray-400 group-hover:text-blue-500`}
+                  ></i>
+                </button>
+
+                {showPriceDropdown && (
+                  <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                    <div className="p-3 border-b border-gray-100">
+                      <p className="text-sm font-medium">Khoảng giá</p>
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto">
+                      <button
+                        className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                          ${
+                            !selectedPrice
+                              ? "bg-blue-50 text-blue-600 font-medium"
+                              : "text-gray-700"
+                          }`}
+                        onClick={() => {
+                          setSelectedPrice("");
+                          setShowPriceDropdown(false);
+                        }}
+                      >
+                        <span className="flex items-center gap-2">
+                          <i className="fas fa-money-bill-wave text-gray-400"></i>
+                          Tất cả khoảng giá
+                        </span>
+                        {!selectedPrice && (
+                          <i className="fas fa-check text-blue-500"></i>
+                        )}
+                      </button>
+
+                      {priceRanges.map((priceRange) => (
+                        <button
+                          key={priceRange.slug}
+                          className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                            ${
+                              selectedPrice === priceRange.slug
+                                ? "bg-blue-50 text-blue-600 font-medium"
+                                : "text-gray-700"
+                            }`}
+                          onClick={() => {
+                            setSelectedPrice(priceRange.slug);
+                            setShowPriceDropdown(false);
+                          }}
+                        >
+                          <span>{priceRange.name}</span>
+                          {selectedPrice === priceRange.slug && (
+                            <i className="fas fa-check text-blue-500"></i>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Area hoặc Project Status tùy thuộc vào tab được chọn */}
+            <div className="w-full">
+              {searchType !== "project" ? (
+                // Hiển thị dropdown Diện tích cho Mua bán và Cho thuê
+                <div className="relative" ref={areaDropdownRef}>
+                  <button
+                    onClick={() => setShowAreaDropdown(!showAreaDropdown)}
+                    className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
+                  >
+                    <i className="fas fa-ruler-combined text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                    <span
+                      className={`${
+                        selectedArea
+                          ? "text-gray-900 font-medium"
+                          : "text-gray-500"
+                      } flex-1 text-left`}
+                    >
+                      {selectedArea
+                        ? areaRanges.find((a) => a.slug === selectedArea)?.name
+                        : "Diện tích"}
+                    </span>
+                    <i
+                      className={`fas fa-chevron-${
+                        showAreaDropdown ? "up" : "down"
+                      } text-gray-400 group-hover:text-blue-500`}
+                    ></i>
+                  </button>
+
+                  {showAreaDropdown && (
+                    <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-sm font-medium">Diện tích</p>
+                      </div>
+
+                      <div className="max-h-60 overflow-y-auto">
+                        <button
+                          className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                ${
+                  !selectedArea
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700"
+                }`}
+                          onClick={() => {
+                            setSelectedArea("");
+                            setShowAreaDropdown(false);
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <i className="fas fa-expand-arrows-alt text-gray-400"></i>
+                            Tất cả diện tích
+                          </span>
+                          {!selectedArea && (
+                            <i className="fas fa-check text-blue-500"></i>
+                          )}
+                        </button>
+
+                        {areaRanges.map((areaRange) => (
+                          <button
+                            key={areaRange.slug}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                  ${
+                    selectedArea === areaRange.slug
+                      ? "bg-blue-50 text-blue-600 font-medium"
+                      : "text-gray-700"
+                  }`}
+                            onClick={() => {
+                              setSelectedArea(areaRange.slug);
+                              setShowAreaDropdown(false);
+                            }}
+                          >
+                            <span>{areaRange.name}</span>
+                            {selectedArea === areaRange.slug && (
+                              <i className="fas fa-check text-blue-500"></i>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Hiển thị dropdown Trạng thái dự án cho tab Dự án
+                <div className="relative" ref={projectStatusDropdownRef}>
+                  <button
+                    onClick={() =>
+                      setShowProjectStatusDropdown(!showProjectStatusDropdown)
+                    }
+                    className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
+                  >
+                    <i className="fas fa-clock text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                    <span
+                      className={`${
+                        selectedProjectStatus
+                          ? "text-gray-900 font-medium"
+                          : "text-gray-500"
+                      } flex-1 text-left`}
+                    >
+                      {selectedProjectStatus
+                        ? projectStatuses.find(
+                            (s) => s.id === selectedProjectStatus
+                          )?.name
+                        : "Trạng thái dự án"}
+                    </span>
+                    <i
+                      className={`fas fa-chevron-${
+                        showProjectStatusDropdown ? "up" : "down"
+                      } text-gray-400 group-hover:text-blue-500`}
+                    ></i>
+                  </button>
+
+                  {showProjectStatusDropdown && (
+                    <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-sm font-medium">Trạng thái dự án</p>
+                      </div>
+
+                      <div className="max-h-60 overflow-y-auto">
+                        <button
+                          className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                ${
+                  !selectedProjectStatus
+                    ? "bg-blue-50 text-blue-600 font-medium"
+                    : "text-gray-700"
+                }`}
+                          onClick={() => {
+                            setSelectedProjectStatus("");
+                            setShowProjectStatusDropdown(false);
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <i className="fas fa-globe text-gray-400"></i>
+                            Tất cả trạng thái
+                          </span>
+                          {!selectedProjectStatus && (
+                            <i className="fas fa-check text-blue-500"></i>
+                          )}
+                        </button>
+
+                        {projectStatuses.map((status) => (
+                          <button
+                            key={status.id}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-blue-50 transition-colors flex items-center justify-between
+                  ${
+                    selectedProjectStatus === status.id
+                      ? "bg-blue-50 text-blue-600 font-medium"
+                      : "text-gray-700"
+                  }`}
+                            onClick={() => {
+                              setSelectedProjectStatus(status.id);
+                              setShowProjectStatusDropdown(false);
+                            }}
+                          >
+                            <span className="flex items-center gap-2">
+                              {status.id === "sap-mo-ban" && (
+                                <i className="fas fa-hourglass-start text-yellow-500 mr-2"></i>
+                              )}
+                              {status.id === "dang-mo-ban" && (
+                                <i className="fas fa-fire text-orange-500 mr-2"></i>
+                              )}
+                              {status.id === "da-ban-giao" && (
+                                <i className="fas fa-check-circle text-green-500 mr-2"></i>
+                              )}
+                              {status.name}
+                            </span>
+                            {selectedProjectStatus === status.id && (
+                              <i className="fas fa-check text-blue-500"></i>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Search Button */}
-            <div className="md:col-span-3">{renderSearchButton()}</div>
+            <div className="w-full">
+              <button
+                onClick={handleSearch}
+                className="w-full h-full min-h-[56px] px-6 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-lg group"
+              >
+                <i className="fas fa-search mr-2 group-hover:animate-pulse"></i>
+                Tìm kiếm
+              </button>
+            </div>
           </div>
         </div>
       </div>

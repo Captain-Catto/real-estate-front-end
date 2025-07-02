@@ -105,12 +105,12 @@ export default function BasicInfoStep({
   } | null>(null);
   const [isLoadingMap, setIsLoadingMap] = useState(false);
 
-  const MapView = dynamic(() => import("@/components/common/MapView"), {
-    ssr: false, // Quan trọng: không render ở server
-    loading: () => (
-      <div className="bg-gray-100 animate-pulse h-[300px] rounded-lg"></div>
-    ),
-  });
+  // const MapView = dynamic(() => import("@/components/common/MapView"), {
+  //   ssr: false, // Quan trọng: không render ở server
+  //   loading: () => (
+  //     <div className="bg-gray-100 animate-pulse h-[300px] rounded-lg"></div>
+  //   ),
+  // });
 
   useEffect(() => {
     setSelectedProvince(formData.location?.province || "");

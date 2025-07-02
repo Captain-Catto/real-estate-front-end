@@ -10,7 +10,8 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import { useAuth } from "@/store/hooks";
+import { useAuth, useFavorites } from "@/store/hooks";
+import { toast } from "sonner";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,16 +20,20 @@ interface SidebarProps {
 
 export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
   const { user, isAuthenticated, logout } = useAuth();
+  const { items: favoriteItems } = useFavorites();
 
   const handleLogout = async () => {
     try {
       await logout();
       onClose();
+      toast.success("Đăng xuất thành công");
       window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
+      toast.error("Đã xảy ra lỗi khi đăng xuất");
     }
   };
+
   return (
     <Transition show={isOpen}>
       <Dialog as="div" className="relative z-50 xl:hidden" onClose={onClose}>
@@ -88,9 +93,13 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                     {/* User Actions */}
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center gap-3 mb-4">
-                        <button className="p-2 border border-gray-300 rounded-lg">
+                        <Link
+                          href="/yeu-thich"
+                          onClick={onClose}
+                          className="p-2 border border-gray-300 rounded-lg relative flex items-center justify-center"
+                        >
                           <svg
-                            className="w-5 h-5"
+                            className="w-5 h-5 text-gray-600"
                             viewBox="0 0 24 24"
                             fill="none"
                           >
@@ -98,10 +107,25 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                               d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
                               stroke="currentColor"
                               strokeWidth="2"
-                              fill="none"
+                              fill={
+                                favoriteItems.length > 0
+                                  ? "rgba(239, 68, 68, 0.2)"
+                                  : "none"
+                              }
                             />
                           </svg>
-                        </button>
+
+                          {/* Badge số lượng yêu thích */}
+                          {favoriteItems.length > 0 && (
+                            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">
+                                {favoriteItems.length > 9
+                                  ? "9+"
+                                  : favoriteItems.length}
+                              </span>
+                            </span>
+                          )}
+                        </Link>
 
                         {/* User info hiển thị khi đã đăng nhập */}
                         {isAuthenticated && user && (
@@ -122,7 +146,7 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                         /* Authenticated user actions */
                         <div className="space-y-2">
                           <Link
-                            href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue"
+                            href="/dang-tin"
                             className="w-full px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 transition-colors text-center block"
                             onClick={onClose}
                           >

@@ -1,5 +1,15 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { favoriteService } from "@/services/favoriteService";
+import { useAuth, useFavorites } from "@/store/hooks";
+
+// Create a global cache to store favorite status
+const favoriteStatusCache: Record<
+  string,
+  { status: boolean; timestamp: number }
+> = {};
+const CACHE_EXPIRY = 60000; // 1 minute in milliseconds
 
 export interface FavoriteItem {
   id: string;
@@ -28,78 +38,179 @@ export function FavoriteButton({
 }: FavoriteButtonProps) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const { fetchUserFavorites } = useFavorites();
+  const checkingRef = useRef(false);
 
   // Check if item is favorited on mount
   useEffect(() => {
-    const favorites = getFavorites();
-    setIsFavorited(
-      favorites.some((fav) => fav.id === item.id && fav.type === item.type)
+    const checkFavoriteStatus = async () => {
+      if (!isAuthenticated || !user || checkingRef.current) return;
+
+      // Check cache first
+      const cachedStatus = favoriteStatusCache[item.id];
+      if (cachedStatus && Date.now() - cachedStatus.timestamp < CACHE_EXPIRY) {
+        setIsFavorited(cachedStatus.status);
+        return;
+      }
+
+      checkingRef.current = true;
+
+      try {
+        // Thử tối đa 1 lần - reduced from 2 attempts
+        const response = await favoriteService.checkFavoriteStatus(item.id);
+        if (response?.success) {
+          setIsFavorited(response.data.isFavorited);
+
+          // Update cache
+          favoriteStatusCache[item.id] = {
+            status: response.data.isFavorited,
+            timestamp: Date.now(),
+          };
+        }
+      } catch (error) {
+        console.error("Error checking favorite status:", error);
+        // Không hiển thị lỗi cho người dùng
+        // Mặc định là không favorite (false)
+      } finally {
+        checkingRef.current = false;
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [item.id, isAuthenticated, user]);
+
+  // THÊM MỚI: Lắng nghe sự kiện favorites-updated để cập nhật trạng thái
+  useEffect(() => {
+    const handleFavoritesUpdated = (event: CustomEvent) => {
+      // Kiểm tra xem item này có phải là item vừa bị xóa không
+      if (
+        event.detail?.action === "remove" &&
+        event.detail?.itemId === item.id
+      ) {
+        setIsFavorited(false);
+        // Update cache
+        favoriteStatusCache[item.id] = {
+          status: false,
+          timestamp: Date.now(),
+        };
+      }
+
+      // If this is an add event for this item
+      if (event.detail?.action === "add" && event.detail?.itemId === item.id) {
+        setIsFavorited(true);
+        // Update cache
+        favoriteStatusCache[item.id] = {
+          status: true,
+          timestamp: Date.now(),
+        };
+      }
+    };
+
+    // Thêm event listener với type casting
+    window.addEventListener(
+      "favorites-updated",
+      handleFavoritesUpdated as EventListener
     );
-  }, [item.id, item.type]);
 
-  const getFavorites = (): FavoriteItem[] => {
-    if (typeof window === "undefined") return [];
-    try {
-      const stored = localStorage.getItem("real-estate-favorites");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const saveFavorites = (favorites: FavoriteItem[]) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("real-estate-favorites", JSON.stringify(favorites));
-    }
-  };
+    return () => {
+      window.removeEventListener(
+        "favorites-updated",
+        handleFavoritesUpdated as EventListener
+      );
+    };
+  }, [item.id]);
 
   const handleToggle = async () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để lưu tin", {
+        action: {
+          label: "Đăng nhập",
+          onClick: () => (window.location.href = "/login"),
+        },
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const favorites = getFavorites();
-      const existingIndex = favorites.findIndex(
-        (fav) => fav.id === item.id && fav.type === item.type
-      );
+      if (isFavorited) {
+        // Xóa khỏi danh sách yêu thích
+        const response = await favoriteService.removeFromFavorites(item.id);
+        if (response.success) {
+          setIsFavorited(false);
 
-      let newFavorites: FavoriteItem[];
-      let newIsFavorited: boolean;
+          // Update cache
+          favoriteStatusCache[item.id] = {
+            status: false,
+            timestamp: Date.now(),
+          };
 
-      if (existingIndex >= 0) {
-        // Remove from favorites
-        newFavorites = favorites.filter((_, index) => index !== existingIndex);
-        newIsFavorited = false;
+          // Toast notification
+          toast.success("Đã xóa khỏi danh sách yêu thích", {
+            description: `${item.title} đã được bỏ khỏi danh sách đã lưu`,
+            icon: "💔",
+          });
+
+          // Gửi event với thông tin chi tiết
+          window.dispatchEvent(
+            new CustomEvent("favorites-updated", {
+              detail: {
+                action: "remove",
+                itemId: item.id,
+              },
+            })
+          );
+        } else {
+          throw new Error(response.message || "Có lỗi xảy ra");
+        }
       } else {
-        // Add to favorites
-        newFavorites = [...favorites, item];
-        newIsFavorited = true;
+        // Thêm vào danh sách yêu thích
+        const response = await favoriteService.addToFavorites(item.id);
+        if (response.success) {
+          setIsFavorited(true);
+
+          // Update cache
+          favoriteStatusCache[item.id] = {
+            status: true,
+            timestamp: Date.now(),
+          };
+
+          // Toast notification
+          toast.success("Đã thêm vào danh sách yêu thích", {
+            description: `${item.title} đã được lưu vào danh sách của bạn`,
+            icon: "❤️",
+            action: {
+              label: "Xem danh sách",
+              onClick: () => (window.location.href = "/yeu-thich"),
+            },
+          });
+
+          // Gửi event với thông tin chi tiết
+          window.dispatchEvent(
+            new CustomEvent("favorites-updated", {
+              detail: {
+                action: "add",
+                itemId: item.id,
+              },
+            })
+          );
+        } else {
+          throw new Error(response.message || "Có lỗi xảy ra");
+        }
       }
 
-      saveFavorites(newFavorites);
-      setIsFavorited(newIsFavorited);
-
-      // Show notification
-      showNotification(newIsFavorited ? "Đã lưu tin" : "Đã bỏ lưu tin");
+      // Cập nhật danh sách yêu thích trong Redux - but don't wait for it
+      fetchUserFavorites();
     } catch (error) {
       console.error("Error toggling favorite:", error);
+      toast.error("Không thể thực hiện thao tác", {
+        description: "Đã xảy ra lỗi, vui lòng thử lại sau",
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const showNotification = (message: string) => {
-    // You can implement a toast notification here
-    const notification = document.createElement("div");
-    notification.textContent = message;
-    notification.className = `fixed top-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-opacity`;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-      notification.style.opacity = "0";
-      setTimeout(() => {
-        document.body.removeChild(notification);
-      }, 300);
-    }, 2000);
   };
 
   const sizeClasses = {
@@ -120,6 +231,7 @@ export function FavoriteButton({
           : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
       } ${isLoading ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
       title={isFavorited ? "Bỏ lưu tin" : "Lưu tin"}
+      data-item-id={item.id}
     >
       <i className={`${isFavorited ? "fas" : "far"} fa-heart`}></i>
     </button>

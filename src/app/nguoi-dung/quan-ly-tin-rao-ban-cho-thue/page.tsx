@@ -170,7 +170,8 @@ export default function QuanLyTinPage() {
     let ignore = false;
     setLoading(true);
     setError(null);
-    PostService.getUserPosts(1, 50)
+    postService
+      .getUserPosts(1, 50)
       .then((res) => {
         const apiPosts = res.data?.posts || res.posts || res.data || [];
         if (!ignore) setPosts(apiPosts);

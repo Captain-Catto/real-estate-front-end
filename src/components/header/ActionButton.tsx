@@ -9,61 +9,89 @@ import {
   MenuItem,
   Transition,
 } from "@headlessui/react";
-import { useAuth } from "@/store/hooks";
+import { useAuth, useFavorites } from "@/store/hooks";
+import { toast } from "sonner";
 
 export default function ActionButton() {
-  // Sử dụng authentication thực tế từ Redux
+  // Sử dụng authentication từ Redux
   const { user, isAuthenticated, loading, logout } = useAuth();
+
+  // Lấy danh sách yêu thích và các actions từ Redux store
+  const {
+    items: favoriteItems,
+    isLoading: favoritesLoading,
+    removeFavorite,
+    fetchUserFavorites,
+  } = useFavorites();
 
   // State cho popup yêu thích
   const [showFavoritesPopup, setShowFavoritesPopup] = useState(false);
   const favoritesRef = useRef<HTMLDivElement>(null);
-
-  // Mock data cho favorites - có thể lấy từ store/API
-  const [favoriteItems, setFavoriteItems] = useState([
-    {
-      id: "1",
-      title: "Bán nhà phố 3 tầng, khu vực Quận 1, TP.HCM",
-      price: "8.5 tỷ",
-      location: "Quận 1, TP.HCM",
-      image: "/assets/images/property-1.jpg",
-      addedAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      title: "Cho thuê căn hộ cao cấp Vinhomes Central Park",
-      price: "25 triệu/tháng",
-      location: "Bình Thạnh, TP.HCM",
-      image: "/assets/images/property-2.jpg",
-      addedAt: new Date().toISOString(),
-    },
-    {
-      id: "3",
-      title: "Bán đất nền dự án Khang Điền, Bình Chánh",
-      price: "5.3 tỷ",
-      location: "Bình Chánh, TP.HCM",
-      image: "/assets/images/property-3.jpg",
-      addedAt: new Date().toISOString(),
-    },
-  ]);
 
   // State cho notification popup
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
+  // Fetch favorites khi component mount hoặc user authentication thay đổi
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserFavorites();
+    }
+  }, [isAuthenticated]);
+
+  // Thêm event listener để lắng nghe thay đổi từ các component khác
+  useEffect(() => {
+    const handleFavoritesUpdated = () => {
+      // Gọi getFavorites từ Redux thay vì tự fetch
+      if (isAuthenticated) {
+        fetchUserFavorites();
+      }
+    };
+
+    window.addEventListener("favorites-updated", handleFavoritesUpdated);
+
+    return () => {
+      window.removeEventListener("favorites-updated", handleFavoritesUpdated);
+    };
+  }, [isAuthenticated, fetchUserFavorites]);
+
   const handleLogout = async () => {
     try {
       await logout();
-      // Có thể redirect hoặc reload page sau khi logout
+      toast.success("Đăng xuất thành công");
       window.location.href = "/";
     } catch (error) {
       console.error("Logout error:", error);
+      toast.error("Đã xảy ra lỗi khi đăng xuất");
     }
   };
 
-  const handleRemoveFavorite = (itemId: string) => {
-    setFavoriteItems((prev) => prev.filter((item) => item.id !== itemId));
+  // Hàm xử lý xóa yêu thích
+  // Thay đổi trong hàm handleRemoveFavorite
+  const handleRemoveFavorite = async (itemId: string) => {
+    try {
+      await removeFavorite(itemId);
+      toast.success("Đã xóa khỏi danh sách yêu thích");
+
+      // Cập nhật lại danh sách sau khi xóa
+      fetchUserFavorites();
+
+      console.log("Favorite removed:", itemId);
+
+      // Thay đổi ở đây: Gửi ID của item bị xóa trong sự kiện
+      window.dispatchEvent(
+        new CustomEvent("favorites-updated", {
+          detail: {
+            action: "remove",
+            itemId: itemId,
+          },
+        })
+      );
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+      toast.error("Không thể xóa khỏi danh sách yêu thích");
+    }
   };
 
   // Handle click outside để đóng popup
@@ -119,12 +147,14 @@ export default function ActionButton() {
               d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
               stroke="currentColor"
               strokeWidth="2"
-              fill="none"
+              fill={
+                favoriteItems.length > 0 ? "rgba(239, 68, 68, 0.2)" : "none"
+              }
               className="group-hover:fill-red-100"
             />
           </svg>
 
-          {/* Badge số lượng */}
+          {/* Badge số lượng - Hiển thị số lượng từ Redux store */}
           {favoriteItems.length > 0 && (
             <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">
@@ -161,7 +191,11 @@ export default function ActionButton() {
             </div>
 
             {/* Content */}
-            {favoriteItems.length === 0 ? (
+            {favoritesLoading ? (
+              <div className="px-4 py-8 flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
+              </div>
+            ) : favoriteItems.length === 0 ? (
               /* Empty State */
               <div className="px-4 py-8">
                 <div className="text-center">
@@ -213,23 +247,32 @@ export default function ActionButton() {
                         {/* Image */}
                         <div className="w-16 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-200">
                           <Image
-                            src={item.image}
+                            src={
+                              typeof item.image === "string"
+                                ? item.image
+                                : item.image[0]
+                            }
                             alt={item.title}
                             width={64}
                             height={48}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               // Fallback if image fails to load
-                              e.currentTarget.style.display = "none";
+                              e.currentTarget.src = "/placeholder.jpg";
                             }}
                           />
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
-                            {item.title}
-                          </h4>
+                          <Link
+                            href={`/chi-tiet/${item.slug}`}
+                            onClick={() => setShowFavoritesPopup(false)}
+                          >
+                            <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1 hover:text-blue-600">
+                              {item.title}
+                            </h4>
+                          </Link>
                           <div className="text-sm font-semibold text-red-600 mb-1">
                             {item.price}
                           </div>

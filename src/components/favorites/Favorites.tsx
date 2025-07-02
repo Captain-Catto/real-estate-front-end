@@ -1,14 +1,22 @@
 "use client";
-import React, { useState } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  Fragment,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useFavorites, useFavoritesByType } from "@/store/hooks";
-import {
-  clearFavorites,
-  removeFavoritesByType,
-} from "@/store/slices/favoritesSlices";
+import { useFavorites } from "@/store/hooks";
+import { clearFavorites, fetchFavorites } from "@/store/slices/favoritesSlices";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
+import { Pagination } from "@/components/common/Pagination";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Menu, Transition, Dialog, Tab } from "@headlessui/react";
+import { toast } from "sonner";
+import { useAppDispatch } from "@/store/hooks";
+import UserHeader from "../user/UserHeader";
 
 // Sort options
 const sortOptions = [
@@ -20,6 +28,9 @@ const sortOptions = [
   { value: "name_za", label: "Tên Z-A" },
 ];
 
+// Items per page
+const ITEMS_PER_PAGE = 5;
+
 interface FavoritesWithSortProps {
   initialSort?: string;
 }
@@ -27,31 +38,97 @@ interface FavoritesWithSortProps {
 export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dispatch = useAppDispatch();
 
-  const { items, isLoading, dispatch } = useFavorites();
+  const { items, isLoading, fetchUserFavorites, removeFavorite } =
+    useFavorites();
   const [activeTab, setActiveTab] = useState<"all" | "property" | "project">(
     "all"
   );
   const [sortBy, setSortBy] = useState(initialSort);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+  const [confirmMessage, setConfirmMessage] = useState({
+    title: "",
+    description: "",
+  });
+  // Add a flag to prevent excessive API calls
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
-  const propertyFavorites = useFavoritesByType("property");
-  const projectFavorites = useFavoritesByType("project");
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Update URL when sort changes
-  const updateURL = (newSort: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (newSort !== "newest") {
-      params.set("sort", newSort);
-    } else {
-      params.delete("sort");
+  // Tạo bộ lọc theo loại sử dụng useMemo để tránh tính toán lại khi không cần thiết
+  const propertyFavorites = useMemo(() => {
+    return items.filter((item) => item.type === "property");
+  }, [items]);
+
+  const projectFavorites = useMemo(() => {
+    return items.filter((item) => item.type === "project");
+  }, [items]);
+
+  // Refresh data khi mount component - with proper dependency control
+  useEffect(() => {
+    if (!initialFetchDone) {
+      fetchUserFavorites();
+      setInitialFetchDone(true);
     }
-    const newURL = params.toString() ? `?${params.toString()}` : "";
-    router.push(`/tai-khoan/yeu-thich${newURL}`, { scroll: false });
-  };
+  }, [fetchUserFavorites, initialFetchDone]);
 
-  // Sort items function
-  const sortItems = (items: any[], sortType: string) => {
+  // Reset to first page when tab or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, sortBy]);
+
+  // Update URL when sort or tab changes - using a memoized function
+  const updateURL = useCallback(
+    (newSort: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (newSort !== "newest") {
+        params.set("sort", newSort);
+      } else {
+        params.delete("sort");
+      }
+
+      // Set tab in URL
+      if (activeTab !== "all") {
+        params.set("tab", activeTab);
+      } else {
+        params.delete("tab");
+      }
+
+      // Add page to URL if not on first page
+      if (currentPage > 1) {
+        params.set("page", currentPage.toString());
+      } else {
+        params.delete("page");
+      }
+
+      const newURL = params.toString() ? `?${params.toString()}` : "";
+      router.push(`/nguoi-dung/yeu-thich${newURL}`, { scroll: false });
+    },
+    [activeTab, router, searchParams, currentPage]
+  );
+
+  // Kiểm tra tab từ URL khi component mount
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && (tabParam === "property" || tabParam === "project")) {
+      setActiveTab(tabParam);
+    }
+
+    // Get page from URL
+    const pageParam = searchParams.get("page");
+    if (pageParam) {
+      const page = parseInt(pageParam);
+      if (!isNaN(page) && page > 0) {
+        setCurrentPage(page);
+      }
+    }
+  }, [searchParams]);
+
+  // Sort items function - memoized to prevent recalculation
+  const sortItems = useCallback((items: any[], sortType: string) => {
     const sortedItems = [...items];
     switch (sortType) {
       case "oldest":
@@ -81,9 +158,10 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
             new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
         );
     }
-  };
+  }, []);
 
-  const filteredItems = () => {
+  // Get filtered and sorted items
+  const allFilteredItems = useMemo(() => {
     let items_to_filter;
     switch (activeTab) {
       case "property":
@@ -96,174 +174,340 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
         items_to_filter = items;
     }
     return sortItems(items_to_filter, sortBy);
-  };
+  }, [
+    activeTab,
+    items,
+    propertyFavorites,
+    projectFavorites,
+    sortBy,
+    sortItems,
+  ]);
 
-  const handleSort = (value: string) => {
-    setSortBy(value);
-    setIsDropdownOpen(false);
-    updateURL(value);
-  };
+  // Paginate the filtered items
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allFilteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [allFilteredItems, currentPage]);
 
-  const handleClearAll = () => {
-    if (confirm("Bạn có chắc chắn muốn xóa tất cả mục yêu thích?")) {
+  // Calculate total pages
+  const totalPages = useMemo(() => {
+    return Math.ceil(allFilteredItems.length / ITEMS_PER_PAGE);
+  }, [allFilteredItems]);
+
+  const handleSort = useCallback(
+    (value: string) => {
+      setSortBy(value);
+      // Reset to page 1 when sorting changes
+      setCurrentPage(1);
+      // Update URL with new sort and reset page
+      const params = new URLSearchParams(searchParams.toString());
+      if (value !== "newest") {
+        params.set("sort", value);
+      } else {
+        params.delete("sort");
+      }
+      if (activeTab !== "all") {
+        params.set("tab", activeTab);
+      } else {
+        params.delete("tab");
+      }
+      params.delete("page"); // Reset page when sort changes
+      const newURL = params.toString() ? `?${params.toString()}` : "";
+      router.push(`/nguoi-dung/yeu-thich${newURL}`, { scroll: false });
+    },
+    [activeTab, router, searchParams]
+  );
+
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setActiveTab(tab as "all" | "property" | "project");
+      // Reset to page 1 when tab changes
+      setCurrentPage(1);
+      // Update URL with new tab and reset page
+      const params = new URLSearchParams(searchParams.toString());
+      if (sortBy !== "newest") {
+        params.set("sort", sortBy);
+      } else {
+        params.delete("sort");
+      }
+      if (tab !== "all") {
+        params.set("tab", tab);
+      } else {
+        params.delete("tab");
+      }
+      params.delete("page"); // Reset page when tab changes
+      const newURL = params.toString() ? `?${params.toString()}` : "";
+      router.push(`/nguoi-dung/yeu-thich${newURL}`, { scroll: false });
+    },
+    [sortBy, router, searchParams]
+  );
+
+  // Handle page change
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
+      // Update URL with new page
+      const params = new URLSearchParams(searchParams.toString());
+      if (page > 1) {
+        params.set("page", page.toString());
+      } else {
+        params.delete("page");
+      }
+      if (sortBy !== "newest") {
+        params.set("sort", sortBy);
+      }
+      if (activeTab !== "all") {
+        params.set("tab", activeTab);
+      }
+      const newURL = params.toString() ? `?${params.toString()}` : "";
+      router.push(`/nguoi-dung/yeu-thich${newURL}`, { scroll: false });
+    },
+    [activeTab, router, searchParams, sortBy]
+  );
+
+  const handleClearAll = useCallback(() => {
+    setConfirmMessage({
+      title: "Xóa tất cả mục yêu thích",
+      description:
+        "Bạn có chắc chắn muốn xóa tất cả mục yêu thích? Hành động này không thể hoàn tác.",
+    });
+    setConfirmAction(() => () => {
       dispatch(clearFavorites());
-    }
-  };
+      toast.success("Đã xóa tất cả mục yêu thích", {
+        description: "Danh sách yêu thích của bạn đã được xóa.",
+      });
+    });
+    setConfirmDialogOpen(true);
+  }, [dispatch]);
 
-  const handleClearByType = (type: "property" | "project") => {
-    const typeText = type === "property" ? "bất động sản" : "dự án";
-    if (confirm(`Bạn có chắc chắn muốn xóa tất cả ${typeText} yêu thích?`)) {
-      dispatch(removeFavoritesByType(type));
-    }
-  };
+  const handleClearByType = useCallback(
+    (type: "property" | "project") => {
+      const typeText = type === "property" ? "bất động sản" : "dự án";
+      setConfirmMessage({
+        title: `Xóa tất cả ${typeText} yêu thích`,
+        description: `Bạn có chắc chắn muốn xóa tất cả ${typeText} khỏi danh sách yêu thích? Hành động này không thể hoàn tác.`,
+      });
+      setConfirmAction(() => () => {
+        // Lọc ra các item thuộc type cần xóa và thực hiện xóa lần lượt
+        const itemsToRemove = items.filter((item) => item.type === type);
+        itemsToRemove.forEach((item) => {
+          removeFavorite(item.id);
+        });
+        toast.success(`Đã xóa tất cả ${typeText}`, {
+          description: `${typeText} đã được xóa khỏi danh sách yêu thích của bạn.`,
+        });
+      });
+      setConfirmDialogOpen(true);
+    },
+    [items, removeFavorite]
+  );
 
-  const selectedSortOption = sortOptions.find(
-    (option) => option.value === sortBy
+  const selectedSortOption = useMemo(
+    () => sortOptions.find((option) => option.value === sortBy),
+    [sortBy]
   );
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </div>
-    );
+    return <FavoritesLoadingSkeleton />;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Danh sách yêu thích
-        </h1>
-        <p className="text-gray-600">
-          Quản lý các bất động sản và dự án bạn quan tâm
-        </p>
-      </div>
+    <div className="max-w-7xl mx-auto">
+      {/* Filter Tabs - Using Headless UI Tab */}
+      <Tab.Group
+        selectedIndex={
+          activeTab === "all" ? 0 : activeTab === "property" ? 1 : 2
+        }
+        onChange={(index) =>
+          handleTabChange(
+            index === 0 ? "all" : index === 1 ? "property" : "project"
+          )
+        }
+      >
+        <div className="flex justify-between items-center mb-4">
+          <div className="text-sm text-gray-500 flex items-center">
+            <span className="mr-2">
+              Tổng số {allFilteredItems.length} tin đăng
+            </span>
+          </div>
 
-      {/* Tabs and Sort */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-        {/* Tabs */}
-        <div className="flex items-center gap-1 bg-white rounded-lg p-1 border border-gray-200 w-fit">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              activeTab === "all"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Tất cả ({items.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("property")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              activeTab === "property"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Bất động sản ({propertyFavorites.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("project")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              activeTab === "project"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Dự án ({projectFavorites.length})
-          </button>
+          {/* Sort Dropdown */}
+          <Menu as="div" className="relative inline-block text-left">
+            <Menu.Button className="inline-flex justify-center items-center w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500">
+              {selectedSortOption?.label || "Mới nhất"}
+              <svg
+                className="w-5 h-5 ml-2 -mr-1"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </Menu.Button>
+
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <Menu.Items className="absolute right-0 z-10 w-56 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="py-1">
+                  {sortOptions.map((option) => (
+                    <Menu.Item key={option.value}>
+                      {({ active }) => (
+                        <button
+                          onClick={() => handleSort(option.value)}
+                          className={`${active ? "bg-gray-100" : ""} ${
+                            option.value === sortBy
+                              ? "bg-blue-50 text-blue-600"
+                              : ""
+                          } group flex items-center w-full px-4 py-2 text-sm text-left`}
+                        >
+                          {option.label}
+                        </button>
+                      )}
+                    </Menu.Item>
+                  ))}
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
         </div>
 
-        {/* Sort Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center justify-between w-full lg:w-48 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <span>{selectedSortOption?.label}</span>
-            <svg
-              className={`w-4 h-4 transition-transform ${
-                isDropdownOpen ? "rotate-180" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-full lg:w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-              {sortOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleSort(option.value)}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
-                    option.value === sortBy
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-700"
-                  }`}
-                >
-                  {option.label}
-                </button>
+        {/* Favorites content with pagination */}
+        {allFilteredItems.length > 0 ? (
+          <>
+            {/* Display paginated items */}
+            <div>
+              {paginatedItems.map((item) => (
+                <FavoriteCard key={item.id} item={item} />
               ))}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Actions */}
-      {filteredItems().length > 0 && (
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-sm text-gray-600">
-            Hiển thị {filteredItems().length} mục yêu thích
-          </div>
-          <div className="flex items-center gap-2">
-            {activeTab !== "all" && filteredItems().length > 0 && (
-              <button
-                onClick={() => handleClearByType(activeTab)}
-                className="text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
-              >
-                Xóa {activeTab === "property" ? "BĐS" : "dự án"}
-              </button>
+            {/* Pagination component */}
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  showPages={5}
+                  className="py-4"
+                />
+              </div>
             )}
-            <button
-              onClick={handleClearAll}
-              className="text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
-            >
-              Xóa tất cả
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        ) : (
+          <FavoritesContent items={[]} isEmpty={true} type={activeTab} />
+        )}
 
-      {/* Content */}
-      {filteredItems().length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg">
+        {/* Confirm Dialog - Headless UI */}
+        <Transition show={confirmDialogOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className="fixed inset-0 z-50 overflow-y-auto"
+            onClose={() => setConfirmDialogOpen(false)}
+          >
+            <div className="min-h-screen px-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+              </Transition.Child>
+
+              {/* This element is to trick the browser into centering the modal contents. */}
+              <span
+                className="inline-block h-screen align-middle"
+                aria-hidden="true"
+              >
+                &#8203;
+              </span>
+
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+                  <Dialog.Title
+                    as="h3"
+                    className="text-lg font-medium leading-6 text-gray-900"
+                  >
+                    {confirmMessage.title}
+                  </Dialog.Title>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      {confirmMessage.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      onClick={() => setConfirmDialogOpen(false)}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      onClick={() => {
+                        confirmAction();
+                        setConfirmDialogOpen(false);
+                      }}
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              </Transition.Child>
+            </div>
+          </Dialog>
+        </Transition>
+      </Tab.Group>
+    </div>
+  );
+}
+
+// Memoize the FavoritesContent component to prevent unnecessary re-renders
+const FavoritesContent = React.memo(
+  ({ items, isEmpty, type }: FavoritesContentProps) => {
+    if (isEmpty) {
+      return (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
           <i className="far fa-heart text-gray-300 text-4xl mb-4 block"></i>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {activeTab === "all"
+            {type === "all"
               ? "Chưa có mục yêu thích nào"
               : `Chưa có ${
-                  activeTab === "property" ? "bất động sản" : "dự án"
+                  type === "property" ? "bất động sản" : "dự án"
                 } yêu thích nào`}
           </h3>
           <p className="text-gray-500 mb-6">
             Hãy thêm các{" "}
-            {activeTab === "all"
+            {type === "all"
               ? "bất động sản hoặc dự án"
-              : activeTab === "property"
+              : type === "property"
               ? "bất động sản"
               : "dự án"}{" "}
             bạn quan tâm vào danh sách yêu thích
@@ -283,102 +527,186 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
             </Link>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems().map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-shadow"
-            >
-              <div className="relative">
-                <Link
-                  href={`/${item.type === "project" ? "du-an" : "chi-tiet"}/${
-                    item.slug
-                  }`}
-                >
-                  <div className="relative h-48">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                </Link>
+      );
+    }
 
-                {/* Favorite Button */}
-                <div className="absolute top-3 right-3">
-                  <FavoriteButton item={item} />
-                </div>
+    return (
+      <div>
+        {items.map((item) => (
+          <FavoriteCard key={item.id} item={item} />
+        ))}
+      </div>
+    );
+  }
+);
 
-                {/* Type Badge */}
-                <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 text-xs rounded font-medium">
-                  {item.type === "project" ? "Dự án" : "BĐS"}
-                </div>
+// Memoize the FavoriteCard component
+const FavoriteCard = React.memo(({ item }: { item: any }) => {
+  return (
+    <div className="border-b border-gray-100 mb-4 pb-4">
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative w-full md:w-96 h-72 md:h-64">
+          <Link
+            href={`/${item.type === "project" ? "du-an" : "chi-tiet"}/${
+              item.slug
+            }`}
+          >
+            <div className="relative h-full w-full">
+              <Image
+                src={
+                  typeof item.image === "string" ? item.image : item.image[0]
+                }
+                alt={item.title}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover"
+                onError={(e) => {
+                  // Fallback nếu ảnh lỗi
+                  e.currentTarget.src = "/placeholder.jpg";
+                }}
+              />
+            </div>
+          </Link>
+
+          {/* Type Badge */}
+          <div className="absolute top-3 left-3 bg-red-600 text-white px-2 py-1 text-xs font-semibold uppercase">
+            {item.type === "project" ? "VIP KIM CƯƠNG" : "VIP KIM CƯƠNG"}
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <Link
+            href={`/${item.type === "project" ? "du-an" : "chi-tiet"}/${
+              item.slug
+            }`}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-2 uppercase">
+              {item.title ||
+                "LIỀN KỀ 96M2 GIÁ 12,6 TỶ, ĐT 144M2 GIÁ 21,5 TỶ, BIỆT THỰ 228M2 GIÁ 36 TỶ"}
+            </h3>
+          </Link>
+
+          <div className="flex items-center gap-3 mb-2">
+            <div className="text-red-600 font-bold text-lg">
+              {item.price || "12,58 tỷ"}
+            </div>
+            <div className="flex items-center gap-2 text-gray-500">
+              <span className="font-medium">{item.area || "96 m²"}</span>
+              <span>·</span>
+              <span>{item.pricePerM2 || "131 tr/m²"}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center text-gray-600 mb-4">
+            <i className="fas fa-map-marker-alt mr-2 text-xs"></i>
+            <span className="text-sm">
+              {item.location || "Đan Phượng, Hà Nội"}
+            </span>
+          </div>
+
+          <div className="text-sm text-gray-600 mb-4 line-clamp-2">
+            {item.description ||
+              "Quý khách hàng liên hệ sớm để được tư vấn chọn căn theo đúng nhu cầu. Liên hệ: 0942 906 ***. Chính sách bán hàng: Khách hàng không vay chiết khấu 12 - 14,5%. Thanh toán theo tiến độ chiết khấu 3,5%..."}
+          </div>
+
+          <div className="flex items-center gap-2 mt-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full overflow-hidden relative">
+                <Image
+                  src={item.agent?.avatar || "/images/agent-placeholder.png"}
+                  alt={item.agent?.name || "Agent"}
+                  fill
+                  className="object-cover"
+                />
               </div>
-
-              <div className="p-4">
-                <Link
-                  href={`/${item.type === "project" ? "du-an" : "chi-tiet"}/${
-                    item.slug
-                  }`}
-                >
-                  <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
-                    {item.title}
-                  </h3>
-                </Link>
-
-                {item.price && (
-                  <div className="text-red-600 font-semibold mb-2 text-lg">
-                    {item.price}
-                  </div>
-                )}
-
-                <div className="flex items-center text-gray-600 mb-3">
-                  <i className="fas fa-map-marker-alt mr-1 text-xs"></i>
-                  <span className="text-sm line-clamp-1">{item.location}</span>
-                </div>
-
-                {(item.area || item.bedrooms || item.bathrooms) && (
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                    {item.area && (
-                      <span className="flex items-center">
-                        <i className="fas fa-ruler-combined mr-1"></i>
-                        {item.area}
-                      </span>
-                    )}
-                    {item.bedrooms && (
-                      <span className="flex items-center">
-                        <i className="fas fa-bed mr-1"></i>
-                        {item.bedrooms} PN
-                      </span>
-                    )}
-                    {item.bathrooms && (
-                      <span className="flex items-center">
-                        <i className="fas fa-bath mr-1"></i>
-                        {item.bathrooms} WC
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="text-xs text-gray-400 border-t border-gray-100 pt-2">
-                  Đã thích: {new Date(item.addedAt).toLocaleDateString("vi-VN")}
-                </div>
+              <div className="text-sm font-medium">
+                {item.agent?.name || "Thế Hùng"}
               </div>
             </div>
-          ))}
+            <div className="text-xs text-gray-500">
+              {item.postedTime || "Đăng hôm nay"}
+            </div>
+            <div className="ml-auto">
+              <button className="flex items-center gap-1 text-sm font-medium text-blue-600 border border-blue-200 rounded-md px-3 py-2 hover:bg-blue-50">
+                <svg
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z" />
+                </svg>
+                0942 906 *** · Hiện số
+              </button>
+            </div>
+            {/* Favorite Button */}
+            <div>
+              <FavoriteButton item={item} />
+            </div>
+          </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+});
 
-      {/* Dropdown overlay */}
-      {isDropdownOpen && (
-        <div
-          className="fixed inset-0 z-5"
-          onClick={() => setIsDropdownOpen(false)}
-        />
-      )}
+// Add displayNames for the memoized components
+FavoritesContent.displayName = "FavoritesContent";
+FavoriteCard.displayName = "FavoriteCard";
+
+// Keep the interface and skeleton components as they were
+interface FavoritesContentProps {
+  items: any[];
+  isEmpty: boolean;
+  type: "all" | "property" | "project";
+}
+
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`animate-pulse bg-gray-200 rounded ${className}`}
+      {...props}
+    />
+  );
+}
+
+function FavoritesLoadingSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto">
+      {/* Title Skeleton */}
+      <div className="text-center mb-8">
+        <Skeleton className="h-8 w-64 mx-auto mb-2" />
+        <Skeleton className="h-4 w-80 mx-auto" />
+      </div>
+
+      {/* Actions Row Skeleton */}
+      <div className="flex justify-between mb-6">
+        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-24" />
+      </div>
+
+      {/* Cards Skeleton */}
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="border-b border-gray-100 mb-4 pb-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <Skeleton className="h-64 w-full md:w-96" />
+            <div className="flex-1 space-y-3">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-5 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <div className="flex justify-between">
+                <Skeleton className="h-10 w-28" />
+                <Skeleton className="h-10 w-36" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
