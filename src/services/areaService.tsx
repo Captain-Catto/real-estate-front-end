@@ -33,13 +33,15 @@ export const areaService = {
       const areas = result.areas || result.data?.areas || [];
 
       // Transform the data to match the expected interface
-      return areas.map((area) => ({
-        ...area,
-        value: area.slug, // Use slug as value for search params
-        label: area.name, // Use name as label
+      return areas.map((area: any) => ({
+        _id: area._id || area.id,
+        id: area.id || area._id,
+        name: area.name,
+        slug: area.slug,
+        value: area.value,
       }));
     } catch (error) {
-      console.error("Error in areaService.getAll:", error);
+      console.error("Failed to fetch area ranges:", error);
       return [];
     }
   },
@@ -51,13 +53,11 @@ export const areaService = {
    */
   getByValue: async (value: string): Promise<AreaRange | null> => {
     try {
-      const ranges = await areaService.getAll();
-      return (
-        ranges.find((range) => range.slug === value || range.value === value) ||
-        null
-      );
+      const areas = await areaService.getAll();
+      const area = areas.find((a) => a.value === value || a.slug === value);
+      return area || null;
     } catch (error) {
-      console.error("Error in areaService.getByValue:", error);
+      console.error("Error getting area by value:", error);
       return null;
     }
   },
@@ -68,13 +68,13 @@ export const areaService = {
    * @returns Formatted area text (e.g., "120 m²")
    */
   getFormattedArea: (areaValue: number | string): string => {
-    if (!areaValue) return "Không xác định";
-
-    const value =
+    const numValue =
       typeof areaValue === "string" ? parseFloat(areaValue) : areaValue;
 
-    if (isNaN(value)) return "Không xác định";
+    if (isNaN(numValue)) {
+      return "Đang cập nhật";
+    }
 
-    return `${value.toLocaleString("vi-VN")} m²`;
+    return `${numValue} m²`;
   },
 };

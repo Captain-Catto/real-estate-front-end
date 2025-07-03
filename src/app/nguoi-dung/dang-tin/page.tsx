@@ -10,13 +10,14 @@ import BasicInfoStep from "@/components/modals/EditPostModal/steps/BasicInfoStep
 import ImageUploadStep from "@/components/modals/EditPostModal/steps/ImageUploadStep";
 import PackageSelectionStep from "@/components/modals/EditPostModal/steps/PackageSelectionStep";
 import UserHeader from "@/components/user/UserHeader";
-import { useAuth } from "@/store/hooks";
+import { useAuth } from "@/hooks/useAuth"; // Update to use enhanced hook
 import { useRouter } from "next/navigation";
 import { locationService } from "@/services/locationService";
 
 export default function DangTinPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading, isInitialized } = useAuth();
+  // Use the enhanced auth hook
+  const { user, isAuthenticated, loading: userLoading } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   // Sử dụng useRef để tránh vòng lặp vô hạn
   const [hasOpened, setHasOpened] = useState(false);
@@ -58,13 +59,13 @@ export default function DangTinPage() {
     },
   };
 
-  // Redirect nếu chưa đăng nhập
+  // Redirect nếu chưa đăng nhập - Improved
   useEffect(() => {
-    if (isInitialized && !isAuthenticated && !hasOpenedRef.current) {
-      router.push("/login");
+    if (!userLoading && !isAuthenticated && !hasOpenedRef.current) {
+      router.push("/dang-nhap");
       hasOpenedRef.current = true;
     }
-  }, [isAuthenticated, isInitialized, router]);
+  }, [isAuthenticated, userLoading, router]);
 
   // Detect screen size
   useEffect(() => {
@@ -137,20 +138,20 @@ export default function DangTinPage() {
     }
   }, [formData.location?.province, formData.location?.district]);
 
-  // Auto open modal on mobile - SỬA PHẦN NÀY
+  // Auto open modal on mobile - Improved logic
   useEffect(() => {
     if (
       isMobile &&
       isAuthenticated &&
       !isOpen &&
       !hasOpenedRef.current &&
-      isInitialized
+      !userLoading
     ) {
       hasOpenedRef.current = true;
       setHasOpened(true);
       openModal();
     }
-  }, [isMobile, isAuthenticated, isInitialized, isOpen]);
+  }, [isMobile, isAuthenticated, userLoading, isOpen, openModal]);
 
   // Format user data từ Redux store
   const userData = user
@@ -165,7 +166,12 @@ export default function DangTinPage() {
         greeting: getGreeting(),
         email: user.email,
       }
-    : null;
+    : {
+        name: "Guest",
+        avatar: "G",
+        greeting: getGreeting(),
+        balance: "0 đ",
+      };
 
   function getGreeting() {
     const hour = new Date().getHours();
@@ -196,20 +202,20 @@ export default function DangTinPage() {
     }
   };
 
-  // Loading state
-  if (!isInitialized || loading) {
+  // Loading state - Simplified
+  if (userLoading) {
     return (
       <div className="flex min-h-screen bg-gray-100 items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải...</p>
+          <p className="text-gray-600">Đang tải thông tin...</p>
         </div>
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
-  if (isInitialized && !isAuthenticated) {
+  // Redirect handled by the useEffect
+  if (!isAuthenticated) {
     return null;
   }
 
@@ -222,7 +228,7 @@ export default function DangTinPage() {
             Không thể tải thông tin người dùng
           </p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/dang-nhap")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Đăng nhập lại

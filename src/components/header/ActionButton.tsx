@@ -9,17 +9,18 @@ import {
   MenuItem,
   Transition,
 } from "@headlessui/react";
-import { useAuth, useFavorites } from "@/store/hooks";
+import { useAuth } from "@/hooks/useAuth"; // Updated import path
+import { useFavorites } from "@/store/hooks";
 import { toast } from "sonner";
 
 export default function ActionButton() {
-  // Sử dụng authentication từ Redux
+  // Use our enhanced auth hook
   const { user, isAuthenticated, loading, logout } = useAuth();
 
   // Lấy danh sách yêu thích và các actions từ Redux store
   const {
-    items: favoriteItems,
-    isLoading: favoritesLoading,
+    favorites: favoriteItems,
+    loading: favoritesLoading,
     removeFavorite,
     fetchUserFavorites,
   } = useFavorites();
@@ -33,17 +34,17 @@ export default function ActionButton() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
-  // Fetch favorites khi component mount hoặc user authentication thay đổi
+  // Fetch favorites when component mounts or user authentication changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserFavorites();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchUserFavorites]);
 
-  // Thêm event listener để lắng nghe thay đổi từ các component khác
   useEffect(() => {
     const handleFavoritesUpdated = () => {
-      // Gọi getFavorites từ Redux thay vì tự fetch
+      // You may want to perform any necessary actions when favorites are updated
+      console.log("Favorites were updated externally");
       if (isAuthenticated) {
         fetchUserFavorites();
       }
@@ -56,30 +57,21 @@ export default function ActionButton() {
     };
   }, [isAuthenticated, fetchUserFavorites]);
 
+  // Handle logout
   const handleLogout = async () => {
-    try {
-      await logout();
-      toast.success("Đăng xuất thành công");
+    const result = await logout();
+    if (result) {
       window.location.href = "/";
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Đã xảy ra lỗi khi đăng xuất");
     }
   };
 
   // Hàm xử lý xóa yêu thích
-  // Thay đổi trong hàm handleRemoveFavorite
   const handleRemoveFavorite = async (itemId: string) => {
     try {
       await removeFavorite(itemId);
       toast.success("Đã xóa khỏi danh sách yêu thích");
 
-      // Cập nhật lại danh sách sau khi xóa
-      fetchUserFavorites();
-
-      console.log("Favorite removed:", itemId);
-
-      // Thay đổi ở đây: Gửi ID của item bị xóa trong sự kiện
+      // Dispatch custom event to notify other components
       window.dispatchEvent(
         new CustomEvent("favorites-updated", {
           detail: {
@@ -88,6 +80,8 @@ export default function ActionButton() {
           },
         })
       );
+
+      console.log("Favorite removed:", itemId);
     } catch (error) {
       console.error("Error removing favorite:", error);
       toast.error("Không thể xóa khỏi danh sách yêu thích");
@@ -206,7 +200,7 @@ export default function ActionButton() {
                       fill="none"
                     >
                       <path
-                        d="M50 85L45 80C25 62 15 53 15 40C15 30 23 22 33 22C39 22 45 25 50 30C55 25 61 22 67 22C77 22 85 30 85 40C85 53 75 62 55 80L50 85Z"
+                        d="M50 85L45 80C25 62 15 53 15 40C15 30 23 22 33 22C39 22 45 25 50 30C55 25 61 22 67 22C77 22 85 30 85 40C85 53 75 62 55 80L50 85z"
                         fill="currentColor"
                         opacity="0.3"
                       />
@@ -325,7 +319,7 @@ export default function ActionButton() {
                 {/* Footer - Show when has items */}
                 <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
                   <Link
-                    href="/yeu-thich"
+                    href="/nguoi-dung/yeu-thich"
                     className="flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium w-full py-1 rounded transition-colors hover:bg-blue-50"
                     onClick={() => setShowFavoritesPopup(false)}
                   >
@@ -637,7 +631,7 @@ export default function ActionButton() {
 
                 <MenuItem>
                   <Link
-                    href="/yeu-thich"
+                    href="/nguoi-dung/yeu-thich"
                     className="block px-4 py-2 text-sm text-gray-700 flex items-center gap-2 data-[focus]:bg-gray-50"
                   >
                     <svg
@@ -688,7 +682,7 @@ export default function ActionButton() {
         /* Login & Register Buttons */
         <div className="flex items-center gap-3">
           <Link
-            href="/login"
+            href="/dang-nhap"
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-red-300 focus:ring-opacity-50"
           >
             Đăng nhập

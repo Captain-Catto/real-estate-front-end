@@ -6,182 +6,59 @@ import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import { Pagination } from "@/components/common/Pagination";
 import UserHeader from "@/components/user/UserHeader";
+import { useAuth } from "@/store/hooks";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  paymentService,
+  PaymentHistoryResponse,
+  PaymentFilterParams,
+} from "@/services/paymentService";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function LichSuGiaoDichPage() {
-  // Mock user data
+  const { user, isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read initial filter values from URL
+  const initialSearchQuery = searchParams.get("search") || "";
+  const initialDateFilter = searchParams.get("dateRange") || "all";
+  const initialStatusFilter = searchParams.get("status") || "all";
+  const initialTypeFilter = searchParams.get("type") || "all";
+  const initialPage = parseInt(searchParams.get("page") || "1");
+
+  // Set up initial date range if specified in URL
+  const initialFromDate = searchParams.get("fromDate");
+  const initialToDate = searchParams.get("toDate");
+
+  // User data from auth context
   const userData = {
-    name: "Lê Quang Trí Đạt",
-    avatar: "Đ",
-    balance: "450.000 đ",
-    greeting: "Chào buổi sáng 🌤",
+    name: user?.username || "Người dùng",
+    avatar: (user?.username?.[0] || "U").toUpperCase(),
+    balance: "0₫",
+    greeting: "Xin chào",
+    verified: false,
   };
 
-  // Transaction history state - Chỉ giữ những state cần thiết
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  // Transaction history state
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [dateFilter, setDateFilter] = useState(initialDateFilter);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [typeFilter, setTypeFilter] = useState(initialTypeFilter);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [customDateRange, setCustomDateRange] = useState({
+    fromDate: initialFromDate ? new Date(initialFromDate) : null,
+    toDate: initialToDate ? new Date(initialToDate) : null,
+  });
+
+  // API data state
+  const [apiTransactions, setApiTransactions] = useState<any[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
-
-  // Bỏ các state và ref không cần thiết:
-  // - showNotificationPopup (đã có trong UserHeader)
-  // - mobileNotificationRef (đã có trong UserHeader)
-  // - notifications array (đã có trong UserHeader)
-
-  // Extended transaction history mock data
-  const allTransactions = [
-    {
-      id: "TXN001",
-      postId: "POST123",
-      type: "deposit",
-      amount: 500000,
-      status: "completed",
-      date: "2024-06-11 14:30",
-      method: "VNPay",
-      description: "Nạp tiền vào ví",
-    },
-    {
-      id: "TXN002",
-      postId: "POST456",
-      type: "payment",
-      amount: -50000,
-      status: "completed",
-      date: "2024-06-10 09:15",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin VIP - Căn hộ Vinhomes",
-    },
-    {
-      id: "TXN003",
-      postId: null,
-      type: "deposit",
-      amount: 1000000,
-      status: "failed",
-      date: "2024-06-09 16:45",
-      method: "VNPay",
-      description: "Nạp tiền vào ví (Thất bại)",
-    },
-    {
-      id: "TXN004",
-      postId: "POST789",
-      type: "payment",
-      amount: -30000,
-      status: "pending",
-      date: "2024-06-08 11:20",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin thường - Nhà phố Q7",
-    },
-    {
-      id: "TXN005",
-      postId: null,
-      type: "deposit",
-      amount: 200000,
-      status: "completed",
-      date: "2024-06-07 08:30",
-      method: "VNPay",
-      description: "Nạp tiền vào ví",
-    },
-    {
-      id: "TXN006",
-      postId: "POST321",
-      type: "payment",
-      amount: -75000,
-      status: "completed",
-      date: "2024-06-06 13:45",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin cao cấp - Biệt thự Thủ Đức",
-    },
-    {
-      id: "TXN007",
-      postId: null,
-      type: "deposit",
-      amount: 300000,
-      status: "failed",
-      date: "2024-06-05 19:15",
-      method: "VNPay",
-      description: "Nạp tiền vào ví (Lỗi thanh toán)",
-    },
-    {
-      id: "TXN008",
-      postId: "POST654",
-      type: "payment",
-      amount: -25000,
-      status: "completed",
-      date: "2024-05-20 10:30",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin thường - Chung cư Landmark",
-    },
-    {
-      id: "TXN009",
-      postId: null,
-      type: "deposit",
-      amount: 800000,
-      status: "completed",
-      date: "2024-05-15 14:20",
-      method: "VNPay",
-      description: "Nạp tiền vào ví",
-    },
-    {
-      id: "TXN010",
-      postId: "POST987",
-      type: "payment",
-      amount: -60000,
-      status: "failed",
-      date: "2024-05-10 16:10",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin VIP (Thất bại - Số dư không đủ)",
-    },
-    {
-      id: "TXN011",
-      postId: null,
-      type: "deposit",
-      amount: 2000000,
-      status: "completed",
-      date: "2024-05-05 11:30",
-      method: "VNPay",
-      description: "Nạp tiền vào ví",
-    },
-    {
-      id: "TXN012",
-      postId: "POST111",
-      type: "payment",
-      amount: -40000,
-      status: "completed",
-      date: "2024-05-03 15:20",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin VIP - Shophouse Quận 1",
-    },
-    {
-      id: "TXN013",
-      postId: null,
-      type: "deposit",
-      amount: 150000,
-      status: "failed",
-      date: "2024-04-28 09:45",
-      method: "VNPay",
-      description: "Nạp tiền vào ví (Timeout)",
-    },
-    {
-      id: "TXN014",
-      postId: "POST222",
-      type: "payment",
-      amount: -35000,
-      status: "completed",
-      date: "2024-04-25 14:10",
-      method: "Ví tiền",
-      description: "Thanh toán gói tin cao cấp - Căn hộ Masteri",
-    },
-    {
-      id: "TXN015",
-      postId: null,
-      type: "deposit",
-      amount: 1500000,
-      status: "completed",
-      date: "2024-04-20 16:30",
-      method: "VNPay",
-      description: "Nạp tiền vào ví",
-    },
-  ];
 
   // Filter options
   const dateFilterOptions = [
@@ -189,6 +66,9 @@ export default function LichSuGiaoDichPage() {
     { value: "7days", label: "7 ngày qua" },
     { value: "30days", label: "30 ngày qua" },
     { value: "90days", label: "3 tháng qua" },
+    { value: "thisMonth", label: "Tháng này" },
+    { value: "lastMonth", label: "Tháng trước" },
+    { value: "custom", label: "Tùy chọn..." },
   ];
 
   const statusFilterOptions = [
@@ -200,99 +80,134 @@ export default function LichSuGiaoDichPage() {
 
   const typeFilterOptions = [
     { value: "all", label: "Tất cả loại" },
-    { value: "deposit", label: "Nạp tiền" },
+    { value: "topup", label: "Nạp tiền" },
     { value: "payment", label: "Thanh toán" },
   ];
 
-  // Filter transactions based on search, date, status, and type
-  const getFilteredTransactions = () => {
-    let filtered = [...allTransactions];
+  // Function to update URL with current filters
+  const updateUrlWithFilters = (filters: PaymentFilterParams) => {
+    const params = new URLSearchParams();
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (transaction) =>
-          transaction.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (transaction.postId &&
-            transaction.postId
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase())) ||
-          transaction.description
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-      );
-    }
+    // Add all filters to URL params
+    if (filters.search) params.set("search", filters.search);
+    if (filters.dateRange && filters.dateRange !== "all")
+      params.set("dateRange", filters.dateRange);
+    if (filters.status && filters.status !== "all")
+      params.set("status", filters.status);
+    if (filters.type && filters.type !== "all")
+      params.set("type", filters.type);
+    if (filters.page && filters.page > 1)
+      params.set("page", filters.page.toString());
+    if (filters.fromDate) params.set("fromDate", filters.fromDate);
+    if (filters.toDate) params.set("toDate", filters.toDate);
 
-    // Date filter
-    if (dateFilter !== "all") {
-      const now = new Date();
-      let days;
-      switch (dateFilter) {
-        case "7days":
-          days = 7;
-          break;
-        case "30days":
-          days = 30;
-          break;
-        case "90days":
-          days = 90;
-          break;
-        default:
-          days = 0;
-      }
-
-      if (days > 0) {
-        const filterDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(
-          (transaction) => new Date(transaction.date) >= filterDate
-        );
-      }
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (transaction) => transaction.status === statusFilter
-      );
-    }
-
-    // Type filter
-    if (typeFilter !== "all") {
-      filtered = filtered.filter(
-        (transaction) => transaction.type === typeFilter
-      );
-    }
-
-    return filtered;
+    // Update URL without triggering navigation
+    const newUrl = `${window.location.pathname}${
+      params.toString() ? "?" + params.toString() : ""
+    }`;
+    window.history.replaceState({}, "", newUrl);
   };
 
-  const filteredTransactions = getFilteredTransactions();
-  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Fetch transactions with filters
+  const fetchTransactions = async (filters: PaymentFilterParams) => {
+    if (!isAuthenticated) return;
 
-  // Reset pagination when filters change
+    setIsLoadingTransactions(true);
+    setTransactionError(null);
+
+    try {
+      // Apply filters to API call
+      const response = await paymentService.getPaymentHistory(filters);
+
+      console.log("Fetched transactions:", response);
+
+      if (response.success && response.data) {
+        setApiTransactions(response.data.payments);
+        setTotalItems(response.data.pagination.totalItems);
+        setTotalPages(response.data.pagination.totalPages);
+      } else {
+        setTransactionError("Không thể tải dữ liệu giao dịch");
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      setTransactionError("Lỗi khi tải dữ liệu giao dịch");
+      setApiTransactions([]);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
+  // Build filter object from current filter state
+  const buildFilters = (): PaymentFilterParams => {
+    const filters: PaymentFilterParams = {
+      page: currentPage,
+      limit: itemsPerPage,
+    };
+
+    if (searchQuery) filters.search = searchQuery;
+    if (statusFilter !== "all") filters.status = statusFilter;
+    if (typeFilter !== "all") filters.type = typeFilter;
+
+    // Handle date filtering
+    if (dateFilter === "custom" && customDateRange.fromDate) {
+      filters.fromDate = customDateRange.fromDate.toISOString();
+
+      if (customDateRange.toDate) {
+        filters.toDate = customDateRange.toDate.toISOString();
+      }
+    } else if (dateFilter !== "all") {
+      filters.dateRange = dateFilter;
+    }
+
+    return filters;
+  };
+
+  // Apply filters and fetch data
+  const applyFilters = () => {
+    const filters = buildFilters();
+    updateUrlWithFilters(filters);
+    fetchTransactions(filters);
+  };
+
+  // Fetch transactions on initial load and when filters change
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, dateFilter, statusFilter, typeFilter]);
+    const filters = buildFilters();
+    fetchTransactions(filters);
+    // Don't update URL here to avoid loops
+  }, [isAuthenticated, currentPage]);
 
-  // Bỏ useEffect cho click outside - không cần thiết nữa
-  // useEffect(() => {
-  //   function handleClickOutside(event: MouseEvent) {
-  //     if (
-  //       mobileNotificationRef.current &&
-  //       !mobileNotificationRef.current.contains(event.target as Node)
-  //     ) {
-  //       setShowNotificationPopup(false);
-  //     }
-  //   }
-  //   document.addEventListener("mousedown", handleClickOutside);
-  //   return () => {
-  //     document.removeEventListener("mousedown", handleClickOutside);
-  //   };
-  // }, []);
+  // Handle manual filter application
+  const handleFilterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); // Reset to first page when applying new filters
+    applyFilters();
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery("");
+    setDateFilter("all");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    setCurrentPage(1);
+    setCustomDateRange({ fromDate: null, toDate: null });
+
+    // Clear URL params and fetch data
+    window.history.replaceState({}, "", window.location.pathname);
+    fetchTransactions({ page: 1, limit: itemsPerPage });
+  };
+
+  // Format date from ISO string to readable date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  };
 
   // Utility functions
   const formatCurrency = (amount: number) => {
@@ -303,12 +218,14 @@ export default function LichSuGiaoDichPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
+      case "success":
       case "completed":
         return "bg-green-100 text-green-800";
       case "pending":
         return "bg-yellow-100 text-yellow-800";
       case "failed":
+      case "failure":
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -316,12 +233,14 @@ export default function LichSuGiaoDichPage() {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
+      case "success":
       case "completed":
         return "Thành công";
       case "pending":
         return "Đang xử lý";
       case "failed":
+      case "failure":
         return "Thất bại";
       default:
         return "Không xác định";
@@ -329,43 +248,79 @@ export default function LichSuGiaoDichPage() {
   };
 
   const getTransactionColor = (type: string, amount: number) => {
-    if (type === "deposit" || amount > 0) {
+    if (type === "deposit" || type === "topup" || amount > 0) {
       return "text-green-600";
     }
     return "text-red-600";
   };
 
   const getTypeIcon = (type: string) => {
-    return type === "deposit" ? "📥" : "📤";
+    return type === "deposit" || type === "topup" ? "📥" : "📤";
   };
 
-  // Bỏ function getNotificationIcon - không cần thiết
-  // const getNotificationIcon = (type: string) => {
-  //   switch (type) {
-  //     case "success":
-  //       return "✅";
-  //     case "error":
-  //       return "❌";
-  //     case "info":
-  //       return "ℹ️";
-  //     default:
-  //       return "📢";
-  //   }
-  // };
+  // Determine transaction type from description or amount
+  const determineTransactionType = (transaction: any) => {
+    const desc = transaction.description.toLowerCase();
+    if (desc.includes("nap") || desc.includes("nạp")) return "topup";
+    if (
+      desc.includes("thanh toan") ||
+      desc.includes("thanh toán") ||
+      transaction.amount < 0
+    )
+      return "payment";
+    return "topup"; // Default to topup if can't determine
+  };
 
-  // Bỏ unreadCount - không cần thiết
-  // const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // Calculate summary statistics
-  const totalDeposit = filteredTransactions
-    .filter((t) => t.type === "deposit" && t.status === "completed")
+  // Calculate summary statistics from API data
+  const totalDeposit = apiTransactions
+    .filter(
+      (t) => determineTransactionType(t) === "topup" && t.status === "completed"
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalPayment = Math.abs(
-    filteredTransactions
-      .filter((t) => t.type === "payment" && t.status === "completed")
-      .reduce((sum, t) => sum + t.amount, 0)
-  );
+  const totalPayment = apiTransactions
+    .filter(
+      (t) =>
+        determineTransactionType(t) === "payment" && t.status === "completed"
+    )
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    updateUrlWithFilters({ ...buildFilters(), page });
+  };
+
+  // Show loading if auth is loading
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">
+            Bạn cần đăng nhập để xem lịch sử giao dịch
+          </p>
+          <Link
+            href="/dang-nhap"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Đăng nhập
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -444,7 +399,7 @@ export default function LichSuGiaoDichPage() {
                             Tổng giao dịch
                           </p>
                           <p className="text-lg font-semibold text-blue-800">
-                            {filteredTransactions.length}
+                            {totalItems}
                           </p>
                         </div>
                       </div>
@@ -452,7 +407,10 @@ export default function LichSuGiaoDichPage() {
                   </div>
 
                   {/* Filters */}
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                  <form
+                    onSubmit={handleFilterSubmit}
+                    className="bg-gray-50 p-4 rounded-lg space-y-4"
+                  >
                     {/* Search */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -475,7 +433,16 @@ export default function LichSuGiaoDichPage() {
                         </label>
                         <select
                           value={dateFilter}
-                          onChange={(e) => setDateFilter(e.target.value)}
+                          onChange={(e) => {
+                            setDateFilter(e.target.value);
+                            // Clear custom dates if not using custom
+                            if (e.target.value !== "custom") {
+                              setCustomDateRange({
+                                fromDate: null,
+                                toDate: null,
+                              });
+                            }
+                          }}
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           {dateFilterOptions.map((option) => (
@@ -521,85 +488,165 @@ export default function LichSuGiaoDichPage() {
                       </div>
                     </div>
 
-                    {/* Clear filters button */}
-                    {(searchQuery ||
-                      dateFilter !== "all" ||
-                      statusFilter !== "all" ||
-                      typeFilter !== "all") && (
-                      <div>
+                    {/* Custom date range */}
+                    {dateFilter === "custom" && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Từ ngày
+                          </label>
+                          <DatePicker
+                            selected={customDateRange.fromDate}
+                            onChange={(date) =>
+                              setCustomDateRange({
+                                ...customDateRange,
+                                fromDate: date,
+                              })
+                            }
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Chọn ngày bắt đầu"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Đến ngày
+                          </label>
+                          <DatePicker
+                            selected={customDateRange.toDate}
+                            onChange={(date) =>
+                              setCustomDateRange({
+                                ...customDateRange,
+                                toDate: date,
+                              })
+                            }
+                            dateFormat="dd/MM/yyyy"
+                            placeholderText="Chọn ngày kết thúc"
+                            minDate={customDateRange.fromDate}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Filter action buttons */}
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        Áp dụng bộ lọc
+                      </button>
+
+                      {/* Clear filters button */}
+                      {(searchQuery ||
+                        dateFilter !== "all" ||
+                        statusFilter !== "all" ||
+                        typeFilter !== "all") && (
                         <button
-                          onClick={() => {
-                            setSearchQuery("");
-                            setDateFilter("all");
-                            setStatusFilter("all");
-                            setTypeFilter("all");
-                          }}
-                          className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          type="button"
+                          onClick={clearFilters}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
                         >
                           Xóa bộ lọc
                         </button>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </form>
 
                   {/* Transaction List */}
                   <div className="space-y-4">
-                    {paginatedTransactions.length > 0 ? (
+                    {isLoadingTransactions ? (
+                      <div className="py-12 text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+                        <p className="mt-4 text-gray-600">
+                          Đang tải dữ liệu giao dịch...
+                        </p>
+                      </div>
+                    ) : transactionError ? (
+                      <div className="py-12 text-center">
+                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-3 text-red-500">
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <path
+                              fill="currentColor"
+                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 11c-.55 0-1-.45-1-1V8c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1 4h-2v-2h2v2z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-red-600 mb-2">{transactionError}</p>
+                        <button
+                          onClick={() => window.location.reload()}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Tải lại trang
+                        </button>
+                      </div>
+                    ) : apiTransactions.length > 0 ? (
                       <>
                         <div className="space-y-3">
-                          {paginatedTransactions.map((transaction) => (
-                            <div
-                              key={transaction.id}
-                              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                <div className="flex items-start gap-3">
-                                  <div className="text-2xl flex-shrink-0">
-                                    {getTypeIcon(transaction.type)}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between mb-2">
-                                      <div className="font-medium text-gray-900 line-clamp-2">
-                                        {transaction.description}
-                                      </div>
-                                      <span
-                                        className={`ml-2 px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusBadge(
-                                          transaction.status
-                                        )}`}
-                                      >
-                                        {getStatusText(transaction.status)}
-                                      </span>
+                          {apiTransactions.map((transaction) => {
+                            const transactionType =
+                              determineTransactionType(transaction);
+                            return (
+                              <div
+                                key={transaction._id}
+                                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                  <div className="flex items-start gap-3">
+                                    <div className="text-2xl flex-shrink-0">
+                                      {getTypeIcon(transactionType)}
                                     </div>
-                                    <div className="text-sm text-gray-600 space-y-1">
-                                      <div>
-                                        {transaction.method} •{" "}
-                                        {transaction.date}
-                                      </div>
-                                      <div className="flex flex-wrap gap-2 text-xs">
-                                        <span className="bg-gray-100 px-2 py-1 rounded">
-                                          Mã GD: {transaction.id}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-wrap items-start justify-between mb-2">
+                                        <div className="font-medium text-gray-900 line-clamp-2 mr-2">
+                                          {transaction.description}
+                                        </div>
+                                        <span
+                                          className={`px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getStatusBadge(
+                                            transaction.status
+                                          )}`}
+                                        >
+                                          {getStatusText(transaction.status)}
                                         </span>
-                                        {transaction.postId && (
-                                          <span className="bg-blue-100 px-2 py-1 rounded">
-                                            Mã tin: {transaction.postId}
+                                      </div>
+                                      <div className="text-sm text-gray-600 space-y-1">
+                                        <div>
+                                          {transaction.paymentMethod?.toUpperCase() ||
+                                            "VNPay"}{" "}
+                                          • {formatDate(transaction.createdAt)}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 text-xs">
+                                          <span className="bg-gray-100 px-2 py-1 rounded">
+                                            Mã GD: {transaction.orderId}
                                           </span>
-                                        )}
+                                          {transaction.postId && (
+                                            <span className="bg-blue-100 px-2 py-1 rounded">
+                                              Mã tin: {transaction.postId}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                                <div
-                                  className={`font-semibold text-xl ${getTransactionColor(
-                                    transaction.type,
-                                    transaction.amount
-                                  )} flex-shrink-0`}
-                                >
-                                  {transaction.amount > 0 ? "+" : ""}
-                                  {formatCurrency(Math.abs(transaction.amount))}
+                                  <div
+                                    className={`font-semibold text-xl ${getTransactionColor(
+                                      transactionType,
+                                      transaction.amount
+                                    )} flex-shrink-0`}
+                                  >
+                                    {transactionType === "topup" ? "+" : ""}
+                                    {formatCurrency(transaction.amount)}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Pagination */}
@@ -607,7 +654,7 @@ export default function LichSuGiaoDichPage() {
                           <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
-                            onPageChange={setCurrentPage}
+                            onPageChange={handlePageChange}
                             className="justify-center"
                           />
                         </div>
@@ -619,7 +666,12 @@ export default function LichSuGiaoDichPage() {
                           Không tìm thấy giao dịch nào
                         </h3>
                         <p className="text-gray-600">
-                          Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm
+                          {searchQuery ||
+                          dateFilter !== "all" ||
+                          statusFilter !== "all" ||
+                          typeFilter !== "all"
+                            ? "Thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm"
+                            : "Bạn chưa có giao dịch nào"}
                         </p>
                       </div>
                     )}
@@ -636,7 +688,7 @@ export default function LichSuGiaoDichPage() {
         <div className="grid grid-cols-5 py-2">
           {/* Tổng quan */}
           <Link
-            href="/nguoi-dung/tong-quan"
+            href="/nguoi-dung/dashboard"
             className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
           >
             <svg
@@ -651,29 +703,27 @@ export default function LichSuGiaoDichPage() {
                 d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
               />
             </svg>
-            <span className="text-xs">Tổng quan</span>
+            <span className="text-xs">Trang chủ</span>
           </Link>
 
-          {/* Quản lý tin */}
+          {/* Yêu thích */}
           <Link
-            href="/nguoi-dung/quan-ly-tin-rao-ban-cho-thue"
+            href="/nguoi-dung/yeu-thich"
             className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
           >
             <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="mb-1"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
             >
               <path
-                fill="currentColor"
                 fillRule="evenodd"
-                d="M3 5.75A2.75 2.75 0 0 1 5.75 3h12.5A2.75 2.75 0 0 1 21 5.75v12.5A2.75 2.75 0 0 1 18.25 21H5.75A2.75 2.75 0 0 1 3 18.25zm8.14 2.452a.75.75 0 1 0-1.2-.9L8.494 9.23l-.535-.356a.75.75 0 1 0-.832 1.248l1.125.75a.75.75 0 0 0 1.016-.174zm2.668.048a.75.75 0 1 0 0 1.5h2.5a.75.75 0 0 0 0-1.5zm-2.668 5.953a.75.75 0 1 0-1.2-.9l-1.446 1.928-.535-.356a.75.75 0 0 0-.832 1.248l1.125.75a.75.75 0 0 0 1.016-.174zm2.61.047a.75.75 0 0 0 0 1.5h2.5a.75.75 0 0 0 0-1.5z"
+                d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
                 clipRule="evenodd"
               />
             </svg>
-            <span className="text-xs">Quản lý</span>
+            <span className="text-xs">Yêu thích</span>
           </Link>
 
           {/* Đăng tin */}
@@ -702,18 +752,18 @@ export default function LichSuGiaoDichPage() {
           {/* Ví tiền - Active */}
           <Link
             href="/nguoi-dung/vi-tien"
-            className="flex flex-col items-center py-2 px-1 text-blue-600 bg-blue-50"
+            className="flex flex-col items-center py-2 px-1 text-blue-600"
           >
             <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="mb-1"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
             >
               <path
-                fill="currentColor"
-                d="M12 2C13.1 2 14 2.9 14 4V5H16C17.1 5 18 5.9 18 7V19C18 20.1 17.1 21 16 21H8C6.9 21 6 20.1 6 19V7C6 5.9 6.9 5 8 5H10V4C10 2.9 10.9 2 12 2ZM10 7V19H14V7H10ZM8 7V19H8V7ZM16 7V19H16V7ZM12 9C13.1 9 14 9.9 14 11S13.1 13 12 13 10 12.1 10 11 10.9 9 12 9Z"
+                fillRule="evenodd"
+                d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+                clipRule="evenodd"
               />
             </svg>
             <span className="text-xs font-medium">Ví tiền</span>
@@ -725,15 +775,15 @@ export default function LichSuGiaoDichPage() {
             className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
           >
             <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="mb-1"
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
             >
               <path
-                fill="currentColor"
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                fillRule="evenodd"
+                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                clipRule="evenodd"
               />
             </svg>
             <span className="text-xs">Tài khoản</span>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Package } from "@/types/Post";
+import { useWallet } from "@/hooks/useWallet";
 
 interface PackageSelectionStepProps {
   selectedPackage: Package | null;
@@ -65,13 +66,21 @@ export default function PackageSelectionStep({
   selectedPackage,
   setSelectedPackage,
 }: PackageSelectionStepProps) {
+  // Use wallet hook to get user balance
+  const { balance, formattedBalance, loading } = useWallet();
+
+  // Check if selected package is affordable
+  const isAffordable = selectedPackage
+    ? balance >= selectedPackage.price
+    : true;
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           Chọn gói đăng tin
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 mb-2">
           Chọn gói phù hợp để tin đăng của bạn tiếp cận được nhiều khách hàng
           hơn
         </p>
@@ -86,13 +95,22 @@ export default function PackageSelectionStep({
               selectedPackage?.id === pkg.id
                 ? "border-blue-500 bg-blue-50"
                 : "border-gray-200 hover:border-gray-300 hover:shadow-md"
-            }`}
+            } ${pkg.price > balance ? "opacity-80" : ""}`}
           >
             {/* Popular Badge */}
             {pkg.isPopular && (
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                 <span className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">
                   Phổ biến
+                </span>
+              </div>
+            )}
+
+            {/* Insufficient Balance Badge */}
+            {pkg.price > balance && (
+              <div className="absolute -top-3 right-3">
+                <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+                  Không đủ tiền
                 </span>
               </div>
             )}
@@ -185,6 +203,57 @@ export default function PackageSelectionStep({
                 {selectedPackage.price.toLocaleString("vi-VN")}đ
               </span>
             </div>
+
+            {/* Balance Warning */}
+            {!isAffordable && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-md p-3 text-red-600 text-sm flex items-start gap-2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="flex-shrink-0 mt-0.5"
+                >
+                  <path
+                    d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 8V12"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M12 16H12.01"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <div>
+                  <p className="font-medium mb-1">Số dư ví không đủ</p>
+                  <p>
+                    Vui lòng nạp thêm tiền vào ví hoặc chọn gói thấp hơn. Bạn
+                    cần thêm{" "}
+                    {(selectedPackage.price - balance).toLocaleString("vi-VN")}đ
+                  </p>
+                  <a
+                    href="/nguoi-dung/vi-tien"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block font-medium text-blue-600 hover:underline"
+                  >
+                    Nạp tiền vào ví
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

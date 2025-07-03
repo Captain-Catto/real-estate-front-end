@@ -41,6 +41,12 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   try {
     const token = localStorage.getItem("accessToken");
 
+    console.log(
+      `Fetching ${url.split("/").slice(-2).join("/")} (token ${
+        token ? "exists" : "missing"
+      })`
+    );
+
     // Handle Content-Type properly - don't set for FormData
     const isFormData = options.body instanceof FormData;
 
@@ -69,12 +75,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
       headers: mergedHeaders,
       credentials: "include",
     };
-
-    console.log("Fetch request:", {
-      url,
-      method: options.method || "GET",
-      headers: mergedHeaders,
-    });
 
     const response = await fetch(url, requestConfig);
 
@@ -172,6 +172,18 @@ export const refreshToken = async (): Promise<boolean> => {
   }
 };
 
+// Add profile caching to prevent infinite API calls
+let profileCache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+
+// Profile cache duration (5 minutes)
+const PROFILE_CACHE_DURATION = 5 * 60 * 1000;
+
+// Track ongoing profile requests
+let isProfileFetching = false;
+
 export const authService = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
@@ -266,8 +278,13 @@ export const authService = {
       // Luôn clear localStorage, bất kể API response
       localStorage.removeItem("accessToken");
 
+      // Clear cache
+      profileCache = null;
+
       return data;
     } catch (error: any) {
+      // Also clear cache on error
+      profileCache = null;
       // Vẫn clear localStorage nếu có lỗi
       localStorage.removeItem("accessToken");
       return {
@@ -292,6 +309,9 @@ export const authService = {
       // Luôn clear localStorage
       localStorage.removeItem("accessToken");
 
+      // Clear cache
+      profileCache = null;
+
       return data;
     } catch (error: any) {
       // Vẫn clear localStorage nếu có lỗi
@@ -305,6 +325,33 @@ export const authService = {
 
   async getProfile(): Promise<ProfileResponse> {
     try {
+      // Return cached profile if still valid
+      if (
+        profileCache &&
+        Date.now() - profileCache.timestamp < PROFILE_CACHE_DURATION
+      ) {
+        console.log("Using cached profile data");
+        return profileCache.data;
+      }
+
+      // Handle concurrent requests
+      if (isProfileFetching) {
+        console.log("Profile request already in progress");
+        const startTime = Date.now();
+        while (isProfileFetching && Date.now() - startTime < 3000) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // If cache was populated during wait, return it
+        if (profileCache) {
+          return profileCache.data;
+        }
+      }
+
+      // Set fetching flag
+      isProfileFetching = true;
+
+      console.log("Fetching fresh profile data");
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`);
       const data = await response.json();
 
@@ -312,12 +359,21 @@ export const authService = {
         throw new Error(data.message || "Failed to get profile");
       }
 
+      // Cache the successful response
+      profileCache = {
+        data,
+        timestamp: Date.now(),
+      };
+
       return data;
     } catch (error: any) {
       throw new Error(error.message || "Lỗi khi lấy thông tin profile");
+    } finally {
+      isProfileFetching = false;
     }
   },
 
+  // Clear profile cache when updating profile
   async updateProfile(profileData: {
     username?: string;
     email?: string;
@@ -333,6 +389,9 @@ export const authService = {
       if (!response.ok) {
         throw new Error(data.message || "Failed to update profile");
       }
+
+      // Clear the profile cache
+      profileCache = null;
 
       return data;
     } catch (error: any) {

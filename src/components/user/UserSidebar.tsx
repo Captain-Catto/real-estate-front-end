@@ -1,10 +1,13 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function UserSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
   // Desktop menu (6 items)
@@ -136,10 +139,26 @@ export default function UserSidebar() {
   // Tablet/Mobile menu (5 items - exclude wallet)
   const tabletMenu = desktopMenu.filter((item) => !item.desktopOnly);
 
-  const accountMenuItems = [
+  // Hàm xử lý đăng xuất
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Ngăn chặn hành vi điều hướng mặc định
+    const success = await logout();
+    if (success) {
+      router.push("/"); // Chuyển hướng đến trang chủ sau khi đăng xuất thành công
+    }
+  };
+
+  // Định nghĩa kiểu cho các item trong menu
+  type AccountMenuItem = {
+    href: string;
+    title: string;
+    onClick?: (e: React.MouseEvent) => void;
+  };
+
+  const accountMenuItems: AccountMenuItem[] = [
     { href: "/nguoi-dung/tai-khoan", title: "Thông tin cá nhân" },
     { href: "/nguoi-dung/yeu-thich", title: "Danh sách yêu thích" },
-    { href: "/dang-xuat", title: "Đăng xuất" },
+    { href: "#", title: "Đăng xuất", onClick: handleLogout },
   ];
 
   const checkActiveRoute = (href: string) => {
@@ -204,7 +223,10 @@ export default function UserSidebar() {
                               ? "text-blue-600 bg-blue-50"
                               : "text-gray-700"
                           }`}
-                          onClick={() => setIsAccountMenuOpen(false)}
+                          onClick={(e) => {
+                            subItem.onClick?.(e); // Gọi hàm onClick nếu có
+                            setIsAccountMenuOpen(false);
+                          }}
                         >
                           {subItem.title}
                         </Link>
@@ -283,7 +305,10 @@ export default function UserSidebar() {
                               ? "text-blue-600 bg-blue-50"
                               : "text-gray-700"
                           }`}
-                          onClick={() => setIsAccountMenuOpen(false)}
+                          onClick={(e) => {
+                            subItem.onClick?.(e); // Gọi hàm onClick nếu có
+                            setIsAccountMenuOpen(false);
+                          }}
                         >
                           {subItem.title}
                         </Link>

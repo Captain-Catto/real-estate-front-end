@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/store/hooks";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPageClient() {
   const router = useRouter();
@@ -34,16 +34,11 @@ export default function LoginPageClient() {
     e.preventDefault();
     clearError(); // Clear previous errors
 
-    try {
-      const result = await login({ email, password });
+    const result = await login({ email, password });
 
-      // Check if login was successful
-      if (result.meta.requestStatus === "fulfilled") {
-        // Redux sẽ tự động redirect thông qua useEffect ở trên
-        console.log("Login successful");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
+    if (result.success) {
+      console.log("Login successful");
+      // Redux sẽ tự động redirect thông qua useEffect ở trên
     }
   };
 

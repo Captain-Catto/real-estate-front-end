@@ -40,7 +40,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
 
-  const { items, isLoading, fetchUserFavorites, removeFavorite } =
+  const { favorites, loading, fetchUserFavorites, removeFavorite } =
     useFavorites();
   const [activeTab, setActiveTab] = useState<"all" | "property" | "project">(
     "all"
@@ -60,12 +60,13 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
 
   // Tạo bộ lọc theo loại sử dụng useMemo để tránh tính toán lại khi không cần thiết
   const propertyFavorites = useMemo(() => {
-    return items.filter((item) => item.type === "property");
-  }, [items]);
+    console.log("Filtering property favorites", favorites);
+    return favorites.filter((item) => item.type === "property");
+  }, [favorites]);
 
   const projectFavorites = useMemo(() => {
-    return items.filter((item) => item.type === "project");
-  }, [items]);
+    return favorites.filter((item) => item.type === "project");
+  }, [favorites]);
 
   // Refresh data khi mount component - with proper dependency control
   useEffect(() => {
@@ -171,12 +172,12 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
         items_to_filter = projectFavorites;
         break;
       default:
-        items_to_filter = items;
+        items_to_filter = favorites;
     }
     return sortItems(items_to_filter, sortBy);
   }, [
     activeTab,
-    items,
+    favorites,
     propertyFavorites,
     projectFavorites,
     sortBy,
@@ -289,7 +290,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
       });
       setConfirmAction(() => () => {
         // Lọc ra các item thuộc type cần xóa và thực hiện xóa lần lượt
-        const itemsToRemove = items.filter((item) => item.type === type);
+        const itemsToRemove = favorites.filter((item) => item.type === type);
         itemsToRemove.forEach((item) => {
           removeFavorite(item.id);
         });
@@ -299,7 +300,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
       });
       setConfirmDialogOpen(true);
     },
-    [items, removeFavorite]
+    [favorites, removeFavorite]
   );
 
   const selectedSortOption = useMemo(
@@ -307,7 +308,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
     [sortBy]
   );
 
-  if (isLoading) {
+  if (loading) {
     return <FavoritesLoadingSkeleton />;
   }
 

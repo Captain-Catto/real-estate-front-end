@@ -1,17 +1,82 @@
 "use client";
-import Footer from "@/components/footer/Footer";
-import Link from "next/link";
+
+import { useState, useEffect, useRef } from "react";
 import UserSidebar from "@/components/user/UserSidebar";
+import Footer from "@/components/footer/Footer";
+import { useAuth } from "@/store/hooks";
 import UserHeader from "@/components/user/UserHeader";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useWallet } from "@/hooks/useWallet";
 
 export default function TongQuanPage() {
-  // Mock user data - thay thế bằng data thật từ context/API
+  const router = useRouter();
+  const { user, isAuthenticated, loading } = useAuth();
+
+  // Use wallet hook with safeguards
+  const { balance, formattedBalance } = useWallet();
+
+  // Use a ref to track data loading state
+  const dataLoadingRef = useRef(false);
+
+  // User data for UserHeader component
   const userData = {
-    name: "Lê Quang Trí Đạt",
-    avatar: "Đ", // First letter of name
-    balance: "0 đ",
-    greeting: "Chào buổi sáng 🌤",
+    name: user?.username || "Người dùng",
+    avatar: (user?.username?.[0] || "U").toUpperCase(),
+    greeting: getGreeting(),
+    verified: user?.emailVerified || false,
   };
+
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Chào buổi sáng 🌅";
+    if (hour < 18) return "Chào buổi chiều ☀️";
+    return "Chào buổi tối 🌙";
+  }
+
+  // Mock data for recent posts
+  const recentPosts = [
+    {
+      id: 1,
+      title: "Nhà phố mặt tiền đường Nguyễn Văn Linh",
+      price: "2,500,000,000",
+      status: "active",
+      date: "10/06/2023",
+      views: 125,
+    },
+    // ...other posts
+  ];
+
+  // Mock data for recent activity
+  const recentActivity = [
+    {
+      id: 1,
+      type: "post_created",
+      title: "Bạn đã đăng tin mới",
+      description: "Nhà phố mặt tiền đường Nguyễn Văn Linh",
+      date: "10/06/2023 15:30",
+    },
+    // ...other activities
+  ];
+
+  // Check if authenticated once on mount
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/dang-nhap");
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

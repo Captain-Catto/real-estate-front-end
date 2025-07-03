@@ -1,59 +1,64 @@
 "use client";
 
-import { useState, Fragment, useRef, useEffect } from "react";
-import { Transition } from "@headlessui/react";
+import { useState, useEffect } from "react";
 import Footer from "@/components/footer/Footer";
 import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import UserHeader from "@/components/user/UserHeader";
-import { useAuth } from "@/store/hooks";
-import { updateProfileAsync } from "@/store/slices/authSlice";
-import { useAppDispatch } from "@/store/hooks";
-import { useRouter } from "next/navigation";
+import { useAuth, useProtectedRoute } from "@/hooks/useAuth";
 import Image from "next/image";
+import { formatDate } from "@/utils/format";
+import { useRouter } from "next/navigation";
 
 export default function ThongTinCaNhanPage() {
+  // Use protected route hook to handle authentication and redirects
+  const { loading: authLoading } = useProtectedRoute();
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const { user, isAuthenticated, loading, isInitialized } = useAuth();
 
-  const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+  // Use the enhanced auth hook
+  const {
+    user,
+    isAuthenticated,
+    loading: userLoading,
+    updateProfile,
+  } = useAuth();
 
-  // Redirect nếu chưa đăng nhập - CHỈ sau khi đã initialize xong
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, isInitialized, router]);
+  console.log("user", user);
+
+  // Combined loading state
+  const loading = authLoading || userLoading;
 
   // Form states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Add profile form state with safe initialization
   const [profileForm, setProfileForm] = useState({
-    username: user?.username || "",
-    email: user?.email || "",
-    phoneNumber: user?.phoneNumber || "",
+    username: "",
+    email: "",
+    phoneNumber: "",
   });
+
+  // Add password form state
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Update form khi user data thay đổi
+  // Update form when user data changes
   useEffect(() => {
     if (user) {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
-        phoneNumber: user?.phoneNumber || "",
+        phoneNumber: user.phoneNumber?.toString() || "",
       });
     }
   }, [user]);
 
-  // Format user data để tương thích với UserHeader
+  // Format user data for UserHeader - with safe fallbacks
   const userData = user
     ? {
         name: user.username || user.email?.split("@")[0] || "User",
@@ -62,13 +67,13 @@ export default function ThongTinCaNhanPage() {
           user.username?.charAt(0).toUpperCase() ||
           user.email?.charAt(0).toUpperCase() ||
           "U",
-        balance: "0 đ",
         greeting: getGreeting(),
-        email: user.email,
-        joinDate: formatDate(user.createdAt),
-        role: user.role,
       }
-    : null;
+    : {
+        name: "Guest",
+        avatar: "G",
+        greeting: getGreeting(),
+      };
 
   const isAdmin = user?.role === "admin";
 
@@ -77,15 +82,6 @@ export default function ThongTinCaNhanPage() {
     if (hour < 12) return "Chào buổi sáng 🌅";
     if (hour < 18) return "Chào buổi chiều ☀️";
     return "Chào buổi tối 🌙";
-  }
-
-  function formatDate(dateString: string) {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
   }
 
   const handleProfileFormChange = (field: string, value: string) => {
@@ -108,26 +104,19 @@ export default function ThongTinCaNhanPage() {
     setIsSubmitting(true);
 
     try {
-      // Sử dụng Redux thunk thay vì gọi API trực tiếp
-      const result = await dispatch(
-        updateProfileAsync({
-          username: profileForm.username,
-          email: profileForm.email,
-          phoneNumber: profileForm.phoneNumber,
-        })
-      );
+      // Use the updateProfile function from our enhanced auth hook
+      const result = await updateProfile({
+        username: profileForm.username,
+        email: profileForm.email,
+        phoneNumber: parseInt(profileForm.phoneNumber) || undefined,
+      });
 
-      if (updateProfileAsync.fulfilled.match(result)) {
+      if (result.success) {
         setIsEditingProfile(false);
-        alert("Cập nhật thông tin thành công!");
-      } else {
-        throw new Error(
-          (result.payload as string) || "Failed to update profile"
-        );
+        // Success message is already shown by the hook
       }
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      alert("Có lỗi xảy ra khi cập nhật thông tin!");
     } finally {
       setIsSubmitting(false);
     }
@@ -147,6 +136,10 @@ export default function ThongTinCaNhanPage() {
     setIsSubmitting(true);
 
     try {
+      // Define a constant for API base URL or use an env variable
+      const API_BASE_URL =
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
       const response = await fetch(API_BASE_URL + `/auth/change-password`, {
         method: "PUT",
         headers: {
@@ -184,7 +177,7 @@ export default function ThongTinCaNhanPage() {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
-        phoneNumber: user?.phoneNumber || "",
+        phoneNumber: user?.phoneNumber?.toString() || "",
       });
     }
     setIsEditingProfile(false);
@@ -199,42 +192,24 @@ export default function ThongTinCaNhanPage() {
     setIsChangingPassword(false);
   };
 
-  // Loading state - hiển thị loading khi chưa initialize xong HOẶC đang loading
-  if (!isInitialized || loading || (!user && isAuthenticated)) {
+  // Show loading state while auth is being checked
+  if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-100 items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải thông tin...</p>
+          <p className="text-gray-600">Đang tải thông tin người dùng...</p>
         </div>
       </div>
     );
   }
 
-  // Nếu chưa đăng nhập và đã initialize xong, không render gì (sẽ redirect)
-  if (isInitialized && !isAuthenticated) {
+  // If not authenticated and not loading, the protected route hook will handle the redirect
+  if (!isAuthenticated) {
     return null;
   }
 
-  // Nếu không có user data, hiển thị error
-  if (!user || !userData) {
-    return (
-      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">
-            Không thể tải thông tin người dùng
-          </p>
-          <button
-            onClick={() => router.push("/login")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Đăng nhập lại
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  // Continue with rendering when user data is available
   return (
     <>
       <div className="flex">
@@ -252,7 +227,7 @@ export default function ThongTinCaNhanPage() {
               <UserHeader
                 userData={userData}
                 showNotificationButton={true}
-                showWalletButton={false}
+                showWalletButton={true}
               />
 
               {/* Content */}

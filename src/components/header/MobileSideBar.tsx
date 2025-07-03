@@ -10,7 +10,8 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import { useAuth, useFavorites } from "@/store/hooks";
+import { useAuth } from "@/hooks/useAuth";
+import { useFavorites } from "@/store/hooks";
 import { toast } from "sonner";
 
 interface SidebarProps {
@@ -20,17 +21,13 @@ interface SidebarProps {
 
 export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
   const { user, isAuthenticated, logout } = useAuth();
-  const { items: favoriteItems } = useFavorites();
+  const { favorites: favoriteItems } = useFavorites();
 
   const handleLogout = async () => {
-    try {
-      await logout();
+    const result = await logout();
+    if (result) {
       onClose();
-      toast.success("Đăng xuất thành công");
       window.location.href = "/";
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Đã xảy ra lỗi khi đăng xuất");
     }
   };
 
@@ -94,7 +91,7 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center gap-3 mb-4">
                         <Link
-                          href="/yeu-thich"
+                          href="/nguoi-dung/yeu-thich"
                           onClick={onClose}
                           className="p-2 border border-gray-300 rounded-lg relative flex items-center justify-center"
                         >
@@ -164,7 +161,7 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                         <>
                           <div className="flex gap-2">
                             <Link
-                              href="/login"
+                              href="/dang-nhap"
                               className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm text-center hover:bg-gray-50 transition-colors"
                               onClick={onClose}
                             >

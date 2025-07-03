@@ -8,26 +8,60 @@ import { useEditPostModal } from "@/hooks/useEditPostModal";
 import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import UserHeader from "@/components/user/UserHeader";
 import { postService } from "@/services/postsService";
-import { useAuth } from "@/store/hooks";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth"; // Changed from @/store/hooks to @/hooks/useAuth
+import {
+  useRouter as useNextRouter,
+  useSearchParams,
+  usePathname,
+} from "next/navigation";
+import { Pagination } from "@/components/common/Pagination";
 
 export default function QuanLyTinPage() {
-  const router = useRouter();
-  const { user, isInitialized } = useAuth();
+  const router = useNextRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  // Use the enhanced auth hook from the hooks directory
+  const {
+    user,
+    isAuthenticated,
+    loading: userLoading,
+    isInitialized,
+  } = useAuth();
   const editModal = useEditPostModal();
 
-  // Mock user data
-  const userData = {
-    name: "Lê Quang Trí Đạt",
-    avatar: "Đ",
-    balance: "0 đ",
-    greeting: "Chào buổi sáng 🌤",
-  };
+  // Get user data from the authenticated user instead of using mock data
+  const userData = user
+    ? {
+        name: user.username || user.email?.split("@")[0] || "User",
+        avatar:
+          user.avatar ||
+          user.username?.charAt(0).toUpperCase() ||
+          user.email?.charAt(0).toUpperCase() ||
+          "U",
+        greeting: getGreeting(),
+      }
+    : {
+        name: "User",
+        avatar: "U",
+        greeting: getGreeting(),
+      };
+
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Chào buổi sáng 🌅";
+    if (hour < 18) return "Chào buổi chiều ☀️";
+    return "Chào buổi tối 🌙";
+  }
 
   // State cho post
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // State cho pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [postsPerPage, setPostsPerPage] = useState(10);
 
   // State cho notification popup
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
@@ -37,7 +71,8 @@ export default function QuanLyTinPage() {
 
   // State cho search và filter
   const [searchValue, setSearchValue] = useState("");
-  const [activeFilter, setActiveFilter] = useState("0");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
   const [showFilterPopup, setShowFilterPopup] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -55,10 +90,19 @@ export default function QuanLyTinPage() {
 
   // Tự động đẩy về login nếu chưa đăng nhập
   useEffect(() => {
-    if (isInitialized && !user) {
-      router.push("/login");
+    if (isInitialized && !isAuthenticated) {
+      router.push("/dang-nhap");
     }
-  }, [user, isInitialized, router]);
+  }, [isAuthenticated, isInitialized, router]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounced(searchValue);
+    }, 500); // Đợi 500ms sau khi user ngừng gõ
+
+    return () => clearTimeout(timer);
+  }, [searchValue]);
 
   // Handle edit post
   const handleEditPost = (post: any) => {
@@ -112,44 +156,9 @@ export default function QuanLyTinPage() {
     },
   ];
 
-  // Filter posts based on current filters
-  const filteredPosts = posts.filter((post) => {
-    // Filter by status
-    if (activeFilter !== "all" && post.status !== activeFilter) {
-      return false;
-    }
-    // Filter by type
-    if (filterType !== "all" && post.type !== filterType) {
-      return false;
-    }
-    // Filter by search
-    if (
-      searchValue &&
-      !post.title?.toLowerCase().includes(searchValue.toLowerCase()) &&
-      !post._id?.toLowerCase().includes(searchValue.toLowerCase())
-    ) {
-      return false;
-    }
-    // Filter by date range
-    const postDate = new Date(post.createdAt);
-    const now = new Date();
-    if (filterDateRange === "7") {
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      if (postDate < sevenDaysAgo) return false;
-    } else if (filterDateRange === "30") {
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      if (postDate < thirtyDaysAgo) return false;
-    } else if (
-      filterDateRange === "custom" &&
-      customStartDate &&
-      customEndDate
-    ) {
-      const startDate = new Date(customStartDate);
-      const endDate = new Date(customEndDate);
-      if (postDate < startDate || postDate > endDate) return false;
-    }
-    return true;
-  });
+  // Không cần lọc trên client-side nữa vì server đã lọc
+  // Chỉ sử dụng dữ liệu từ API trực tiếp
+  const filteredPosts = posts;
 
   // Type options
   const typeOptions = [
@@ -165,27 +174,74 @@ export default function QuanLyTinPage() {
     { id: "custom", label: "Tùy chọn" },
   ];
 
+  // Posts per page options
+  const postsPerPageOptions = [
+    { id: 5, label: "5 bài" },
+    { id: 10, label: "10 bài" },
+    { id: 20, label: "20 bài" },
+    { id: 50, label: "50 bài" },
+  ];
+
   // Lấy bài viết từ API khi load trang
-  useEffect(() => {
-    let ignore = false;
+  const fetchPosts = useCallback(() => {
     setLoading(true);
     setError(null);
+
+    // Tạo tham số tìm kiếm và lọc để gửi đến API
+    const params = {
+      page: currentPage,
+      limit: postsPerPage,
+      status: activeFilter !== "all" ? activeFilter : undefined,
+      type: filterType !== "all" ? filterType : undefined,
+      search: searchDebounced || undefined,
+      dateRange: filterDateRange,
+      startDate: customStartDate || undefined,
+      endDate: customEndDate || undefined,
+    };
+
     postService
-      .getUserPosts(1, 50)
+      .getUserPosts(params)
       .then((res) => {
-        const apiPosts = res.data?.posts || res.posts || res.data || [];
-        if (!ignore) setPosts(apiPosts);
+        console.log("API Response:", res);
+        const apiPosts = res.data?.posts || [];
+        const pagination = res.data?.pagination || {};
+        const total = pagination.totalPages || 1;
+
+        setPosts(apiPosts);
+        setTotalPages(total);
+
+        console.log("Đã tải bài viết với filter:", params);
+        console.log("Total pages:", total, "Posts count:", apiPosts.length);
       })
       .catch((err) => {
-        if (!ignore) setError(err.message || "Lỗi khi tải bài viết");
+        setError(err.message || "Lỗi khi tải bài viết");
       })
       .finally(() => {
-        if (!ignore) setLoading(false);
+        setLoading(false);
       });
+  }, [
+    currentPage,
+    postsPerPage,
+    activeFilter,
+    filterType,
+    searchDebounced,
+    filterDateRange,
+    customStartDate,
+    customEndDate,
+  ]);
+
+  // Effect để tải bài viết ban đầu và khi các tham số thay đổi
+  useEffect(() => {
+    let ignore = false;
+
+    if (isAuthenticated && !userLoading && !ignore) {
+      fetchPosts();
+    }
+
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [isAuthenticated, userLoading, fetchPosts]);
 
   // Handle click outside để đóng popup
   useEffect(() => {
@@ -218,19 +274,15 @@ export default function QuanLyTinPage() {
     };
   }, [showNotificationPopup, showFilterPopup, showFilterModal]);
 
-  // Handle apply filters
-  const handleApplyFilters = () => {
-    setShowFilterPopup(false);
-    setShowFilterModal(false);
-  };
-
   // Handle reset filters
   const handleResetFilters = () => {
-    setActiveFilter("0");
+    setActiveFilter("all");
     setFilterType("all");
     setFilterDateRange("7");
     setCustomStartDate("");
     setCustomEndDate("");
+    setPostsPerPage(10);
+    setCurrentPage(1); // Đặt lại trang về 1 khi đặt lại bộ lọc
   };
 
   // Handle filter button click
@@ -249,6 +301,92 @@ export default function QuanLyTinPage() {
     },
     [showFilterModal, showFilterPopup]
   );
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll lên đầu danh sách bài viết
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+    // Không cần gọi fetchPosts() vì useEffect sẽ tự động trigger khi currentPage thay đổi
+  };
+
+  // Helper để cập nhật URL với filters
+  const updateUrlWithFilters = useCallback(
+    (paramsObj: Record<string, string | number | undefined>) => {
+      const url = new URL(window.location.href);
+
+      // Xóa tất cả params cũ trước
+      url.search = "";
+
+      // Thêm params mới
+      Object.entries(paramsObj).forEach(([key, value]) => {
+        if (
+          value &&
+          value !== "all" &&
+          value !== "" &&
+          (key !== "page" || value !== 1) &&
+          (key !== "dateRange" || value !== "7") &&
+          (key !== "limit" || value !== 10)
+        ) {
+          url.searchParams.set(key, String(value));
+        }
+      });
+
+      // Cập nhật URL mà không reload trang
+      window.history.replaceState({}, "", url.toString());
+    },
+    []
+  );
+
+  // Đọc filters từ URL khi component mount
+  useEffect(() => {
+    const page = parseInt(searchParams.get("page") || "1");
+    const status = searchParams.get("status") || "all";
+    const type = searchParams.get("type") || "all";
+    const search = searchParams.get("search") || "";
+    const dateRange = searchParams.get("dateRange") || "7";
+    const startDate = searchParams.get("startDate") || "";
+    const endDate = searchParams.get("endDate") || "";
+    const limit = parseInt(searchParams.get("limit") || "10");
+
+    // Set state từ URL
+    setCurrentPage(page);
+    setActiveFilter(status);
+    setFilterType(type);
+    setSearchValue(search);
+    setSearchDebounced(search); // Đồng bộ cả searchDebounced
+    setFilterDateRange(dateRange);
+    setCustomStartDate(startDate);
+    setCustomEndDate(endDate);
+    setPostsPerPage(limit);
+  }, [searchParams]);
+
+  // Cập nhật URL khi filters thay đổi
+  useEffect(() => {
+    updateUrlWithFilters({
+      page: currentPage,
+      status: activeFilter,
+      type: filterType,
+      search: searchDebounced,
+      dateRange: filterDateRange,
+      startDate: customStartDate,
+      endDate: customEndDate,
+      limit: postsPerPage !== 10 ? postsPerPage : undefined, // Chỉ lưu nếu khác default
+    });
+  }, [
+    currentPage,
+    activeFilter,
+    filterType,
+    searchDebounced,
+    filterDateRange,
+    customStartDate,
+    customEndDate,
+    postsPerPage,
+    updateUrlWithFilters,
+  ]);
 
   // Map trạng thái sang label và màu
   const getStatusLabelAndColor = (statusId: string) => {
@@ -273,23 +411,25 @@ export default function QuanLyTinPage() {
     );
   };
 
-  if (!isInitialized) {
-    // Có thể show spinner hoặc loading UI
-    return <div>Đang kiểm tra đăng nhập...</div>;
+  // Show loading state when checking authentication or fetching user data
+  if (userLoading || !isInitialized) {
+    return (
+      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải thông tin...</p>
+        </div>
+      </div>
+    );
   }
 
-  if (!user) {
+  // Redirect is handled by the useEffect above
+  if (!isAuthenticated) {
     return null;
   }
 
   // Filter Content Component
-  const FilterContent = ({
-    onClose,
-    isModal = false,
-  }: {
-    onClose?: () => void;
-    isModal?: boolean;
-  }) => (
+  const FilterContent = ({ isModal = false }: { isModal?: boolean }) => (
     <div className={`${isModal ? "flex flex-col h-full" : ""}`}>
       {/* Scrollable Content */}
       <div
@@ -403,43 +543,48 @@ export default function QuanLyTinPage() {
                   name="status"
                   value={option.id}
                   checked={activeFilter === option.id}
-                  onChange={(e) => setActiveFilter(e.target.value)}
+                  onChange={(e) => {
+                    setActiveFilter(e.target.value);
+                    setCurrentPage(1); // Đặt lại trang về 1 khi thay đổi filter
+                  }}
                   className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                 />
                 <span className="ml-3 text-sm text-gray-700">
-                  {option.label} ({option.count})
+                  {option.label}
                 </span>
               </label>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Fixed Action Buttons */}
-      <div
-        className={`${
-          isModal
-            ? "border-t border-gray-200 p-4"
-            : "border-t border-gray-200 p-4"
-        } bg-white ${isModal ? "rounded-none" : "rounded-b-lg"}`}
-      >
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (onClose) onClose();
-              setShowFilterPopup(false);
-              setShowFilterModal(false);
-            }}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={handleApplyFilters}
-            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            Áp dụng
-          </button>
+        {/* Số bài viết mỗi trang */}
+        <div className={`${isModal ? "mb-0" : "mb-6"}`}>
+          <h4 className="text-sm font-medium text-gray-700 mb-3">
+            Số bài viết mỗi trang
+          </h4>
+          <div className="space-y-2">
+            {postsPerPageOptions.map((option) => (
+              <label
+                key={option.id}
+                className="flex items-center cursor-pointer"
+              >
+                <input
+                  type="radio"
+                  name="postsPerPage"
+                  value={option.id}
+                  checked={postsPerPage === option.id}
+                  onChange={(e) => {
+                    setPostsPerPage(parseInt(e.target.value));
+                    setCurrentPage(1); // Đặt lại trang về 1 khi thay đổi số items
+                  }}
+                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                />
+                <span className="ml-3 text-sm text-gray-700">
+                  {option.label}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -500,7 +645,16 @@ export default function QuanLyTinPage() {
                       type="text"
                       placeholder="Nhập mã tin hoặc tiêu đề tin"
                       value={searchValue}
-                      onChange={(e) => setSearchValue(e.target.value)}
+                      onChange={(e) => {
+                        setSearchValue(e.target.value);
+                        setCurrentPage(1); // Đặt lại trang về 1 khi thay đổi tìm kiếm
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          // Không cần gọi fetchPosts() vì useEffect sẽ tự động trigger khi searchValue thay đổi
+                          e.currentTarget.blur(); // Bỏ focus khỏi input
+                        }
+                      }}
                       className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                   </div>
@@ -547,6 +701,30 @@ export default function QuanLyTinPage() {
                     </div>
                   </Transition>
                 </div>
+
+                {/* Reset Button */}
+                <button
+                  onClick={handleResetFilters}
+                  type="button"
+                  className="flex items-center gap-2 px-4 py-3 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto justify-center text-gray-700"
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="text-gray-600"
+                  >
+                    <path
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 0 0 4.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 0 1-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span>Đặt lại</span>
+                </button>
               </div>
             </div>
 
@@ -556,14 +734,17 @@ export default function QuanLyTinPage() {
                 {filterOptions.map((option) => (
                   <button
                     key={option.id}
-                    onClick={() => setActiveFilter(option.id)}
+                    onClick={() => {
+                      setActiveFilter(option.id);
+                      setCurrentPage(1); // Đặt lại trang về 1 khi thay đổi filter
+                    }}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeFilter === option.id
                         ? "bg-blue-600 text-white shadow-sm"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    {option.label} ({option.count})
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -747,6 +928,30 @@ export default function QuanLyTinPage() {
                     </div>
                   );
                 })}
+                {/* Debug info */}
+                <div className="text-xs text-gray-500 mt-2">
+                  Debug: Total pages = {totalPages}, Current page ={" "}
+                  {currentPage}, Posts = {posts.length}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="pt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                      className="mt-4"
+                    />
+                  </div>
+                )}
+
+                {/* Show pagination even if totalPages = 1 for testing */}
+                {totalPages === 1 && posts.length > 0 && (
+                  <div className="pt-6 text-center text-sm text-gray-500">
+                    Chỉ có 1 trang (tổng cộng {posts.length} bài viết)
+                  </div>
+                )}
               </div>
             ) : (
               /* Empty State */
@@ -768,12 +973,16 @@ export default function QuanLyTinPage() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {searchValue || activeFilter !== "0" || filterType !== "all"
+                  {searchDebounced ||
+                  activeFilter !== "all" ||
+                  filterType !== "all"
                     ? "Không tìm thấy kết quả"
                     : "Chưa có tin đăng nào"}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  {searchValue || activeFilter !== "0" || filterType !== "all"
+                  {searchDebounced ||
+                  activeFilter !== "all" ||
+                  filterType !== "all"
                     ? "Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm"
                     : "Bạn chưa có tin đăng nào. Hãy tạo tin đăng đầu tiên để bắt đầu bán hoặc cho thuê bất động sản."}
                 </p>
@@ -823,16 +1032,13 @@ export default function QuanLyTinPage() {
               </button>
             </div>
             <div className="overflow-y-auto">
-              <FilterContent
-                onClose={() => setShowFilterModal(false)}
-                isModal={true}
-              />
+              <FilterContent isModal={true} />
             </div>
           </Dialog.Panel>
         </div>
       </Dialog>
 
-      {/* DELETE CONFIRMATION MODAL - ĐƠN GIẢN */}
+      {/* DELETE CONFIRMATION MODAL */}
       <Dialog
         open={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
@@ -868,7 +1074,7 @@ export default function QuanLyTinPage() {
                 Bạn có chắc chắn muốn xóa tin đăng này không?
               </p>
               <p className="text-sm text-gray-800 font-medium bg-gray-50 p-2 rounded">
-                `&quot;`{deletePostTitle}`&quot;`
+                &quot;{deletePostTitle}&quot;
               </p>
               <p className="text-sm text-red-600 mt-2">
                 ⚠️ Hành động này không thể hoàn tác.
@@ -963,7 +1169,7 @@ export default function QuanLyTinPage() {
 
           {/* Nạp tiền */}
           <Link
-            href="/nap-tien"
+            href="/nguoi-dung/vi-tien"
             className="flex flex-col items-center py-2 px-1 text-gray-600 hover:text-blue-600"
           >
             <svg

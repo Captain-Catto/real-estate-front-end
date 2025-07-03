@@ -40,7 +40,7 @@ export const locationService = {
 
       if (res.status === 401) {
         localStorage.removeItem("accessToken");
-        window.location.href = "/login";
+        window.location.href = "/dang-nhap";
         throw new Error("Session expired. Please login again.");
       }
 
@@ -180,7 +180,7 @@ export const locationService = {
 
       if (res.status === 401) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.location.href = "/dang-nhap";
         throw new Error("Session expired. Please login again.");
       }
 

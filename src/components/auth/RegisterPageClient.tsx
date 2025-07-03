@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/store/hooks";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RegisterPageClient() {
   const router = useRouter();
@@ -47,21 +47,15 @@ export default function RegisterPageClient() {
       return;
     }
 
-    try {
-      // Sử dụng email làm username tạm thời (có thể cập nhật backend sau)
-      const result = await register({
-        username: email.split("@")[0], // Lấy phần trước @ làm username
-        email,
-        password,
-      });
+    const result = await register({
+      username: email.split("@")[0], // Lấy phần trước @ làm username
+      email,
+      password,
+    });
 
-      // Check if register was successful
-      if (result.meta.requestStatus === "fulfilled") {
-        // Redux sẽ tự động redirect thông qua useEffect ở trên
-        console.log("Register successful");
-      }
-    } catch (error) {
-      console.error("Register error:", error);
+    if (result.success) {
+      console.log("Register successful");
+      // Redux sẽ tự động redirect thông qua useEffect ở trên
     }
   };
 
@@ -217,13 +211,19 @@ export default function RegisterPageClient() {
               <span className="text-sm text-gray-600">
                 Đã có tài khoản?{" "}
                 <Link
-                  href="/login"
+                  href="/dang-nhap"
                   className="text-[#e03c31] hover:underline font-bold"
                 >
                   Đăng nhập
                 </Link>
               </span>
             </div>
+          </form>
+        </div>
+      </main>
+    </>
+  );
+}
           </form>
         </div>
       </main>

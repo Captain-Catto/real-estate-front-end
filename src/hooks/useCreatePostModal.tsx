@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { postService, CreatePostData } from "@/services/postsService";
 import { useAuth } from "@/store/hooks";
+import { useWallet } from "./useWallet";
+import { paymentService } from "@/services/paymentService";
+import { toast } from "sonner";
 
 interface FormData {
   // Basic Info
@@ -35,11 +38,13 @@ interface FormData {
 export function useCreatePostModal() {
   const router = useRouter();
   const { user } = useAuth();
+  const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Form data state với thông tin user thật
   const [formData, setFormData] = useState<FormData>({
@@ -161,6 +166,7 @@ export function useCreatePostModal() {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    setPaymentError(null);
 
     try {
       // Validate required fields
@@ -176,7 +182,37 @@ export function useCreatePostModal() {
         throw new Error("Vui lòng chọn gói đăng tin");
       }
 
-      // Map category sang tiếng Anh
+      // Refresh wallet balance first to get the most up-to-date balance
+      console.log("Refreshing wallet balance before checking...");
+      await refreshWallet();
+
+      // Check if user has enough balance to pay for the package
+      if (balance < selectedPackage.price) {
+        // Show more detailed error message with option to add funds
+        toast.error(
+          <div className="flex flex-col gap-2">
+            <p>Số dư ví không đủ để thanh toán</p>
+            <p className="text-sm">
+              Số dư hiện tại: {formattedBalance}
+              <br />
+              Cần thêm:{" "}
+              {(selectedPackage.price - balance).toLocaleString("vi-VN")}đ
+            </p>
+            <a
+              href="/nguoi-dung/vi-tien"
+              className="text-blue-600 hover:underline font-medium mt-1"
+            >
+              Nạp tiền vào ví
+            </a>
+          </div>,
+          {
+            duration: 6000,
+          }
+        );
+        throw new Error(
+          `Số dư ví không đủ để thanh toán. Số dư hiện tại: ${formattedBalance}. Vui lòng nạp thêm tiền vào ví.`
+        );
+      } // Map category sang tiếng Anh
       const mappedCategory = mapCategoryToEnglish(formData.category);
 
       // Chuẩn bị dữ liệu bài viết
@@ -194,20 +230,84 @@ export function useCreatePostModal() {
         },
         type: formData.type,
       };
-      console.log("Post data to be sent:", postData);
-      // Gửi request, selectedImages là File[]
+
+      // Step 2: Create the post
       const result = await postService.createPost(postData, selectedImages);
 
       if (result && result.success) {
-        alert("Đăng tin thành công! Tin đăng của bạn đang chờ duyệt.");
-        closeModal();
-        router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+        // If post creation is successful, deduct money from wallet
+        try {
+          const paymentResult = await paymentService.deductForPost({
+            amount: selectedPackage.price,
+            postId: result.data.post._id,
+            packageId: selectedPackage.id,
+            description: `Thanh toán đăng tin: ${formData.title}`,
+          });
+
+          if (paymentResult && paymentResult.success) {
+            // Step 4: Refresh wallet balance after payment
+            await refreshWallet();
+
+            // Step 5: Show success message with package details
+            toast.success(
+              <div>
+                <p className="font-medium">Đăng tin thành công!</p>
+                <p className="mt-1">
+                  Tin đăng của bạn đã được thanh toán và đang chờ duyệt.
+                </p>
+                <p className="mt-1 text-sm">
+                  Gói: {selectedPackage.name} - {selectedPackage.duration} ngày
+                  <br />
+                  Đã thanh toán: {selectedPackage.price.toLocaleString("vi-VN")}
+                  đ
+                </p>
+              </div>,
+              { duration: 5000 }
+            );
+
+            closeModal();
+            router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+          } else {
+            // Handle payment failure more gracefully
+            setPaymentError(
+              paymentResult?.message ||
+                "Thanh toán không thành công, vui lòng thử lại"
+            );
+            toast.error(
+              <div>
+                <p className="font-medium">Thanh toán không thành công</p>
+                <p className="mt-1">
+                  Tin đăng đã được tạo nhưng chưa được thanh toán. Vui lòng
+                  thanh toán trong mục quản lý tin.
+                </p>
+              </div>,
+              { duration: 6000 }
+            );
+
+            // Still redirect user to manage their posts
+            closeModal();
+            router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+          }
+        } catch (error) {
+          console.error("Error processing payment:", error);
+          toast.error("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
+          setPaymentError("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
+
+          // Still redirect user to manage their posts where they can try payment again
+          closeModal();
+          router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+        }
       } else {
         throw new Error(result?.message || "Có lỗi xảy ra khi đăng tin");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating post:", error);
-      alert(error.message || "Có lỗi xảy ra khi đăng tin!");
+      // Handle the error depending on its type
+      if (error instanceof Error) {
+        toast.error(error.message || "Có lỗi xảy ra khi đăng tin!");
+      } else {
+        toast.error("Có lỗi xảy ra khi đăng tin!");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -220,6 +320,7 @@ export function useCreatePostModal() {
     selectedImages,
     selectedPackage,
     isSubmitting,
+    paymentError,
     openModal,
     closeModal,
     nextStep,

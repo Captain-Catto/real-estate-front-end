@@ -33,10 +33,11 @@ const initialState: FavoritesState = {
 };
 
 // Async thunks
-export const fetchFavorites = createAsyncThunk(
+export const fetchFavoritesAsync = createAsyncThunk(
   "favorites/fetchFavorites",
   async (_, { rejectWithValue }) => {
     try {
+      // Make sure this matches the function name in favoriteService
       const response = await favoriteService.getFavorites();
       if (response.success) {
         // Chuyển đổi dữ liệu từ API sang định dạng FavoriteItem
@@ -63,6 +64,9 @@ export const fetchFavorites = createAsyncThunk(
   }
 );
 
+// For backward compatibility, also export as fetchFavorites
+export const fetchFavorites = fetchFavoritesAsync;
+
 export const removeFavoriteAsync = createAsyncThunk(
   "favorites/removeFavoriteAsync",
   async (itemId: string, { rejectWithValue }) => {
@@ -70,6 +74,22 @@ export const removeFavoriteAsync = createAsyncThunk(
       // Gọi API xóa favorite
       const response = await favoriteService.removeFromFavorites(itemId);
       return { itemId, response };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  }
+);
+
+export const addFavoriteAsync = createAsyncThunk(
+  "favorites/addFavoriteAsync",
+  async (itemId: string, { rejectWithValue }) => {
+    try {
+      // Call API to add to favorites
+      const response = await favoriteService.addToFavorites(itemId);
+      if (response.success) {
+        return response.data;
+      }
+      return rejectWithValue("Failed to add favorite");
     } catch (error) {
       return rejectWithValue(error);
     }
@@ -105,17 +125,17 @@ const favoritesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchFavorites.pending, (state) => {
+      .addCase(fetchFavoritesAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchFavorites.fulfilled, (state, action) => {
+      .addCase(fetchFavoritesAsync.fulfilled, (state, action) => {
         state.isLoading = false;
         state.items = action.payload;
         state.lastUpdated = new Date().toISOString();
         state.error = null;
       })
-      .addCase(fetchFavorites.rejected, (state, action) => {
+      .addCase(fetchFavoritesAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });
@@ -133,6 +153,44 @@ const favoritesSlice = createSlice({
         state.error = null;
       })
       .addCase(removeFavoriteAsync.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      // Handle add favorite
+      .addCase(addFavoriteAsync.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(addFavoriteAsync.fulfilled, (state, action) => {
+        state.isLoading = false;
+
+        // Check if the item already exists
+        const exists = state.items.some(
+          (item) => item.id === action.payload.post._id
+        );
+        if (!exists) {
+          // Convert API response to FavoriteItem format
+          const newFavorite: FavoriteItem = {
+            id: action.payload.post._id,
+            type: "property",
+            title: action.payload.post.title,
+            price: action.payload.post.price,
+            location:
+              action.payload.post.location.district +
+              ", " +
+              action.payload.post.location.province,
+            image: action.payload.post.images[0] || "/placeholder.jpg",
+            slug: action.payload.post.slug || action.payload.post._id,
+            area: action.payload.post.area + " m²",
+            bedrooms: action.payload.post.bedrooms,
+            bathrooms: action.payload.post.bathrooms,
+            propertyType: action.payload.post.category,
+            addedAt: action.payload.createdAt,
+          };
+          state.items.push(newFavorite);
+        }
+        state.error = null;
+      })
+      .addCase(addFavoriteAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

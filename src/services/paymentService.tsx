@@ -1,5 +1,7 @@
+import { fetchWithAuth } from "./authService";
+
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 export interface CreateVNPayPaymentRequest {
   amount: number;
@@ -24,6 +26,8 @@ export interface PaymentHistoryResponse {
   data: {
     payments: Array<{
       _id: string;
+      userId: string;
+      postId?: string;
       orderId: string;
       amount: number;
       currency: string;
@@ -43,22 +47,56 @@ export interface PaymentHistoryResponse {
   };
 }
 
-// Helper function để thêm token vào headers
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem("accessToken");
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
+export interface WalletInfoResponse {
+  success: boolean;
+  data: {
+    balance: number;
+    totalIncome: number;
+    totalSpending: number;
+    bonusEarned: number;
+    lastTransaction: string | null;
+    totalTransactions: number;
+    recentTransactions: Array<{
+      _id: string;
+      orderId: string;
+      amount: number;
+      status: string;
+      description: string;
+      createdAt: string;
+    }>;
   };
-};
+}
+
+// New interface for payment filter parameters
+export interface PaymentFilterParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+  search?: string;
+  dateRange?: string;
+  fromDate?: string;
+  toDate?: string;
+}
 
 // Helper function để xử lý response
 const handleResponse = async (response: Response) => {
   console.log("Response status:", response.status);
   if (!response.ok) {
-    const errorData = await response
-      .json()
-      .catch(() => ({ message: "Network error" }));
+    const errorText = await response.text();
+    let errorData;
+
+    try {
+      errorData = JSON.parse(errorText);
+    } catch (e) {
+      errorData = { message: errorText || "Network error" };
+    }
+
+    console.error("API Error:", {
+      status: response.status,
+      error: errorData,
+    });
+
     throw new Error(
       errorData.message || `HTTP error! status: ${response.status}`
     );
@@ -66,35 +104,75 @@ const handleResponse = async (response: Response) => {
   return response.json();
 };
 
+// Improved cache mechanism to prevent excessive wallet info calls
+let walletInfoCache: {
+  data: any;
+  timestamp: number;
+} | null = null;
+
+// Increase cache duration to prevent frequent requests
+const CACHE_DURATION = 10000;
+
+// Add a flag to track if we're already fetching wallet info to prevent duplicate calls
+let isWalletFetching = false;
+
 export const paymentService = {
+  // Xóa cache của ví để đảm bảo lấy dữ liệu mới nhất
+  invalidateWalletCache() {
+    walletInfoCache = null;
+    console.log("Wallet cache invalidated");
+  },
+
   // Tạo URL thanh toán VNPay
   async createVNPayPayment(
     data: CreateVNPayPaymentRequest
   ): Promise<VNPayPaymentResponse> {
-    const response = await fetch(
+    console.log("Creating VNPay payment URL:", data);
+
+    const response = await fetchWithAuth(
       `${API_BASE_URL}/payments/vnpay/create-payment-url`,
       {
         method: "POST",
-        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       }
     );
-    console.log("Creating VNPay payment URL:", data);
 
     return handleResponse(response);
   },
 
   // Lấy lịch sử thanh toán
   async getPaymentHistory(
-    page: number = 1,
-    limit: number = 10
+    filters: PaymentFilterParams = {}
   ): Promise<PaymentHistoryResponse> {
-    const response = await fetch(
-      `${API_BASE_URL}/payments/history?page=${page}&limit=${limit}`,
-      {
-        method: "GET",
-        headers: getAuthHeaders(),
-      }
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      type,
+      search,
+      dateRange,
+      fromDate,
+      toDate,
+    } = filters;
+
+    // Build query string
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("limit", limit.toString());
+
+    if (status && status !== "all") queryParams.append("status", status);
+    if (type && type !== "all") queryParams.append("type", type);
+    if (search && search.trim() !== "")
+      queryParams.append("search", search.trim());
+    if (dateRange && dateRange !== "all")
+      queryParams.append("dateRange", dateRange);
+    if (fromDate) queryParams.append("fromDate", fromDate);
+    if (toDate) queryParams.append("toDate", toDate);
+
+    const queryString = queryParams.toString();
+
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/payments/history${queryString ? `?${queryString}` : ""}`
     );
 
     return handleResponse(response);
@@ -102,23 +180,231 @@ export const paymentService = {
 
   // Kiểm tra trạng thái thanh toán
   async checkPaymentStatus(orderId: string): Promise<any> {
-    const response = await fetch(`${API_BASE_URL}/payments/status/${orderId}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/payments/check-status/${orderId}`
+    );
 
     return handleResponse(response);
   },
 
   // Lấy chi tiết thanh toán
   async getPaymentDetails(orderId: string): Promise<any> {
-    const response = await fetch(
-      `${API_BASE_URL}/payments/details/${orderId}`,
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/payments/details/${orderId}`
+    );
+
+    return handleResponse(response);
+  },
+
+  // Cập nhật trạng thái thanh toán
+  async updatePaymentStatus(orderId: string, vnpayData: any): Promise<any> {
+    // Invalidate wallet cache to ensure fresh data after payment status update
+    walletInfoCache = null;
+
+    // Sau khi cập nhật thanh toán, broadcast thay đổi ví để các tab khác biết
+    try {
+      if (typeof window !== "undefined") {
+        // Sử dụng localStorage để thông báo cho các tab khác
+        localStorage.setItem("wallet_updated", Date.now().toString());
+
+        // Sử dụng BroadcastChannel nếu có sẵn
+        if (typeof BroadcastChannel !== "undefined") {
+          const bc = new BroadcastChannel("wallet_updates");
+          bc.postMessage({ type: "refresh", timestamp: Date.now() });
+          bc.close();
+        }
+      }
+    } catch (e) {
+      console.error("Error broadcasting wallet update:", e);
+    }
+
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/payments/update-status/${orderId}`,
       {
-        method: "GET",
-        headers: getAuthHeaders(),
+        method: "POST",
+        body: JSON.stringify(vnpayData),
       }
     );
+
+    return handleResponse(response);
+  },
+
+  // Lấy thông tin ví của người dùng - enhanced caching mechanism
+  async getUserWalletInfo(): Promise<WalletInfoResponse> {
+    // Return cached data if it's still valid
+    if (
+      walletInfoCache &&
+      Date.now() - walletInfoCache.timestamp < CACHE_DURATION
+    ) {
+      return walletInfoCache.data;
+    }
+
+    // Prevent concurrent fetches
+    if (isWalletFetching) {
+      // If another fetch is in progress, wait until cache is populated or timeout
+      const startTime = Date.now();
+      while (isWalletFetching && Date.now() - startTime < 3000) {
+        // Wait a bit
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // If cache was populated during wait, return it
+      if (walletInfoCache) {
+        return walletInfoCache.data;
+      }
+    }
+
+    try {
+      isWalletFetching = true;
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/payments/wallet-info`
+      );
+      const data = await handleResponse(response);
+
+      // Cache successful response
+      walletInfoCache = {
+        data,
+        timestamp: Date.now(),
+      };
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching wallet info:", error);
+
+      // If we have old cached data, return it as fallback
+      if (walletInfoCache) {
+        return walletInfoCache.data;
+      }
+
+      // Otherwise, propagate the error
+      throw error;
+    } finally {
+      isWalletFetching = false;
+    }
+  },
+
+  // Sync wallet with payment history
+  async syncWallet(): Promise<any> {
+    // Invalidate wallet cache to ensure fresh data
+    walletInfoCache = null;
+
+    const response = await fetchWithAuth(`${API_BASE_URL}/wallet/sync`, {
+      method: "POST",
+    });
+
+    // Broadcast wallet update
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wallet_updated", Date.now().toString());
+
+        if (typeof BroadcastChannel !== "undefined") {
+          const bc = new BroadcastChannel("wallet_updates");
+          bc.postMessage({ type: "refresh", timestamp: Date.now() });
+          bc.close();
+        }
+      }
+    } catch (e) {
+      console.error("Error broadcasting wallet update:", e);
+    }
+
+    return handleResponse(response);
+  },
+
+  // Process a specific payment for wallet
+  async processWalletPayment(data: {
+    orderId: string;
+    amount: number;
+    bonus?: number;
+    type: "topup" | "spend";
+  }): Promise<any> {
+    // Invalidate wallet cache
+    walletInfoCache = null;
+
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/wallet/process-payment`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+
+    // Broadcast wallet update
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wallet_updated", Date.now().toString());
+
+        if (typeof BroadcastChannel !== "undefined") {
+          const bc = new BroadcastChannel("wallet_updates");
+          bc.postMessage({ type: "refresh", timestamp: Date.now() });
+          bc.close();
+        }
+      }
+    } catch (e) {
+      console.error("Error broadcasting wallet update:", e);
+    }
+
+    return handleResponse(response);
+  },
+
+  // Get transaction history with filters
+  async getTransactionHistory(
+    filters: {
+      page?: number;
+      limit?: number;
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {}
+  ): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (filters.page) queryParams.append("page", filters.page.toString());
+    if (filters.limit) queryParams.append("limit", filters.limit.toString());
+    if (filters.type) queryParams.append("type", filters.type);
+    if (filters.startDate) queryParams.append("startDate", filters.startDate);
+    if (filters.endDate) queryParams.append("endDate", filters.endDate);
+    const queryString = queryParams.toString();
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/wallet/transactions${
+        queryString ? `?${queryString}` : ""
+      }`
+    );
+    return handleResponse(response);
+  },
+
+  /**
+   * Deduct money from wallet for post payment
+   */
+  async deductForPost(data: {
+    amount: number;
+    postId: string;
+    packageId: string;
+    description?: string;
+  }): Promise<any> {
+    // Invalidate cache since the balance will change
+    walletInfoCache = null;
+
+    const response = await fetchWithAuth(
+      `${API_BASE_URL}/wallet/deduct-for-post`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+
+    // Broadcast wallet update
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wallet_updated", Date.now().toString());
+
+        if (typeof BroadcastChannel !== "undefined") {
+          const bc = new BroadcastChannel("wallet_updates");
+          bc.postMessage({ type: "refresh", timestamp: Date.now() });
+          bc.close();
+        }
+      }
+    } catch (e) {
+      console.error("Error broadcasting wallet update:", e);
+    }
 
     return handleResponse(response);
   },

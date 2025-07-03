@@ -146,10 +146,36 @@ class PostService {
     return await response.json();
   }
 
-  async getUserPosts(page: number = 1, limit: number = 10): Promise<any> {
+  async getUserPosts(
+    params: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      type?: string;
+      search?: string;
+      dateRange?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {}
+  ): Promise<any> {
     try {
+      // Đặt giá trị mặc định
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+
+      // Xây dựng query string từ params
+      let queryParams = `page=${page}&limit=${limit}`;
+
+      if (params.status) queryParams += `&status=${params.status}`;
+      if (params.type) queryParams += `&type=${params.type}`;
+      if (params.search)
+        queryParams += `&search=${encodeURIComponent(params.search)}`;
+      if (params.dateRange) queryParams += `&dateRange=${params.dateRange}`;
+      if (params.startDate) queryParams += `&startDate=${params.startDate}`;
+      if (params.endDate) queryParams += `&endDate=${params.endDate}`;
+
       const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/posts/my?page=${page}&limit=${limit}`
+        `${API_BASE_URL}/posts/my?${queryParams}`
       );
 
       if (!response.ok) {

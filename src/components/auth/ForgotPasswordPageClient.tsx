@@ -53,7 +53,7 @@ export default function ForgotPasswordPageClient() {
 
               <div className="space-y-3">
                 <Link
-                  href="/login"
+                  href="/dang-nhap"
                   className="block w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] text-center font-medium"
                 >
                   Quay lại đăng nhập
@@ -107,7 +107,7 @@ export default function ForgotPasswordPageClient() {
                 {/* Back to login link */}
                 <div className="text-center">
                   <Link
-                    href="/login"
+                    href="/dang-nhap"
                     className="text-[#e03c31] hover:underline font-medium"
                   >
                     ← Quay lại đăng nhập

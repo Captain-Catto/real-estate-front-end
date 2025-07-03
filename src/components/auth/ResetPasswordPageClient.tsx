@@ -70,7 +70,7 @@ export default function ResetPasswordPageClient({
                   Yêu cầu link mới
                 </Link>
                 <Link
-                  href="/login"
+                  href="/dang-nhap"
                   className="block w-full py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-center font-medium"
                 >
                   Quay lại đăng nhập
@@ -105,7 +105,7 @@ export default function ResetPasswordPageClient({
               </div>
 
               <Link
-                href="/login"
+                href="/dang-nhap"
                 className="block w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] text-center font-medium"
               >
                 Đăng nhập ngay
@@ -241,7 +241,7 @@ export default function ResetPasswordPageClient({
                 {/* Back to login link */}
                 <div className="text-center">
                   <Link
-                    href="/login"
+                    href="/dang-nhap"
                     className="text-[#e03c31] hover:underline font-medium"
                   >
                     ← Quay lại đăng nhập

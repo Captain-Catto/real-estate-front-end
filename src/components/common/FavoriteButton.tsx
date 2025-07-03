@@ -126,7 +126,7 @@ export function FavoriteButton({
       toast.error("Vui lòng đăng nhập để lưu tin", {
         action: {
           label: "Đăng nhập",
-          onClick: () => (window.location.href = "/login"),
+          onClick: () => (window.location.href = "/dang-nhap"),
         },
       });
       return;
@@ -183,7 +183,7 @@ export function FavoriteButton({
             icon: "❤️",
             action: {
               label: "Xem danh sách",
-              onClick: () => (window.location.href = "/yeu-thich"),
+              onClick: () => (window.location.href = "/nguoi-dung/yeu-thich"),
             },
           });
 
