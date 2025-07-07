@@ -8,30 +8,7 @@ import {
   StarIcon,
   DocumentIcon,
 } from "@heroicons/react/24/outline";
-
-interface Post {
-  id: string;
-  title: string;
-  type: "ban" | "cho-thue";
-  category: string;
-  location: string;
-  price: string;
-  area: string;
-  author: string;
-  authorPhone: string;
-  status: "active" | "pending" | "rejected" | "expired";
-  priority: "vip" | "premium" | "normal";
-  views: number;
-  createdAt: string;
-  updatedAt: string;
-  approvedAt?: string;
-  approvedBy?: string;
-  rejectedAt?: string;
-  rejectedBy?: string;
-  rejectedReason?: string;
-  images: string[];
-  description: string;
-}
+import { Post } from "@/services/postsService";
 
 interface PostsTableProps {
   posts: Post[];
@@ -39,7 +16,6 @@ interface PostsTableProps {
   onApprove: (postId: string) => void;
   onReject: (postId: string, reason: string) => void;
   onDelete: (postId: string) => void;
-  onView: (post: Post) => void;
 }
 
 export default function PostsTable({
@@ -48,20 +24,18 @@ export default function PostsTable({
   onApprove,
   onReject,
   onDelete,
-  onView,
 }: PostsTableProps) {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState("");
 
-  const formatPrice = (price: string) => {
-    const num = parseInt(price);
-    if (num >= 1000000000) {
-      return `${(num / 1000000000).toFixed(1)} tỷ`;
-    } else if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)} tr`;
+  const formatPrice = (price: number) => {
+    if (price >= 1000000000) {
+      return `${(price / 1000000000).toFixed(1)} tỷ`;
+    } else if (price >= 1000000) {
+      return `${(price / 1000000).toFixed(1)} tr`;
     }
-    return num.toLocaleString();
+    return price.toLocaleString();
   };
 
   const formatDate = (dateString: string) => {
@@ -133,7 +107,7 @@ export default function PostsTable({
 
   const handleViewClick = (post: Post) => {
     // chuyển hướng đến trang chi tiết
-    window.location.href = `/admin/quan-ly-tin-dang/${post.id}`;
+    window.location.href = `/admin/quan-ly-tin-dang/${post._id}`;
   };
 
   if (loading) {
@@ -185,7 +159,7 @@ export default function PostsTable({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {posts.map((post) => (
-                <tr key={post.id} className="hover:bg-gray-50">
+                <tr key={post._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 w-16 h-16">
@@ -195,12 +169,12 @@ export default function PostsTable({
                       </div>
                       <div className="ml-4">
                         <div className="flex items-center gap-2">
-                          {getPriorityIcon(post.priority)}
+                          {getPriorityIcon(post.priority || "normal")}
                           <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
                             {post.title}
                           </div>
                         </div>
-                        <div className="text-sm text-gray-500">#{post.id}</div>
+                        <div className="text-sm text-gray-500">#{post._id}</div>
                       </div>
                     </div>
                   </td>
@@ -211,7 +185,8 @@ export default function PostsTable({
                         {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                       </div>
                       <div className="text-gray-500">
-                        {post.area}m² • {post.location}
+                        {post.area}m² • {post.location.district},{" "}
+                        {post.location.province}
                       </div>
                       <div className="text-gray-500">
                         {post.views.toLocaleString()} lượt xem
@@ -220,8 +195,8 @@ export default function PostsTable({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium">{post.author}</div>
-                      <div className="text-gray-500">{post.authorPhone}</div>
+                      <div className="font-medium">{post.author.username}</div>
+                      <div className="text-gray-500">{post.author.email}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -250,7 +225,7 @@ export default function PostsTable({
                       {/* Approve Button - only for pending posts */}
                       {post.status === "pending" && (
                         <button
-                          onClick={() => onApprove(post.id)}
+                          onClick={() => onApprove(post._id)}
                           className="text-green-600 hover:text-green-900"
                           title="Duyệt tin"
                         >
@@ -261,7 +236,7 @@ export default function PostsTable({
                       {/* Reject Button - only for pending posts */}
                       {post.status === "pending" && (
                         <button
-                          onClick={() => handleReject(post.id)}
+                          onClick={() => handleReject(post._id)}
                           className="text-red-600 hover:text-red-900"
                           title="Từ chối"
                         >
@@ -271,7 +246,7 @@ export default function PostsTable({
 
                       {/* Delete Button */}
                       <button
-                        onClick={() => onDelete(post.id)}
+                        onClick={() => onDelete(post._id)}
                         className="text-red-600 hover:text-red-900"
                         title="Xóa"
                       >

@@ -377,6 +377,7 @@ export const authService = {
   async updateProfile(profileData: {
     username?: string;
     email?: string;
+    phoneNumber?: string;
   }): Promise<any> {
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {

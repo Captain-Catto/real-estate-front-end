@@ -3,6 +3,60 @@ import { refreshToken } from "./authService";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
+// Post interface
+export interface Post {
+  _id: string;
+  type: "ban" | "cho-thue";
+  title: string;
+  description: string;
+  content?: string;
+  price: number;
+  location: {
+    province: string;
+    district: string;
+    ward: string;
+    street?: string;
+  };
+  category: string;
+  tags?: string[];
+  author: {
+    _id: string;
+    username: string;
+    email: string;
+    avatar?: string;
+  };
+  images: string[];
+  package?: "normal" | "premium" | "vip";
+  area: number;
+  currency: string;
+  status: "pending" | "active" | "rejected" | "expired" | "inactive";
+  priority?: "normal" | "premium" | "vip";
+  views: number;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectedReason?: string;
+  // Property details
+  legalDocs?: string;
+  furniture?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  floors?: number;
+  houseDirection?: string;
+  balconyDirection?: string;
+  roadWidth?: string;
+  frontWidth?: string;
+  // Contact info
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  packageId?: string;
+  packageDuration?: number;
+}
+
 export interface CreatePostData {
   // Basic Info
   type: "ban" | "cho-thue";
@@ -38,6 +92,28 @@ export interface CreatePostData {
   // Package Info
   packageId: string;
   packageDuration: number;
+}
+
+export interface PostFilters {
+  status: string;
+  type: string;
+  category: string;
+  priority: string;
+  search: string;
+  author?: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+export interface PostsStats {
+  total: number;
+  active: number;
+  pending: number;
+  rejected: number;
+  expired: number;
+  vip: number;
+  premium: number;
+  normal: number;
 }
 
 export interface UploadImageResponse {
@@ -346,5 +422,294 @@ class PostService {
       };
     }
   }
+
+  async getPostsByFilter(filter: any, page: number = 1, limit: number = 20) {
+    try {
+      const queryParams = new URLSearchParams();
+
+      // Add filter params
+      Object.keys(filter).forEach((key) => {
+        if (filter[key]) {
+          queryParams.append(key, filter[key]);
+        }
+      });
+
+      queryParams.append("page", page.toString());
+      queryParams.append("limit", limit.toString());
+
+      const response = await fetch(
+        `${API_BASE_URL}/posts/search?${queryParams}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.posts || [];
+    } catch (error) {
+      console.error("Error fetching posts by filter:", error);
+      return [];
+    }
+  }
 }
 export const postService = new PostService();
+
+// Admin Posts Service
+export class AdminPostsService {
+  private async fetchWithAuth(url: string, options: RequestInit = {}) {
+    const token = localStorage.getItem("accessToken");
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    // Handle token refresh if needed
+    if (response.status === 401) {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        const newToken = localStorage.getItem("accessToken");
+        return fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${newToken}`,
+            ...options.headers,
+          },
+        });
+      } else {
+        localStorage.removeItem("accessToken");
+        window.location.href = "/dang-nhap";
+        throw new Error("Phiên đăng nhập đã hết hạn");
+      }
+    }
+
+    return response;
+  }
+
+  // Get all posts for admin with filters and pagination
+  async getPosts(
+    filters: Partial<PostFilters> = {},
+    page: number = 1,
+    limit: number = 10
+  ) {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", String(page));
+      queryParams.append("limit", String(limit));
+
+      // Add filters
+      if (filters.status && filters.status !== "all") {
+        queryParams.append("status", filters.status);
+      }
+      if (filters.type && filters.type !== "all") {
+        queryParams.append("type", filters.type);
+      }
+      if (filters.category && filters.category !== "all") {
+        queryParams.append("category", filters.category);
+      }
+      if (filters.search) {
+        queryParams.append("search", filters.search);
+      }
+      if (filters.author) {
+        queryParams.append("author", filters.author);
+      }
+
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts?${queryParams.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch posts");
+      }
+
+      const result = await response.json();
+      return {
+        posts: result.data.posts,
+        total: result.data.pagination.totalItems,
+        page: result.data.pagination.currentPage,
+        totalPages: result.data.pagination.totalPages,
+        hasNext:
+          result.data.pagination.currentPage <
+          result.data.pagination.totalPages,
+        hasPrev: result.data.pagination.currentPage > 1,
+      };
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      throw error;
+    }
+  }
+
+  // Get posts statistics for admin dashboard
+  async getPostsStats(): Promise<PostsStats> {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/stats`
+      );
+
+      if (!response.ok) {
+        // If no specific stats endpoint, calculate from posts data
+        const allPosts = await this.getPosts({}, 1, 1000); // Get all posts
+        const posts: Post[] = allPosts.posts;
+
+        const stats: PostsStats = {
+          total: posts.length,
+          active: posts.filter((p: Post) => p.status === "active").length,
+          pending: posts.filter((p: Post) => p.status === "pending").length,
+          rejected: posts.filter((p: Post) => p.status === "rejected").length,
+          expired: posts.filter((p: Post) => p.status === "expired").length,
+          vip: posts.filter((p: Post) => p.package === "vip").length,
+          premium: posts.filter((p: Post) => p.package === "premium").length,
+          normal: posts.filter(
+            (p: Post) => !p.package || p.package === "normal"
+          ).length,
+        };
+
+        return stats;
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error("Error fetching posts stats:", error);
+      // Return default stats if error
+      return {
+        total: 0,
+        active: 0,
+        pending: 0,
+        rejected: 0,
+        expired: 0,
+        vip: 0,
+        premium: 0,
+        normal: 0,
+      };
+    }
+  }
+
+  // Get single post by ID
+  async getPostById(postId: string): Promise<Post> {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/${postId}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch post");
+      }
+
+      const result = await response.json();
+      return result.data.post;
+    } catch (error) {
+      console.error("Error fetching post by ID:", error);
+      throw error;
+    }
+  }
+
+  // Approve post (admin only)
+  async approvePost(postId: string) {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/${postId}/approve`,
+        {
+          method: "PUT",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to approve post");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error approving post:", error);
+      throw error;
+    }
+  }
+
+  // Reject post (admin only)
+  async rejectPost(postId: string, reason: string) {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/${postId}/reject`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            reason: reason,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to reject post");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error rejecting post:", error);
+      throw error;
+    }
+  }
+
+  // Delete post (admin only)
+  async deletePost(postId: string) {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/${postId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete post");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      throw error;
+    }
+  }
+
+  // Update post status (admin only)
+  async updatePostStatus(postId: string, status: string) {
+    try {
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/posts/${postId}/status`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update post status");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error updating post status:", error);
+      throw error;
+    }
+  }
+}
+
+export const adminPostsService = new AdminPostsService();
+
+// Export for backward compatibility
+export const PostsService = adminPostsService;

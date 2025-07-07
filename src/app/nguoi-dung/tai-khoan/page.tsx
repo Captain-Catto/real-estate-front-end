@@ -53,7 +53,7 @@ export default function ThongTinCaNhanPage() {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
-        phoneNumber: user.phoneNumber?.toString() || "",
+        phoneNumber: user.phoneNumber || "",
       });
     }
   }, [user]);
@@ -108,7 +108,7 @@ export default function ThongTinCaNhanPage() {
       const result = await updateProfile({
         username: profileForm.username,
         email: profileForm.email,
-        phoneNumber: parseInt(profileForm.phoneNumber) || undefined,
+        phoneNumber: profileForm.phoneNumber || undefined,
       });
 
       if (result.success) {
@@ -177,7 +177,7 @@ export default function ThongTinCaNhanPage() {
       setProfileForm({
         username: user.username || "",
         email: user.email || "",
-        phoneNumber: user?.phoneNumber?.toString() || "",
+        phoneNumber: user?.phoneNumber || "",
       });
     }
     setIsEditingProfile(false);

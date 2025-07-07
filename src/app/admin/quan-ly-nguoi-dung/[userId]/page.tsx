@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
@@ -14,234 +15,23 @@ import {
   CalendarIcon,
   EyeIcon,
   PencilIcon,
-  TrashIcon,
   HomeIcon,
   CurrencyDollarIcon,
   DocumentTextIcon,
-  ClockIcon,
-  StarIcon,
-  ShieldCheckIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
-
-// Types
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  avatar?: string;
-  role: "user" | "admin" | "agent";
-  status: "active" | "inactive" | "banned";
-  isVerified: boolean;
-  createdAt: string;
-  lastLoginAt?: string;
-  totalPosts: number;
-  totalTransactions: number;
-  totalSpent: number;
-  location?: string;
-  bio?: string;
-  dateOfBirth?: string;
-  gender?: "male" | "female" | "other";
-  address?: string;
-  identityCard?: string;
-  bankAccount?: string;
-  emergencyContact?: string;
-}
-
-interface Post {
-  id: string;
-  title: string;
-  type: "ban" | "cho-thue";
-  category: string;
-  location: string;
-  price: string;
-  area: string;
-  status: "active" | "pending" | "rejected" | "expired" | "sold";
-  priority: "vip" | "premium" | "normal";
-  views: number;
-  createdAt: string;
-  updatedAt: string;
-  images: string[];
-  description: string;
-}
-
-interface Transaction {
-  id: string;
-  type: "payment" | "refund" | "commission";
-  amount: number;
-  description: string;
-  status: "completed" | "pending" | "failed";
-  createdAt: string;
-  postId?: string;
-  postTitle?: string;
-}
-
-// Mock service
-const UserDetailService = {
-  getUserById: async (userId: string): Promise<User> => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // Mock user data
-    const users: Record<string, User> = {
-      "1": {
-        id: "1",
-        name: "Nguyễn Văn A",
-        email: "nguyenvana@gmail.com",
-        phone: "0901234567",
-        avatar: "/api/placeholder/150/150",
-        role: "user",
-        status: "active",
-        isVerified: true,
-        createdAt: "2024-01-15T08:30:00.000Z",
-        lastLoginAt: "2024-06-15T14:20:00.000Z",
-        totalPosts: 12,
-        totalTransactions: 5,
-        totalSpent: 2500000,
-        location: "Hà Nội",
-        bio: "Tôi là một người yêu thích bất động sản và đang tìm kiếm cơ hội đầu tư tốt tại Hà Nội.",
-        dateOfBirth: "1990-05-15",
-        gender: "male",
-        address: "123 Đường ABC, Quận Ba Đình, Hà Nội",
-        identityCard: "001234567890",
-        bankAccount: "1234567890 - VCB",
-        emergencyContact: "0987654321 (Nguyễn Thị B - Vợ)",
-      },
-      "2": {
-        id: "2",
-        name: "Trần Thị B",
-        email: "tranthib@gmail.com",
-        phone: "0912345678",
-        role: "agent",
-        status: "active",
-        isVerified: true,
-        createdAt: "2024-02-10T10:15:00.000Z",
-        lastLoginAt: "2024-06-14T16:45:00.000Z",
-        totalPosts: 45,
-        totalTransactions: 23,
-        totalSpent: 8750000,
-        location: "TP.HCM",
-        bio: "Môi giới bất động sản chuyên nghiệp với 5 năm kinh nghiệm tại TP.HCM.",
-        dateOfBirth: "1985-08-20",
-        gender: "female",
-        address: "456 Đường XYZ, Quận 1, TP.HCM",
-        identityCard: "002345678901",
-        bankAccount: "2345678901 - BIDV",
-        emergencyContact: "0976543210 (Trần Văn C - Anh trai)",
-      },
-    };
-
-    const user = users[userId];
-    if (!user) {
-      throw new Error("User not found");
-    }
-    return user;
-  },
-
-  getUserPosts: async (userId: string): Promise<Post[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    const posts: Post[] = [
-      {
-        id: "BDS001",
-        title: "Bán căn hộ 2PN Vinhomes Central Park Q.Bình Thạnh",
-        type: "ban",
-        category: "apartment",
-        location: "Quận Bình Thạnh, TP.HCM",
-        price: "3500000000",
-        area: "75",
-        status: "active",
-        priority: "vip",
-        views: 1245,
-        createdAt: "2024-01-20T10:30:00Z",
-        updatedAt: "2024-01-20T10:30:00Z",
-        images: ["image1.jpg", "image2.jpg"],
-        description: "Căn hộ cao cấp view sông, đầy đủ nội thất...",
-      },
-      {
-        id: "BDS002",
-        title: "Cho thuê nhà phố 3 tầng tại Quận 7",
-        type: "cho-thue",
-        category: "house",
-        location: "Quận 7, TP.HCM",
-        price: "25000000",
-        area: "120",
-        status: "pending",
-        priority: "premium",
-        views: 567,
-        createdAt: "2024-02-15T14:20:00Z",
-        updatedAt: "2024-02-15T14:20:00Z",
-        images: ["image3.jpg"],
-        description: "Nhà phố mới xây, khu an ninh...",
-      },
-      {
-        id: "BDS003",
-        title: "Bán đất nền dự án Saigon Mystery Villas",
-        type: "ban",
-        category: "land",
-        location: "Quận 2, TP.HCM",
-        price: "5200000000",
-        area: "100",
-        status: "sold",
-        priority: "normal",
-        views: 892,
-        createdAt: "2024-01-10T09:15:00Z",
-        updatedAt: "2024-03-05T16:30:00Z",
-        images: ["image4.jpg", "image5.jpg"],
-        description: "Đất nền dự án hot, pháp lý rõ ràng...",
-      },
-    ];
-
-    return posts.filter((post) => Math.random() > 0.3); // Random filter để simulate
-  },
-
-  getUserTransactions: async (userId: string): Promise<Transaction[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    return [
-      {
-        id: "TXN001",
-        type: "payment",
-        amount: 500000,
-        description: "Thanh toán gói tin VIP - 30 ngày",
-        status: "completed",
-        createdAt: "2024-06-10T10:30:00Z",
-        postId: "BDS001",
-        postTitle: "Bán căn hộ 2PN Vinhomes Central Park",
-      },
-      {
-        id: "TXN002",
-        type: "payment",
-        amount: 200000,
-        description: "Thanh toán gói tin Premium - 15 ngày",
-        status: "completed",
-        createdAt: "2024-06-05T14:20:00Z",
-        postId: "BDS002",
-        postTitle: "Cho thuê nhà phố 3 tầng",
-      },
-      {
-        id: "TXN003",
-        type: "commission",
-        amount: 1000000,
-        description: "Hoa hồng từ giao dịch thành công",
-        status: "pending",
-        createdAt: "2024-06-01T09:15:00Z",
-        postId: "BDS003",
-        postTitle: "Bán đất nền dự án Saigon Mystery",
-      },
-    ];
-  },
-
-  updateUserStatus: async (userId: string, status: User["status"]) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return { success: true };
-  },
-
-  verifyUser: async (userId: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return { success: true };
-  },
-};
+import {
+  User,
+  getUserById,
+  updateUser,
+  updateUserStatus,
+  getUserPosts,
+  getUserPayments,
+  getUserLogs,
+  UserPost,
+  UserPayment,
+  UserLog,
+} from "@/services/userService";
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -249,46 +39,203 @@ export default function UserDetailPage() {
   const userId = params?.userId as string;
 
   const [user, setUser] = useState<User | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [posts, setPosts] = useState<UserPost[]>([]);
+  const [transactions, setTransactions] = useState<UserPayment[]>([]);
+  const [logs, setLogs] = useState<UserLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"info" | "posts" | "transactions">(
-    "info"
-  );
+  // const [postsLoading, setPostsLoading] = useState(false);
+  // const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "info" | "posts" | "transactions" | "logs"
+  >("info");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId]);
+  // Pagination states
+  // const [postsPagination, setPostsPagination] = useState({
+  //   currentPage: 1,
+  //   totalPages: 1,
+  //   totalItems: 0,
+  //   itemsPerPage: 10,
+  // });
+  // const [paymentsPagination, setPaymentsPagination] = useState({
+  //   currentPage: 1,
+  //   totalPages: 1,
+  //   totalItems: 0,
+  //   itemsPerPage: 10,
+  // });
+  const [logsPagination, setLogsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
 
-  const fetchUserData = async () => {
+  // Filter states
+  // const [postsFilters, setPostsFilters] = useState({
+  //   status: "all",
+  //   type: "all",
+  // });
+  // const [paymentsFilters, setPaymentsFilters] = useState({
+  //   status: "all",
+  // });
+
+  // Form data for editing user
+  const [editForm, setEditForm] = useState({
+    username: "",
+    email: "",
+    phoneNumber: "",
+    role: "user" as User["role"],
+    status: "active" as User["status"],
+  });
+
+  console.log("User ID from params:", userId);
+
+  const fetchUserData = useCallback(async () => {
     setLoading(true);
     try {
-      const [userData, postsData, transactionsData] = await Promise.all([
-        UserDetailService.getUserById(userId),
-        UserDetailService.getUserPosts(userId),
-        UserDetailService.getUserTransactions(userId),
-      ]);
-
-      setUser(userData);
-      setPosts(postsData);
-      setTransactions(transactionsData);
+      const result = await getUserById(userId);
+      if (result.success && result.data) {
+        setUser(result.data.user);
+      } else {
+        console.error("Error fetching user:", result.message);
+        // Handle error - could redirect to 404 page
+      }
     } catch (error) {
       console.error("Error fetching user data:", error);
       // Handle error - could redirect to 404 page
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserData();
+    }
+  }, [userId, fetchUserData]);
+
+  const fetchUserPosts = useCallback(
+    async (page: number = 1) => {
+      // setPostsLoading(true);
+      try {
+        const result = await getUserPosts(userId, {
+          page,
+          limit: 10,
+          // status:
+          //   postsFilters.status !== "all" ? postsFilters.status : undefined,
+          // type: postsFilters.type !== "all" ? postsFilters.type : undefined,
+        });
+
+        if (result.success && result.data) {
+          setPosts(result.data.posts);
+          // setPostsPagination(result.data.pagination);
+        } else {
+          console.error("Error fetching user posts:", result.message);
+          setPosts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching user posts:", error);
+        setPosts([]);
+      } finally {
+        // setPostsLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  const fetchUserPayments = useCallback(
+    async (page: number = 1) => {
+      // setPaymentsLoading(true);
+      try {
+        const result = await getUserPayments(userId, {
+          page,
+          limit: 10,
+          // status:
+          //   paymentsFilters.status !== "all"
+          //     ? paymentsFilters.status
+          //     : undefined,
+        });
+
+        if (result.success && result.data) {
+          setTransactions(result.data.payments);
+          // setPaymentsPagination(result.data.pagination);
+        } else {
+          console.error("Error fetching user payments:", result.message);
+          setTransactions([]);
+        }
+      } catch (error) {
+        console.error("Error fetching user payments:", error);
+        setTransactions([]);
+      } finally {
+        // setPaymentsLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  const fetchUserLogs = useCallback(
+    async (page: number = 1) => {
+      setLogsLoading(true);
+      try {
+        const result = await getUserLogs(userId, {
+          page,
+          limit: 10,
+        });
+
+        console.log("Fetching user logs:", result);
+
+        if (result.success && result.data) {
+          setLogs(result.data.logs);
+          setLogsPagination(result.data.pagination);
+        } else {
+          console.error("Error fetching user logs:", result.message);
+          setLogs([]);
+        }
+      } catch (error) {
+        console.error("Error fetching user logs:", error);
+        setLogs([]);
+      } finally {
+        setLogsLoading(false);
+      }
+    },
+    [userId]
+  );
+
+  // Load posts when activeTab changes to "posts" or filters change
+  useEffect(() => {
+    if (activeTab === "posts" && userId) {
+      fetchUserPosts(1);
+    }
+  }, [activeTab, userId, fetchUserPosts]);
+
+  // Load payments when activeTab changes to "transactions" or filters change
+  useEffect(() => {
+    if (activeTab === "transactions" && userId) {
+      fetchUserPayments(1);
+    }
+  }, [activeTab, userId, fetchUserPayments]);
+
+  // Load logs when activeTab changes to "logs"
+  useEffect(() => {
+    if (activeTab === "logs" && userId) {
+      fetchUserLogs(1);
+    }
+  }, [activeTab, userId, fetchUserLogs]);
+
+  console.log("User data:", user);
 
   const handleStatusChange = async (newStatus: User["status"]) => {
     if (!user) return;
 
     try {
-      await UserDetailService.updateUserStatus(userId, newStatus);
-      setUser({ ...user, status: newStatus });
+      const result = await updateUserStatus(user._id, newStatus);
+      if (result.success) {
+        setUser({ ...user, status: newStatus });
+      } else {
+        console.error("Error updating user status:", result.message);
+      }
     } catch (error) {
       console.error("Error updating user status:", error);
     }
@@ -298,11 +245,67 @@ export default function UserDetailPage() {
     if (!user) return;
 
     try {
-      await UserDetailService.verifyUser(userId);
+      // For now, we'll update the user locally
+      // This should be replaced with a real API call when available
       setUser({ ...user, isVerified: true });
     } catch (error) {
       console.error("Error verifying user:", error);
     }
+  };
+
+  // Handle edit user
+  const handleEditUser = () => {
+    if (!user) return;
+
+    setEditForm({
+      username: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber || "",
+      role: user.role,
+      status: user.status,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveUser = async () => {
+    if (!user) return;
+
+    setIsProcessing(true);
+    try {
+      const result = await updateUser(user._id, {
+        username: editForm.username,
+        email: editForm.email,
+        phoneNumber: editForm.phoneNumber || undefined,
+        role: editForm.role,
+        status: editForm.status,
+      });
+
+      if (result.success && result.data) {
+        setUser(result.data.user);
+        setShowEditModal(false);
+        alert("Cập nhật thông tin người dùng thành công!");
+      } else {
+        alert(result.message || "Có lỗi xảy ra khi cập nhật thông tin");
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      alert("Có lỗi xảy ra khi cập nhật thông tin");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (user) {
+      setEditForm({
+        username: user.username,
+        email: user.email,
+        phoneNumber: user.phoneNumber || "",
+        role: user.role,
+        status: user.status,
+      });
+    }
+    setShowEditModal(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -320,6 +323,34 @@ export default function UserDetailPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const formatDetailedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) {
+      return "Vừa xong";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} phút trước`;
+    } else if (diffInMinutes < 1440) {
+      const hours = Math.floor(diffInMinutes / 60);
+      return `${hours} giờ trước`;
+    } else {
+      const days = Math.floor(diffInMinutes / 1440);
+      if (days < 7) {
+        return `${days} ngày trước`;
+      } else {
+        return date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+    }
   };
 
   const formatPrice = (price: string) => {
@@ -371,7 +402,7 @@ export default function UserDetailPage() {
     }
   };
 
-  const getPostStatusColor = (status: Post["status"]) => {
+  const getPostStatusColor = (status: UserPost["status"]) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800";
@@ -388,7 +419,7 @@ export default function UserDetailPage() {
     }
   };
 
-  const getPostStatusText = (status: Post["status"]) => {
+  const getPostStatusText = (status: UserPost["status"]) => {
     switch (status) {
       case "active":
         return "Đang hiển thị";
@@ -402,17 +433,6 @@ export default function UserDetailPage() {
         return "Đã bán";
       default:
         return status;
-    }
-  };
-
-  const getPriorityIcon = (priority: Post["priority"]) => {
-    switch (priority) {
-      case "vip":
-        return <StarIcon className="w-4 h-4 text-purple-600" />;
-      case "premium":
-        return <ShieldCheckIcon className="w-4 h-4 text-orange-600" />;
-      default:
-        return <DocumentTextIcon className="w-4 h-4 text-gray-600" />;
     }
   };
 
@@ -486,12 +506,15 @@ export default function UserDetailPage() {
                 {/* User Info */}
                 <div className="flex items-center gap-6">
                   {/* Avatar */}
-                  <div className="flex-shrink-0">
+                  <div>
                     {user.avatar ? (
-                      <img
+                      <Image
                         className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
                         src={user.avatar}
-                        alt={user.name}
+                        alt={user.username}
+                        width={96}
+                        height={96}
+                        style={{ objectFit: "cover" }}
                       />
                     ) : (
                       <div className="h-24 w-24 rounded-full bg-gray-300 flex items-center justify-center border-4 border-white shadow-lg">
@@ -504,7 +527,7 @@ export default function UserDetailPage() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <h1 className="text-2xl font-bold text-gray-900">
-                        {user.name}
+                        {user.username}
                       </h1>
                       {user.isVerified && (
                         <CheckCircleIcon className="h-6 w-6 text-green-500" />
@@ -517,7 +540,7 @@ export default function UserDetailPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <PhoneIcon className="h-4 w-4" />
-                        {user.phone}
+                        {user.phoneNumber}
                       </div>
                       {user.location && (
                         <div className="flex items-center gap-1">
@@ -566,7 +589,7 @@ export default function UserDetailPage() {
                   </select>
 
                   <button
-                    onClick={() => setShowEditModal(true)}
+                    onClick={handleEditUser}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                   >
                     <PencilIcon className="h-4 w-4 mr-2" />
@@ -617,7 +640,7 @@ export default function UserDetailPage() {
                     Tổng chi tiêu
                   </p>
                   <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(user.totalSpent)}
+                    {formatCurrency(user.totalSpent || 0)}
                   </p>
                 </div>
               </div>
@@ -662,7 +685,7 @@ export default function UserDetailPage() {
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  Tin đăng ({posts.length})
+                  Tin đăng
                 </button>
                 <button
                   onClick={() => setActiveTab("transactions")}
@@ -672,7 +695,17 @@ export default function UserDetailPage() {
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
-                  Giao dịch ({transactions.length})
+                  Giao dịch
+                </button>
+                <button
+                  onClick={() => setActiveTab("logs")}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === "logs"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Lịch sử thay đổi
                 </button>
               </nav>
             </div>
@@ -692,7 +725,7 @@ export default function UserDetailPage() {
                           Họ và tên
                         </label>
                         <p className="mt-1 text-sm text-gray-900">
-                          {user.name}
+                          {user.username}
                         </p>
                       </div>
                       <div>
@@ -708,94 +741,18 @@ export default function UserDetailPage() {
                           Số điện thoại
                         </label>
                         <p className="mt-1 text-sm text-gray-900">
-                          {user.phone}
+                          {user.phoneNumber || "Chưa cập nhật"}
                         </p>
                       </div>
-                      {user.dateOfBirth && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Ngày sinh
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {new Date(user.dateOfBirth).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </p>
-                        </div>
-                      )}
-                      {user.gender && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Giới tính
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.gender === "male"
-                              ? "Nam"
-                              : user.gender === "female"
-                              ? "Nữ"
-                              : "Khác"}
-                          </p>
-                        </div>
-                      )}
-                      {user.bio && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Giới thiệu
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.bio}
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Contact & Security */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Liên hệ & Bảo mật
+                      Thông tin hệ thống
                     </h3>
                     <div className="space-y-4">
-                      {user.address && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Địa chỉ
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.address}
-                          </p>
-                        </div>
-                      )}
-                      {user.identityCard && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            CMND/CCCD
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.identityCard}
-                          </p>
-                        </div>
-                      )}
-                      {user.bankAccount && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Tài khoản ngân hàng
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.bankAccount}
-                          </p>
-                        </div>
-                      )}
-                      {user.emergencyContact && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Liên hệ khẩn cấp
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {user.emergencyContact}
-                          </p>
-                        </div>
-                      )}
                       <div>
                         <label className="text-sm font-medium text-gray-500">
                           Ngày tạo tài khoản
@@ -824,7 +781,7 @@ export default function UserDetailPage() {
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">
-                      Tin đăng của {user.name}
+                      Tin đăng của {user.username}
                     </h3>
                   </div>
 
@@ -852,25 +809,34 @@ export default function UserDetailPage() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {posts.map((post) => (
-                            <tr key={post.id} className="hover:bg-gray-50">
+                            <tr key={post._id} className="hover:bg-gray-50">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
                                   <div className="flex-shrink-0 w-12 h-12">
-                                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                      <span className="text-gray-500 text-xs">
-                                        IMG
-                                      </span>
-                                    </div>
+                                    {post.images && post.images.length > 0 ? (
+                                      <Image
+                                        src={post.images[0]}
+                                        alt={post.title}
+                                        width={48}
+                                        height={48}
+                                        className="w-12 h-12 object-cover rounded-lg"
+                                      />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <span className="text-gray-500 text-xs">
+                                          IMG
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="ml-4">
                                     <div className="flex items-center gap-2">
-                                      {getPriorityIcon(post.priority)}
                                       <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
                                         {post.title}
                                       </div>
                                     </div>
                                     <div className="text-sm text-gray-500">
-                                      #{post.id}
+                                      #{post._id}
                                     </div>
                                   </div>
                                 </div>
@@ -878,11 +844,12 @@ export default function UserDetailPage() {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-gray-900">
                                   <div className="font-medium">
-                                    {formatPrice(post.price)}{" "}
+                                    {formatPrice(post.price.toString())}{" "}
                                     {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                                   </div>
                                   <div className="text-gray-500">
-                                    {post.area}m² • {post.location}
+                                    {post.area}m² • {post.location.province},{" "}
+                                    {post.location.district}
                                   </div>
                                   <div className="text-gray-500">
                                     {post.views.toLocaleString()} lượt xem
@@ -905,30 +872,15 @@ export default function UserDetailPage() {
                                 <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => {
-                                      /* View post */
+                                      window.open(
+                                        `/du-an/${post._id}`,
+                                        "_blank"
+                                      );
                                     }}
                                     className="text-blue-600 hover:text-blue-900"
                                     title="Xem chi tiết"
                                   >
                                     <EyeIcon className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      /* Edit post */
-                                    }}
-                                    className="text-yellow-600 hover:text-yellow-900"
-                                    title="Chỉnh sửa"
-                                  >
-                                    <PencilIcon className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      /* Delete post */
-                                    }}
-                                    className="text-red-600 hover:text-red-900"
-                                    title="Xóa"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
                                   </button>
                                 </div>
                               </td>
@@ -985,32 +937,28 @@ export default function UserDetailPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {transactions.map((transaction) => (
                             <tr
-                              key={transaction.id}
+                              key={transaction._id}
                               className="hover:bg-gray-50"
                             >
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                #{transaction.id}
+                                #{transaction.orderId}
                               </td>
                               <td className="px-6 py-4">
                                 <div className="text-sm text-gray-900">
                                   {transaction.description}
                                 </div>
-                                {transaction.postTitle && (
+                                {transaction.postId && (
                                   <div className="text-xs text-gray-500">
-                                    Tin: {transaction.postTitle}
+                                    Tin: {transaction.postId.title}
                                   </div>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div
-                                  className={`text-sm font-medium ${
-                                    transaction.type === "payment"
-                                      ? "text-red-600"
-                                      : "text-green-600"
-                                  }`}
-                                >
-                                  {transaction.type === "payment" ? "-" : "+"}
+                                <div className="text-sm font-medium text-gray-900">
                                   {formatCurrency(transaction.amount)}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {transaction.paymentMethod}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
@@ -1051,8 +999,465 @@ export default function UserDetailPage() {
                   )}
                 </div>
               )}
+
+              {/* Logs Tab */}
+              {activeTab === "logs" && (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Lịch sử thay đổi
+                    </h3>
+                    <div className="text-sm text-gray-500">
+                      Theo dõi tất cả thay đổi thông tin người dùng
+                    </div>
+                  </div>
+
+                  {logsLoading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : logs.length > 0 ? (
+                    <div className="space-y-4">
+                      {logs.map((log) => (
+                        <div
+                          key={log._id}
+                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              {/* Action Header */}
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="flex items-center gap-2">
+                                  {log.action === "updated" && (
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                      <PencilIcon className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                  )}
+                                  {log.action === "statusChanged" && (
+                                    <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                      <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600" />
+                                    </div>
+                                  )}
+                                  {log.action === "created" && (
+                                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                      <UserIcon className="w-4 h-4 text-green-600" />
+                                    </div>
+                                  )}
+                                  {log.action === "deleted" && (
+                                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                      <XCircleIcon className="w-4 h-4 text-red-600" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {log.action === "updated" && "Cập nhật thông tin"}
+                                      {log.action === "statusChanged" && "Thay đổi trạng thái"}
+                                      {log.action === "created" && "Tạo tài khoản"}
+                                      {log.action === "deleted" && "Xóa tài khoản"}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {formatDetailedDate(log.createdAt)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Changed By Info */}
+                              <div className="mb-3">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-gray-500">Thực hiện bởi:</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                                      <span className="text-xs font-medium text-gray-600">
+                                        {log.changedBy?.username?.charAt(0).toUpperCase() || "?"}
+                                      </span>
+                                    </div>
+                                    <span className="font-medium text-gray-900">
+                                      {log.changedBy?.username || "Hệ thống"}
+                                    </span>
+                                    <span className="text-gray-500">
+                                      ({log.changedBy?.email})
+                                    </span>
+                                    <span
+                                      className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                        log.changedBy?.role === "admin"
+                                          ? "bg-red-100 text-red-800"
+                                          : log.changedBy?.role === "employee"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-gray-100 text-gray-800"
+                                      }`}
+                                    >
+                                      {log.changedBy?.role === "admin" && "Quản trị viên"}
+                                      {log.changedBy?.role === "employee" && "Nhân viên"}
+                                      {log.changedBy?.role === "agent" && "Môi giới"}
+                                      {log.changedBy?.role === "user" && "Người dùng"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Changes Detail */}
+                              {log.changes && Object.keys(log.changes).length > 0 && (
+                                <div className="bg-gray-50 rounded-md p-3">
+                                  <div className="text-sm font-medium text-gray-700 mb-2">
+                                    Chi tiết thay đổi:
+                                  </div>
+                                  <div className="space-y-2">
+                                    {Object.entries(log.changes).map(([field, change]) => (
+                                      <div key={field} className="text-sm">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-gray-900 capitalize">
+                                            {field === "username" && "Tên người dùng"}
+                                            {field === "email" && "Email"}
+                                            {field === "phoneNumber" && "Số điện thoại"}
+                                            {field === "role" && "Vai trò"}
+                                            {field === "status" && "Trạng thái"}
+                                            {!["username", "email", "phoneNumber", "role", "status"].includes(field) && field}
+                                          </span>
+                                        </div>
+                                        <div className="ml-4 flex items-center gap-2 text-sm">
+                                          <span className="text-red-600 bg-red-50 px-2 py-1 rounded">
+                                            {String(change.from || "(trống)")}
+                                          </span>
+                                          <span className="text-gray-400">→</span>
+                                          <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
+                                            {String(change.to || "(trống)")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Details */}
+                              {/* {log.details && (
+                                <div className="mt-3 text-sm text-gray-600 bg-blue-50 p-2 rounded">
+                                  <span className="font-medium">Ghi chú:</span> {log.details}
+                                </div>
+                              )} */}
+
+                              {/* Technical Info */}
+                              {/* {(log.ipAddress || log.userAgent) && (
+                                <div className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded space-y-1">
+                                  {log.ipAddress && (
+                                    <div>
+                                      <span className="font-medium">IP Address:</span> {log.ipAddress}
+                                    </div>
+                                  )}
+                                  {log.userAgent && (
+                                    <div>
+                                      <span className="font-medium">Device:</span> {
+                                        log.userAgent.includes('Mobile') ? '📱 Mobile' :
+                                        log.userAgent.includes('Tablet') ? '📱 Tablet' :
+                                        log.userAgent.includes('Windows') ? '💻 Windows' :
+                                        log.userAgent.includes('Mac') ? '🖥️ Mac' :
+                                        log.userAgent.includes('Android') ? '📱 Android' :
+                                        log.userAgent.includes('iPhone') ? '📱 iPhone' :
+                                        '💻 Desktop'
+                                      }
+                                    </div>
+                                  )}
+                                </div>
+                              )} */}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Logs Pagination */}
+                      {logsPagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-6">
+                          <div className="flex flex-1 justify-between sm:hidden">
+                            <button
+                              onClick={() => {
+                                if (logsPagination.currentPage > 1) {
+                                  fetchUserLogs(logsPagination.currentPage - 1);
+                                }
+                              }}
+                              disabled={logsPagination.currentPage <= 1}
+                              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Trước
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (logsPagination.currentPage < logsPagination.totalPages) {
+                                  fetchUserLogs(logsPagination.currentPage + 1);
+                                }
+                              }}
+                              disabled={logsPagination.currentPage >= logsPagination.totalPages}
+                              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Sau
+                            </button>
+                          </div>
+                          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm text-gray-700">
+                                Hiển thị{" "}
+                                <span className="font-medium">
+                                  {(logsPagination.currentPage - 1) * logsPagination.itemsPerPage + 1}
+                                </span>{" "}
+                                đến{" "}
+                                <span className="font-medium">
+                                  {Math.min(
+                                    logsPagination.currentPage * logsPagination.itemsPerPage,
+                                    logsPagination.totalItems
+                                  )}
+                                </span>{" "}
+                                trong tổng số{" "}
+                                <span className="font-medium">{logsPagination.totalItems}</span> bản ghi
+                              </p>
+                            </div>
+                            <div>
+                              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                                <button
+                                  onClick={() => {
+                                    if (logsPagination.currentPage > 1) {
+                                      fetchUserLogs(logsPagination.currentPage - 1);
+                                    }
+                                  }}
+                                  disabled={logsPagination.currentPage <= 1}
+                                  className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <span className="sr-only">Trang trước</span>
+                                  <ArrowLeftIcon className="h-5 w-5" />
+                                </button>
+                                {Array.from({ length: logsPagination.totalPages }, (_, i) => i + 1)
+                                  .filter(
+                                    (page) =>
+                                      page === 1 ||
+                                      page === logsPagination.totalPages ||
+                                      Math.abs(page - logsPagination.currentPage) <= 1
+                                  )
+                                  .map((page, index, visiblePages) => {
+                                    const showDots =
+                                      index > 0 && visiblePages[index - 1] !== page - 1;
+                                    return (
+                                      <React.Fragment key={page}>
+                                        {showDots && (
+                                          <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
+                                            ...
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={() => fetchUserLogs(page)}
+                                          className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
+                                            page === logsPagination.currentPage
+                                              ? "bg-blue-600 text-white hover:bg-blue-500"
+                                              : "text-gray-900"
+                                          }`}
+                                        >
+                                          {page}
+                                        </button>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                <button
+                                  onClick={() => {
+                                    if (logsPagination.currentPage < logsPagination.totalPages) {
+                                      fetchUserLogs(logsPagination.currentPage + 1);
+                                    }
+                                  }}
+                                  disabled={logsPagination.currentPage >= logsPagination.totalPages}
+                                  className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <span className="sr-only">Trang sau</span>
+                                  <ArrowLeftIcon className="h-5 w-5 rotate-180" />
+                                </button>
+                              </nav>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
+                        Chưa có lịch sử thay đổi
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Chưa có bản ghi thay đổi nào cho người dùng này.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Edit User Modal */}
+          {showEditModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Chỉnh sửa thông tin người dùng
+                    </h2>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <XCircleIcon className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Avatar and Basic Info */}
+                    <div className="flex items-center gap-4 mb-6">
+                      {user?.avatar ? (
+                        <Image
+                          className="h-20 w-20 rounded-full object-cover"
+                          src={user.avatar}
+                          alt={user.username}
+                          width={80}
+                          height={80}
+                        />
+                      ) : (
+                        <div className="h-20 w-20 rounded-full bg-gray-300 flex items-center justify-center">
+                          <UserIcon className="h-10 w-10 text-gray-600" />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">
+                          Cập nhật thông tin của {user?.username}
+                        </h3>
+                        <p className="text-gray-500">
+                          Chỉnh sửa thông tin cơ bản của người dùng
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Edit Form Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Username */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tên người dùng
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.username}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              username: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Nhập tên người dùng"
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, email: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Nhập email"
+                        />
+                      </div>
+
+                      {/* Phone Number */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Số điện thoại
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.phoneNumber}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              phoneNumber: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Nhập số điện thoại"
+                        />
+                      </div>
+
+                      {/* Role */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Vai trò
+                        </label>
+                        <select
+                          value={editForm.role}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              role: e.target.value as User["role"],
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="user">Người dùng</option>
+                          <option value="agent">Môi giới</option>
+                          <option value="employee">Nhân viên</option>
+                          <option value="admin">Quản trị viên</option>
+                        </select>
+                      </div>
+
+                      {/* Status */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Trạng thái
+                        </label>
+                        <select
+                          value={editForm.status}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              status: e.target.value as User["status"],
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="active">Hoạt động</option>
+                          <option value="inactive">Không hoạt động</option>
+                          <option value="banned">Đã cấm</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={handleSaveUser}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      )}
+                      {isProcessing ? "Đang lưu..." : "Lưu thay đổi"}
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+                      disabled={isProcessing}
+                    >
+                      <XCircleIcon className="h-4 w-4 mr-2" />
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

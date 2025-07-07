@@ -13,110 +13,48 @@ import {
   ClockIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
-
-// Mock data services
-const AdminService = {
-  getOverviewStats: async () => ({
-    totalProperties: 156,
-    totalUsers: 1247,
-    totalPosts: 89,
-    totalRevenue: 12500000000,
-    pendingApproval: 23,
-    totalViews: 45678,
-    approvedToday: 15,
-    rejectedToday: 3,
-  }),
-
-  getRecentActivities: async () => [
-    {
-      id: 1,
-      type: "post_submitted",
-      message: "Nguyễn Văn A đã gửi tin đăng mới",
-      time: "5 phút trước",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "user_registered",
-      message: "Người dùng mới: Trần Thị B",
-      time: "10 phút trước",
-      status: "success",
-    },
-    {
-      id: 3,
-      type: "post_approved",
-      message: "Tin đăng #BDS123 đã được duyệt",
-      time: "15 phút trước",
-      status: "success",
-    },
-    {
-      id: 4,
-      type: "payment_received",
-      message: "Thanh toán 500.000 VNĐ từ user #U456",
-      time: "30 phút trước",
-      status: "success",
-    },
-    {
-      id: 5,
-      type: "post_rejected",
-      message: "Tin đăng #BDS789 bị từ chối",
-      time: "1 giờ trước",
-      status: "error",
-    },
-  ],
-
-  getTopPosts: async () => [
-    {
-      id: "BDS001",
-      title: "Bán căn hộ 2PN tại Vinhomes Central Park",
-      views: 1245,
-      status: "active",
-      author: "Nguyễn Văn A",
-    },
-    {
-      id: "BDS002",
-      title: "Cho thuê biệt thự đơn lập Phú Mỹ Hưng",
-      views: 987,
-      status: "active",
-      author: "Trần Thị B",
-    },
-    {
-      id: "BDS003",
-      title: "Bán nhà mặt tiền đường Nguyễn Văn Cừ",
-      views: 756,
-      status: "pending",
-      author: "Lê Văn C",
-    },
-  ],
-};
+import {
+  AdminService,
+  AdminStats,
+  ActivityItem,
+  TopPost,
+} from "@/services/adminService";
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState({
-    totalProperties: 0,
-    totalUsers: 0,
+  const [stats, setStats] = useState<AdminStats>({
     totalPosts: 0,
-    totalRevenue: 0,
-    pendingApproval: 0,
-    totalViews: 0,
-    approvedToday: 0,
-    rejectedToday: 0,
+    totalUsers: 0,
+    newUsersThisMonth: 0,
+    postsThisMonth: 0,
+    postsLastMonth: 0,
+    monthlyRevenue: 0,
+    pendingPosts: 0,
+    todayPostViews: 0,
+    approvedPosts: 0,
   });
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [topPosts, setTopPosts] = useState([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
+  const [topPosts, setTopPosts] = useState<TopPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, activitiesData, postsData] = await Promise.all([
-          AdminService.getOverviewStats(),
-          AdminService.getRecentActivities(),
-          AdminService.getTopPosts(),
-        ]);
+        const [statsResponse, activitiesResponse, postsResponse] =
+          await Promise.all([
+            AdminService.getAdminStats(),
+            AdminService.getRecentActivities(10),
+            AdminService.getTopPosts(10),
+          ]);
 
-        setStats(statsData);
-        setRecentActivities(activitiesData);
-        setTopPosts(postsData);
+        if (statsResponse.success) {
+          setStats(statsResponse.data);
+        }
+        if (activitiesResponse.success) {
+          setRecentActivities(activitiesResponse.data);
+        }
+        if (postsResponse.success) {
+          setTopPosts(postsResponse.data);
+        }
       } catch (error) {
         console.error("Error fetching admin data:", error);
       } finally {
@@ -132,6 +70,28 @@ export default function AdminDashboardPage() {
       style: "currency",
       currency: "VND",
     }).format(value);
+  };
+
+  const calculateChangePercentage = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? "+100%" : "0%";
+    const change = ((current - previous) / previous) * 100;
+    return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+    if (diffInMinutes < 1) return "Vừa xong";
+    if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} giờ trước`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} ngày trước`;
   };
 
   const getActivityIcon = (type: string) => {
@@ -199,40 +159,54 @@ export default function AdminDashboardPage() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard
-              title="Tổng BĐS"
-              value={stats.totalProperties}
-              icon={<HomeIcon className="w-6 h-6" />}
-              change="+12%"
-              changeType="increase"
-              href="/admin/properties"
+              title="Tổng tin đăng"
+              value={stats.totalPosts}
+              icon={<DocumentTextIcon className="w-6 h-6" />}
+              change={calculateChangePercentage(
+                stats.postsThisMonth,
+                stats.postsLastMonth
+              )}
+              changeType={
+                stats.postsThisMonth >= stats.postsLastMonth
+                  ? "increase"
+                  : "decrease"
+              }
+              href="/admin/posts"
               color="blue"
+            />
+            <StatsCard
+              title="Tin tháng này"
+              value={stats.postsThisMonth}
+              icon={<HomeIcon className="w-6 h-6" />}
+              change={calculateChangePercentage(
+                stats.postsThisMonth,
+                stats.postsLastMonth
+              )}
+              changeType={
+                stats.postsThisMonth >= stats.postsLastMonth
+                  ? "increase"
+                  : "decrease"
+              }
+              href="/admin/posts"
+              color="yellow"
+            />{" "}
+            <StatsCard
+              title="Doanh thu tháng"
+              value={formatCurrency(stats.monthlyRevenue)}
+              icon={<CurrencyDollarIcon className="w-6 h-6" />}
+              change="Tháng này"
+              changeType="increase"
+              href="/admin/transactions"
+              color="purple"
             />
             <StatsCard
               title="Người dùng"
               value={stats.totalUsers}
               icon={<UserGroupIcon className="w-6 h-6" />}
-              change="+8%"
+              change={`+${stats.newUsersThisMonth}`}
               changeType="increase"
-              href="/admin/users"
+              href="/admin/quan-ly-nguoi-dung"
               color="green"
-            />
-            <StatsCard
-              title="Tin đăng"
-              value={stats.totalPosts}
-              icon={<DocumentTextIcon className="w-6 h-6" />}
-              change="+15%"
-              changeType="increase"
-              href="/admin/posts"
-              color="yellow"
-            />
-            <StatsCard
-              title="Doanh thu"
-              value={formatCurrency(stats.totalRevenue)}
-              icon={<CurrencyDollarIcon className="w-6 h-6" />}
-              change="+23%"
-              changeType="increase"
-              href="/admin/transactions"
-              color="purple"
             />
           </div>
 
@@ -240,28 +214,29 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatsCard
               title="Chờ duyệt"
-              value={stats.pendingApproval}
+              value={stats.pendingPosts}
               icon={<ClockIcon className="w-6 h-6" />}
               href="/admin/posts?status=pending"
               color="yellow"
             />
             <StatsCard
-              title="Lượt xem hôm nay"
-              value={stats.totalViews.toLocaleString()}
-              icon={<EyeIcon className="w-6 h-6" />}
-              color="blue"
-            />
-            <StatsCard
-              title="Đã duyệt hôm nay"
-              value={stats.approvedToday}
+              title="Đã duyệt"
+              value={stats.approvedPosts}
               icon={<CheckCircleIcon className="w-6 h-6" />}
               color="green"
             />
             <StatsCard
-              title="Từ chối hôm nay"
-              value={stats.rejectedToday}
-              icon={<XCircleIcon className="w-6 h-6" />}
-              color="red"
+              title="Lượt xem hôm nay"
+              value={stats.todayPostViews.toLocaleString()}
+              icon={<EyeIcon className="w-6 h-6" />}
+              color="blue"
+            />
+
+            <StatsCard
+              title="User mới tháng này"
+              value={stats.newUsersThisMonth}
+              icon={<UserGroupIcon className="w-6 h-6" />}
+              color="blue"
             />
           </div>
 
@@ -276,7 +251,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {recentActivities.map((activity: any) => (
+                  {recentActivities.map((activity: ActivityItem) => (
                     <div
                       key={activity.id}
                       className="flex items-start space-x-3"
@@ -292,7 +267,9 @@ export default function AdminDashboardPage() {
                         <p className="text-sm text-gray-900">
                           {activity.message}
                         </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatTimeAgo(activity.time)}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -309,7 +286,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="p-6">
                 <div className="space-y-4">
-                  {topPosts.map((post: any, index) => (
+                  {topPosts.map((post: TopPost, index) => (
                     <div key={post.id} className="flex items-center space-x-4">
                       <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-gray-600">
@@ -327,14 +304,18 @@ export default function AdminDashboardPage() {
                       <div className="flex-shrink-0">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            post.status === "active"
+                            post.status === "approved"
                               ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              : post.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {post.status === "active"
+                          {post.status === "approved"
                             ? "Đang hiển thị"
-                            : "Chờ duyệt"}
+                            : post.status === "pending"
+                            ? "Chờ duyệt"
+                            : "Khác"}
                         </span>
                       </div>
                     </div>

@@ -5,14 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminPostDetail from "@/components/admin/AdminPostDetail";
-import { PostsService } from "@/services/postsService";
+import { adminPostsService, Post } from "@/services/postsService";
 
 export default function AdminPostDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [post, setPost] = useState(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -23,14 +23,14 @@ export default function AdminPostDetailPage() {
   const fetchPost = async (postId: string) => {
     setLoading(true);
     try {
-      const postData = await PostsService.getPostById(postId);
+      const postData = await adminPostsService.getPostById(postId);
       if (postData) {
         setPost(postData);
       } else {
         setError("Không tìm thấy bài viết");
       }
-    } catch (error) {
-      console.error("Error fetching post:", error);
+    } catch (err) {
+      console.error("Error fetching post:", err);
       setError("Có lỗi xảy ra khi tải dữ liệu");
     } finally {
       setLoading(false);
@@ -39,33 +39,23 @@ export default function AdminPostDetailPage() {
 
   const handleApprovePost = async (postId: string) => {
     try {
-      await PostsService.approvePost(postId);
+      await adminPostsService.approvePost(postId);
       await fetchPost(postId);
       alert("Đã duyệt tin đăng thành công!");
-    } catch (error) {
+    } catch (err) {
+      console.error("Error approving post:", err);
       alert("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
 
   const handleRejectPost = async (postId: string, reason: string) => {
     try {
-      await PostsService.rejectPost(postId, reason);
+      await adminPostsService.rejectPost(postId, reason);
       await fetchPost(postId);
       alert("Đã từ chối tin đăng!");
-    } catch (error) {
+    } catch (err) {
+      console.error("Error rejecting post:", err);
       alert("Có lỗi xảy ra khi từ chối tin đăng!");
-    }
-  };
-
-  const handleDeletePost = async (postId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa tin đăng này?")) {
-      try {
-        await PostsService.deletePost(postId);
-        alert("Đã xóa tin đăng thành công!");
-        router.push("/admin/quan-ly-tin-dang");
-      } catch (error) {
-        alert("Có lỗi xảy ra khi xóa tin đăng!");
-      }
     }
   };
 
@@ -119,7 +109,6 @@ export default function AdminPostDetailPage() {
             post={post}
             onApprove={handleApprovePost}
             onReject={handleRejectPost}
-            onDelete={handleDeletePost}
             onBack={() => router.push("/admin/quan-ly-tin-dang")}
           />
         </main>

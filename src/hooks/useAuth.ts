@@ -136,7 +136,7 @@ export const useAuth = () => {
     async (profileData: {
       username?: string;
       email?: string;
-      phoneNumber?: number;
+      phoneNumber?: string;
     }) => {
       try {
         const result = await dispatch(updateProfileAsync(profileData)).unwrap();
