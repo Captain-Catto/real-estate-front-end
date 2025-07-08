@@ -19,6 +19,10 @@ interface EditPostModalProps {
   setSelectedImages: (images: File[]) => void;
   setSelectedPackage: (pkg: any) => void;
   handleSubmit: () => void;
+  provinces?: any[];
+  districts?: any[];
+  wards?: any[];
+  locationLoading?: boolean;
 }
 export default function EditPostModal({
   isOpen,
@@ -34,17 +38,21 @@ export default function EditPostModal({
   setSelectedImages,
   setSelectedPackage,
   handleSubmit,
+  provinces = [],
+  districts = [],
+  wards = [],
+  locationLoading = false,
 }: EditPostModalProps) {
   // Xác định trạng thái tin đăng - CHUẨN HÓA STATUS CODES
-  const isExpired = editingPost?.status === "8"; // Hết hạn - cần chọn gói mới
-  const isRejected = editingPost?.status === "5"; // Không duyệt - đã charge, ko cần chọn gói
+  const isExpired = editingPost?.status === "expired"; // Hết hạn - cần chọn gói mới
+  const isRejected = editingPost?.status === "rejected"; // Không duyệt - đã charge, ko cần chọn gói
   const isActive = editingPost?.status === "active"; // Đang hiển thị - chỉ edit
-  const isPending = editingPost?.status === "2"; // Chờ duyệt - chỉ edit
-  const isWaitingDisplay = editingPost?.status === "6"; // Chờ hiển thị - chỉ edit
-  const isWaitingPublish = editingPost?.status === "3"; // Chờ xuất bản - chỉ edit
-  const isNearExpiry = editingPost?.status === "10"; // Sắp hết hạn - chỉ edit
-  const isHidden = editingPost?.status === "9"; // Đã hạ - chỉ edit
-  const isWaitingPayment = editingPost?.status === "12"; // Chờ thanh toán - cần chọn gói
+  const isPending = editingPost?.status === "pending"; // Chờ duyệt - chỉ edit
+  const isWaitingDisplay = editingPost?.status === "waiting_display"; // Chờ hiển thị - chỉ edit
+  const isWaitingPublish = editingPost?.status === "waiting_publish"; // Chờ xuất bản - chỉ edit
+  const isNearExpiry = editingPost?.status === "near_expiry"; // Sắp hết hạn - chỉ edit
+  const isHidden = editingPost?.status === "hidden"; // Đã hạ - chỉ edit
+  const isWaitingPayment = editingPost?.status === "waiting_payment"; // Chờ thanh toán - cần chọn gói
 
   // Chỉ cần chọn gói khi tin hết hạn (status = "8") hoặc chờ thanh toán (status = "12")
   const needsPackageSelection = isExpired || isWaitingPayment;
@@ -75,7 +83,10 @@ export default function EditPostModal({
           formData.area
         );
       case 2:
-        return selectedImages.length > 0;
+        return (
+          selectedImages.length > 0 ||
+          (formData.images && formData.images.length > 0)
+        );
       case 3:
         return needsPackageSelection ? selectedPackage : true;
       default:
@@ -242,12 +253,18 @@ export default function EditPostModal({
                 <BasicInfoStep
                   formData={formData}
                   updateFormData={updateFormData}
+                  provinces={provinces || []}
+                  districts={districts || []}
+                  wards={wards || []}
+                  locationLoading={locationLoading || false}
                 />
               )}
               {currentStep === 2 && (
                 <ImageUploadStep
                   selectedImages={selectedImages}
                   setSelectedImages={setSelectedImages}
+                  existingImages={formData.images || []}
+                  updateFormData={updateFormData}
                 />
               )}
               {/* Chỉ hiển thị PackageSelectionStep khi cần */}

@@ -20,7 +20,60 @@ import {
 } from "@heroicons/react/24/outline";
 
 interface AdminPostDetailProps {
-  post: any;
+  post: {
+    id?: string;
+    _id?: string;
+    title: string;
+    description: string;
+    status: "active" | "pending" | "rejected" | "expired" | "inactive";
+    views: number;
+    priority?: string;
+    type: string;
+    category: string;
+    price: string | number;
+    area: string | number;
+    createdAt: string;
+    updatedAt: string;
+    author:
+      | {
+          _id?: string;
+          username?: string;
+          email?: string;
+          avatar?: string;
+          phoneNumber?: string;
+        }
+      | string;
+    authorPhone?: string;
+    authorEmail?: string;
+    approvedAt?: string;
+    approvedBy?:
+      | {
+          _id?: string;
+          username?: string;
+          email?: string;
+          avatar?: string;
+        }
+      | string;
+    rejectedAt?: string;
+    rejectedBy?:
+      | {
+          _id?: string;
+          username?: string;
+          email?: string;
+          avatar?: string;
+        }
+      | string;
+    rejectedReason?: string;
+    images?: string[];
+    location:
+      | {
+          province: string;
+          district: string;
+          ward: string;
+          street?: string;
+        }
+      | string;
+  };
   onApprove: (postId: string) => void;
   onReject: (postId: string, reason: string) => void;
   onBack: () => void;
@@ -48,8 +101,8 @@ export default function AdminPostDetail({
     "Khác",
   ];
 
-  const formatPrice = (price: string) => {
-    const num = parseInt(price);
+  const formatPrice = (price: string | number) => {
+    const num = typeof price === "string" ? parseInt(price) : price;
     if (num >= 1000000000) {
       return `${(num / 1000000000).toFixed(1)} tỷ`;
     } else if (num >= 1000000) {
@@ -83,7 +136,7 @@ export default function AdminPostDetail({
     }
   };
 
-  const getPriorityIcon = (priority: string) => {
+  const getPriorityIcon = (priority: string | undefined) => {
     switch (priority) {
       case "vip":
         return <TrophyIcon className="w-4 h-4 text-yellow-500" />;
@@ -94,7 +147,7 @@ export default function AdminPostDetail({
     }
   };
 
-  const getPriorityLabel = (priority: string) => {
+  const getPriorityLabel = (priority: string | undefined) => {
     switch (priority) {
       case "vip":
         return "VIP";
@@ -106,7 +159,7 @@ export default function AdminPostDetail({
   };
 
   const getCategoryName = (category: string) => {
-    const categories = {
+    const categories: Record<string, string> = {
       apartment: "Căn hộ chung cư",
       house: "Nhà riêng",
       villa: "Biệt thự",
@@ -135,7 +188,14 @@ export default function AdminPostDetail({
       return;
     }
 
-    onReject(post.id, finalReason);
+    // Make sure we have a valid ID before rejecting
+    const postId = post._id || post.id;
+    if (!postId) {
+      alert("ID bài viết không hợp lệ!");
+      return;
+    }
+
+    onReject(postId, finalReason);
     setShowRejectModal(false);
     setSelectedReason("");
     setCustomReason("");
@@ -166,7 +226,9 @@ export default function AdminPostDetail({
               <h1 className="text-2xl font-bold text-gray-900">
                 Chi tiết tin đăng
               </h1>
-              <p className="text-gray-600">Mã tin: {post.id}</p>
+              <p className="text-gray-600">
+                Mã tin: {post._id || post.id || "N/A"}
+              </p>
             </div>
           </div>
 
@@ -174,7 +236,14 @@ export default function AdminPostDetail({
           {post.status === "pending" && (
             <div className="flex items-center gap-3">
               <button
-                onClick={() => onApprove(post.id)}
+                onClick={() => {
+                  const postId = post._id || post.id;
+                  if (!postId) {
+                    alert("ID bài viết không hợp lệ!");
+                    return;
+                  }
+                  onApprove(postId);
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <CheckIcon className="w-4 h-4" />
@@ -206,12 +275,19 @@ export default function AdminPostDetail({
                   <div className="flex items-center gap-2 text-red-700">
                     <UserIcon className="w-4 h-4" />
                     <span className="font-medium">Người từ chối:</span>
-                    <span>{post.rejectedBy || "Admin"}</span>
+                    <span>
+                      {typeof post.rejectedBy === "object"
+                        ? (post.rejectedBy as { username?: string }).username ||
+                          "Admin"
+                        : post.rejectedBy || "Admin"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-red-700">
                     <CalendarIcon className="w-4 h-4" />
                     <span className="font-medium">Thời gian:</span>
-                    <span>{formatDate(post.rejectedAt)}</span>
+                    <span>
+                      {post.rejectedAt ? formatDate(post.rejectedAt) : ""}
+                    </span>
                   </div>
                   <div className="mt-3">
                     <span className="font-medium text-red-800">
@@ -241,7 +317,18 @@ export default function AdminPostDetail({
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <MapPinIcon className="w-4 h-4" />
-                    <span>{post.location}</span>
+                    <span>
+                      {typeof post.location === "object"
+                        ? [
+                            post.location.street,
+                            post.location.ward,
+                            post.location.district,
+                            post.location.province,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")
+                        : post.location}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <EyeIcon className="w-4 h-4" />
@@ -316,11 +403,13 @@ export default function AdminPostDetail({
                 Mô tả chi tiết
               </h3>
               <div className="prose max-w-none text-gray-700">
-                {post.description.split("\n").map((paragraph, index) => (
-                  <p key={index} className="mb-3">
-                    {paragraph}
-                  </p>
-                ))}
+                {post.description
+                  .split("\n")
+                  .map((paragraph: string, index: number) => (
+                    <p key={index} className="mb-3">
+                      {paragraph}
+                    </p>
+                  ))}
               </div>
             </div>
           </div>
@@ -349,7 +438,7 @@ export default function AdminPostDetail({
                 {/* Thumbnail Grid */}
                 {post.images.length > 1 && (
                   <div className="grid grid-cols-6 gap-2">
-                    {post.images.map((image, index) => (
+                    {post.images.map((image: string, index: number) => (
                       <div
                         key={index}
                         className={`relative h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
@@ -390,10 +479,14 @@ export default function AdminPostDetail({
                     <CheckIcon className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <div className="font-medium text-green-800">
-                        Đã duyệt bởi {post.approvedBy}
+                        Đã duyệt bởi{" "}
+                        {typeof post.approvedBy === "object"
+                          ? (post.approvedBy as { username?: string })
+                              .username || "Admin"
+                          : post.approvedBy || "Admin"}
                       </div>
                       <div className="text-sm text-green-600">
-                        {formatDate(post.approvedAt)}
+                        {post.approvedAt ? formatDate(post.approvedAt) : ""}
                       </div>
                     </div>
                   </div>
@@ -404,10 +497,14 @@ export default function AdminPostDetail({
                     <XMarkIcon className="w-5 h-5 text-red-600 mt-0.5" />
                     <div>
                       <div className="font-medium text-red-800">
-                        Đã từ chối bởi {post.rejectedBy}
+                        Đã từ chối bởi{" "}
+                        {typeof post.rejectedBy === "object"
+                          ? (post.rejectedBy as { username?: string })
+                              .username || "Admin"
+                          : post.rejectedBy || "Admin"}
                       </div>
                       <div className="text-sm text-red-600">
-                        {formatDate(post.rejectedAt)}
+                        {post.rejectedAt ? formatDate(post.rejectedAt) : ""}
                       </div>
                       {post.rejectedReason && (
                         <div className="text-sm text-red-700 mt-1">
@@ -436,14 +533,22 @@ export default function AdminPostDetail({
                   <UserIcon className="w-6 h-6 text-gray-500" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-900">{post.author}</div>
+                  <div className="font-medium text-gray-900">
+                    {typeof post.author === "object"
+                      ? post.author.username || "Người dùng"
+                      : post.author}
+                  </div>
                   <div className="text-sm text-gray-600">Người đăng tin</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 text-gray-700">
                 <PhoneIcon className="w-4 h-4" />
-                <span>{post.authorPhone}</span>
+                <span>
+                  {typeof post.author === "object" && post.author.phoneNumber
+                    ? post.author.phoneNumber
+                    : post.authorPhone || "Không có số điện thoại"}
+                </span>
               </div>
 
               {post.authorEmail && (

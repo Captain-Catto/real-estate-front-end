@@ -6,6 +6,15 @@ const nextConfig: NextConfig = {
       "maps.googleapis.com",
       "maps.google.com",
       "datlqt-real-estate.s3.ap-southeast-2.amazonaws.com",
+      "datlqt-real-estate.s3.amazonaws.com",
+      "s3.ap-southeast-2.amazonaws.com",
+      "s3.amazonaws.com",
+    ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
   // Allow iframe từ Google Maps

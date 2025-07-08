@@ -3,6 +3,7 @@ import { useState, Fragment, useRef, useEffect, useCallback } from "react";
 import { Transition, Dialog } from "@headlessui/react";
 import Footer from "@/components/footer/Footer";
 import Link from "next/link";
+import Image from "next/image";
 import UserSidebar from "@/components/user/UserSidebar";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
 import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
@@ -27,7 +28,14 @@ export default function QuanLyTinPage() {
     loading: userLoading,
     isInitialized,
   } = useAuth();
-  const editModal = useEditPostModal();
+
+  // Định nghĩa fetchPosts function sẽ được dùng trong hook và useEffect
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const editModal = useEditPostModal(() => {
+    // Callback được gọi khi edit thành công - trigger refresh
+    setRefreshTrigger((prev) => prev + 1);
+  });
 
   // Get user data from the authenticated user instead of using mock data
   const userData = user
@@ -109,6 +117,76 @@ export default function QuanLyTinPage() {
     editModal.openModal(post);
   };
 
+  // Handle view post
+  const handleViewPost = (post: any) => {
+    if (post.status === "active") {
+      // Tin đăng đang hoạt động - tạo URL SEO theo dynamic route
+      const createSeoUrl = (postData: any) => {
+        const transactionType =
+          postData.type === "ban" ? "mua-ban" : "cho-thue";
+
+        // Tạo slug từ location
+        const createLocationSlug = (text: string) => {
+          if (!text) return "";
+          return text
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .trim();
+        };
+
+        // Tạo slug từ title
+        const createTitleSlug = (title: string) => {
+          if (!title) return "tin-dang";
+          return title
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .trim();
+        };
+
+        if (
+          postData.location?.province &&
+          postData.location?.district &&
+          postData.location?.ward
+        ) {
+          const provinceSlug = createLocationSlug(postData.location.province);
+          const districtSlug = createLocationSlug(postData.location.district);
+          const wardSlug = createLocationSlug(postData.location.ward);
+          const titleSlug = createTitleSlug(postData.title);
+
+          return `/${transactionType}/${provinceSlug}/${districtSlug}/${wardSlug}/${postData._id}-${titleSlug}`;
+        } else {
+          // Fallback nếu không có đủ thông tin location
+          const titleSlug = createTitleSlug(postData.title);
+          return `/${transactionType}/chi-tiet/${postData._id}-${titleSlug}`;
+        }
+      };
+
+      const viewUrl = createSeoUrl(post);
+      window.open(viewUrl, "_blank");
+    } else if (post.status === "pending" || post.status === "waiting_display") {
+      // Tin đăng chờ duyệt - xem preview
+      alert(
+        "Tin đăng đang chờ duyệt. Bạn có thể xem preview trong phần chỉnh sửa."
+      );
+    } else if (post.status === "rejected") {
+      // Tin đăng bị từ chối - chỉ có thể chỉnh sửa
+      alert("Tin đăng đã bị từ chối. Vui lòng chỉnh sửa và gửi lại.");
+    } else {
+      // Các trạng thái khác
+      alert("Tin đăng này không thể xem được ở trạng thái hiện tại.");
+    }
+  };
+
   // Handle delete post
   const handleDeletePost = (postId: string, postTitle: string) => {
     setDeletePostId(postId);
@@ -140,14 +218,14 @@ export default function QuanLyTinPage() {
       count: posts.filter((p) => p.status === "pending").length,
     },
     {
-      id: "inactive",
+      id: "expired",
       label: "Hết hạn",
-      count: posts.filter((p) => p.status === "inactive").length,
+      count: posts.filter((p) => p.status === "expired").length,
     },
     {
-      id: "denied",
+      id: "rejected",
       label: "Không duyệt",
-      count: posts.filter((p) => p.status === "denied").length,
+      count: posts.filter((p) => p.status === "rejected").length,
     },
     {
       id: "removed",
@@ -241,7 +319,7 @@ export default function QuanLyTinPage() {
     return () => {
       ignore = true;
     };
-  }, [isAuthenticated, userLoading, fetchPosts]);
+  }, [isAuthenticated, userLoading, fetchPosts, refreshTrigger]);
 
   // Handle click outside để đóng popup
   useEffect(() => {
@@ -399,9 +477,9 @@ export default function QuanLyTinPage() {
         label: "Chờ duyệt",
         colorClass: "bg-yellow-100 text-yellow-800",
       },
-      denied: { label: "Không duyệt", colorClass: "bg-red-100 text-red-800" },
-      inactive: { label: "Hết hạn", colorClass: "bg-gray-100 text-gray-800" },
-      removed: { label: "Đã hạ", colorClass: "bg-gray-100 text-gray-600" },
+      rejected: { label: "Không duyệt", colorClass: "bg-red-100 text-red-800" },
+      expired: { label: "Hết hạn", colorClass: "bg-gray-100 text-gray-800" },
+      inactive: { label: "Đã hạ", colorClass: "bg-gray-100 text-gray-600" },
     };
     return (
       statusMap[statusId] || {
@@ -767,7 +845,14 @@ export default function QuanLyTinPage() {
                         {/* Image */}
                         <div className="w-full lg:w-48 h-32 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                           <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-gray-600 text-sm">
-                            Hình ảnh
+                            <Image
+                              src={post.images[0] || "/placeholder-image.png"}
+                              alt={post.title}
+                              width={192}
+                              height={128}
+                              className="object-cover w-full h-full"
+                              loading="lazy"
+                            />
                           </div>
                         </div>
 
@@ -801,44 +886,46 @@ export default function QuanLyTinPage() {
                           </div>
 
                           {/* THÊM PHẦN HIỂN THỊ LÝ DO KHÔNG DUYỆT */}
-                          {post.status === "denied" && post.rejectionReason && (
-                            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                              <div className="flex items-start gap-2">
-                                <svg
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  className="text-red-600 mt-0.5 flex-shrink-0"
-                                >
-                                  <path
-                                    fill="currentColor"
-                                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
-                                  />
-                                  <path
-                                    fill="currentColor"
-                                    d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
-                                  />
-                                </svg>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-sm font-medium text-red-800 mb-1">
-                                    Lý do không duyệt:
-                                  </h4>
-                                  <p className="text-sm text-red-700 leading-relaxed">
-                                    {post.rejectionReason}
-                                  </p>
-                                  {post.rejectionDate && (
-                                    <p className="text-xs text-red-600 mt-1">
-                                      Ngày từ chối:{" "}
-                                      {new Date(
-                                        post.rejectionDate
-                                      ).toLocaleDateString("vi-VN")}
+                          {post.status === "rejected" &&
+                            (post.rejectedReason || post.rejectionReason) && (
+                              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    className="text-red-600 mt-0.5 flex-shrink-0"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                                    />
+                                    <path
+                                      fill="currentColor"
+                                      d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+                                    />
+                                  </svg>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-medium text-red-800 mb-1">
+                                      Lý do không duyệt:
+                                    </h4>
+                                    <p className="text-sm text-red-700 leading-relaxed">
+                                      {post.rejectedReason ||
+                                        post.rejectionReason}
                                     </p>
-                                  )}
+                                    {post.rejectedAt && (
+                                      <p className="text-xs text-red-600 mt-1">
+                                        Ngày từ chối:{" "}
+                                        {new Date(
+                                          post.rejectedAt
+                                        ).toLocaleDateString("vi-VN")}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                             <div>
@@ -869,7 +956,7 @@ export default function QuanLyTinPage() {
                             </p>
 
                             <div className="flex gap-2">
-                              {post.status === "denied" ? (
+                              {post.status === "rejected" ? (
                                 <>
                                   <button
                                     onClick={() => handleEditPost(post)}
@@ -888,6 +975,14 @@ export default function QuanLyTinPage() {
                                 </>
                               ) : (
                                 <>
+                                  {post.status === "active" && (
+                                    <button
+                                      onClick={() => handleViewPost(post)}
+                                      className="px-3 py-1.5 bg-green-100 text-green-700 text-sm rounded-lg hover:bg-green-200 transition-colors"
+                                    >
+                                      Xem tin đăng
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handleEditPost(post)}
                                     className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
@@ -921,6 +1016,10 @@ export default function QuanLyTinPage() {
                               setSelectedImages={editModal.setSelectedImages}
                               setSelectedPackage={editModal.setSelectedPackage}
                               handleSubmit={editModal.handleSubmit}
+                              provinces={editModal.provinces}
+                              districts={editModal.districts}
+                              wards={editModal.wards}
+                              locationLoading={editModal.locationLoading}
                             />
                           </div>
                         </div>

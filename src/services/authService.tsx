@@ -39,12 +39,14 @@ export interface ProfileResponse {
 // Helper function để handle API calls với token refresh
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   try {
-    const token = localStorage.getItem("accessToken");
+    // Kiểm tra xem đang ở môi trường browser hay server
+    const isServer = typeof window === "undefined";
+    const token = isServer ? null : localStorage.getItem("accessToken");
 
     console.log(
       `Fetching ${url.split("/").slice(-2).join("/")} (token ${
         token ? "exists" : "missing"
-      })`
+      }, environment: ${isServer ? "server" : "client"})`
     );
 
     // Handle Content-Type properly - don't set for FormData

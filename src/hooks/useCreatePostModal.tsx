@@ -162,6 +162,22 @@ export function useCreatePostModal() {
     }
   };
 
+  // Map packageId to package enum for backend
+  const mapPackageIdToPackage = (packageId: string) => {
+    switch (packageId) {
+      case "free":
+        return "free";
+      case "basic":
+        return "basic";
+      case "premium":
+        return "premium";
+      case "vip":
+        return "vip";
+      default:
+        return "free"; // Default fallback
+    }
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -221,6 +237,7 @@ export function useCreatePostModal() {
         category: mappedCategory,
         packageId: selectedPackage.id,
         packageDuration: selectedPackage.duration,
+        package: mapPackageIdToPackage(selectedPackage.id), // Add package field
         location: {
           province: formData.location?.province || "",
           district: formData.location?.district || "",
@@ -235,7 +252,26 @@ export function useCreatePostModal() {
       const result = await postService.createPost(postData, selectedImages);
 
       if (result && result.success) {
-        // If post creation is successful, deduct money from wallet
+        // Skip payment for free package
+        if (selectedPackage.price === 0 || selectedPackage.id === "free") {
+          toast.success(
+            <div>
+              <p className="font-medium">Đăng tin thành công!</p>
+              <p className="mt-1">Tin đăng của bạn đang chờ duyệt.</p>
+              <p className="mt-1 text-sm">
+                Gói: {selectedPackage.name} - {selectedPackage.duration} ngày
+                <br />
+                Miễn phí
+              </p>
+            </div>,
+            { duration: 5000 }
+          );
+          closeModal();
+          router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
+          return;
+        }
+
+        // If post creation is successful and not free, deduct money from wallet
         try {
           const paymentResult = await paymentService.deductForPost({
             amount: selectedPackage.price,

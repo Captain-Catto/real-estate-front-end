@@ -1,7 +1,7 @@
 // Cải thiện component hiện tại
 
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 
 interface BreadcrumbItem {
@@ -15,32 +15,35 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
+  useEffect(() => {
+    const schemaData = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.label,
+        item: item.href ? `${window.location.origin}${item.href}` : undefined,
+      })),
+    };
+
+    // Create and inject schema script
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify(schemaData);
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [items]);
+
   return (
     <nav
       className="flex items-center space-x-2 text-sm"
       aria-label="Breadcrumb"
     >
-      {/* Structured Data cho SEO */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: items.map((item, index) => ({
-              "@type": "ListItem",
-              position: index + 1,
-              name: item.label,
-              item: item.href
-                ? `${
-                    typeof window !== "undefined" ? window.location.origin : ""
-                  }${item.href}`
-                : undefined,
-            })),
-          }),
-        }}
-      />
-
       <ol className="flex items-center space-x-2">
         {items.map((item, index) => (
           <li key={index} className="flex items-center">

@@ -8,35 +8,68 @@ import { locationService } from "@/services/locationService";
 import { MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 
+interface BreadcrumbItem {
+  label: string;
+  href: string;
+  isActive: boolean;
+}
+
+interface LocationItem {
+  name: string;
+  codename: string;
+  division_type: string;
+  code: string;
+}
+
+interface SearchResult {
+  _id: string;
+  title: string;
+  type: "ban" | "cho-thue";
+  price: number;
+  area: number;
+  location: {
+    province: string;
+    district: string;
+    ward: string;
+    street?: string;
+  };
+  images: string[];
+  createdAt: string;
+  // Add other properties as needed
+}
+
+interface SearchParams {
+  sort?: string;
+  page?: string;
+  [key: string]: string | string[] | undefined;
+}
+
 interface CategoryPageProps {
   title: string;
   totalCount: number;
-  categoryType: "ban" | "thue";
-  location?: string;
+  categoryType: "ban" | "cho-thue";
   activeFilters?: {
     propertyType?: string;
     city?: string;
-    districts?: string[] | any[];
+    districts?: string[];
     price?: string;
     area?: string;
   };
-  searchParams?: {
-    [key: string]: string | string[] | undefined;
-  };
+  searchParams?: SearchParams;
   slug?: string;
-  searchResults?: any[];
+  searchResults?: SearchResult[];
   loading?: boolean;
   onFilterRemove?: (filterType: string, value?: string) => void;
 }
+
+type Option = { value: string; label: string };
 
 export function CategoryPage({
   title,
   totalCount,
   categoryType,
-  location,
   activeFilters = {},
   searchParams = {},
-  slug = "",
   searchResults = [],
   loading = false,
   onFilterRemove,
@@ -46,133 +79,148 @@ export function CategoryPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [formattedCount, setFormattedCount] = useState(totalCount.toString());
   const [weeklyViews, setWeeklyViews] = useState("0");
-  const [provinces, setProvinces] = useState<any[]>([]);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [selectedDistricts, setSelectedDistricts] = useState<any[]>([]);
-  const [districts, setDistricts] = useState<any[]>([]);
+  const [provinces, setProvinces] = useState<LocationItem[]>([]);
+  const [districts, setDistricts] = useState<LocationItem[]>([]);
+  const [selectedDistricts, setSelectedDistricts] = useState<LocationItem[]>(
+    []
+  );
 
   const itemsPerPage = 20;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
- // Format price for display
-const formatPriceDisplay = (priceSlug: string): string => {
-  console.log("Formatting price slug:", priceSlug);
+  // Format price for display
+  const formatPriceDisplay = (priceSlug: string): string => {
+    console.log("Formatting price slug:", priceSlug);
 
-  // Map price slugs to readable text
-  const priceDisplayMap: Record<string, string> = {
-    // Mức giá bán
-    "thoa-thuan-ban": "Thỏa thuận",
-    "duoi-500-trieu": "Dưới 500 triệu",
-    "500-800-trieu": "500 - 800 triệu",
-    "800-trieu-1-ty": "800 triệu - 1 tỷ",
-    "1-2-ty": "1 - 2 tỷ",
-    "2-3-ty": "2 - 3 tỷ",
-    "3-5-ty": "3 - 5 tỷ",
-    "5-7-ty": "5 - 7 tỷ",
-    "7-10-ty": "7 - 10 tỷ",
-    "10-20-ty": "10 - 20 tỷ",
-    "20-30-ty": "20 - 30 tỷ",
-    "30-40-ty": "30 - 40 tỷ",
-    "40-60-ty": "40 - 60 tỷ",
-    "tren-60-ty": "Trên 60 tỷ",
+    // Map price slugs to readable text
+    const priceDisplayMap: Record<string, string> = {
+      // Mức giá bán
+      "thoa-thuan-ban": "Thỏa thuận",
+      "duoi-500-trieu": "Dưới 500 triệu",
+      "500-800-trieu": "500 - 800 triệu",
+      "800-trieu-1-ty": "800 triệu - 1 tỷ",
+      "1-2-ty": "1 - 2 tỷ",
+      "2-3-ty": "2 - 3 tỷ",
+      "3-5-ty": "3 - 5 tỷ",
+      "5-7-ty": "5 - 7 tỷ",
+      "7-10-ty": "7 - 10 tỷ",
+      "10-20-ty": "10 - 20 tỷ",
+      "20-30-ty": "20 - 30 tỷ",
+      "30-40-ty": "30 - 40 tỷ",
+      "40-60-ty": "40 - 60 tỷ",
+      "tren-60-ty": "Trên 60 tỷ",
 
-    // Mức giá thuê - Slug
-    "thoa-thuan": "Thỏa thuận",
-    "thoa-thuan-thue": "Thỏa thuận",
-    "duoi-1-trieu": "Dưới 1 triệu",
-    "1-3-trieu": "1 - 3 triệu",
-    "3-5-trieu": "3 - 5 triệu",
-    "5-10-trieu": "5 - 10 triệu",
-    "10-15-trieu": "10 - 15 triệu",
-    "15-20-trieu": "15 - 20 triệu",
-    "20-30-trieu": "20 - 30 triệu",
-    "30-40-trieu": "30 - 40 triệu",
-    "40-50-trieu": "40 - 50 triệu",
-    "50-60-trieu": "50 - 60 triệu",
-    "60-80-trieu": "60 - 80 triệu",
-    "80-100-trieu": "80 - 100 triệu",
-    "tren-100-trieu": "Trên 100 triệu",
-    "tat-ca-thue": "Tất cả mức giá",
+      // Mức giá thuê - Slug
+      "thoa-thuan": "Thỏa thuận",
+      "thoa-thuan-thue": "Thỏa thuận",
+      "duoi-1-trieu": "Dưới 1 triệu",
+      "1-3-trieu": "1 - 3 triệu",
+      "3-5-trieu": "3 - 5 triệu",
+      "5-10-trieu": "5 - 10 triệu",
+      "10-15-trieu": "10 - 15 triệu",
+      "15-20-trieu": "15 - 20 triệu",
+      "20-30-trieu": "20 - 30 triệu",
+      "30-40-trieu": "30 - 40 triệu",
+      "40-50-trieu": "40 - 50 triệu",
+      "50-60-trieu": "50 - 60 triệu",
+      "60-80-trieu": "60 - 80 triệu",
+      "80-100-trieu": "80 - 100 triệu",
+      "tren-100-trieu": "Trên 100 triệu",
+      "tat-ca-thue": "Tất cả mức giá",
 
-    // Mức giá thuê - ID
-    "r0": "Thỏa thuận",
-    "r1": "Dưới 1 triệu",
-    "r2": "1 - 3 triệu",
-    "r3": "3 - 5 triệu",
-    "r4": "5 - 10 triệu",
-    "r5": "10 - 15 triệu",
-    "r6": "15 - 20 triệu",
-    "r7": "20 - 30 triệu",
-    "r8": "30 - 40 triệu",
-    "r9": "40 - 50 triệu",
-    "r10": "60 - 80 triệu",
-    "r11": "80 - 100 triệu",
-    "r12": "Trên 100 triệu",
-    "all_rent": "Tất cả mức giá"
-  };
+      // Mức giá thuê - ID
+      r0: "Thỏa thuận",
+      r1: "Dưới 1 triệu",
+      r2: "1 - 3 triệu",
+      r3: "3 - 5 triệu",
+      r4: "5 - 10 triệu",
+      r5: "10 - 15 triệu",
+      r6: "15 - 20 triệu",
+      r7: "20 - 30 triệu",
+      r8: "30 - 40 triệu",
+      r9: "40 - 50 triệu",
+      r10: "60 - 80 triệu",
+      r11: "80 - 100 triệu",
+      r12: "Trên 100 triệu",
+      all_rent: "Tất cả mức giá",
+    };
 
-  // Check if it's in the map first
-  if (priceDisplayMap[priceSlug]) {
-    return priceDisplayMap[priceSlug];
-  }
+    // Check if it's in the map first
+    if (priceDisplayMap[priceSlug]) {
+      return priceDisplayMap[priceSlug];
+    }
 
-  // If not in the map, try to parse patterns
-  const patterns = {
-    duoi: /^duoi-(\d+)-trieu$/,
-    tu: /^tu-(\d+)-trieu$/,
-    tren: /^tren-(\d+)-trieu$/,
-    range: /^(\d+)-(\d+)-trieu$/,
-    ty_duoi: /^duoi-(\d+)-ty$/,
-    ty_tu: /^tu-(\d+)-ty$/,
-    ty_tren: /^tren-(\d+)-ty$/,
-    ty_range: /^(\d+)-(\d+)-ty$/,
-    r_id: /^r(\d+)$/ // Special pattern for r0, r1, r2...
-  };
+    // If not in the map, try to parse patterns
+    const patterns = {
+      duoi: /^duoi-(\d+)-trieu$/,
+      tu: /^tu-(\d+)-trieu$/,
+      tren: /^tren-(\d+)-trieu$/,
+      range: /^(\d+)-(\d+)-trieu$/,
+      ty_duoi: /^duoi-(\d+)-ty$/,
+      ty_tu: /^tu-(\d+)-ty$/,
+      ty_tren: /^tren-(\d+)-ty$/,
+      ty_range: /^(\d+)-(\d+)-ty$/,
+      r_id: /^r(\d+)$/, // Special pattern for r0, r1, r2...
+    };
 
-  // Check each pattern
-  for (const [type, pattern] of Object.entries(patterns)) {
-    const match = priceSlug.match(pattern);
-    if (match) {
-      // Handle specific patterns
-      if (type === "duoi") return `Dưới ${match[1]} triệu`;
-      if (type === "tu") return `Từ ${match[1]} triệu`;
-      if (type === "tren") return `Trên ${match[1]} triệu`;
-      if (type === "range") return `${match[1]} - ${match[2]} triệu`;
-      if (type === "ty_duoi") return `Dưới ${match[1]} tỷ`;
-      if (type === "ty_tu") return `Từ ${match[1]} tỷ`;
-      if (type === "ty_tren") return `Trên ${match[1]} tỷ`;
-      if (type === "ty_range") return `${match[1]} - ${match[2]} tỷ`;
-      
-      // Special handling for r-IDs based on your API data
-      if (type === "r_id") {
-        const rId = parseInt(match[1], 10);
-        switch (rId) {
-          case 0: return "Thỏa thuận";
-          case 1: return "Dưới 1 triệu";
-          case 2: return "1 - 3 triệu";
-          case 3: return "3 - 5 triệu";
-          case 4: return "5 - 10 triệu";
-          case 5: return "10 - 15 triệu";
-          case 6: return "15 - 20 triệu";
-          case 7: return "20 - 30 triệu";
-          case 8: return "30 - 40 triệu";
-          case 9: return "40 - 50 triệu";
-          case 10: return "60 - 80 triệu";
-          case 11: return "80 - 100 triệu";
-          case 12: return "Trên 100 triệu";
-          default: return `Giá mức ${rId}`;
+    // Check each pattern
+    for (const [type, pattern] of Object.entries(patterns)) {
+      const match = priceSlug.match(pattern);
+      if (match) {
+        // Handle specific patterns
+        if (type === "duoi") return `Dưới ${match[1]} triệu`;
+        if (type === "tu") return `Từ ${match[1]} triệu`;
+        if (type === "tren") return `Trên ${match[1]} triệu`;
+        if (type === "range") return `${match[1]} - ${match[2]} triệu`;
+        if (type === "ty_duoi") return `Dưới ${match[1]} tỷ`;
+        if (type === "ty_tu") return `Từ ${match[1]} tỷ`;
+        if (type === "ty_tren") return `Trên ${match[1]} tỷ`;
+        if (type === "ty_range") return `${match[1]} - ${match[2]} tỷ`;
+
+        // Special handling for r-IDs based on your API data
+        if (type === "r_id") {
+          const rId = parseInt(match[1], 10);
+          switch (rId) {
+            case 0:
+              return "Thỏa thuận";
+            case 1:
+              return "Dưới 1 triệu";
+            case 2:
+              return "1 - 3 triệu";
+            case 3:
+              return "3 - 5 triệu";
+            case 4:
+              return "5 - 10 triệu";
+            case 5:
+              return "10 - 15 triệu";
+            case 6:
+              return "15 - 20 triệu";
+            case 7:
+              return "20 - 30 triệu";
+            case 8:
+              return "30 - 40 triệu";
+            case 9:
+              return "40 - 50 triệu";
+            case 10:
+              return "60 - 80 triệu";
+            case 11:
+              return "80 - 100 triệu";
+            case 12:
+              return "Trên 100 triệu";
+            default:
+              return `Giá mức ${rId}`;
+          }
         }
       }
     }
-  }
 
-  // Fallback to basic formatting if no patterns match
-  return priceSlug
-    .replace(/-/g, " ")
-    .replace("trieu", "triệu")
-    .replace("ty", "tỷ")
-    .replace("thoa thuan", "Thỏa thuận");
-};
+    // Fallback to basic formatting if no patterns match
+    return priceSlug
+      .replace(/-/g, " ")
+      .replace("trieu", "triệu")
+      .replace("ty", "tỷ")
+      .replace("thoa thuan", "Thỏa thuận");
+  };
 
   // Format area for display
   const formatAreaDisplay = (areaSlug: string): string => {
@@ -258,7 +306,6 @@ const formatPriceDisplay = (priceSlug: string): string => {
           const cityData = provinces.find((p) => p.codename === cityCode);
 
           if (cityData) {
-            setSelectedCity(cityData.code);
             const districtsData = await locationService.getDistricts(cityCode);
             setDistricts(districtsData);
 
@@ -266,17 +313,17 @@ const formatPriceDisplay = (priceSlug: string): string => {
             const urlParams = new URLSearchParams(window.location.search);
             const selectedDistrictCodes = Array.from(urlParams.entries())
               .filter(([key]) => key === "districts")
-              .map(([_, value]) => value);
+              .map(([, value]) => value);
 
             if (districtsData?.length > 0 && selectedDistrictCodes.length > 0) {
-              const selectedDistObjs = selectedDistrictCodes
+              const selectedDistObjs = districtCodes
                 .map((code) => {
                   const district = districtsData.find(
                     (d) => d.codename === code
                   );
                   return district || null;
                 })
-                .filter(Boolean);
+                .filter((d): d is LocationItem => d !== null);
 
               setSelectedDistricts(selectedDistObjs);
             }
@@ -378,7 +425,6 @@ const formatPriceDisplay = (priceSlug: string): string => {
       case "city":
         urlParams.delete("city");
         urlParams.delete("districts");
-        setSelectedCity(null);
         setSelectedDistricts([]);
         break;
 
@@ -386,7 +432,7 @@ const formatPriceDisplay = (priceSlug: string): string => {
         if (value) {
           const districtEntries = Array.from(urlParams.entries())
             .filter(([key]) => key === "districts")
-            .map(([_, val]) => val);
+            .map(([, val]) => val);
 
           const remainingDistricts = districtEntries.filter(
             (code) => code !== value
@@ -514,13 +560,37 @@ const formatPriceDisplay = (priceSlug: string): string => {
     return null;
   };
 
+  const breadcrumbs: BreadcrumbItem[] = [
+    {
+      label: "Trang chủ",
+      href: "/",
+      isActive: false,
+    },
+    {
+      label: categoryType === "ban" ? "Bán" : "Cho thuê",
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}`,
+      isActive: !activeFilters.city,
+    },
+  ];
+
+  // Add active city to breadcrumbs if we have one
+  if (activeFilters.city) {
+    breadcrumbs.push({
+      label: activeFilters.city,
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}/${
+        searchParams.city
+      }`,
+      isActive: true,
+    });
+  }
+
   return (
     <>
       <main className="bg-gray-100 min-h-screen pb-8">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-3">
           <nav className="flex text-xs text-gray-600 max-w-6xl mx-auto">
-            {breadcrumbItems.map((item, index) => (
+            {breadcrumbs.map((item, index) => (
               <React.Fragment key={index}>
                 {index > 0 && (
                   <ChevronRightIcon className="h-3 w-3 mx-2 self-center text-gray-400" />

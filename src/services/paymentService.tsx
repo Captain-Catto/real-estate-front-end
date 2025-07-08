@@ -380,6 +380,19 @@ export const paymentService = {
     packageId: string;
     description?: string;
   }): Promise<any> {
+    // Skip deduction for free packages
+    if (data.amount === 0 || data.packageId === "free") {
+      return {
+        success: true,
+        message: "Free package applied successfully",
+        data: {
+          postId: data.postId,
+          packageId: data.packageId,
+          amount: 0,
+        },
+      };
+    }
+
     // Invalidate cache since the balance will change
     walletInfoCache = null;
 

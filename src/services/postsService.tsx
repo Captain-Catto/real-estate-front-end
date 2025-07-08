@@ -3,6 +3,9 @@ import { refreshToken } from "./authService";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
+// Xác nhận API URL
+console.log("Posts Service API URL:", API_BASE_URL);
+
 // Post interface
 export interface Post {
   _id: string;
@@ -92,6 +95,7 @@ export interface CreatePostData {
   // Package Info
   packageId: string;
   packageDuration: number;
+  package?: "free" | "basic" | "premium" | "vip"; // Add package field for backend enum
 }
 
 export interface PostFilters {
@@ -127,16 +131,25 @@ export interface UploadImageResponse {
 
 class PostService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    const token = localStorage.getItem("accessToken");
+    try {
+      const token = localStorage.getItem("accessToken");
 
-    return fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
+      console.log(`Fetching ${url} with method ${options.method || "GET"}`);
+
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error(`Network error when fetching ${url}:`, error);
+      throw error;
+    }
   }
 
   // async uploadImages(images: File[]): Promise<string[]> {
@@ -176,7 +189,14 @@ class PostService {
     const makeRequest = async () => {
       const formData = new FormData();
       console.log("Creating post with data:", postData);
-      Object.entries(postData).forEach(([key, value]) => {
+
+      // Ensure package is always set to a valid value
+      const safePostData = {
+        ...postData,
+        package: postData.package || "free", // Fallback to "free" if package is null/undefined
+      };
+
+      Object.entries(safePostData).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           if (key === "location" && typeof value === "object") {
             formData.append(key, JSON.stringify(value)); // <-- stringify location
@@ -274,8 +294,16 @@ class PostService {
   ): Promise<any> {
     try {
       const updateData: any = { ...postData };
-      if (imageUrls) {
+      if (imageUrls && imageUrls.length > 0) {
         updateData.images = imageUrls;
+      }
+
+      console.log("Updating post with ID:", postId);
+      console.log("Update data:", JSON.stringify(updateData, null, 2));
+
+      // Đảm bảo postId là một chuỗi hợp lệ
+      if (!postId || typeof postId !== "string") {
+        throw new Error("Invalid post ID");
       }
 
       const response = await this.fetchWithAuth(
@@ -286,14 +314,99 @@ class PostService {
         }
       );
 
+      // Log full response for debugging
+      console.log(`Update response status: ${response.status}`);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update post");
+        let errorMessage = "Failed to update post";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const error = await response.json();
+            errorMessage = error.message || errorMessage;
+          } else {
+            // If not JSON, just get text
+            const text = await response.text();
+            console.error("Non-JSON error response:", text);
+          }
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error("Error parsing success response as JSON:", jsonError);
+        const text = await response.text();
+        console.log("Raw response:", text);
+        return { success: true, message: "Post updated successfully" };
+      }
     } catch (error) {
       console.error("Error updating post:", error);
+      throw error;
+    }
+  }
+
+  async resubmitPost(
+    postId: string,
+    postData: Partial<CreatePostData>,
+    imageUrls?: string[]
+  ): Promise<any> {
+    try {
+      const updateData: any = { ...postData };
+      if (imageUrls && imageUrls.length > 0) {
+        updateData.images = imageUrls;
+      }
+
+      console.log("Resubmitting post with ID:", postId);
+      console.log("Resubmit data:", JSON.stringify(updateData, null, 2));
+
+      // Đảm bảo postId là một chuỗi hợp lệ
+      if (!postId || typeof postId !== "string") {
+        throw new Error("Invalid post ID");
+      }
+
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/posts/${postId}/resubmit`,
+        {
+          method: "PUT",
+          body: JSON.stringify(updateData),
+        }
+      );
+
+      // Log full response for debugging
+      console.log(`Resubmit response status: ${response.status}`);
+
+      if (!response.ok) {
+        let errorMessage = "Failed to resubmit post";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const error = await response.json();
+            errorMessage = error.message || errorMessage;
+          } else {
+            // If not JSON, just get text
+            const text = await response.text();
+            console.error("Non-JSON error response:", text);
+          }
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
+        throw new Error(errorMessage);
+      }
+
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error("Error parsing success response as JSON:", jsonError);
+        const text = await response.text();
+        console.log("Raw response:", text);
+        return { success: true, message: "Post resubmitted successfully" };
+      }
+    } catch (error) {
+      console.error("Error resubmitting post:", error);
       throw error;
     }
   }
@@ -423,39 +536,37 @@ class PostService {
     }
   }
 
-  async getPostsByFilter(filter: any, page: number = 1, limit: number = 20) {
+  async getPostsByFilter(filter: any = {}, page = 1, limit = 20): Promise<any> {
     try {
       const queryParams = new URLSearchParams();
 
+      // Add pagination params
+      queryParams.append("page", String(page));
+      queryParams.append("limit", String(limit));
+
       // Add filter params
-      Object.keys(filter).forEach((key) => {
-        if (filter[key]) {
-          queryParams.append(key, filter[key]);
+      Object.entries(filter).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          queryParams.append(key, String(value));
         }
       });
 
-      queryParams.append("page", page.toString());
-      queryParams.append("limit", limit.toString());
-
       const response = await fetch(
-        `${API_BASE_URL}/posts/search?${queryParams}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
+        `${API_BASE_URL}/posts/search?${queryParams.toString()}`
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch posts");
       }
 
-      const data = await response.json();
-      return data.posts || [];
+      const result = await response.json();
+      console.log("API Response:", result);
+
+      return result.data.posts; // Trả về mảng posts từ data
     } catch (error) {
-      console.error("Error fetching posts by filter:", error);
-      return [];
+      console.error("Error fetching posts:", error);
+      throw error;
     }
   }
 }
@@ -619,6 +730,7 @@ export class AdminPostsService {
   // Approve post (admin only)
   async approvePost(postId: string) {
     try {
+      console.log("Approving post with ID:", postId);
       const response = await this.fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}/approve`,
         {
@@ -641,6 +753,7 @@ export class AdminPostsService {
   // Reject post (admin only)
   async rejectPost(postId: string, reason: string) {
     try {
+      console.log("Rejecting post with ID:", postId);
       const response = await this.fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}/reject`,
         {

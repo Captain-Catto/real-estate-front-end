@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+import React, { useEffect } from "react";
 import Link from "next/link";
 
 interface BreadcrumbItem {
@@ -12,6 +13,33 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
+  useEffect(() => {
+    const schemaData = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.label,
+        item:
+          item.href !== "#"
+            ? `${window.location.origin}${item.href}`
+            : undefined,
+      })),
+    };
+
+    // Create and inject schema script
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify(schemaData);
+    document.head.appendChild(script);
+
+    // Cleanup
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [items]);
+
   return (
     <nav className="flex overflow-hidden" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-2 whitespace-nowrap overflow-x-auto scrollbar-hide">

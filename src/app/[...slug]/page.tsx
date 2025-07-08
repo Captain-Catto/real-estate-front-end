@@ -2,30 +2,18 @@
 
 import React from "react";
 import { PropertyDetail } from "@/components/property-detail/PropertyDetail";
-import { ProjectDetail } from "@/components/project-detail/ProjectDetail";
+import ProjectDetail from "@/components/project-detail/ProjectDetail";
 import { PropertyListing } from "@/components/property-listing/PropertyListing";
 import { notFound } from "next/navigation";
 import { postService } from "@/services/postsService";
-import { projectService } from "@/services/projectService";
+import { locationService } from "@/services/locationService";
+import { ProjectService } from "@/services/projectService";
+import { createSlug } from "@/utils/helpers";
 
 interface DynamicPageProps {
   params: {
     slug: string[];
   };
-}
-
-// Utility function để tạo slug
-function createSlug(text: string): string {
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
 }
 
 // Parse URL để xác định type và extract data
@@ -47,6 +35,23 @@ function parseUrl(slug: string[]) {
         ward: slug[3],
       },
       isSeoUrl: true,
+    };
+  }
+
+  // URL chi tiết fallback: /mua-ban/chi-tiet/12345-title (khi không có đủ thông tin location)
+  if (
+    (slug[0] === "mua-ban" || slug[0] === "cho-thue") &&
+    slug.length === 3 &&
+    slug[1] === "chi-tiet"
+  ) {
+    const idSlug = slug[2];
+    const id = idSlug.split("-")[0];
+
+    return {
+      type: "property-detail",
+      id,
+      transactionType: slug[0],
+      isSeoUrl: false,
     };
   }
 
@@ -138,6 +143,12 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
     // Xử lý trang chi tiết property
     if (urlData.type === "property-detail") {
       console.log("Fetching property with ID:", urlData.id);
+
+      if (!urlData.id) {
+        console.log("No ID found in URL");
+        return notFound();
+      }
+
       const post = await postService.getPostById(urlData.id);
 
       if (!post) {
@@ -189,22 +200,70 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
         postType: post.packageId || "Chưa xác định",
       };
 
-      const breadcrumbData = urlData.isSeoUrl
-        ? {
-            city: urlData.location.city.replace(/-/g, " "),
-            district: urlData.location.district.replace(/-/g, " "),
-            ward: urlData.location.ward.replace(/-/g, " "),
+      // Fetch proper Vietnamese location names for breadcrumb
+      let breadcrumbData:
+        | { city: string; district: string; ward: string }
+        | undefined;
+
+      if (urlData.isSeoUrl && urlData.location) {
+        try {
+          // Use API to get proper Vietnamese names with diacritics
+          const locationNames = await locationService.getBreadcrumbFromSlug(
+            urlData.location.city || undefined,
+            (urlData.location.district ?? undefined) as string | undefined,
+            (urlData.location.ward ?? undefined) as string | undefined
+          );
+
+          // Only use API result if we got meaningful data
+          if (
+            locationNames.city ||
+            locationNames.district ||
+            locationNames.ward
+          ) {
+            breadcrumbData = {
+              city:
+                locationNames.city ||
+                urlData.location.city?.replace(/-/g, " ") ||
+                "",
+              district:
+                locationNames.district ||
+                urlData.location.district?.replace(/-/g, " ") ||
+                "",
+              ward:
+                locationNames.ward ||
+                urlData.location.ward?.replace(/-/g, " ") ||
+                "",
+            };
+          } else {
+            // Fallback to slugs converted to readable format
+            breadcrumbData = {
+              city: urlData.location.city?.replace(/-/g, " ") || "",
+              district: urlData.location.district?.replace(/-/g, " ") || "",
+              ward: urlData.location.ward?.replace(/-/g, " ") || "",
+            };
           }
-        : post.location &&
-          post.location.city &&
-          post.location.district &&
-          post.location.ward
-        ? {
-            city: post.location.city,
-            district: post.location.district,
-            ward: post.location.ward,
-          }
-        : undefined;
+        } catch (error) {
+          console.error("Error fetching breadcrumb data:", error);
+          // Fallback to slugs converted to readable format
+          breadcrumbData = {
+            city: urlData.location.city?.replace(/-/g, " ") || "",
+            district: urlData.location.district?.replace(/-/g, " ") || "",
+            ward: urlData.location.ward?.replace(/-/g, " ") || "",
+          };
+        }
+      } else if (
+        post.location &&
+        post.location.province &&
+        post.location.district &&
+        post.location.ward
+      ) {
+        // Fallback to post location data
+        breadcrumbData = {
+          city: post.location.province,
+          district: post.location.district,
+          ward: post.location.ward,
+        };
+      }
 
       return (
         <PropertyDetail
@@ -219,73 +278,130 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
     else if (urlData.type === "property-listing") {
       console.log("Fetching properties for location:", urlData.location);
 
+      // Define location filter type
+      interface LocationFilter {
+        status: string;
+        type?: string;
+        "location.provinceCode"?: string;
+        "location.districtCode"?: string;
+        "location.wardCode"?: string;
+      }
+
       // Tạo filter object để query database
-      const locationFilter: any = {};
+      const locationFilter: LocationFilter = {
+        status: "active",
+      };
 
-      if (urlData.location.city) {
-        // Convert slug back to original name for querying
-        const cityName = urlData.location.city.replace(/-/g, " ");
-        locationFilter["location.province"] = new RegExp(cityName, "i");
-      }
-
-      if (urlData.location.district) {
-        const districtName = urlData.location.district.replace(/-/g, " ");
-        locationFilter["location.district"] = new RegExp(districtName, "i");
-      }
-
-      if (urlData.location.ward) {
-        const wardName = urlData.location.ward.replace(/-/g, " ");
-        locationFilter["location.ward"] = new RegExp(wardName, "i");
-      }
-
-      // Add transaction type filter
+      // Add type filter - Giữ nguyên giá trị từ URL (mua-ban -> ban, cho-thue -> cho-thue)
       if (urlData.transactionType) {
-        locationFilter.transactionType = urlData.transactionType;
+        locationFilter.type =
+          urlData.transactionType === "mua-ban" ? "ban" : "cho-thue";
+      }
+
+      // Get location codes
+      try {
+        // Step 1: Get province code
+        if (urlData.location?.city) {
+          const provinces = await locationService.getProvinces();
+          const province = provinces?.find(
+            (p) =>
+              p.codename === urlData.location.city ||
+              createSlug(p.name) === urlData.location.city
+          );
+          if (province) {
+            locationFilter["location.provinceCode"] = province.code;
+
+            // Step 2: Get district code if province found
+            if (urlData.location?.district) {
+              const districts = await locationService.getDistricts(
+                province.code
+              );
+              const district = districts?.find(
+                (d) =>
+                  d.codename === urlData.location.district ||
+                  createSlug(d.name) === urlData.location.district
+              );
+              if (district) {
+                locationFilter["location.districtCode"] = district.code;
+
+                // Step 3: Get ward code if district found
+                if (urlData.location?.ward) {
+                  const wards = await locationService.getWards(
+                    province.code,
+                    district.code
+                  );
+                  const ward = wards?.find(
+                    (w) =>
+                      w.codename === urlData.location.ward ||
+                      createSlug(w.name) === urlData.location.ward
+                  );
+                  if (ward) {
+                    locationFilter["location.wardCode"] = ward.code;
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error getting location codes:", error);
       }
 
       console.log("Location filter:", locationFilter);
 
-      // Fetch properties từ database
-      const properties = await postService.getPostsByFilter(locationFilter);
+      // Fetch properties từ database với filter mới
+      const posts = await postService.getPostsByFilter(locationFilter);
+      console.log("Fetched posts:", posts);
 
-      console.log(`Found ${properties?.length || 0} properties for location`);
+      // Get proper Vietnamese names for breadcrumb
+      let locationNames;
+      try {
+        locationNames = await locationService.getBreadcrumbFromSlug(
+          urlData.location?.city || undefined,
+          (urlData.location?.district ?? undefined) as string | undefined,
+          (urlData.location?.ward ?? undefined) as string | undefined
+        );
+      } catch (error) {
+        console.error("Error getting location names:", error);
+      }
 
-      // Create breadcrumb data
+      // Sử dụng locationNames cho breadcrumb
       const breadcrumbData = {
-        city: urlData.location.city?.replace(/-/g, " ") || "",
-        district: urlData.location.district?.replace(/-/g, " ") || "",
-        ward: urlData.location.ward?.replace(/-/g, " ") || "",
+        city:
+          locationNames?.city ||
+          urlData.location?.city?.replace(/-/g, " ") ||
+          "",
+        district:
+          locationNames?.district ||
+          (urlData.location?.district ?? "").replace(/-/g, " "),
+        ward:
+          locationNames?.ward ||
+          (urlData.location?.ward ?? "").replace(/-/g, " "),
       };
 
       return (
         <PropertyListing
-          properties={properties || []}
+          properties={posts || []}
           location={breadcrumbData}
-          transactionType={urlData.transactionType}
-          level={urlData.level}
+          transactionType={urlData.transactionType || "mua-ban"}
+          level={(urlData.level as "ward" | "district" | "city") || "city"}
         />
       );
     }
 
     // Xử lý project detail và listing tương tự...
     else if (urlData.type === "project-detail") {
-      const project = await projectService.getProjectById(urlData.id);
+      if (!urlData.id) {
+        return notFound();
+      }
+
+      const project = await ProjectService.getProjectById(urlData.id);
 
       if (!project) {
         return notFound();
       }
 
-      const breadcrumbData = urlData.isSeoUrl
-        ? {
-            city: urlData.location.city.replace(/-/g, " "),
-            district: urlData.location.district.replace(/-/g, " "),
-            ward: urlData.location.ward.replace(/-/g, " "),
-          }
-        : undefined;
-
-      return (
-        <ProjectDetail project={project} breadcrumbData={breadcrumbData} />
-      );
+      return <ProjectDetail projectSlug={project.slug} />;
     }
   } catch (error) {
     console.error("Error fetching data:", error);
@@ -296,7 +412,9 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
             Có lỗi xảy ra
           </h1>
           <p className="text-gray-600">Vui lòng thử lại sau.</p>
-          <p className="text-sm text-gray-400 mt-2">Error: {error.message}</p>
+          <p className="text-sm text-gray-400 mt-2">
+            Error: {error instanceof Error ? error.message : "Unknown error"}
+          </p>
         </div>
       </div>
     );

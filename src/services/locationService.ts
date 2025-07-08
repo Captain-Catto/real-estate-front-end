@@ -12,8 +12,6 @@ export interface Location {
   phone_code: string;
 }
 
-interface LocationResponse extends ApiResponse<Location[]> {}
-
 type LocationData = Location[];
 
 const API_BASE_URL =
@@ -37,12 +35,6 @@ export const locationService = {
       });
 
       const result = await res.json();
-
-      if (res.status === 401) {
-        localStorage.removeItem("accessToken");
-        window.location.href = "/dang-nhap";
-        throw new Error("Session expired. Please login again.");
-      }
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -131,7 +123,7 @@ export const locationService = {
         try {
           const errorBody = await response.text();
           console.error("Error response:", errorBody);
-        } catch (e) {
+        } catch {
           console.error("Could not parse error response");
         }
 
@@ -162,34 +154,27 @@ export const locationService = {
     retryCount = 3
   ): Promise<LocationData> => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      const res = await fetch(
+      const response = await fetch(
         `${API_BASE_URL}/locations/wards/${provinceCode}/${districtCode}`,
         {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
         }
       );
 
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/dang-nhap";
-        throw new Error("Session expired. Please login again.");
+      if (!response.ok) {
+        console.error(`Failed to fetch wards: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
+      const result = await response.json();
 
-      const result = await res.json();
-      console.log("Wards result:", result);
+      if (!result.success || !result.data) {
+        console.error("Unexpected API response format:", result);
+        return [];
+      }
 
       return result.data;
     } catch (error) {
@@ -203,7 +188,293 @@ export const locationService = {
           retryCount - 1
         );
       }
-      throw error;
+      // Return empty array instead of throwing to avoid breaking SSR
+      return [];
+    }
+  },
+
+  getDistrictWithSlug: async (
+    provinceSlug: string,
+    districtSlug: string
+  ): Promise<Location | null> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/locations/districts/${provinceSlug}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        console.error(`Failed to fetch districts: ${response.status}`);
+        return null;
+      }
+      const result: ApiResponse<Location[]> = await response.json();
+      if (!result.success || !Array.isArray(result.data)) {
+        console.error("Unexpected API response format:", result);
+        return null;
+      }
+
+      // Find the district by codename (slug)
+      const district = result.data.find((d) => d.codename === districtSlug);
+      return district || null;
+    } catch (error) {
+      console.error("Error fetching district with slug:", error);
+      return null;
+    }
+  },
+
+  getWardWithSlug: async (
+    provinceCode: string,
+    districtCode: string,
+    wardSlug: string
+  ): Promise<Location | null> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/locations/wards/${provinceCode}/${districtCode}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        console.error(`Failed to fetch wards: ${response.status}`);
+        return null;
+      }
+      const result: ApiResponse<Location[]> = await response.json();
+      if (!result.success || !Array.isArray(result.data)) {
+        console.error("Unexpected API response format:", result);
+        return null;
+      }
+
+      // Find the ward by codename (slug)
+      const ward = result.data.find((w) => w.codename === wardSlug);
+      return ward || null;
+    } catch (error) {
+      console.error("Error fetching ward with slug:", error);
+      return null;
+    }
+  },
+
+  // Lấy tên thật của tỉnh/thành từ slug
+  getProvinceNameFromSlug: async (provinceSlug: string): Promise<string> => {
+    try {
+      const provinces = await locationService.getProvinces();
+      if (!Array.isArray(provinces)) return provinceSlug.replace(/-/g, " ");
+
+      // Tìm theo codename hoặc tên đã được convert
+      const province = provinces.find(
+        (p) =>
+          p.codename === provinceSlug ||
+          p.name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-") === provinceSlug
+      );
+
+      return province ? province.name : provinceSlug.replace(/-/g, " ");
+    } catch (error) {
+      console.error("Error getting province name from slug:", error);
+      return provinceSlug.replace(/-/g, " ");
+    }
+  },
+
+  // Lấy tên thật của quận/huyện từ slug
+  getDistrictNameFromSlug: async (
+    provinceCode: string,
+    districtSlug: string
+  ): Promise<string> => {
+    try {
+      const districts = await locationService.getDistricts(provinceCode);
+      if (!Array.isArray(districts)) return districtSlug.replace(/-/g, " ");
+
+      // Tìm theo codename hoặc tên đã được convert
+      const district = districts.find(
+        (d) =>
+          d.codename === districtSlug ||
+          d.name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-") === districtSlug
+      );
+
+      return district ? district.name : districtSlug.replace(/-/g, " ");
+    } catch (error) {
+      console.error("Error getting district name from slug:", error);
+      return districtSlug.replace(/-/g, " ");
+    }
+  },
+
+  // Lấy tên thật của phường/xã từ slug
+  getWardNameFromSlug: async (
+    provinceCode: string,
+    districtCode: string,
+    wardSlug: string
+  ): Promise<string> => {
+    try {
+      const wards = await locationService.getWards(provinceCode, districtCode);
+      if (!Array.isArray(wards)) return wardSlug.replace(/-/g, " ");
+
+      // Tìm theo codename hoặc tên đã được convert
+      const ward = wards.find(
+        (w) =>
+          w.codename === wardSlug ||
+          w.name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[đĐ]/g, "d")
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-") === wardSlug
+      );
+
+      return ward ? ward.name : wardSlug.replace(/-/g, " ");
+    } catch (error) {
+      console.error("Error getting ward name from slug:", error);
+      return wardSlug.replace(/-/g, " ");
+    }
+  },
+
+  // Lấy thông tin breadcrumb đầy đủ từ slug
+  getBreadcrumbFromSlug: async (
+    citySlug?: string,
+    districtSlug?: string,
+    wardSlug?: string
+  ) => {
+    try {
+      let cityName = "";
+      let districtName = "";
+      let wardName = "";
+      let provinceCode = "";
+      let districtCode = "";
+
+      // Lấy tên tỉnh/thành
+      if (citySlug) {
+        try {
+          const provinces = await locationService.getProvinces();
+          const province = provinces?.find(
+            (p) =>
+              p.codename === citySlug ||
+              p.name
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[đĐ]/g, "d")
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-") === citySlug
+          );
+
+          if (province) {
+            cityName = province.name;
+            provinceCode = province.code;
+          }
+        } catch (provinceError) {
+          console.error("Error fetching province data:", provinceError);
+        }
+
+        // Fallback nếu không tìm thấy tên từ API
+        if (!cityName) {
+          cityName = citySlug.replace(/-/g, " ");
+        }
+      }
+
+      // Lấy tên quận/huyện
+      if (districtSlug && provinceCode) {
+        try {
+          const districts = await locationService.getDistricts(provinceCode);
+          const district = districts?.find(
+            (d) =>
+              d.codename === districtSlug ||
+              d.name
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[đĐ]/g, "d")
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-") === districtSlug
+          );
+
+          if (district) {
+            districtName = district.name;
+            districtCode = district.code;
+          }
+        } catch (districtError) {
+          console.error("Error fetching district data:", districtError);
+        }
+
+        // Fallback nếu không tìm thấy tên từ API
+        if (!districtName) {
+          districtName = districtSlug.replace(/-/g, " ");
+        }
+      }
+
+      // Lấy tên phường/xã (chạy trong mọi môi trường, không kiểm tra isServer)
+      if (wardSlug && provinceCode && districtCode) {
+        try {
+          const wards = await locationService.getWards(
+            provinceCode,
+            districtCode
+          );
+          const ward = wards?.find(
+            (w) =>
+              w.codename === wardSlug ||
+              w.name
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[đĐ]/g, "d")
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-") === wardSlug
+          );
+
+          if (ward) {
+            wardName = ward.name;
+          }
+        } catch (wardError) {
+          console.error("Error fetching ward data:", wardError);
+          // Log thêm thông tin để debug
+          console.log("Debug info:", {
+            wardSlug,
+            provinceCode,
+            districtCode,
+          });
+        }
+      }
+
+      // Fallback nếu không tìm thấy tên từ API
+      if (!wardName && wardSlug) {
+        wardName = wardSlug.replace(/-/g, " ");
+      }
+
+      // Log kết quả để debug
+      console.log("Breadcrumb result:", {
+        city: cityName,
+        district: districtName,
+        ward: wardName,
+      });
+
+      return {
+        city: cityName,
+        district: districtName,
+        ward: wardName,
+      };
+    } catch (error) {
+      console.error("Error getting breadcrumb from slug:", error);
+      return {
+        city: citySlug?.replace(/-/g, " ") || "",
+        district: districtSlug?.replace(/-/g, " ") || "",
+        ward: wardSlug?.replace(/-/g, " ") || "",
+      };
     }
   },
 };

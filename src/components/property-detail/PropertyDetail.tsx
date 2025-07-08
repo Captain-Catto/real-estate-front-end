@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "../project-detail/Breadcrumb";
@@ -112,41 +112,52 @@ export function PropertyDetail({
         { label: property.title, href: "#", isActive: true },
       ];
 
+  // Generate SEO schema for structured data
+  useEffect(() => {
+    // Tạo schema data
+    const schemaData = {
+      "@context": "https://schema.org",
+      "@type": "RealEstateListing",
+      name: property.title,
+      description: property.description,
+      url: window.location.href,
+      image: property.images,
+      offers: {
+        "@type": "Offer",
+        price: property.price,
+        priceCurrency: property.currency || "VND",
+      },
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: breadcrumbData?.city || property.location,
+        addressRegion: breadcrumbData?.district,
+        streetAddress: property.fullLocation,
+      },
+      floorSize: {
+        "@type": "QuantitativeValue",
+        value: property.area?.replace(" m²", ""),
+        unitCode: "MTK",
+      },
+      numberOfRooms: property.bedrooms,
+      numberOfBathroomsTotal: property.bathrooms,
+    };
+
+    // Tạo script element
+    const script = document.createElement("script");
+    script.setAttribute("type", "application/ld+json");
+    script.textContent = JSON.stringify(schemaData);
+
+    // Thêm vào head
+    document.head.appendChild(script);
+
+    // Cleanup khi component unmount
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [property, breadcrumbData]);
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Structured Data for SEO */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "RealEstateListing",
-            name: property.title,
-            description: property.description,
-            url: typeof window !== "undefined" ? window.location.href : "",
-            image: property.images,
-            offers: {
-              "@type": "Offer",
-              price: property.price,
-              priceCurrency: property.currency || "VND",
-            },
-            address: {
-              "@type": "PostalAddress",
-              addressLocality: breadcrumbData?.city || property.location,
-              addressRegion: breadcrumbData?.district,
-              streetAddress: property.fullLocation,
-            },
-            floorSize: {
-              "@type": "QuantitativeValue",
-              value: property.area?.replace(" m²", ""),
-              unitCode: "MTK",
-            },
-            numberOfRooms: property.bedrooms,
-            numberOfBathroomsTotal: property.bathrooms,
-          }),
-        }}
-      />
-
       {/* Add padding bottom for mobile fixed contact box */}
       <div className="container mx-auto px-4 py-6 pb-24 lg:pb-6">
         {/* Breadcrumb */}

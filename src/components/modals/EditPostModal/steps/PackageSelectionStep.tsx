@@ -1,5 +1,6 @@
 import React from "react";
-import { Package } from "@/types/Post";
+import { Package } from "@/types/post";
+import { useEffect } from "react";
 import { useWallet } from "@/hooks/useWallet";
 
 interface PackageSelectionStepProps {
@@ -68,6 +69,16 @@ export default function PackageSelectionStep({
 }: PackageSelectionStepProps) {
   // Use wallet hook to get user balance
   const { balance, formattedBalance, loading } = useWallet();
+
+  // Auto-select free package if no package is selected
+  useEffect(() => {
+    if (!selectedPackage) {
+      const freePackage = packages.find((pkg) => pkg.id === "free");
+      if (freePackage) {
+        setSelectedPackage(freePackage);
+      }
+    }
+  }, [selectedPackage, setSelectedPackage]);
 
   // Check if selected package is affordable
   const isAffordable = selectedPackage

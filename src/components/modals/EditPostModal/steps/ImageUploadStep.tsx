@@ -1,16 +1,67 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 
 interface ImageUploadStepProps {
   selectedImages: File[];
   setSelectedImages: (images: File[]) => void;
+  existingImages?: string[]; // URLs of existing images from the post
+  updateFormData?: (updates: { images?: string[] }) => void; // Function to update parent's formData
 }
 
 export default function ImageUploadStep({
   selectedImages,
   setSelectedImages,
+  existingImages = [],
+  updateFormData,
 }: ImageUploadStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [existingImageUrls, setExistingImageUrls] =
+    useState<string[]>(existingImages);
+
+  const [failedImages, setFailedImages] = useState<{ [key: string]: boolean }>(
+    {}
+  );
+
+  // Handle image load error
+  const handleImageError = (imageUrl: string) => {
+    console.error(`Failed to load image: ${imageUrl}`);
+    setFailedImages((prev) => ({ ...prev, [imageUrl]: true }));
+  };
+
+  // Remove an existing image
+  const removeExistingImage = (index: number) => {
+    const newUrls = existingImageUrls.filter((_, i) => i !== index);
+    setExistingImageUrls(newUrls);
+
+    // Update parent's formData if the function is provided
+    if (updateFormData) {
+      updateFormData({ images: newUrls });
+    }
+  };
+
+  // Move an existing image in the order
+  const moveExistingImage = (fromIndex: number, toIndex: number) => {
+    const newUrls = [...existingImageUrls];
+    const [movedUrl] = newUrls.splice(fromIndex, 1);
+    newUrls.splice(toIndex, 0, movedUrl);
+    setExistingImageUrls(newUrls);
+
+    // Update parent's formData if the function is provided
+    if (updateFormData) {
+      updateFormData({ images: newUrls });
+    }
+  };
+
+  // Update existingImageUrls when props change
+  useEffect(() => {
+    console.log("Existing images from props:", existingImages);
+    if (Array.isArray(existingImages) && existingImages.length > 0) {
+      setExistingImageUrls(existingImages);
+      console.log("Set existing image URLs:", existingImages);
+    } else {
+      console.log("No existing images found or not an array");
+    }
+  }, [existingImages]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -80,12 +131,118 @@ export default function ImageUploadStep({
       </div>
 
       {/* Selected Images */}
-      {selectedImages.length > 0 && (
+      {(selectedImages.length > 0 || existingImageUrls.length > 0) && (
         <div>
           <h4 className="text-md font-medium text-gray-900 mb-4">
-            Hình ảnh đã chọn ({selectedImages.length}/20)
+            Hình ảnh đã chọn ({selectedImages.length + existingImageUrls.length}
+            /20)
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Display existing images first */}
+            {existingImageUrls.map((imageUrl, index) => (
+              <div key={`existing-${index}`} className="relative group">
+                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <Image
+                    src={imageUrl}
+                    alt={`Existing Image ${index + 1}`}
+                    className="object-cover w-full h-full"
+                    width={200}
+                    height={200}
+                    onError={() => handleImageError(imageUrl)}
+                  />
+                  {failedImages[imageUrl] && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                      <span className="text-sm text-gray-500">
+                        Không thể tải hình ảnh
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Controls */}
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                  <div className="flex gap-2">
+                    {index > 0 && (
+                      <button
+                        onClick={() => moveExistingImage(index, index - 1)}
+                        className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                        title="Di chuyển lên"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 19V5m-7 7l7-7 7 7"
+                          />
+                        </svg>
+                      </button>
+                    )}
+
+                    {index < existingImageUrls.length - 1 && (
+                      <button
+                        onClick={() => moveExistingImage(index, index + 1)}
+                        className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                        title="Di chuyển xuống"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 5v14m-7-7l7 7 7-7"
+                          />
+                        </svg>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => removeExistingImage(index)}
+                      className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                      title="Xóa hình"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main Image Badge */}
+                {index === 0 &&
+                  existingImageUrls.length > 0 &&
+                  selectedImages.length === 0 && (
+                    <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-medium px-2 py-1 rounded">
+                      Hình đại diện
+                    </div>
+                  )}
+              </div>
+            ))}
+
+            {/* Display newly selected images */}
             {selectedImages.map((image, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">

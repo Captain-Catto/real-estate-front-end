@@ -224,9 +224,3 @@ export default function RegisterPageClient() {
     </>
   );
 }
-          </form>
-        </div>
-      </main>
-    </>
-  );
-}

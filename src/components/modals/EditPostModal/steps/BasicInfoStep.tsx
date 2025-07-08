@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -112,13 +112,117 @@ export default function BasicInfoStep({
   //   ),
   // });
 
+  // Update the useEffect to match locations by name or code and handle selected values properly
   useEffect(() => {
-    setSelectedProvince(formData.location?.province || "");
-    setSelectedDistrict(formData.location?.district || "");
-    setSelectedWard(formData.location?.ward || "");
+    // Find province code by name if we have a name but not a code
+    if (formData.location?.province && provinces.length > 0) {
+      // Try to find the province by code first
+      const provinceByCode = provinces.find(
+        (p) => p.code === formData.location.province
+      );
+
+      // If not found by code, try to find by name
+      if (!provinceByCode) {
+        const provinceByName = provinces.find(
+          (p) =>
+            p.name === formData.location.province ||
+            p.name.toLowerCase() === formData.location.province?.toLowerCase()
+        );
+
+        if (provinceByName) {
+          setSelectedProvince(provinceByName.code);
+          console.log(
+            "Found province by name:",
+            provinceByName.name,
+            "with code:",
+            provinceByName.code
+          );
+        } else {
+          console.log(
+            "Province not found by name or code:",
+            formData.location.province
+          );
+        }
+      } else {
+        setSelectedProvince(provinceByCode.code);
+        console.log("Found province by code:", provinceByCode.name);
+      }
+    }
+
+    // Find district code by name if we have a name but not a code
+    if (formData.location?.district && districts.length > 0) {
+      // Try to find the district by code first
+      const districtByCode = districts.find(
+        (d) => d.code === formData.location.district
+      );
+
+      // If not found by code, try to find by name
+      if (!districtByCode) {
+        const districtByName = districts.find(
+          (d) =>
+            d.name === formData.location.district ||
+            d.name.toLowerCase() === formData.location.district?.toLowerCase()
+        );
+
+        if (districtByName) {
+          setSelectedDistrict(districtByName.code);
+          console.log(
+            "Found district by name:",
+            districtByName.name,
+            "with code:",
+            districtByName.code
+          );
+        } else {
+          console.log(
+            "District not found by name or code:",
+            formData.location.district
+          );
+        }
+      } else {
+        setSelectedDistrict(districtByCode.code);
+        console.log("Found district by code:", districtByCode.name);
+      }
+    }
+
+    // Find ward code by name if we have a name but not a code
+    if (formData.location?.ward && wards.length > 0) {
+      // Try to find the ward by code first
+      const wardByCode = wards.find((w) => w.code === formData.location.ward);
+
+      // If not found by code, try to find by name
+      if (!wardByCode) {
+        const wardByName = wards.find(
+          (w) =>
+            w.name === formData.location.ward ||
+            w.name.toLowerCase() === formData.location.ward?.toLowerCase()
+        );
+
+        if (wardByName) {
+          setSelectedWard(wardByName.code);
+          console.log(
+            "Found ward by name:",
+            wardByName.name,
+            "with code:",
+            wardByName.code
+          );
+        } else {
+          console.log(
+            "Ward not found by name or code:",
+            formData.location.ward
+          );
+        }
+      } else {
+        setSelectedWard(wardByCode.code);
+        console.log("Found ward by code:", wardByCode.name);
+      }
+    }
+
+    // Set street address
     setStreetAddress(formData.location?.street || "");
+
+    // Set project (if applicable)
     setSelectedProject(formData.location?.project || "");
-  }, [formData.location]);
+  }, [formData.location, provinces, districts, wards]);
 
   useEffect(() => {
     if (selectedProvince && selectedDistrict) {
@@ -136,10 +240,13 @@ export default function BasicInfoStep({
   }, [selectedProvince, selectedDistrict, provinces]);
 
   const handleProvinceChange = (provinceCode: string) => {
+    // Clear district and ward when province changes
     setSelectedProvince(provinceCode);
     setSelectedDistrict("");
     setSelectedWard("");
     setSelectedProject("");
+
+    // Update the form data with the new province code
     updateFormData({
       location: {
         ...formData.location,
@@ -149,6 +256,9 @@ export default function BasicInfoStep({
         project: "",
       },
     });
+
+    // Additional logging for debugging
+    console.log("Province changed to:", provinceCode);
   };
 
   const handleDistrictChange = (districtCode: string) => {
@@ -163,6 +273,9 @@ export default function BasicInfoStep({
         project: "",
       },
     });
+
+    // Additional logging for debugging
+    console.log("District changed to:", districtCode);
   };
 
   const handleWardChange = (wardCode: string) => {
@@ -173,6 +286,9 @@ export default function BasicInfoStep({
         ward: wardCode,
       },
     });
+
+    // Additional logging for debugging
+    console.log("Ward changed to:", wardCode);
   };
 
   const handleStreetChange = (street: string) => {
@@ -198,7 +314,7 @@ export default function BasicInfoStep({
     });
   };
 
-  const fetchLatLng = async () => {
+  const fetchLatLng = useCallback(async () => {
     setIsLoadingMap(true);
     try {
       if (!selectedProvince || !selectedDistrict || !selectedWard) return;
@@ -260,7 +376,16 @@ export default function BasicInfoStep({
     } finally {
       setIsLoadingMap(false);
     }
-  };
+  }, [
+    selectedProvince,
+    selectedDistrict,
+    selectedWard,
+    streetAddress,
+    provinces,
+    districts,
+    wards,
+    latLng,
+  ]);
 
   useEffect(() => {
     if (selectedProvince && selectedDistrict && selectedWard) {
@@ -268,7 +393,13 @@ export default function BasicInfoStep({
     } else {
       setLatLng(null);
     }
-  }, [selectedProvince, selectedDistrict, selectedWard, streetAddress]);
+  }, [
+    selectedProvince,
+    selectedDistrict,
+    selectedWard,
+    streetAddress,
+    fetchLatLng,
+  ]);
 
   return (
     <div className="space-y-8">
@@ -316,7 +447,7 @@ export default function BasicInfoStep({
               disabled={locationLoading}
             >
               <option value="">Chọn Tỉnh/Thành phố</option>
-              {provinces.map((province) => (
+              {(Array.isArray(provinces) ? provinces : []).map((province) => (
                 <option key={province.code} value={province.code}>
                   {province.name}
                 </option>
@@ -360,7 +491,7 @@ export default function BasicInfoStep({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="">Chọn Phường/Xã</option>
-              {wards.map((ward) => (
+              {(Array.isArray(wards) ? wards : []).map((ward) => (
                 <option key={ward.code} value={ward.code}>
                   {ward.name}
                 </option>

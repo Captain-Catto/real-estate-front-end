@@ -14,6 +14,9 @@ export default function AdminPostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  console.log("AdminPostDetailPage params:", params);
+  console.log("AdminPostDetailPage post:", post);
+
   useEffect(() => {
     if (params.id) {
       fetchPost(params.id as string);
@@ -50,12 +53,19 @@ export default function AdminPostDetailPage() {
 
   const handleRejectPost = async (postId: string, reason: string) => {
     try {
+      if (!postId || postId.trim() === "") {
+        throw new Error("ID tin đăng không hợp lệ");
+      }
+
       await adminPostsService.rejectPost(postId, reason);
       await fetchPost(postId);
       alert("Đã từ chối tin đăng!");
     } catch (err) {
       console.error("Error rejecting post:", err);
-      alert("Có lỗi xảy ra khi từ chối tin đăng!");
+      alert(
+        "Có lỗi xảy ra khi từ chối tin đăng: " +
+          (err instanceof Error ? err.message : "Lỗi không xác định")
+      );
     }
   };
 
