@@ -1,3 +1,5 @@
+import { fetchWithAuth } from "./authService";
+
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -10,6 +12,36 @@ export interface Location {
   codename: string;
   division_type: string;
   phone_code: string;
+}
+
+// Admin types for CRUD operations
+export interface AdminProvince {
+  _id: string;
+  name: string;
+  code: number;
+  codename: string;
+  division_type: string;
+  phone_code?: number;
+  districts: AdminDistrict[];
+}
+
+export interface AdminDistrict {
+  _id: string;
+  name: string;
+  code: number;
+  codename: string;
+  division_type: string;
+  short_codename: string;
+  wards: AdminWard[];
+}
+
+export interface AdminWard {
+  _id: string;
+  name: string;
+  code: number;
+  codename: string;
+  division_type: string;
+  short_codename: string;
 }
 
 type LocationData = Location[];
@@ -476,5 +508,233 @@ export const locationService = {
         ward: wardSlug?.replace(/-/g, " ") || "",
       };
     }
+  },
+
+  // ===== ADMIN CRUD OPERATIONS =====
+  // These methods require admin authentication
+
+  admin: {
+    // Lấy tất cả provinces với districts và wards (for admin)
+    getProvinces: async (): Promise<{
+      success: boolean;
+      data: AdminProvince[];
+    }> => {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/locations`);
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching provinces:", error);
+        return { success: false, data: [] };
+      }
+    },
+
+    // Thêm province mới
+    addProvince: async (data: {
+      name: string;
+      code?: number;
+      codename: string;
+      division_type?: string;
+      phone_code?: number;
+    }): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/locations`, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        return await response.json();
+      } catch (error) {
+        console.error("Error adding province:", error);
+        return { success: false };
+      }
+    },
+
+    // Cập nhật province
+    updateProvince: async (
+      id: string,
+      data: {
+        name: string;
+        code?: number;
+        codename: string;
+        division_type?: string;
+        phone_code?: number;
+      }
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(data),
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error updating province:", error);
+        return { success: false };
+      }
+    },
+
+    // Xóa province
+    deleteProvince: async (id: string): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error deleting province:", error);
+        return { success: false };
+      }
+    },
+
+    // Thêm district
+    addDistrict: async (
+      provinceId: string,
+      data: {
+        name: string;
+        code?: number;
+        codename: string;
+        division_type?: string;
+        short_codename?: string;
+      }
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts`,
+          {
+            method: "POST",
+            body: JSON.stringify(data),
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error adding district:", error);
+        return { success: false };
+      }
+    },
+
+    // Cập nhật district
+    updateDistrict: async (
+      provinceId: string,
+      districtId: string,
+      data: {
+        name: string;
+        code?: number;
+        codename: string;
+        division_type?: string;
+        short_codename?: string;
+      }
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts/${districtId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(data),
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error updating district:", error);
+        return { success: false };
+      }
+    },
+
+    // Xóa district
+    deleteDistrict: async (
+      provinceId: string,
+      districtId: string
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts/${districtId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error deleting district:", error);
+        return { success: false };
+      }
+    },
+
+    // Thêm ward
+    addWard: async (
+      provinceId: string,
+      districtId: string,
+      data: {
+        name: string;
+        code?: number;
+        codename: string;
+        division_type?: string;
+        short_codename?: string;
+      }
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts/${districtId}/wards`,
+          {
+            method: "POST",
+            body: JSON.stringify(data),
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error adding ward:", error);
+        return { success: false };
+      }
+    },
+
+    // Cập nhật ward
+    updateWard: async (
+      provinceId: string,
+      districtId: string,
+      wardId: string,
+      data: {
+        name: string;
+        code?: number;
+        codename: string;
+        division_type?: string;
+        short_codename?: string;
+      }
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts/${districtId}/wards/${wardId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(data),
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error updating ward:", error);
+        return { success: false };
+      }
+    },
+
+    // Xóa ward
+    deleteWard: async (
+      provinceId: string,
+      districtId: string,
+      wardId: string
+    ): Promise<{ success: boolean }> => {
+      try {
+        const response = await fetchWithAuth(
+          `${API_BASE_URL}/locations/${provinceId}/districts/${districtId}/wards/${wardId}`,
+          {
+            method: "DELETE",
+          }
+        );
+        return await response.json();
+      } catch (error) {
+        console.error("Error deleting ward:", error);
+        return { success: false };
+      }
+    },
   },
 };

@@ -19,6 +19,7 @@ export interface Post {
     district: string;
     ward: string;
     street?: string;
+    project?: string;
   };
   category: string;
   tags?: string[];
@@ -74,6 +75,7 @@ export interface CreatePostData {
     district: string;
     ward: string;
     street: string;
+    project?: string;
   };
 
   // Property Details

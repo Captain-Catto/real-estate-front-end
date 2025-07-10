@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
-import type { LatLngExpression } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import dynamic from "next/dynamic";
+import { ProjectService } from "@/services/projectService";
 
 interface BasicInfoStepProps {
   formData: EditPostForm & {
@@ -24,50 +22,16 @@ interface BasicInfoStepProps {
 }
 
 interface Project {
-  id: number;
+  _id: string;
   name: string;
-  district: string;
-  city: string;
+  address: string;
+  fullLocation: string;
+  location?: {
+    provinceCode: string;
+    districtCode: string;
+    wardCode?: string;
+  };
 }
-
-const mockProjects: Project[] = [
-  {
-    id: 1,
-    name: "Vinhomes Grand Park",
-    district: "quan_9",
-    city: "thanh_pho_ho_chi_minh",
-  },
-  {
-    id: 2,
-    name: "Vinhomes Central Park",
-    district: "quan_binh_thanh",
-    city: "thanh_pho_ho_chi_minh",
-  },
-  {
-    id: 3,
-    name: "Vinhomes Smart City",
-    district: "quan_nam_tu_liem",
-    city: "thanh_pho_ha_noi",
-  },
-  {
-    id: 4,
-    name: "Eco Green Saigon",
-    district: "quan_7",
-    city: "thanh_pho_ho_chi_minh",
-  },
-  {
-    id: 5,
-    name: "Masteri Thảo Điền",
-    district: "quan_2",
-    city: "thanh_pho_ho_chi_minh",
-  },
-  {
-    id: 6,
-    name: "Times City",
-    district: "quan_hai_ba_trung",
-    city: "thanh_pho_ha_noi",
-  },
-];
 
 export default function BasicInfoStep({
   formData,
@@ -92,8 +56,8 @@ export default function BasicInfoStep({
   const [selectedProject, setSelectedProject] = useState(
     formData.location?.project || ""
   );
-  const [showProjects, setShowProjects] = useState(false);
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   const [latLng, setLatLng] = useState<{
     osmData?: {
@@ -103,7 +67,6 @@ export default function BasicInfoStep({
       display_name?: string;
     };
   } | null>(null);
-  const [isLoadingMap, setIsLoadingMap] = useState(false);
 
   // const MapView = dynamic(() => import("@/components/common/MapView"), {
   //   ssr: false, // Quan trọng: không render ở server
@@ -226,18 +189,50 @@ export default function BasicInfoStep({
 
   useEffect(() => {
     if (selectedProvince && selectedDistrict) {
-      setAvailableProjects(
-        mockProjects.filter(
-          (p) =>
-            p.district === selectedDistrict &&
-            p.city ===
-              provinces.find((prov) => prov.code === selectedProvince)?.codename
-        )
-      );
+      // Load projects from backend với location codes
+      const loadProjects = async () => {
+        console.log("🔍 Loading projects for location codes:", {
+          selectedProvince,
+          selectedDistrict,
+          selectedWard, // Now using ward for project filtering if available
+        });
+
+        setProjectsLoading(true);
+        try {
+          // Call API with location codes instead of names
+          // Now include wardCode for filtering if available
+          const projects = await ProjectService.getProjectsForSelection(
+            selectedProvince,
+            selectedDistrict,
+            selectedWard || undefined // Only pass wardCode if one is selected
+          );
+
+          console.log(
+            `✅ Loaded ${projects.length} projects:`,
+            projects.map((p) => p.name)
+          );
+
+          setAvailableProjects(projects);
+        } catch (error) {
+          console.error("❌ Error loading projects:", error);
+          setAvailableProjects([]);
+        } finally {
+          setProjectsLoading(false);
+        }
+      };
+
+      loadProjects();
     } else {
+      // Clear projects if no district selected
       setAvailableProjects([]);
     }
-  }, [selectedProvince, selectedDistrict, provinces]);
+  }, [
+    selectedProvince,
+    selectedDistrict,
+    selectedWard, // Added selectedWard to dependencies to reload projects when ward changes
+    provinces,
+    districts,
+  ]);
 
   const handleProvinceChange = (provinceCode: string) => {
     // Clear district and ward when province changes
@@ -289,6 +284,7 @@ export default function BasicInfoStep({
 
     // Additional logging for debugging
     console.log("Ward changed to:", wardCode);
+    // The project list will be automatically updated due to the useEffect dependency on selectedWard
   };
 
   const handleStreetChange = (street: string) => {
@@ -304,18 +300,17 @@ export default function BasicInfoStep({
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId);
     const project = projectId
-      ? availableProjects.find((p) => p.id.toString() === projectId)
+      ? availableProjects.find((p) => p._id === projectId)
       : null;
     updateFormData({
       location: {
         ...formData.location,
-        project: project?.name || "",
+        project: project?._id || "",
       },
     });
   };
 
   const fetchLatLng = useCallback(async () => {
-    setIsLoadingMap(true);
     try {
       if (!selectedProvince || !selectedDistrict || !selectedWard) return;
 
@@ -373,8 +368,6 @@ export default function BasicInfoStep({
     } catch (error) {
       console.error("Error fetching lat/lng:", error);
       setLatLng(null);
-    } finally {
-      setIsLoadingMap(false);
     }
   }, [
     selectedProvince,
@@ -514,101 +507,66 @@ export default function BasicInfoStep({
               placeholder="Nhập tên đường, số nhà (không bắt buộc)"
             />
           </div>
-          {availableProjects.length > 0 && (
+          {/* Project Selection - Hiển thị khi có district */}
+          {selectedDistrict && (
             <div>
               <label
                 htmlFor="project"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Dự án
+                Dự án (Tùy chọn)
               </label>
-              <div className="relative">
-                <button
-                  id="project"
-                  type="button"
-                  onClick={() => setShowProjects(!showProjects)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left bg-white flex items-center justify-between"
-                >
-                  <span
-                    className={
-                      selectedProject ? "text-gray-900" : "text-gray-500"
-                    }
-                  >
-                    {selectedProject
-                      ? availableProjects.find(
-                          (p) => p.id.toString() === selectedProject
-                        )?.name
-                      : "Chọn dự án (không bắt buộc)"}
-                  </span>
-                  <svg
-                    className={`w-5 h-5 text-gray-400 transition-transform ${
-                      showProjects ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
-                {showProjects && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    <div
-                      onClick={() => {
-                        handleProjectChange("");
-                        setShowProjects(false);
-                      }}
-                      className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-gray-500"
-                    >
-                      Không chọn dự án
-                    </div>
-                    {availableProjects.map((project) => (
-                      <div
-                        key={project.id}
-                        onClick={() => {
-                          handleProjectChange(project.id.toString());
-                          setShowProjects(false);
-                        }}
-                        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {project.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {
-                              districts.find(
-                                (d) => d.codename === project.district
-                              )?.name
-                            }
-                          </div>
-                        </div>
-                        {selectedProject === project.id.toString() && (
-                          <svg
-                            className="w-5 h-5 text-blue-600"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                    ))}
+
+              {projectsLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-10 bg-gray-200 rounded-md"></div>
+                  <div className="mt-2 text-sm text-gray-500">
+                    Đang tìm dự án trong khu vực...
                   </div>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Gợi ý {availableProjects.length} dự án trong khu vực này
-              </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <select
+                    value={selectedProject}
+                    onChange={(e) => handleProjectChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">
+                      {availableProjects.length > 0
+                        ? `Chọn dự án (${availableProjects.length} dự án có sẵn)`
+                        : "Không thuộc dự án nào"}
+                    </option>
+                    {availableProjects.map((project) => (
+                      <option key={project._id} value={project._id}>
+                        {project.name} - {project.address}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Thông báo nếu không có dự án */}
+                  {!projectsLoading &&
+                    availableProjects.length === 0 &&
+                    selectedDistrict && (
+                      <div className="text-sm text-gray-500 italic bg-gray-50 p-3 rounded border">
+                        Không có dự án bất động sản nào trong khu vực này.
+                        <br />
+                        <span className="text-xs">
+                          Tin đăng sẽ được đăng dưới dạng nhà/đất riêng lẻ.
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Hướng dẫn */}
+                  {!projectsLoading &&
+                    availableProjects.length > 0 &&
+                    !selectedProject && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        Chọn dự án nếu bất động sản của bạn nằm trong một dự án
+                        cụ thể
+                      </div>
+                    )}
+                </div>
+              )}
             </div>
           )}
           <div>
@@ -625,9 +583,8 @@ export default function BasicInfoStep({
               {[
                 streetAddress,
                 selectedProject
-                  ? availableProjects.find(
-                      (p) => p.id.toString() === selectedProject
-                    )?.name
+                  ? availableProjects.find((p) => p._id === selectedProject)
+                      ?.name
                   : "",
                 wards.find((w) => String(w.code) === String(selectedWard))
                   ?.name,

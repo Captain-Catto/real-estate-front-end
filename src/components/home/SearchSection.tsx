@@ -43,21 +43,58 @@ interface AreaRange {
   maxValue: number;
 }
 
-export default function SearchSection() {
+interface SearchSectionProps {
+  initialSearchType?: "buy" | "rent" | "project";
+  initialCity?: Location | null;
+  initialDistricts?: Location[];
+  initialWard?: Location | null;
+  initialCategory?: string;
+  initialPrice?: string;
+  initialArea?: string;
+  initialStatus?: string;
+}
+
+export default function SearchSection({
+  initialSearchType = "buy",
+  initialCity = null,
+  initialDistricts = [],
+  initialWard = null,
+  initialCategory = "",
+  initialPrice = "",
+  initialArea = "",
+  initialStatus = "",
+}: SearchSectionProps) {
   const router = useRouter();
 
   // States
   const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
-    "buy"
+    initialSearchType
   );
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(
+    initialCity ? initialCity.code : null
+  );
   const [selectedDistricts, setSelectedDistricts] = useState<
     SelectedDistrict[]
-  >([]);
-  const [selectedPropertyType, setSelectedPropertyType] = useState("");
-  const [selectedPrice, setSelectedPrice] = useState("");
-  const [selectedArea, setSelectedArea] = useState("");
-  const [selectedProjectStatus, setSelectedProjectStatus] = useState("");
+  >(
+    Array.isArray(initialDistricts) && initialDistricts.length > 0
+      ? initialDistricts.map((district) => ({
+          code: district.code || "",
+          name: district.name || "",
+          codename: district.codename || district.code || "",
+        }))
+      : []
+  );
+  const [selectedPropertyType, setSelectedPropertyType] = useState(
+    initialCategory || ""
+  );
+  const [selectedPrice, setSelectedPrice] = useState(initialPrice || "");
+  const [selectedArea, setSelectedArea] = useState(initialArea || "");
+  const [selectedProjectStatus, setSelectedProjectStatus] = useState(
+    initialStatus || ""
+  );
+  const [selectedWard, setSelectedWard] = useState<string | null>(
+    initialWard ? initialWard.code : null
+  );
   const [projectStatuses] = useState([
     { id: "sap-mo-ban", name: "Sắp mở bán" },
     { id: "dang-mo-ban", name: "Đang mở bán" },
@@ -68,7 +105,6 @@ export default function SearchSection() {
   const [provinces, setProvinces] = useState<Location[]>([]);
   const [cityDistricts, setCityDistricts] = useState<Location[]>([]);
   const [wardsList, setWardsList] = useState<Location[]>([]);
-  const [selectedWard, setSelectedWard] = useState<string | null>(null);
 
   // UI states
   const [showCityDropdown, setShowCityDropdown] = useState(false);
@@ -123,29 +159,61 @@ export default function SearchSection() {
     fetchProvinces();
   }, []);
 
-  // Component is now self-contained, no need for prop update effects
+  // Effects to handle initial values from props
+  useEffect(() => {
+    if (initialSearchType && initialSearchType !== searchType) {
+      setSearchType(initialSearchType);
+    }
+  }, [initialSearchType]);
+
+  useEffect(() => {
+    if (initialCity && initialCity.code !== selectedCity) {
+      setSelectedCity(initialCity.code);
+    }
+  }, [initialCity]);
+
+  useEffect(() => {
+    if (initialDistricts && initialDistricts.length > 0) {
+      const newDistricts = initialDistricts.map((district) => ({
+        code: district.code || "",
+        name: district.name || "",
+        codename: district.codename || "",
+      }));
+      setSelectedDistricts(newDistricts);
+    }
+  }, [initialDistricts]);
+
+  useEffect(() => {
+    if (initialWard && initialWard.code !== selectedWard) {
+      setSelectedWard(initialWard.code);
+    }
+  }, [initialWard]);
+
+  useEffect(() => {
+    if (initialCategory && initialCategory !== selectedPropertyType) {
+      setSelectedPropertyType(initialCategory);
+    }
+  }, [initialCategory]);
+
+  useEffect(() => {
+    if (initialPrice && initialPrice !== selectedPrice) {
+      setSelectedPrice(initialPrice);
+    }
+  }, [initialPrice]);
+
+  useEffect(() => {
+    if (initialArea && initialArea !== selectedArea) {
+      setSelectedArea(initialArea);
+    }
+  }, [initialArea]);
+
+  useEffect(() => {
+    if (initialStatus && initialStatus !== selectedProjectStatus) {
+      setSelectedProjectStatus(initialStatus);
+    }
+  }, [initialStatus]);
 
   // Fetch districts when city is selected
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      if (!selectedCity) {
-        setCityDistricts([]);
-        return;
-      }
-
-      try {
-        const data = await locationService.getDistricts(selectedCity);
-        setCityDistricts(data);
-      } catch (error) {
-        console.error("Error fetching districts:", error);
-        setCityDistricts([]);
-      }
-    };
-
-    fetchDistricts();
-  }, [selectedCity]);
-
-  // Tải danh sách quận/huyện khi chọn tỉnh/thành
   useEffect(() => {
     const fetchDistricts = async () => {
       if (!selectedCity) {
@@ -179,7 +247,11 @@ export default function SearchSection() {
         const districtCode = selectedDistricts[0].code;
         const data = await locationService.getWards(selectedCity, districtCode);
         setWardsList(data);
-        setSelectedWard(null); // Reset selected ward when district changes
+
+        // Chỉ reset ward nếu không có initial ward hoặc ward hiện tại không thuộc district mới
+        if (!initialWard) {
+          setSelectedWard(null);
+        }
       } catch (error) {
         console.error("Error fetching wards:", error);
         setWardsList([]);
@@ -187,7 +259,17 @@ export default function SearchSection() {
     };
 
     fetchWards();
-  }, [selectedDistricts, selectedCity]);
+  }, [selectedDistricts, selectedCity, initialWard]);
+
+  // Effect to set initial ward after wardsList is loaded
+  useEffect(() => {
+    if (initialWard && wardsList.length > 0 && !selectedWard) {
+      const wardExists = wardsList.find((w) => w.code === initialWard.code);
+      if (wardExists) {
+        setSelectedWard(initialWard.code);
+      }
+    }
+  }, [wardsList, initialWard, selectedWard]);
 
   // Tải các tùy chọn tìm kiếm dựa trên loại tìm kiếm
   useEffect(() => {
@@ -375,19 +457,6 @@ export default function SearchSection() {
     };
   }, []);
 
-  // Filtered data
-  const filteredDistricts = districtSearch
-    ? cityDistricts.filter((district) =>
-        district.name.toLowerCase().includes(districtSearch.toLowerCase())
-      )
-    : cityDistricts;
-
-  const filteredWards = wardSearch
-    ? wardsList.filter((ward) =>
-        ward.name.toLowerCase().includes(wardSearch.toLowerCase())
-      )
-    : wardsList;
-
   // Handlers
   const handleTabChange = (index: number) => {
     const types: ["buy", "rent", "project"] = ["buy", "rent", "project"];
@@ -401,14 +470,18 @@ export default function SearchSection() {
     setSelectedProjectStatus("");
   };
 
+  // Handler for city selection
   const handleCitySelect = (province: Location) => {
     setSelectedCity(province.code);
     setSelectedDistricts([]);
     setSelectedWard(null);
     setShowCityDropdown(false);
     setCitySearch("");
+    setDistrictSearch("");
+    setWardSearch("");
   };
 
+  // Handler for district selection (single select)
   const handleDistrictSelect = (district: Location) => {
     setSelectedDistricts([
       {
@@ -422,6 +495,7 @@ export default function SearchSection() {
     setDistrictSearch("");
   };
 
+  // Handler for ward selection
   const handleWardSelect = (ward: Location) => {
     setSelectedWard(ward.code);
     setShowWardDropdown(false);
@@ -498,6 +572,25 @@ export default function SearchSection() {
     // Chuyển hướng đến trang kết quả tìm kiếm
     router.push(searchUrl);
   };
+
+  // Filtered data for search functionality
+  const filteredProvinces = citySearch
+    ? provinces.filter((province) =>
+        province.name.toLowerCase().includes(citySearch.toLowerCase())
+      )
+    : provinces;
+
+  const filteredDistricts = districtSearch
+    ? cityDistricts.filter((district) =>
+        district.name.toLowerCase().includes(districtSearch.toLowerCase())
+      )
+    : cityDistricts;
+
+  const filteredWards = wardSearch
+    ? wardsList.filter((ward) =>
+        ward.name.toLowerCase().includes(wardSearch.toLowerCase())
+      )
+    : wardsList;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 bg-white rounded-2xl shadow-lg">
@@ -585,21 +678,15 @@ export default function SearchSection() {
                       />
                     </div>
                     <div className="max-h-60 overflow-y-auto">
-                      {provinces
-                        .filter((province) =>
-                          province.name
-                            .toLowerCase()
-                            .includes(citySearch.toLowerCase())
-                        )
-                        .map((province) => (
-                          <button
-                            key={province.code}
-                            onClick={() => handleCitySelect(province)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                          >
-                            {province.name}
-                          </button>
-                        ))}
+                      {filteredProvinces.map((province) => (
+                        <button
+                          key={province.code}
+                          onClick={() => handleCitySelect(province)}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                        >
+                          {province.name}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}

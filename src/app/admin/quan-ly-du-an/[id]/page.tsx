@@ -5,159 +5,10 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import QuillEditor from "@/components/admin/QuillEditor";
 import { PencilIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useParams } from "next/navigation";
-import Image, { StaticImageData } from "next/image";
-import imgTest from "@/assets/images/card-img.jpg";
-
-interface Developer {
-  name: string;
-  logo: string;
-  phone: string;
-  email: string;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  slug: string;
-  address: string;
-  fullLocation: string;
-  latitude: number;
-  longitude: number;
-  developer: Developer;
-  images: (string | StaticImageData)[];
-  videos?: string[];
-  totalUnits: number;
-  area: string;
-  numberOfTowers: number;
-  density: string;
-  status: "Đang cập nhật" | "Sắp mở bán" | "Đã bàn giao" | "Đang bán";
-  priceRange: string;
-  description: string;
-  facilities: string[];
-  specifications: {
-    [key: string]: string;
-  };
-  locationInsights: {
-    schools: Array<{ name: string; distance: string }>;
-    hospitals: Array<{ name: string; distance: string }>;
-    supermarkets: Array<{ name: string; distance: string }>;
-    parks: Array<{ name: string; distance: string }>;
-    restaurants: Array<{ name: string; distance: string }>;
-  };
-  faqs: Array<{
-    question: string;
-    answer: string;
-  }>;
-}
-
-// Mock service
-const ProjectService = {
-  getProjectById: async (id: string): Promise<Project> => {
-    await new Promise((r) => setTimeout(r, 300));
-    return {
-      id,
-      name: "Vinhomes Central Park",
-      slug: "vinhomes-central-park",
-      address: "208 Nguyễn Hữu Cảnh",
-      fullLocation: "Bình Thạnh, TP.HCM",
-      latitude: 10.7879,
-      longitude: 106.7197,
-      developer: {
-        name: "Tập đoàn Vingroup",
-        logo: "/images/vingroup-logo.jpg",
-        phone: "0283.567.8900",
-        email: "info@vingroup.net",
-      },
-      images: [imgTest, imgTest, imgTest, imgTest, imgTest],
-      videos: ["/videos/vinhomes-cp-tour.mp4"],
-      totalUnits: 2800,
-      area: "25.5 ha",
-      numberOfTowers: 12,
-      density: "30%",
-      status: "Đã bàn giao",
-      priceRange: "4.5 - 12 tỷ",
-      description: `
-        <h3>Vinhomes Central Park - Khu đô thị phức hợp cao cấp</h3>
-        <p>Vinhomes Central Park là khu đô thị phức hợp cao cấp tại trung tâm TP.HCM.</p>
-        <p>Dự án có công viên trung tâm 14ha và đầy đủ tiện ích như Vincom, trường học, bệnh viện...</p>
-        <p>Với vị trí đắc địa và hệ thống tiện ích hoàn hảo, đây là nơi lý tưởng để an cư lập nghiệp.</p>
-      `,
-      facilities: [
-        "Công viên trung tâm 14ha",
-        "Vincom Center",
-        "Trường quốc tế",
-        "Bệnh viện Vinmec",
-        "Hồ bơi Olympic",
-        "Gym & Spa",
-        "Sân tennis",
-        "Khu thể thao",
-        "Khu vui chơi trẻ em",
-        "Phòng họp cao cấp",
-        "An ninh 24/7",
-        "Dịch vụ concierge",
-      ],
-      specifications: {
-        "Tổng diện tích": "25.5 ha",
-        "Số tòa nhà": "12 tòa",
-        "Tổng số căn": "2800 căn",
-        "Mật độ xây dựng": "30%",
-        "Chiều cao": "45 tầng",
-        "Năm khởi công": "2015",
-        "Năm hoàn thiện": "2018",
-        "Chủ đầu tư": "Vingroup",
-        "Đơn vị thi công": "Coteccons",
-        "Đơn vị thiết kế": "ARUP",
-        "Hướng chính": "Nam",
-        "Loại hình": "Căn hộ chung cư cao cấp",
-      },
-      locationInsights: {
-        schools: [
-          { name: "Vinschool Central Park", distance: "100m" },
-          { name: "Trường ĐH Kinh tế", distance: "2km" },
-          { name: "Trường THPT Lê Quý Đôn", distance: "1.5km" },
-        ],
-        hospitals: [
-          { name: "Vinmec Central Park", distance: "200m" },
-          { name: "Bệnh viện Chợ Rẫy", distance: "3km" },
-        ],
-        supermarkets: [
-          { name: "Vincom Center", distance: "100m" },
-          { name: "Saigon Centre", distance: "2km" },
-          { name: "BigC An Lạc", distance: "4km" },
-        ],
-        parks: [
-          { name: "Công viên trung tâm", distance: "0m" },
-          { name: "Công viên 23/9", distance: "3km" },
-        ],
-        restaurants: [
-          { name: "The Observatory", distance: "500m" },
-          { name: "Bitexco Sky Bar", distance: "3km" },
-          { name: "McDonald's", distance: "1km" },
-        ],
-      },
-      faqs: [
-        {
-          question: "Có gần metro không?",
-          answer: "Có, dự án cách ga metro Bến Thành chỉ 10 phút đi xe.",
-        },
-        {
-          question: "Tiện ích nội khu như thế nào?",
-          answer:
-            "Đầy đủ tiện ích với công viên 14ha, Vincom, trường học, bệnh viện ngay trong khu.",
-        },
-        {
-          question: "Có chỗ đậu xe không?",
-          answer:
-            "Có hầm đỗ xe rộng rãi với đủ chỗ cho tất cả cư dân và khách thăm.",
-        },
-      ],
-    };
-  },
-  updateProject: async (id: string, data: any) => {
-    await new Promise((r) => setTimeout(r, 300));
-    return { success: true };
-  },
-};
+import Image from "next/image";
+import { ProjectService } from "@/services/projectService";
+import { UploadService } from "@/services/uploadService";
+import { Project, Developer } from "@/types/project";
 
 export default function AdminProjectEditPage() {
   const params = useParams();
@@ -166,14 +17,17 @@ export default function AdminProjectEditPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
 
   useEffect(() => {
-    ProjectService.getProjectById(id).then((data) => {
-      setProject(data);
-      setLoading(false);
-    });
+    if (id) {
+      ProjectService.getProjectById(id).then((data) => {
+        setProject(data);
+        setLoading(false);
+      });
+    }
   }, [id]);
 
   const handleChange = (
@@ -182,57 +36,78 @@ export default function AdminProjectEditPage() {
     >
   ) => {
     const { name, value, type } = e.target;
-    setProject((prev) => ({
-      ...prev!,
-      [name]: type === "number" ? (value ? parseFloat(value) : 0) : value,
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [name]: type === "number" ? (value ? parseFloat(value) : 0) : value,
+      };
+    });
   };
 
   const handleDeveloperChange = (field: keyof Developer, value: string) => {
-    setProject((prev) => ({
-      ...prev!,
-      developer: {
-        ...prev!.developer,
-        [field]: value,
-      },
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        developer: {
+          ...(prev.developer || {}),
+          [field]: value,
+        },
+      };
+    });
   };
 
   const handleDescriptionChange = (value: string) => {
-    setProject((prev) => ({ ...prev!, description: value }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return { ...prev, description: value };
+    });
   };
 
   const handleSpecificationChange = (key: string, value: string) => {
-    setProject((prev) => ({
-      ...prev!,
-      specifications: {
-        ...prev!.specifications,
-        [key]: value,
-      },
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        specifications: {
+          ...(prev.specifications || {}),
+          [key]: value,
+        },
+      };
+    });
   };
 
   const handleFacilityChange = (index: number, value: string) => {
-    setProject((prev) => ({
-      ...prev!,
-      facilities: prev!.facilities.map((facility, i) =>
-        i === index ? value : facility
-      ),
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.facilities) return prev;
+      return {
+        ...prev,
+        facilities: prev.facilities.map((facility, i) =>
+          i === index ? value : facility
+        ),
+      };
+    });
   };
 
   const addFacility = () => {
-    setProject((prev) => ({
-      ...prev!,
-      facilities: [...prev!.facilities, ""],
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        facilities: [...(prev.facilities || []), ""],
+      };
+    });
   };
 
   const removeFacility = (index: number) => {
-    setProject((prev) => ({
-      ...prev!,
-      facilities: prev!.facilities.filter((_, i) => i !== index),
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.facilities) return prev;
+      return {
+        ...prev,
+        facilities: prev.facilities.filter((_, i) => i !== index),
+      };
+    });
   };
 
   const handleLocationInsightChange = (
@@ -241,43 +116,54 @@ export default function AdminProjectEditPage() {
     field: "name" | "distance",
     value: string
   ) => {
-    setProject((prev) => ({
-      ...prev!,
-      locationInsights: {
-        ...prev!.locationInsights,
-        [category]: prev!.locationInsights[category].map((item, i) =>
-          i === index ? { ...item, [field]: value } : item
-        ),
-      },
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.locationInsights || !prev.locationInsights[category])
+        return prev;
+      return {
+        ...prev,
+        locationInsights: {
+          ...(prev.locationInsights || {}),
+          [category]: prev.locationInsights[category].map((item, i) =>
+            i === index ? { ...item, [field]: value } : item
+          ),
+        },
+      };
+    });
   };
 
   const addLocationInsight = (category: keyof Project["locationInsights"]) => {
-    setProject((prev) => ({
-      ...prev!,
-      locationInsights: {
-        ...prev!.locationInsights,
-        [category]: [
-          ...prev!.locationInsights[category],
-          { name: "", distance: "" },
-        ],
-      },
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        locationInsights: {
+          ...(prev.locationInsights || {}),
+          [category]: [
+            ...(prev.locationInsights?.[category] || []),
+            { name: "", distance: "" },
+          ],
+        },
+      };
+    });
   };
 
   const removeLocationInsight = (
     category: keyof Project["locationInsights"],
     index: number
   ) => {
-    setProject((prev) => ({
-      ...prev!,
-      locationInsights: {
-        ...prev!.locationInsights,
-        [category]: prev!.locationInsights[category].filter(
-          (_, i) => i !== index
-        ),
-      },
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.locationInsights || !prev.locationInsights[category])
+        return prev;
+      return {
+        ...prev,
+        locationInsights: {
+          ...(prev.locationInsights || {}),
+          [category]: prev.locationInsights[category].filter(
+            (_, i) => i !== index
+          ),
+        },
+      };
+    });
   };
 
   const handleFaqChange = (
@@ -285,35 +171,163 @@ export default function AdminProjectEditPage() {
     field: "question" | "answer",
     value: string
   ) => {
-    setProject((prev) => ({
-      ...prev!,
-      faqs: prev!.faqs.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.faqs) return prev;
+      return {
+        ...prev,
+        faqs: prev.faqs.map((item, i) =>
+          i === index ? { ...item, [field]: value } : item
+        ),
+      };
+    });
   };
 
   const addFaq = () => {
-    setProject((prev) => ({
-      ...prev!,
-      faqs: [...prev!.faqs, { question: "", answer: "" }],
-    }));
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        faqs: [...(prev.faqs || []), { question: "", answer: "" }],
+      };
+    });
   };
 
   const removeFaq = (index: number) => {
-    setProject((prev) => ({
-      ...prev!,
-      faqs: prev!.faqs.filter((_, i) => i !== index),
-    }));
+    setProject((prev) => {
+      if (!prev || !prev.faqs) return prev;
+      return {
+        ...prev,
+        faqs: prev.faqs.filter((_, i) => i !== index),
+      };
+    });
+  };
+
+  // Handle specifications
+  const addSpecification = () => {
+    const timestamp = Date.now();
+    const newKey = `Thông số ${timestamp}`;
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        specifications: {
+          ...(prev.specifications || {}),
+          [newKey]: "",
+        },
+      };
+    });
+  };
+
+  const removeSpecification = (key: string) => {
+    setProject((prev) => {
+      if (!prev) return prev;
+      const newSpecs = { ...(prev.specifications || {}) };
+      delete newSpecs[key];
+      return {
+        ...prev,
+        specifications: newSpecs,
+      };
+    });
+  };
+
+  const handleSpecificationKeyChange = (oldKey: string, newKey: string) => {
+    if (newKey.trim() === oldKey) return;
+
+    setProject((prev) => {
+      if (!prev) return prev;
+      const specs = { ...(prev.specifications || {}) };
+      const value = specs[oldKey] || "";
+      delete specs[oldKey];
+      specs[newKey.trim()] = value;
+      return {
+        ...prev,
+        specifications: specs,
+      };
+    });
+  };
+
+  // Handle images and videos
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploadResults = await UploadService.uploadImages(files);
+      const successfulUploads = uploadResults
+        .filter((result) => result.success)
+        .map((result) => result.data?.url)
+        .filter(Boolean) as string[];
+
+      if (successfulUploads.length > 0) {
+        setProject((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            images: [...(prev.images || []), ...successfulUploads],
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert("Có lỗi xảy ra khi upload hình ảnh");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setProject((prev) => {
+      if (!prev || !prev.images) return prev;
+      return {
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index),
+      };
+    });
+  };
+
+  const handleVideoChange = (index: number, value: string) => {
+    setProject((prev) => {
+      if (!prev || !prev.videos) return prev;
+      return {
+        ...prev,
+        videos: prev.videos.map((video, i) => (i === index ? value : video)),
+      };
+    });
+  };
+
+  const addVideo = () => {
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        videos: [...(prev.videos || []), ""],
+      };
+    });
+  };
+
+  const removeVideo = (index: number) => {
+    setProject((prev) => {
+      if (!prev || !prev.videos) return prev;
+      return {
+        ...prev,
+        videos: prev.videos.filter((_, i) => i !== index),
+      };
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!project || !id) return;
+
     setSaving(true);
     try {
-      await ProjectService.updateProject(id, project);
+      await ProjectService.updateProject({
+        ...project,
+        id,
+      });
       alert("Đã lưu thay đổi!");
     } catch (error) {
+      console.error("Error saving project:", error);
       alert("Có lỗi xảy ra khi lưu!");
     } finally {
       setSaving(false);
@@ -438,7 +452,7 @@ export default function AdminProjectEditPage() {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-4">Tiện ích</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {project.facilities.map((facility, index) => (
+                  {(project.facilities || []).map((facility, index) => (
                     <div
                       key={index}
                       className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg"
@@ -451,12 +465,12 @@ export default function AdminProjectEditPage() {
               </div>
 
               {/* Thông số kỹ thuật */}
-              <div>
+              <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-4">
                   Thông số kỹ thuật
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(project.specifications).map(
+                  {Object.entries(project.specifications || {}).map(
                     ([key, value]) => (
                       <div
                         key={key}
@@ -469,6 +483,62 @@ export default function AdminProjectEditPage() {
                   )}
                 </div>
               </div>
+
+              {/* Hình ảnh dự án */}
+              {(project.images || []).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-4">Hình ảnh dự án</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {project.images.map((image, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg overflow-hidden"
+                      >
+                        <Image
+                          src={image}
+                          alt={`Project image ${index + 1}`}
+                          width={300}
+                          height={200}
+                          className="w-full h-40 object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Video dự án */}
+              {(project.videos || []).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Video dự án</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(project.videos || [])
+                      .filter((video) => video.trim())
+                      .map((video, index) => (
+                        <div
+                          key={index}
+                          className="border border-gray-200 rounded-lg p-4"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <i className="fas fa-video text-blue-500"></i>
+                            <span className="font-medium">
+                              Video {index + 1}
+                            </span>
+                          </div>
+                          <a
+                            href={video}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm break-all"
+                          >
+                            {video}
+                          </a>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             /* Chế độ chỉnh sửa */
@@ -487,6 +557,11 @@ export default function AdminProjectEditPage() {
                         key: "description",
                         label: "Mô tả chi tiết",
                         icon: "fas fa-file-text",
+                      },
+                      {
+                        key: "media",
+                        label: "Hình ảnh & Video",
+                        icon: "fas fa-images",
                       },
                       {
                         key: "specifications",
@@ -712,15 +787,108 @@ export default function AdminProjectEditPage() {
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Logo (URL)
+                              Logo chủ đầu tư
                             </label>
-                            <input
-                              value={project.developer.logo}
-                              onChange={(e) =>
-                                handleDeveloperChange("logo", e.target.value)
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
+
+                            {/* Current logo preview */}
+                            {project.developer.logo && (
+                              <div className="mb-3">
+                                <div className="relative w-32 h-20 border border-gray-300 rounded-lg overflow-hidden">
+                                  <Image
+                                    src={project.developer.logo}
+                                    alt="Logo preview"
+                                    width={128}
+                                    height={80}
+                                    className="w-full h-full object-contain bg-gray-50"
+                                    unoptimized
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Upload button */}
+                            <div className="mb-3">
+                              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                <div className="flex flex-col items-center justify-center py-1">
+                                  <svg
+                                    className="w-5 h-5 mb-1 text-gray-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                    />
+                                  </svg>
+                                  <p className="text-xs text-gray-500">
+                                    {uploading
+                                      ? "Đang upload..."
+                                      : "Click để upload logo"}
+                                  </p>
+                                </div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={uploading}
+                                  onChange={async (e) => {
+                                    const files = e.target.files;
+                                    if (!files || files.length === 0) return;
+
+                                    setUploading(true);
+                                    try {
+                                      const uploadResults =
+                                        await UploadService.uploadImages(files);
+                                      const successfulUpload =
+                                        uploadResults.find(
+                                          (result) => result.success
+                                        );
+
+                                      if (successfulUpload?.data?.url) {
+                                        handleDeveloperChange(
+                                          "logo",
+                                          successfulUpload.data.url
+                                        );
+                                      }
+                                    } catch (error) {
+                                      console.error(
+                                        "Error uploading logo:",
+                                        error
+                                      );
+                                      alert("Có lỗi xảy ra khi upload logo");
+                                    } finally {
+                                      setUploading(false);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+
+                            {/* Manual URL input */}
+                            <div className="flex gap-2">
+                              <input
+                                value={project.developer.logo}
+                                onChange={(e) =>
+                                  handleDeveloperChange("logo", e.target.value)
+                                }
+                                placeholder="Hoặc nhập URL logo thủ công"
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              {project.developer.logo && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeveloperChange("logo", "")
+                                  }
+                                  className="px-3 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           <div>
@@ -990,6 +1158,130 @@ export default function AdminProjectEditPage() {
                     </div>
                   )}
 
+                  {/* Tab: Hình ảnh & Video */}
+                  {activeTab === "media" && (
+                    <div className="space-y-6">
+                      {/* Images Section */}
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">
+                            Hình ảnh dự án
+                          </h3>
+                          <div>
+                            <label className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+                              <i className="fas fa-upload mr-2"></i>
+                              {uploading ? "Đang upload..." : "Upload hình ảnh"}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                disabled={uploading}
+                                onChange={(e) =>
+                                  handleImageUpload(e.target.files)
+                                }
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Images Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {(project.images || []).map((image, index) => (
+                            <div
+                              key={index}
+                              className="relative group border border-gray-200 rounded-lg overflow-hidden"
+                            >
+                              <Image
+                                src={image}
+                                alt={`Project image ${index + 1}`}
+                                width={300}
+                                height={200}
+                                className="w-full h-40 object-cover"
+                                unoptimized
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeImage(index)}
+                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Xóa hình ảnh"
+                              >
+                                <i className="fas fa-times text-xs"></i>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {(project.images || []).length === 0 && (
+                          <div className="text-center py-8 border border-gray-200 rounded-lg border-dashed">
+                            <i className="fas fa-images text-4xl text-gray-400 mb-4"></i>
+                            <p className="text-gray-500">
+                              Chưa có hình ảnh nào
+                            </p>
+                            <p className="text-sm text-gray-400">
+                              Sử dụng nút &quot;Upload hình ảnh&quot; để thêm
+                              hình ảnh
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Videos Section */}
+                      <div>
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold">
+                            Video dự án (Link YouTube/Vimeo)
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={addVideo}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Thêm video
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {(project.videos || []).map((video, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                placeholder="Nhập link video (YouTube, Vimeo, etc.)"
+                                value={video}
+                                onChange={(e) =>
+                                  handleVideoChange(index, e.target.value)
+                                }
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeVideo(index)}
+                                className="p-2 text-red-600 hover:text-red-800"
+                                title="Xóa video"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {(project.videos || []).length === 0 && (
+                          <div className="text-center py-8 border border-gray-200 rounded-lg border-dashed">
+                            <i className="fas fa-video text-4xl text-gray-400 mb-4"></i>
+                            <p className="text-gray-500">Chưa có video nào</p>
+                            <p className="text-sm text-gray-400">
+                              Sử dụng nút &quot;Thêm video&quot; để thêm link
+                              video
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tab: Thông số kỹ thuật */}
                   {activeTab === "specifications" && (
                     <div>
@@ -998,29 +1290,92 @@ export default function AdminProjectEditPage() {
                           Thông số kỹ thuật
                         </h3>
                       </div>
+
+                      {/* Add new specification form */}
+                      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mb-6">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-gray-700">
+                            Thêm thông số kỹ thuật mới
+                          </h4>
+                          <button
+                            type="button"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            onClick={() => addSpecification()}
+                          >
+                            <i className="fas fa-plus mr-2"></i>
+                            Thêm thông số
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="space-y-4">
-                        {Object.entries(project.specifications).map(
+                        {Object.entries(project.specifications || {}).map(
                           ([key, value]) => (
                             <div
                               key={key}
-                              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                              className="border border-gray-200 rounded-lg p-4"
                             >
-                              <input
-                                placeholder="Tên thông số"
-                                value={key}
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                readOnly
-                              />
-                              <input
-                                placeholder="Giá trị"
-                                value={value}
-                                onChange={(e) =>
-                                  handleSpecificationChange(key, e.target.value)
-                                }
-                                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                                    Tên thông số
+                                  </label>
+                                  <input
+                                    placeholder="Tên thông số"
+                                    value={key}
+                                    onChange={(e) =>
+                                      handleSpecificationKeyChange(
+                                        key,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="flex-1">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                                      Giá trị
+                                    </label>
+                                    <input
+                                      placeholder="Giá trị"
+                                      value={value}
+                                      onChange={(e) =>
+                                        handleSpecificationChange(
+                                          key,
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </div>
+                                  <div className="flex items-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSpecification(key)}
+                                      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                      title="Xóa thông số"
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           )
+                        )}
+
+                        {Object.keys(project.specifications || {}).length ===
+                          0 && (
+                          <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg">
+                            <i className="fas fa-cogs text-3xl mb-2"></i>
+                            <p className="font-medium">
+                              Chưa có thông số kỹ thuật nào
+                            </p>
+                            <p className="text-sm">
+                              Sử dụng form bên trên để thêm thông số mới
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1068,7 +1423,7 @@ export default function AdminProjectEditPage() {
                   {/* Tab: Vị trí & Tiện ích xung quanh */}
                   {activeTab === "location" && (
                     <div className="space-y-6">
-                      {Object.entries(project.locationInsights).map(
+                      {Object.entries(project.locationInsights || {}).map(
                         ([category, items]) => (
                           <div key={category}>
                             <div className="flex items-center justify-between mb-4">
@@ -1096,53 +1451,58 @@ export default function AdminProjectEditPage() {
                               </button>
                             </div>
                             <div className="space-y-3">
-                              {items.map((item, index) => (
-                                <div
-                                  key={index}
-                                  className="grid grid-cols-2 gap-2"
-                                >
-                                  <input
-                                    placeholder="Tên địa điểm"
-                                    value={item.name}
-                                    onChange={(e) =>
-                                      handleLocationInsightChange(
-                                        category as keyof Project["locationInsights"],
-                                        index,
-                                        "name",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                  <div className="flex gap-2">
+                              {items.map(
+                                (
+                                  item: { name: string; distance: string },
+                                  index: number
+                                ) => (
+                                  <div
+                                    key={index}
+                                    className="grid grid-cols-2 gap-2"
+                                  >
                                     <input
-                                      placeholder="Khoảng cách"
-                                      value={item.distance}
+                                      placeholder="Tên địa điểm"
+                                      value={item.name}
                                       onChange={(e) =>
                                         handleLocationInsightChange(
                                           category as keyof Project["locationInsights"],
                                           index,
-                                          "distance",
+                                          "name",
                                           e.target.value
                                         )
                                       }
-                                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        removeLocationInsight(
-                                          category as keyof Project["locationInsights"],
-                                          index
-                                        )
-                                      }
-                                      className="p-2 text-red-600 hover:text-red-800"
-                                    >
-                                      <i className="fas fa-trash"></i>
-                                    </button>
+                                    <div className="flex gap-2">
+                                      <input
+                                        placeholder="Khoảng cách"
+                                        value={item.distance}
+                                        onChange={(e) =>
+                                          handleLocationInsightChange(
+                                            category as keyof Project["locationInsights"],
+                                            index,
+                                            "distance",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeLocationInsight(
+                                            category as keyof Project["locationInsights"],
+                                            index
+                                          )
+                                        }
+                                        className="p-2 text-red-600 hover:text-red-800"
+                                      >
+                                        <i className="fas fa-trash"></i>
+                                      </button>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                )
+                              )}
                             </div>
                           </div>
                         )

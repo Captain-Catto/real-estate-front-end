@@ -15,6 +15,7 @@ interface FormData {
     district: string;
     ward: string;
     street?: string;
+    project?: string;
   };
   area: string;
   price: string;
@@ -55,6 +56,7 @@ export function useCreatePostModal() {
       district: "",
       ward: "",
       street: "",
+      project: "",
     },
     area: "",
     price: "",
@@ -243,7 +245,7 @@ export function useCreatePostModal() {
           district: formData.location?.district || "",
           ward: formData.location?.ward || "",
           street: formData.location?.street || "",
-          // Có thể thêm project nếu backend có
+          project: formData.location?.project || "",
         },
         type: formData.type,
       };

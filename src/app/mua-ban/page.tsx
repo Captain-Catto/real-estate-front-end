@@ -25,6 +25,7 @@ export default function MuaBanPage() {
   const [activeFilters, setActiveFilters] = useState<any>({});
   const [initialProvinceObj, setInitialProvinceObj] = useState<any>(null);
   const [initialDistrictsObj, setInitialDistrictsObj] = useState<any[]>([]);
+  const [initialWardObj, setInitialWardObj] = useState<any>(null);
 
   // Giữ lại useEffect đầu tiên và loại bỏ cái thứ hai
   useEffect(() => {
@@ -64,14 +65,37 @@ export default function MuaBanPage() {
             })
             .filter(Boolean);
 
+          // Xử lý ward nếu có
+          let selectedWard = null;
+          const wardCode = searchParams.get("ward");
+          if (
+            wardCode &&
+            selectedDistricts.length > 0 &&
+            selectedDistricts[0]
+          ) {
+            try {
+              // Lấy wards từ district đầu tiên
+              const wardsData = await locationService.getWards(
+                cityCode,
+                selectedDistricts[0].code
+              );
+              selectedWard = wardsData.find((w) => w.codename === wardCode);
+            } catch (error) {
+              console.error("Error fetching wards:", error);
+            }
+          }
+
           // Sử dụng state để lưu trữ
           if (isMounted) {
             setInitialProvinceObj(selectedProvince);
             setInitialDistrictsObj(selectedDistricts);
+            setInitialWardObj(selectedWard);
 
             // THÊM MỚI: Sửa activeFilters để có districtNames đầy đủ
-            const districtNames = selectedDistricts.map((d) => d.name);
-            setActiveFilters((prev) => ({
+            const districtNames = selectedDistricts
+              .map((d) => d?.name)
+              .filter(Boolean);
+            setActiveFilters((prev: any) => ({
               ...prev,
               districts: districtNames,
             }));
@@ -101,6 +125,7 @@ export default function MuaBanPage() {
     if (!searchParams.get("city")) {
       setInitialProvinceObj(null);
       setInitialDistrictsObj([]);
+      setInitialWardObj(null);
     }
 
     // Nếu city còn nhưng districts bị xóa thì cập nhật initialDistrictsObj
@@ -109,11 +134,17 @@ export default function MuaBanPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const districtEntries = Array.from(urlParams.entries())
         .filter(([key]) => key === "districts")
-        .map(([_, value]) => value);
+        .map(([, value]) => value);
 
       // Nếu không còn districts nào trong URL thì reset
       if (districtEntries.length === 0) {
         setInitialDistrictsObj([]);
+        setInitialWardObj(null);
+      }
+
+      // Nếu không còn ward trong URL thì reset ward
+      if (!searchParams.get("ward")) {
+        setInitialWardObj(null);
       }
     }
   }, [searchParams]);
@@ -314,11 +345,10 @@ export default function MuaBanPage() {
         initialSearchType="buy"
         initialCity={initialProvinceObj} // Đã được xử lý đúng cách
         initialDistricts={initialDistrictsObj} // Đã được xử lý đúng cách
+        initialWard={initialWardObj} // Thêm ward
         initialCategory={searchParams.get("category") || ""}
         initialPrice={searchParams.get("price") || ""}
         initialArea={searchParams.get("area") || ""}
-        provinces={provinces}
-        cityDistricts={districts}
       />
 
       <CategoryPage

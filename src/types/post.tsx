@@ -22,6 +22,7 @@ export interface CreatePostRequest {
   packageId: string;
   packageDuration: number;
   images: string[];
+  project?: string; // project ID
 }
 
 export interface Post {
@@ -46,6 +47,12 @@ export interface Post {
   phone: string;
   packageId: string;
   packageDuration: number;
+  project?: {
+    _id: string;
+    name: string;
+    address: string;
+    fullLocation: string;
+  };
   author: {
     username: string;
     phoneNumber: string;
