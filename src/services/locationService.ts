@@ -14,6 +14,16 @@ export interface Location {
   phone_code: string;
 }
 
+export interface LocationNames {
+  provinceName?: string;
+  provinceCode?: string | number;
+  districtName?: string;
+  districtCode?: string | number;
+  wardName?: string;
+  wardCode?: string | number;
+  fullLocationName?: string;
+}
+
 // Admin types for CRUD operations
 export interface AdminProvince {
   _id: string;
@@ -736,5 +746,58 @@ export const locationService = {
         return { success: false };
       }
     },
+  },
+
+  // Get location names in one API call
+  getLocationNames: async (
+    provinceCode?: string,
+    districtCode?: string,
+    wardCode?: string
+  ): Promise<LocationNames> => {
+    try {
+      if (!provinceCode) {
+        return {};
+      }
+
+      console.log("🔍 Fetching location names with:", {
+        provinceCode,
+        districtCode,
+        wardCode,
+      });
+
+      const params = new URLSearchParams();
+      params.append("provinceCode", provinceCode);
+      if (districtCode) params.append("districtCode", districtCode);
+      if (wardCode) params.append("wardCode", wardCode);
+
+      const res = await fetch(
+        `${API_BASE_URL}/locations/names?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: AbortSignal.timeout(10000), // 10 giây timeout
+        }
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error("API error:", result);
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      if (!result.success) {
+        console.error("API returned error:", result.message);
+        return {};
+      }
+
+      console.log("📍 Successfully fetched location names:", result.data);
+      return result.data;
+    } catch (error) {
+      console.error("❌ Error fetching location names:", error);
+      return {};
+    }
   },
 };

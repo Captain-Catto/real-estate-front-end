@@ -45,7 +45,7 @@ export const useEditPostModal = (onSuccess?: () => void) => {
 
   const [formData, setFormData] = useState<EditPostForm>({
     type: "ban",
-    category: "Nhà riêng",
+    category: "",
     area: "",
     price: "",
     currency: "VND",
@@ -197,7 +197,7 @@ export const useEditPostModal = (onSuccess?: () => void) => {
       // Populate form với data hiện tại và location codes
       setFormData({
         type: post.type,
-        category: post.category || "Nhà riêng",
+        category: post.category || "",
         area:
           post.area !== undefined ? String(post.area).replace("m²", "") : "",
         price:
@@ -256,7 +256,7 @@ export const useEditPostModal = (onSuccess?: () => void) => {
       // Set default form data even if location loading fails
       setFormData({
         type: post.type,
-        category: post.category || "Nhà riêng",
+        category: post.category || "",
         area:
           post.area !== undefined ? String(post.area).replace("m²", "") : "",
         price:
@@ -341,22 +341,6 @@ export const useEditPostModal = (onSuccess?: () => void) => {
     setFormData((prev: EditPostForm) => ({ ...prev, ...updates }));
   };
 
-  // Helper function to map Vietnamese category names to English
-  const mapCategoryToEnglish = (category: string): string => {
-    const categoryMap: { [key: string]: string } = {
-      "Nhà riêng": "House",
-      "Căn hộ/Chung cư": "Apartment",
-      "Đất nền": "Land",
-      "Biệt thự": "Villa",
-      "Nhà mặt phố": "Townhouse",
-      "Văn phòng": "Office",
-      "Mặt bằng kinh doanh": "Commercial Space",
-      "Nhà trọ/Phòng trọ": "Room",
-    };
-
-    return categoryMap[category] || category;
-  };
-
   // Map packageId to package enum for backend
   const mapPackageIdToPackage = (packageId: string) => {
     switch (packageId) {
@@ -392,7 +376,7 @@ export const useEditPostModal = (onSuccess?: () => void) => {
         }
 
         // Map category to English if needed
-        const mappedCategory = mapCategoryToEnglish(formData.category);
+        const mappedCategory = formData.category;
 
         // Prepare post data
         const postData = {
@@ -494,7 +478,19 @@ export const useEditPostModal = (onSuccess?: () => void) => {
           );
 
           if (result && result.success) {
-            toast.success("Cập nhật tin thành công!");
+            // Thông báo khác nhau tùy theo trạng thái tin đăng
+            if (
+              editingPost?.status === "active" ||
+              editingPost?.status === "waiting_display" ||
+              editingPost?.status === "waiting_publish" ||
+              editingPost?.status === "near_expiry"
+            ) {
+              toast.success(
+                "Cập nhật tin thành công! Tin đăng sẽ được duyệt lại."
+              );
+            } else {
+              toast.success("Cập nhật tin thành công!");
+            }
           }
         }
 
@@ -507,10 +503,14 @@ export const useEditPostModal = (onSuccess?: () => void) => {
           toast.error("Cập nhật tin không thành công");
         }
       }
-    } catch (error: any) {
+    } catch (error: Error | unknown) {
       console.error("Submit error:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật tin");
-      setPaymentError(error.message || "Có lỗi xảy ra khi cập nhật tin");
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra khi cập nhật tin";
+      toast.error(errorMessage);
+      setPaymentError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

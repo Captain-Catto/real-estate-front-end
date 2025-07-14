@@ -67,6 +67,17 @@ export interface Package {
   price: number;
   duration: number; // days
   features: string[];
+  priority: "normal" | "premium" | "vip";
+  isActive: boolean;
+  description?: string;
+  canPin?: boolean;
+  canHighlight?: boolean;
+  canUseAI?: boolean;
+  supportLevel?: "basic" | "standard" | "premium";
+  displayOrder?: number;
   isPopular?: boolean;
-  color?: string;
+  discountPercentage?: number;
+  originalPrice?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }

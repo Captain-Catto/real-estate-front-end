@@ -7,6 +7,9 @@ export interface Category {
   name: string;
   slug: string;
   isProject: boolean;
+  order?: number;
+  isActive?: boolean;
+  description?: string;
   __v?: number;
 }
 
@@ -20,6 +23,24 @@ export interface CategoryResponse {
       itemsPerPage: number;
     };
   };
+}
+
+export interface CreateCategoryData {
+  name: string;
+  slug: string;
+  isProject: boolean;
+  order?: number;
+  isActive?: boolean;
+  description?: string;
+}
+
+export interface UpdateCategoryData {
+  name?: string;
+  slug?: string;
+  isProject?: boolean;
+  order?: number;
+  isActive?: boolean;
+  description?: string;
 }
 
 export const categoryService = {
@@ -105,5 +126,142 @@ export const categoryService = {
       console.error("Error in categoryService.getById:", error);
       return null;
     }
+  },
+
+  // Admin functions
+  admin: {
+    /**
+     * Get all categories for admin with pagination
+     */
+    getAll: async (page = 1, limit = 20): Promise<CategoryResponse> => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(
+          `${API_BASE_URL}/admin/categories?page=${page}&limit=${limit}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Error fetching admin categories: ${response.status}`
+          );
+        }
+
+        return await response.json();
+      } catch (error) {
+        console.error("Error in categoryService.admin.getAll:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Create a new category
+     */
+    create: async (data: CreateCategoryData): Promise<Category> => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(`${API_BASE_URL}/admin/categories`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error creating category: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result.data;
+      } catch (error) {
+        console.error("Error in categoryService.admin.create:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Update a category
+     */
+    update: async (id: string, data: UpdateCategoryData): Promise<Category> => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error updating category: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result.data;
+      } catch (error) {
+        console.error("Error in categoryService.admin.update:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Delete a category
+     */
+    delete: async (id: string): Promise<void> => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error deleting category: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Error in categoryService.admin.delete:", error);
+        throw error;
+      }
+    },
+
+    /**
+     * Update categories order
+     */
+    updateOrder: async (
+      orders: { id: string; order: number }[]
+    ): Promise<void> => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        const response = await fetch(`${API_BASE_URL}/admin/categories/order`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ orders }),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Error updating categories order: ${response.status}`
+          );
+        }
+      } catch (error) {
+        console.error("Error in categoryService.admin.updateOrder:", error);
+        throw error;
+      }
+    },
   },
 };

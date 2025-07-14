@@ -116,6 +116,7 @@ export default function EditPostModal({
     if (isWaitingPublish) return "Cập nhật tin đăng";
     if (isNearExpiry) return "Cập nhật tin đăng";
     if (isHidden) return "Cập nhật tin đăng";
+    if (isActive) return "Cập nhật tin đăng";
     return "Lưu thay đổi";
   };
 
@@ -290,6 +291,16 @@ export default function EditPostModal({
                 {isWaitingPayment && (
                   <div className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
                     💳 Cần hoàn tất thanh toán để đăng tin
+                  </div>
+                )}
+                {(isActive ||
+                  isPending ||
+                  isWaitingDisplay ||
+                  isWaitingPublish ||
+                  isNearExpiry ||
+                  isHidden) && (
+                  <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    ⚠️ Sau khi cập nhật, tin sẽ được duyệt lại
                   </div>
                 )}
               </div>

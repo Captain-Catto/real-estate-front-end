@@ -33,7 +33,17 @@ export interface Post {
   package?: "normal" | "premium" | "vip";
   area: number;
   currency: string;
-  status: "pending" | "active" | "rejected" | "expired" | "inactive";
+  status:
+    | "pending"
+    | "active"
+    | "rejected"
+    | "expired"
+    | "inactive"
+    | "waiting_display"
+    | "waiting_publish"
+    | "near_expiry"
+    | "hidden"
+    | "waiting_payment";
   priority?: "normal" | "premium" | "vip";
   views: number;
   createdAt: string;

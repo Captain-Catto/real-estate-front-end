@@ -3,6 +3,7 @@ import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
 import "leaflet/dist/leaflet.css";
 import { ProjectService } from "@/services/projectService";
+import { categoryService, Category } from "@/services/categoryService";
 
 interface BasicInfoStepProps {
   formData: EditPostForm & {
@@ -58,6 +59,10 @@ export default function BasicInfoStep({
   );
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+
+  // Categories state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const [latLng, setLatLng] = useState<{
     osmData?: {
@@ -234,6 +239,34 @@ export default function BasicInfoStep({
     districts,
   ]);
 
+  // Fetch categories based on whether project is selected
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        // If project is selected, fetch project categories, otherwise fetch property categories
+        const isProjectSelected = Boolean(selectedProject);
+        const result = await categoryService.getByProjectType(
+          isProjectSelected
+        );
+
+        // Filter only active categories and sort by order
+        const activeCategories = result
+          .filter((cat) => cat.isActive !== false)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        setCategories(activeCategories);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories([]);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, [selectedProject]); // Re-fetch when project selection changes
+
   const handleProvinceChange = (provinceCode: string) => {
     // Clear district and ward when province changes
     setSelectedProvince(provinceCode);
@@ -302,12 +335,32 @@ export default function BasicInfoStep({
     const project = projectId
       ? availableProjects.find((p) => p._id === projectId)
       : null;
-    updateFormData({
-      location: {
-        ...formData.location,
-        project: project?._id || "",
-      },
-    });
+
+    // If a project is selected and it has a wardCode, automatically set the ward
+    if (project && project.location?.wardCode) {
+      setSelectedWard(project.location.wardCode);
+      updateFormData({
+        location: {
+          ...formData.location,
+          project: project._id,
+          ward: project.location.wardCode, // Auto-select ward from project
+        },
+      });
+      console.log(
+        "Project selected:",
+        project.name,
+        "- Ward auto-selected:",
+        project.location.wardCode
+      );
+    } else {
+      updateFormData({
+        location: {
+          ...formData.location,
+          project: project?._id || "",
+        },
+      });
+      console.log("Project selected:", project?.name || "None");
+    }
   };
 
   const fetchLatLng = useCallback(async () => {
@@ -635,12 +688,16 @@ export default function BasicInfoStep({
               value={formData.category}
               onChange={(e) => updateFormData({ category: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              disabled={categoriesLoading}
             >
-              <option value="Nhà riêng">Nhà riêng</option>
-              <option value="Căn hộ chung cư">Căn hộ chung cư</option>
-              <option value="Biệt thự">Biệt thự</option>
-              <option value="Đất nền">Đất nền</option>
-              <option value="Văn phòng">Văn phòng</option>
+              <option value="">
+                {categoriesLoading ? "Đang tải danh mục..." : "Chọn loại BĐS"}
+              </option>
+              {categories.map((category) => (
+                <option key={category._id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>

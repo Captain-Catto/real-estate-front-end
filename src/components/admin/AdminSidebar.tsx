@@ -60,6 +60,16 @@ const menuItems = [
     href: "/admin/quan-ly-du-an",
     icon: BuildingOfficeIcon,
   },
+  {
+    name: "Quản lý chủ đầu tư",
+    href: "/admin/quan-ly-chu-dau-tu",
+    icon: UserGroupIcon,
+  },
+  {
+    name: "Quản lý danh mục",
+    href: "/admin/quan-ly-danh-muc",
+    icon: DocumentTextIcon,
+  },
 ];
 
 export default function AdminSidebar() {

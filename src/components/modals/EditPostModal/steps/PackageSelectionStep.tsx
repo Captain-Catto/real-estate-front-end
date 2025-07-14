@@ -1,84 +1,64 @@
-import React from "react";
-import { Package } from "@/types/post";
+import React, { useState } from "react";
 import { useEffect } from "react";
 import { useWallet } from "@/hooks/useWallet";
+import { packageService, Package } from "@/services/packageService";
 
 interface PackageSelectionStepProps {
   selectedPackage: Package | null;
   setSelectedPackage: (pkg: Package | null) => void;
 }
 
-// Mock packages data
-const packages: Package[] = [
-  {
-    id: "free",
-    name: "Gói Miễn Phí",
-    price: 0,
-    duration: 7,
-    features: [
-      "Hiển thị tin đăng 7 ngày",
-      "Xuất hiện trong kết quả tìm kiếm",
-      "Hỗ trợ khách hàng cơ bản",
-    ],
-  },
-  {
-    id: "basic",
-    name: "Gói Cơ Bản",
-    price: 50000,
-    duration: 30,
-    features: [
-      "Hiển thị tin đăng 30 ngày",
-      "Xuất hiện trong kết quả tìm kiếm",
-      "Hỗ trợ khách hàng cơ bản",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Gói Cao Cấp",
-    price: 150000,
-    duration: 30,
-    features: [
-      "Hiển thị tin đăng 30 ngày",
-      "Ưu tiên trong kết quả tìm kiếm",
-      "Xuất hiện trang chủ",
-      "Hỗ trợ khách hàng ưu tiên",
-      "Thống kê chi tiết",
-    ],
-    isPopular: true,
-  },
-  {
-    id: "vip",
-    name: "Gói VIP",
-    price: 300000,
-    duration: 30,
-    features: [
-      "Hiển thị tin đăng 30 ngày",
-      "Luôn xuất hiện đầu trang",
-      "Nổi bật với nhãn VIP",
-      "Xuất hiện nhiều vị trí",
-      "Hỗ trợ 24/7",
-      "Báo cáo chi tiết",
-      "Tư vấn marketing",
-    ],
-  },
-];
-
 export default function PackageSelectionStep({
   selectedPackage,
   setSelectedPackage,
 }: PackageSelectionStepProps) {
   // Use wallet hook to get user balance
-  const { balance, formattedBalance, loading } = useWallet();
+  const { balance } = useWallet();
 
-  // Auto-select free package if no package is selected
+  // State for packages
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch packages from API
   useEffect(() => {
-    if (!selectedPackage) {
-      const freePackage = packages.find((pkg) => pkg.id === "free");
-      if (freePackage) {
-        setSelectedPackage(freePackage);
+    const fetchPackages = async () => {
+      try {
+        setPackagesLoading(true);
+        setError(null);
+        const result = await packageService.getActivePackages();
+
+        if (result.success) {
+          // Packages are already in the correct format from packageService
+          setPackages(result.data.packages);
+        } else {
+          setError("Không thể tải danh sách gói. Vui lòng thử lại.");
+        }
+      } catch (err) {
+        console.error("Error fetching packages:", err);
+        setError("Có lỗi xảy ra khi tải danh sách gói.");
+      } finally {
+        setPackagesLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  // Auto-select affordable package if no package is selected
+  useEffect(() => {
+    if (!selectedPackage && packages.length > 0) {
+      // Find affordable packages only
+      const affordablePackages = packages.filter((pkg) => pkg.price <= balance);
+
+      if (affordablePackages.length > 0) {
+        // Try to find a free package first, then the cheapest affordable one
+        const freePackage = affordablePackages.find((pkg) => pkg.price === 0);
+        const defaultPackage = freePackage || affordablePackages[0];
+        setSelectedPackage(defaultPackage);
       }
     }
-  }, [selectedPackage, setSelectedPackage]);
+  }, [selectedPackage, setSelectedPackage, packages, balance]);
 
   // Check if selected package is affordable
   const isAffordable = selectedPackage
@@ -97,101 +77,165 @@ export default function PackageSelectionStep({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {packages.map((pkg) => (
-          <div
-            key={pkg.id}
-            onClick={() => setSelectedPackage(pkg)}
-            className={`relative cursor-pointer border-2 rounded-lg p-6 transition-all ${
-              selectedPackage?.id === pkg.id
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300 hover:shadow-md"
-            } ${pkg.price > balance ? "opacity-80" : ""}`}
-          >
-            {/* Popular Badge */}
-            {pkg.isPopular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  Phổ biến
-                </span>
-              </div>
-            )}
+      {/* Loading State */}
+      {packagesLoading && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Đang tải danh sách gói...</span>
+        </div>
+      )}
 
-            {/* Insufficient Balance Badge */}
-            {pkg.price > balance && (
-              <div className="absolute -top-3 right-3">
-                <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  Không đủ tiền
-                </span>
-              </div>
-            )}
-
-            {/* Selected Badge */}
-            {selectedPackage?.id === pkg.id && (
-              <div className="absolute top-4 right-4">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    className="text-white"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-              </div>
-            )}
-
-            <div className="text-center mb-4">
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                {pkg.name}
-              </h4>
-              <div className="text-2xl font-bold text-blue-600 mb-1">
-                {pkg.price.toLocaleString("vi-VN")}đ
-              </div>
-              <p className="text-sm text-gray-600">{pkg.duration} ngày</p>
-            </div>
-
-            <ul className="space-y-3">
-              {pkg.features.map((feature, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    className="text-green-500 mt-0.5 flex-shrink-0"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span className="text-sm text-gray-700">{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            {selectedPackage?.id === pkg.id && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="bg-blue-100 text-blue-800 text-sm px-3 py-2 rounded-lg text-center font-medium">
-                  Đã chọn gói này
-                </div>
-              </div>
-            )}
+      {/* Error State */}
+      {error && !packagesLoading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <div className="text-red-600 mb-2">
+            <svg
+              className="w-8 h-8 mx-auto mb-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="font-medium">{error}</p>
           </div>
-        ))}
-      </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
+      {/* Packages Grid */}
+      {!packagesLoading && !error && packages.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {packages.map((pkg) => {
+            const isUnaffordable = pkg.price > balance;
+
+            return (
+              <div
+                key={pkg.id}
+                onClick={() => {
+                  if (!isUnaffordable) {
+                    setSelectedPackage(pkg);
+                  }
+                }}
+                className={`relative border-2 rounded-lg p-6 transition-all ${
+                  selectedPackage?.id === pkg.id
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-200"
+                } ${
+                  isUnaffordable
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer hover:border-gray-300 hover:shadow-md"
+                }`}
+              >
+                {/* Popular Badge */}
+                {pkg.isPopular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+                      Phổ biến
+                    </span>
+                  </div>
+                )}
+
+                {/* Selected Badge */}
+                {selectedPackage?.id === pkg.id && (
+                  <div className="absolute top-4 right-4">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="text-white"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="3"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-center mb-4">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                    {pkg.name}
+                  </h4>
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {pkg.price.toLocaleString("vi-VN")}đ
+                  </div>
+                  <p className="text-sm text-gray-600">{pkg.duration} ngày</p>
+                </div>
+
+                <ul className="space-y-3">
+                  {pkg.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="text-green-500 mt-0.5 flex-shrink-0"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="text-sm text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {selectedPackage?.id === pkg.id && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="bg-blue-100 text-blue-800 text-sm px-3 py-2 rounded-lg text-center font-medium">
+                      Đã chọn gói này
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* No Packages Available */}
+      {!packagesLoading && !error && packages.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-gray-400 mb-4">
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2M4 13h2m13-8V4a1 1 0 00-1-1H7a1 1 0 00-1 1v1m8 0V4.5"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-600">Hiện tại chưa có gói nào khả dụng</p>
+        </div>
+      )}
 
       {/* Payment Info */}
       {selectedPackage && (

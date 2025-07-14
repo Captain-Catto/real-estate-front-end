@@ -40,7 +40,7 @@ export interface ProjectMap {
 export interface IProjectLocation {
   provinceCode: string;
   districtCode: string;
-  wardCode?: string;
+  wardCode: string;
 }
 
 export interface Project {
@@ -77,7 +77,7 @@ export interface CreateProjectRequest {
   location: IProjectLocation;
   latitude: number;
   longitude: number;
-  developer: Developer;
+  developer: Developer | string; // Can be Developer object or developer ID
   images: string[];
   videos?: string[];
   totalUnits: number;
@@ -102,7 +102,8 @@ export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
 export interface ProjectListItem {
   id: string;
   name: string;
-  location: string;
+  location: string; // Keep string for backward compatibility
+  locationObj?: IProjectLocation; // Add new field for object
   developer: string;
   status: "Đang cập nhật" | "Sắp mở bán" | "Đã bàn giao" | "Đang bán";
   totalUnits: number;

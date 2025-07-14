@@ -4,6 +4,7 @@ import { postService, CreatePostData } from "@/services/postsService";
 import { useAuth } from "@/store/hooks";
 import { useWallet } from "./useWallet";
 import { paymentService } from "@/services/paymentService";
+import { categoryService, Category } from "@/services/categoryService";
 import { toast } from "sonner";
 
 interface FormData {
@@ -46,11 +47,13 @@ export function useCreatePostModal() {
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [defaultCategory, setDefaultCategory] = useState<string>("");
 
   // Form data state với thông tin user thật
   const [formData, setFormData] = useState<FormData>({
     type: "ban",
-    category: "Nhà riêng",
+    category: "", // Will be set from API
     location: {
       province: "",
       district: "",
@@ -77,6 +80,31 @@ export function useCreatePostModal() {
     description: "",
   });
 
+  // Load default category from API
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const result = await categoryService.getByProjectType(false); // Get property categories
+        const activeCategories = result.filter((cat) => cat.isActive !== false);
+        setCategories(activeCategories);
+
+        // Set first category as default
+        if (activeCategories.length > 0) {
+          const firstCategory = activeCategories[0];
+          setDefaultCategory(firstCategory.slug);
+          setFormData((prev) => ({
+            ...prev,
+            category: firstCategory.slug,
+          }));
+        }
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   const openModal = () => {
     // Reset form với thông tin user hiện tại
     if (user) {
@@ -99,7 +127,7 @@ export function useCreatePostModal() {
       setSelectedPackage(null);
       setFormData({
         type: "ban",
-        category: "Nhà riêng",
+        category: defaultCategory, // Use default category from API
         location: {
           province: "",
           district: "",
@@ -359,6 +387,8 @@ export function useCreatePostModal() {
     selectedPackage,
     isSubmitting,
     paymentError,
+    categories,
+    defaultCategory,
     openModal,
     closeModal,
     nextStep,

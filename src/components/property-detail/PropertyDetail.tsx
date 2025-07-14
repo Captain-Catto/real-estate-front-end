@@ -267,23 +267,25 @@ export function PropertyDetail({
                     <div className="text-sm text-gray-500">Diện tích</div>
                   </div>
                 )}
-                {property.bedrooms && (
-                  <div className="text-center">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {property.bedrooms}
+                {property.bedrooms !== undefined &&
+                  property.bedrooms !== null && (
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">
+                        {property.bedrooms}
+                      </div>
+                      <div className="text-sm text-gray-500">Phòng ngủ</div>
                     </div>
-                    <div className="text-sm text-gray-500">Phòng ngủ</div>
-                  </div>
-                )}
-                {property.bathrooms && (
-                  <div className="text-center">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {property.bathrooms}
+                  )}
+                {property.bathrooms !== undefined &&
+                  property.bathrooms !== null && (
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">
+                        {property.bathrooms}
+                      </div>
+                      <div className="text-sm text-gray-500">Phòng tắm</div>
                     </div>
-                    <div className="text-sm text-gray-500">Phòng tắm</div>
-                  </div>
-                )}
-                {property.floors && (
+                  )}
+                {property.floors !== undefined && property.floors !== null && (
                   <div className="text-center">
                     <div className="text-lg font-semibold text-gray-900">
                       {property.floors}

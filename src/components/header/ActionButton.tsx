@@ -1,7 +1,8 @@
 "use client";
-import { useState, Fragment, useRef, useEffect } from "react";
+import { useState, Fragment, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Menu,
   MenuButton,
@@ -12,10 +13,50 @@ import {
 import { useAuth } from "@/hooks/useAuth"; // Updated import path
 import { useFavorites } from "@/store/hooks";
 import { toast } from "sonner";
+import { FavoriteItem } from "@/store/slices/favoritesSlices";
+
+// Notification interfaces
+interface ActionButton {
+  text: string;
+  link: string;
+  style: "primary" | "secondary" | "success" | "warning" | "info" | "danger";
+}
+
+interface NotificationData {
+  actionButton?: ActionButton;
+  orderId?: string;
+  amount?: number;
+  postId?: string;
+  postTitle?: string;
+  packageName?: string;
+  duration?: number;
+  reason?: string;
+  action?: string;
+}
+
+interface NotificationItem {
+  _id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type:
+    | "PAYMENT"
+    | "POST_APPROVED"
+    | "POST_REJECTED"
+    | "PACKAGE_PURCHASE"
+    | "SYSTEM"
+    | "INTEREST";
+  data: NotificationData;
+  read: boolean;
+  createdAt: string;
+}
 
 export default function ActionButton() {
   // Use our enhanced auth hook
   const { user, isAuthenticated, loading, logout } = useAuth();
+
+  // Initialize router for navigation
+  const router = useRouter();
 
   // Lấy danh sách yêu thích và các actions từ Redux store
   const {
@@ -34,28 +75,294 @@ export default function ActionButton() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
+  // Notification states
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Notification functions
+  const fetchNotifications = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    setNotificationsLoading(true);
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        console.log("No access token found");
+        return;
+      }
+
+      const response = await fetch(
+        "http://localhost:8080/api/notifications?limit=10",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setNotifications(data.data.notifications);
+        setUnreadCount(data.data.unreadCount);
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      const response = await fetch(
+        "http://localhost:8080/api/notifications?limit=1",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setUnreadCount(data.data.unreadCount);
+      }
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  }, [isAuthenticated]);
+
   // Fetch favorites when component mounts or user authentication changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserFavorites();
+      fetchNotifications();
+      fetchUnreadCount();
     }
-  }, [isAuthenticated, fetchUserFavorites]);
+  }, [
+    isAuthenticated,
+    fetchUserFavorites,
+    fetchNotifications,
+    fetchUnreadCount,
+  ]);
 
+  // Auto-refresh notifications every 30 seconds when user is authenticated
   useEffect(() => {
-    const handleFavoritesUpdated = () => {
-      // You may want to perform any necessary actions when favorites are updated
-      console.log("Favorites were updated externally");
-      if (isAuthenticated) {
-        fetchUserFavorites();
+    if (!isAuthenticated) return;
+
+    const refreshInterval = setInterval(() => {
+      fetchNotifications();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [isAuthenticated, fetchNotifications]);
+
+  // Handle notification popup visibility
+  useEffect(() => {
+    if (showNotificationPopup && isAuthenticated) {
+      // Refresh notifications when popup opens
+      fetchNotifications();
+    }
+  }, [showNotificationPopup, isAuthenticated, fetchNotifications]);
+
+  // Listen for wallet updates to refresh notifications (since payments create notifications)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (
+        event.key === "wallet_updated" ||
+        event.key === "wallet_updated_trigger"
+      ) {
+        console.log("[ActionButton] Wallet updated, refreshing notifications");
+        fetchNotifications();
       }
     };
 
-    window.addEventListener("favorites-updated", handleFavoritesUpdated);
+    // Listen to storage events for cross-tab synchronization
+    window.addEventListener("storage", handleStorageChange);
+
+    // Listen to BroadcastChannel events if available
+    let broadcastChannel: BroadcastChannel | null = null;
+    if (
+      typeof window !== "undefined" &&
+      typeof BroadcastChannel !== "undefined"
+    ) {
+      try {
+        broadcastChannel = new BroadcastChannel("wallet_updates");
+        broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === "refresh") {
+            console.log(
+              "[ActionButton] Received wallet update broadcast, refreshing notifications"
+            );
+            fetchNotifications();
+          }
+        };
+      } catch (e) {
+        console.error("[ActionButton] Error setting up BroadcastChannel:", e);
+      }
+    }
 
     return () => {
-      window.removeEventListener("favorites-updated", handleFavoritesUpdated);
+      window.removeEventListener("storage", handleStorageChange);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
     };
-  }, [isAuthenticated, fetchUserFavorites]);
+  }, [isAuthenticated, fetchNotifications]);
+
+  const markAsRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      await fetch(`http://localhost:8080/api/notifications/${id}/read`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif._id === id ? { ...notif, read: true } : notif
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      await fetch("http://localhost:8080/api/notifications/read-all", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, read: true }))
+      );
+      setUnreadCount(0);
+      toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      toast.error("Có lỗi xảy ra");
+    }
+  };
+
+  const handleNotificationAction = (notification: NotificationItem) => {
+    if (notification.data.actionButton?.link) {
+      // Mark as read when action is clicked
+      if (!notification.read) {
+        markAsRead(notification._id);
+      }
+
+      // Close notification popup
+      setShowNotificationPopup(false);
+
+      // Navigate to the link using Next.js router
+      const link = notification.data.actionButton.link;
+
+      // Check if it's an external link
+      if (link.startsWith("http://") || link.startsWith("https://")) {
+        window.open(link, "_blank");
+      } else {
+        // Internal link - use Next.js router
+        router.push(link);
+      }
+    }
+  };
+
+  // Handle notification click - navigate to link if available
+  const handleNotificationClick = (notification: NotificationItem) => {
+    if (notification.data.actionButton?.link) {
+      // Mark as read if not already read
+      if (!notification.read) {
+        markAsRead(notification._id);
+      }
+
+      // Close notification popup
+      setShowNotificationPopup(false);
+
+      // Navigate to the link using Next.js router
+      const link = notification.data.actionButton.link;
+
+      // Check if it's an external link
+      if (link.startsWith("http://") || link.startsWith("https://")) {
+        window.open(link, "_blank");
+      } else {
+        // Internal link - use Next.js router
+        router.push(link);
+      }
+    } else if (!notification.read) {
+      // If no action button but notification is unread, just mark as read
+      markAsRead(notification._id);
+    }
+  };
+
+  // Helper functions for notification UI
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "PAYMENT":
+        return "💰";
+      case "PACKAGE_PURCHASE":
+        return "🎉";
+      case "POST_APPROVED":
+        return "✅";
+      case "POST_REJECTED":
+        return "❌";
+      case "INTEREST":
+        return "💖";
+      case "SYSTEM":
+        return "🔔";
+      default:
+        return "📢";
+    }
+  };
+
+  const getButtonStyle = (style: string) => {
+    const baseClasses =
+      "px-3 py-1 text-xs font-medium rounded transition-colors";
+
+    switch (style) {
+      case "primary":
+        return `${baseClasses} bg-blue-600 text-white hover:bg-blue-700`;
+      case "success":
+        return `${baseClasses} bg-green-600 text-white hover:bg-green-700`;
+      case "warning":
+        return `${baseClasses} bg-yellow-600 text-white hover:bg-yellow-700`;
+      case "info":
+        return `${baseClasses} bg-cyan-600 text-white hover:bg-cyan-700`;
+      case "danger":
+        return `${baseClasses} bg-red-600 text-white hover:bg-red-700`;
+      case "secondary":
+      default:
+        return `${baseClasses} bg-gray-600 text-white hover:bg-gray-700`;
+    }
+  };
+
+  // Filter notifications based on active tab
+  const getFilteredNotifications = () => {
+    switch (activeNotificationTab) {
+      case "UNREAD":
+        return notifications.filter((n) => !n.read);
+      case "SYSTEM":
+        return notifications.filter((n) => n.type === "SYSTEM");
+      default:
+        return notifications;
+    }
+  };
 
   // Handle logout
   const handleLogout = async () => {
@@ -232,7 +539,7 @@ export default function ActionButton() {
               /* List of favorites */
               <>
                 <div className="max-h-80 overflow-y-auto">
-                  {favoriteItems.slice(0, 3).map((item) => (
+                  {favoriteItems.slice(0, 3).map((item: FavoriteItem) => (
                     <div
                       key={item.id}
                       className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -379,9 +686,13 @@ export default function ActionButton() {
               />
             </svg>
             {/* Notification Badge */}
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">3</span>
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-6 w-6 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              </span>
+            )}
           </button>
 
           {/* Notification Popup */}
@@ -407,7 +718,10 @@ export default function ActionButton() {
                       <h3 className="text-sm font-semibold text-gray-800">
                         Thông báo
                       </h3>
-                      <button className="text-xs text-gray-500 hover:text-gray-700">
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
                         Đánh dấu tất cả đã đọc
                       </button>
                     </div>
@@ -436,62 +750,134 @@ export default function ActionButton() {
                 </div>
 
                 {/* Tab Body */}
-                <div className="tab-body" style={{ overflow: "auto" }}>
-                  {/* Empty State */}
-                  <div className="px-4 py-8">
-                    <div className="text-center">
-                      <div className="mb-4 flex items-center justify-center">
-                        <svg
-                          width="130"
-                          height="130"
-                          viewBox="0 0 130 130"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M118.42 75.84C118.43 83.2392 116.894 90.5589 113.91 97.33H16.0901C12.8945 90.0546 11.3623 82.1579 11.605 74.2154C11.8478 66.2728 13.8594 58.4844 17.4933 51.4177C21.1272 44.3511 26.2919 38.1841 32.6109 33.3662C38.93 28.5483 46.2444 25.2008 54.021 23.5676C61.7976 21.9345 69.8407 22.0568 77.564 23.9257C85.2874 25.7946 92.4966 29.363 98.6662 34.3709C104.836 39.3787 109.811 45.6999 113.228 52.8739C116.645 60.0478 118.419 67.8937 118.42 75.84Z"
-                            fill="#F2F2F2"
-                          ></path>
-                          <path
-                            d="M4.58008 97.3301H125.42"
-                            stroke="#63666A"
-                            strokeWidth="1.5"
-                            strokeMiterlimit="10"
-                            strokeLinecap="round"
-                          ></path>
-                          <path
-                            d="M67.8105 114.8C73.1014 114.8 77.3905 110.511 77.3905 105.22C77.3905 99.9293 73.1014 95.6401 67.8105 95.6401C62.5196 95.6401 58.2305 99.9293 58.2305 105.22C58.2305 110.511 62.5196 114.8 67.8105 114.8Z"
-                            fill="#A7A7A7"
-                            stroke="#63666A"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          ></path>
-                          <path
-                            d="M87.5702 65.5702C86.2602 53.8802 76.3802 49.7402 67.8102 49.7402C59.2402 49.7402 49.3702 53.8802 48.0602 65.5702C46.9402 74.2802 44.6502 80.9702 39.9302 87.3602C35.9302 92.9402 34.8102 98.7202 36.4202 102.71C36.6692 103.283 37.0822 103.769 37.6073 104.107C38.1323 104.445 38.7458 104.62 39.3702 104.61H96.2502C96.8831 104.631 97.5074 104.46 98.0424 104.121C98.5773 103.783 98.9981 103.291 99.2502 102.71C100.86 98.7102 99.6802 92.9402 95.7402 87.3602C91.0002 81.0002 88.6802 74.2802 87.5702 65.5702Z"
-                            fill="#D7D7D7"
-                          ></path>
-                          <path
-                            d="M99.2101 102.71C100.82 98.7101 99.6401 92.9401 95.7001 87.3601C91.0001 81.0001 88.6801 74.2801 87.5701 65.5701C87.3182 62.3646 86.134 59.3027 84.1635 56.7618C82.193 54.2209 79.5221 52.3119 76.4801 51.2701C74.579 50.5286 72.5005 50.3684 70.5083 50.8099C68.516 51.2515 66.6999 52.2748 65.2901 53.7501C62.3755 56.9524 60.5972 61.0257 60.2301 65.3401C58.9201 75.5501 56.1401 82.0001 50.6001 89.5001C47.2401 94.2501 45.3701 101.63 48.2901 104.61H96.2901C96.9095 104.614 97.5164 104.437 98.0356 104.099C98.5547 103.761 98.9632 103.278 99.2101 102.71Z"
-                            fill="white"
-                          ></path>
-                          <path
-                            d="M86.3002 60.4702C82.0002 51.7802 73.8702 49.7402 67.8102 49.7402C59.2402 49.7402 49.3702 53.8802 48.0602 65.5702C46.9402 74.2802 44.6502 80.9702 39.9302 87.3602C35.9302 92.9402 34.8102 98.7202 36.4202 102.71C36.6692 103.283 37.0822 103.769 37.6073 104.107C38.1323 104.445 38.7458 104.62 39.3702 104.61H96.2502C96.8831 104.631 97.5074 104.46 98.0424 104.121C98.5773 103.783 98.9981 103.291 99.2502 102.71C100.86 98.7102 99.6802 92.9402 95.7402 87.3602C91.5766 81.5452 88.8894 74.8049 87.9102 67.7202"
-                            stroke="#63666A"
-                            strokeWidth="1.5"
-                            strokeMiterlimit="10"
-                            strokeLinecap="round"
-                          ></path>
-                        </svg>
-                      </div>
-                      <p className="text-gray-500 text-sm">
-                        Không có thông báo nào
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1">
-                        Chúng tôi sẽ thông báo khi có cập nhật mới
-                      </p>
+                <div
+                  className="tab-body"
+                  style={{ overflow: "auto", maxHeight: "400px" }}
+                >
+                  {notificationsLoading ? (
+                    <div className="px-4 py-8 flex justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
                     </div>
-                  </div>
+                  ) : getFilteredNotifications().length === 0 ? (
+                    /* Empty State */
+                    <div className="px-4 py-8">
+                      <div className="text-center">
+                        <div className="mb-4 flex items-center justify-center">
+                          <svg
+                            width="60"
+                            height="60"
+                            viewBox="0 0 130 130"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M118.42 75.84C118.43 83.2392 116.894 90.5589 113.91 97.33H16.0901C12.8945 90.0546 11.3623 82.1579 11.605 74.2154C11.8478 66.2728 13.8594 58.4844 17.4933 51.4177C21.1272 44.3511 26.2919 38.1841 32.6109 33.3662C38.93 28.5483 46.2444 25.2008 54.021 23.5676C61.7976 21.9345 69.8407 22.0568 77.564 23.9257C85.2874 25.7946 92.4966 29.363 98.6662 34.3709C104.836 39.3787 109.811 45.6999 113.228 52.8739C116.645 60.0478 118.419 67.8937 118.42 75.84Z"
+                              fill="#F2F2F2"
+                            ></path>
+                            <path
+                              d="M67.8105 114.8C73.1014 114.8 77.3905 110.511 77.3905 105.22C77.3905 99.9293 73.1014 95.6401 67.8105 95.6401C62.5196 95.6401 58.2305 99.9293 58.2305 105.22C58.2305 110.511 62.5196 114.8 67.8105 114.8Z"
+                              fill="#A7A7A7"
+                              stroke="#63666A"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            ></path>
+                            <path
+                              d="M87.5702 65.5702C86.2602 53.8802 76.3802 49.7402 67.8102 49.7402C59.2402 49.7402 49.3702 53.8802 48.0602 65.5702C46.9402 74.2802 44.6502 80.9702 39.9302 87.3602C35.9302 92.9402 34.8102 98.7202 36.4202 102.71C36.6692 103.283 37.0822 103.769 37.6073 104.107C38.1323 104.445 38.7458 104.62 39.3702 104.61H96.2502C96.8831 104.631 97.5074 104.46 98.0424 104.121C98.5773 103.783 98.9981 103.291 99.2502 102.71C100.86 98.7102 99.6802 92.9402 95.7402 87.3602C91.0002 81.0002 88.6802 74.2802 87.5702 65.5702Z"
+                              fill="#D7D7D7"
+                            ></path>
+                          </svg>
+                        </div>
+                        <p className="text-gray-500 text-sm">
+                          {activeNotificationTab === "UNREAD"
+                            ? "Không có thông báo chưa đọc"
+                            : "Không có thông báo nào"}
+                        </p>
+                        <p className="text-gray-400 text-xs mt-1">
+                          Chúng tôi sẽ thông báo khi có cập nhật mới
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Notification List */
+                    <div className="divide-y divide-gray-100">
+                      {getFilteredNotifications().map((notification) => (
+                        <div
+                          key={notification._id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                            !notification.read
+                              ? "bg-blue-50 border-l-2 border-l-blue-500"
+                              : ""
+                          } ${
+                            notification.data.actionButton?.link
+                              ? "hover:bg-blue-100"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-start space-x-3">
+                            {/* Icon */}
+                            <div className="text-lg flex-shrink-0 mt-1">
+                              {getNotificationIcon(notification.type)}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <h4
+                                className={`text-sm font-medium ${
+                                  !notification.read
+                                    ? "text-gray-900"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {notification.title}
+                              </h4>
+                              <p
+                                className="text-xs text-gray-600 mt-1"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                {notification.message}
+                              </p>
+
+                              {/* Metadata */}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-gray-400">
+                                  {new Date(
+                                    notification.createdAt
+                                  ).toLocaleString("vi-VN")}
+                                </span>
+                                {!notification.read && (
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                )}
+                              </div>
+
+                              {/* Action Button */}
+                              {notification.data.actionButton && (
+                                <div className="mt-3">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleNotificationAction(notification);
+                                    }}
+                                    className={getButtonStyle(
+                                      notification.data.actionButton.style
+                                    )}
+                                  >
+                                    {notification.data.actionButton.text}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

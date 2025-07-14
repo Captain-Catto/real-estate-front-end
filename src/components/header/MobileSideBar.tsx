@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 } from "@headlessui/react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/store/hooks";
+import { categoryService, Category } from "@/services/categoryService";
 import { toast } from "sonner";
 
 interface SidebarProps {
@@ -22,6 +23,35 @@ interface SidebarProps {
 export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const { favorites: favoriteItems } = useFavorites();
+  const [propertyCategories, setPropertyCategories] = useState<Category[]>([]);
+  const [rentCategories, setRentCategories] = useState<Category[]>([]);
+  const [projectCategories, setProjectCategories] = useState<Category[]>([]);
+
+  // Load categories from API
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        // Load property categories
+        const propResult = await categoryService.getByProjectType(false);
+        const activePropertyCategories = propResult
+          .filter((cat) => cat.isActive !== false)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        setPropertyCategories(activePropertyCategories);
+        setRentCategories(activePropertyCategories); // Same categories for rent
+
+        // Load project categories
+        const projectResult = await categoryService.getByProjectType(true);
+        const activeProjectCategories = projectResult
+          .filter((cat) => cat.isActive !== false)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        setProjectCategories(activeProjectCategories);
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      }
+    };
+
+    loadCategories();
+  }, []);
 
   const handleLogout = async () => {
     const result = await logout();
@@ -63,9 +93,7 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b border-gray-200">
                       <div className="flex items-center gap-3">
-                        <button className="px-3 py-1 text-sm border border-gray-300 rounded text-gray-700">
-                          Tải ứng dụng
-                        </button>
+                        {/* Logo hoặc title có thể thêm ở đây */}
                       </div>
                       <button
                         onClick={onClose}
@@ -90,6 +118,25 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                     {/* User Actions */}
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center gap-3 mb-4">
+                        {/* User info hiển thị khi đã đăng nhập */}
+                        {isAuthenticated && user && (
+                          <Link
+                            href="/nguoi-dung/tong-quan"
+                            onClick={onClose}
+                            className="flex items-center gap-2 flex-1"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                              <span className="text-white text-sm font-medium">
+                                {user.username?.charAt(0).toUpperCase() ||
+                                  user.email?.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {user.username || user.email?.split("@")[0]}
+                            </span>
+                          </Link>
+                        )}
+
                         <Link
                           href="/nguoi-dung/yeu-thich"
                           onClick={onClose}
@@ -123,21 +170,6 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                             </span>
                           )}
                         </Link>
-
-                        {/* User info hiển thị khi đã đăng nhập */}
-                        {isAuthenticated && user && (
-                          <div className="flex items-center gap-2 flex-1">
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                              <span className="text-white text-sm font-medium">
-                                {user.username?.charAt(0).toUpperCase() ||
-                                  user.email?.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">
-                              {user.username || user.email?.split("@")[0]}
-                            </span>
-                          </div>
-                        )}
                       </div>
                       {isAuthenticated && user ? (
                         /* Authenticated user actions */
@@ -256,34 +288,16 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                                 </DisclosureButton>
                               </div>
                               <DisclosurePanel className="ml-8 mt-2 space-y-1">
-                                <Link
-                                  href="/mua-ban/can-ho"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Căn hộ chung cư
-                                </Link>
-                                <Link
-                                  href="/mua-ban/nha-rieng"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Nhà riêng
-                                </Link>
-                                <Link
-                                  href="/mua-ban/biet-thu"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Biệt thự
-                                </Link>
-                                <Link
-                                  href="/mua-ban/dat-nen"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Đất nền
-                                </Link>
+                                {propertyCategories.map((category) => (
+                                  <Link
+                                    key={category._id}
+                                    href={`/mua-ban/${category.slug}`}
+                                    className="block p-2 text-sm text-gray-600 hover:text-blue-600"
+                                    onClick={onClose}
+                                  >
+                                    {category.name}
+                                  </Link>
+                                ))}
                               </DisclosurePanel>
                             </div>
                           )}
@@ -492,90 +506,6 @@ export function MobileSidebar({ isOpen, onClose }: SidebarProps) {
                           </svg>
                           <span>Tin tức</span>
                         </Link>
-
-                        {/* Wiki BĐS */}
-                        <Disclosure>
-                          {({ open }) => (
-                            <div>
-                              <div className="flex items-center">
-                                <Link
-                                  href="/wiki"
-                                  className="flex-1 flex items-center gap-3 p-3 text-gray-700 hover:bg-gray-50 rounded-l-lg"
-                                  onClick={onClose}
-                                >
-                                  <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C20.832 18.477 19.246 18 17.5 18c-1.746 0-3.332.477-4.5 1.253"
-                                    />
-                                  </svg>
-                                  <span>Wiki BĐS</span>
-                                </Link>
-                                <DisclosureButton className="p-3 text-gray-700 hover:bg-gray-50 rounded-r-lg">
-                                  <svg
-                                    className={`w-4 h-4 transform transition-transform ${
-                                      open ? "rotate-90" : ""
-                                    }`}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M9 5l7 7-7 7"
-                                    />
-                                  </svg>
-                                </DisclosureButton>
-                              </div>
-                              <DisclosurePanel className="ml-8 mt-2 space-y-1">
-                                <Link
-                                  href="/wiki/mua-bds"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Mua BĐS
-                                </Link>
-                                <Link
-                                  href="/wiki/ban-bds"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Bán BĐS
-                                </Link>
-                                <Link
-                                  href="/wiki/thue-bds"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Thuê BĐS
-                                </Link>
-                                <Link
-                                  href="/wiki/tai-chinh"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Tài chính BĐS
-                                </Link>
-                                <Link
-                                  href="/wiki/phong-thuy"
-                                  className="block p-2 text-sm text-gray-600 hover:text-blue-600"
-                                  onClick={onClose}
-                                >
-                                  Phong thủy
-                                </Link>
-                              </DisclosurePanel>
-                            </div>
-                          )}
-                        </Disclosure>
 
                         {/* Liên hệ */}
                         <Link

@@ -8,6 +8,9 @@ import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { locationService, Location } from "@/services/locationService";
+import { DeveloperService } from "@/services/developerService";
+import { DeveloperForSelection } from "@/types/developer";
+import { ProjectLocationDisplay } from "@/components/admin/ProjectLocationDisplay";
 import {
   ProjectListItem,
   Project,
@@ -24,18 +27,28 @@ export default function AdminProjectPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [modalStep, setModalStep] = useState(1);
+  const [projectsMissingWardCount, setProjectsMissingWardCount] = useState(0);
 
   // Location states
   const [provinces, setProvinces] = useState<Location[]>([]);
   const [districts, setDistricts] = useState<Location[]>([]);
+  const [wards, setWards] = useState<Location[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string>("");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedWard, setSelectedWard] = useState<string>("");
+
+  // Developer states
+  const [developers, setDevelopers] = useState<DeveloperForSelection[]>([]);
+  const [selectedDeveloper, setSelectedDeveloper] = useState<string>("");
+
   const [locationLoading, setLocationLoading] = useState<{
     provinces: boolean;
     districts: boolean;
+    wards: boolean;
   }>({
     provinces: false,
     districts: false,
+    wards: false,
   });
   const [form, setForm] = useState<Partial<CreateProjectRequest>>({
     name: "",
@@ -44,6 +57,7 @@ export default function AdminProjectPage() {
     location: {
       provinceCode: "",
       districtCode: "",
+      wardCode: "",
     },
     latitude: 0,
     longitude: 0,
@@ -85,6 +99,7 @@ export default function AdminProjectPage() {
   useEffect(() => {
     fetchProjects();
     fetchProvinces();
+    fetchDevelopers();
   }, []);
 
   const fetchProjects = async () => {
@@ -92,10 +107,46 @@ export default function AdminProjectPage() {
     try {
       const data = await ProjectService.getProjects();
       setProjects(data);
+      console.log("📊 Data trả về từ API:", data);
+
+      // Count projects missing ward information with detailed logging
+      const projectsMissingWard = data.filter((project) => {
+        const hasWard = project.locationObj?.wardCode;
+        if (!hasWard) {
+          console.log(`⚠️ Dự án thiếu ward: ${project.name}`, {
+            locationObj: project.locationObj,
+            fullLocation: project.location,
+          });
+        }
+        return !hasWard;
+      });
+
+      setProjectsMissingWardCount(projectsMissingWard.length);
+
+      console.log(
+        `📍 Tổng số dự án: ${data.length}, Thiếu ward: ${projectsMissingWard.length}`
+      );
+      setProjectsMissingWardCount(projectsMissingWard.length);
+
+      if (projectsMissingWard.length > 0) {
+        console.warn(
+          `⚠️ ${projectsMissingWard.length} dự án thiếu thông tin phường/xã`
+        );
+      }
     } catch (error) {
       console.error("Error fetching projects:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch developers for dropdown
+  const fetchDevelopers = async () => {
+    try {
+      const data = await DeveloperService.getDevelopersForSelection();
+      setDevelopers(data);
+    } catch (error) {
+      console.error("Error fetching developers:", error);
     }
   };
 
@@ -125,12 +176,28 @@ export default function AdminProjectPage() {
     }
   };
 
+  const fetchWards = async (provinceCode: string, districtCode: string) => {
+    if (!provinceCode || !districtCode) return;
+    setLocationLoading((prev) => ({ ...prev, wards: true }));
+    try {
+      const data = await locationService.getWards(provinceCode, districtCode);
+      setWards(data);
+    } catch (error) {
+      console.error("Error fetching wards:", error);
+    } finally {
+      setLocationLoading((prev) => ({ ...prev, wards: false }));
+    }
+  };
+
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
 
     if (name === "provinceCode") {
       setSelectedProvince(value);
       setSelectedDistrict("");
+      setSelectedWard("");
+      setDistricts([]);
+      setWards([]);
       fetchDistricts(value);
 
       setForm((prev) => ({
@@ -138,16 +205,32 @@ export default function AdminProjectPage() {
         location: {
           provinceCode: value,
           districtCode: "",
+          wardCode: "",
         },
       }));
     } else if (name === "districtCode") {
       setSelectedDistrict(value);
+      setSelectedWard("");
+      setWards([]);
+      fetchWards(selectedProvince, value);
 
       setForm((prev) => ({
         ...prev,
         location: {
           provinceCode: prev.location?.provinceCode || "",
           districtCode: value,
+          wardCode: "",
+        },
+      }));
+    } else if (name === "wardCode") {
+      setSelectedWard(value);
+
+      setForm((prev) => ({
+        ...prev,
+        location: {
+          provinceCode: prev.location?.provinceCode || "",
+          districtCode: prev.location?.districtCode || "",
+          wardCode: value,
         },
       }));
     }
@@ -156,7 +239,7 @@ export default function AdminProjectPage() {
   // Load location data for editing
   const loadLocationData = async (project: Project) => {
     if (project.location) {
-      const { provinceCode, districtCode } = project.location;
+      const { provinceCode, districtCode, wardCode } = project.location;
 
       if (provinceCode) {
         setSelectedProvince(provinceCode);
@@ -164,6 +247,11 @@ export default function AdminProjectPage() {
 
         if (districtCode) {
           setSelectedDistrict(districtCode);
+          await fetchWards(provinceCode, districtCode);
+
+          if (wardCode) {
+            setSelectedWard(wardCode);
+          }
         }
       }
     }
@@ -179,6 +267,46 @@ export default function AdminProjectPage() {
         if (fullProject) {
           setEditingProject(fullProject);
           setForm(fullProject);
+
+          // Set selected developer if available
+          if (typeof fullProject.developer === "string") {
+            // Developer is an ID
+            const developerId = fullProject.developer;
+            setSelectedDeveloper(developerId);
+            // Auto-populate phone and email from the developer data
+            const selectedDev = developers.find(
+              (dev) => dev._id === developerId
+            );
+            if (selectedDev) {
+              setForm((prev) => ({
+                ...prev,
+                contact: {
+                  hotline: selectedDev.phone || "",
+                  email: selectedDev.email || "",
+                },
+              }));
+            }
+          } else if (
+            typeof fullProject.developer === "object" &&
+            fullProject.developer?.name
+          ) {
+            // Developer is an object, try to match by name or other fields
+            const developer = fullProject.developer as { name: string };
+            const developerMatch = developers.find(
+              (dev) => dev.name === developer.name
+            );
+            if (developerMatch) {
+              setSelectedDeveloper(developerMatch._id);
+              // Auto-populate phone and email from the developer data
+              setForm((prev) => ({
+                ...prev,
+                contact: {
+                  hotline: developerMatch.phone || "",
+                  email: developerMatch.email || "",
+                },
+              }));
+            }
+          }
 
           // Load location data when editing
           if (fullProject.location) {
@@ -199,6 +327,7 @@ export default function AdminProjectPage() {
         location: {
           provinceCode: "",
           districtCode: "",
+          wardCode: "",
         },
         latitude: 0,
         longitude: 0,
@@ -240,7 +369,10 @@ export default function AdminProjectPage() {
       // Reset location selections
       setSelectedProvince("");
       setSelectedDistrict("");
+      setSelectedWard("");
+      setSelectedDeveloper("");
       setDistricts([]);
+      setWards([]);
     }
     setShowModal(true);
     setModalStep(1);
@@ -362,10 +494,53 @@ export default function AdminProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Enhanced validation for required fields
+    const validationErrors: string[] = [];
+
+    if (!form.name?.trim()) {
+      validationErrors.push("Tên dự án");
+    }
+
+    if (!form.address?.trim()) {
+      validationErrors.push("Địa chỉ chi tiết");
+    }
+
+    if (!form.location?.provinceCode) {
+      validationErrors.push("Tỉnh/Thành phố");
+    }
+
+    if (!form.location?.districtCode) {
+      validationErrors.push("Quận/Huyện");
+    }
+
+    if (!form.location?.wardCode) {
+      validationErrors.push("Phường/Xã");
+    }
+
+    if (!selectedDeveloper) {
+      validationErrors.push("Chủ đầu tư (vui lòng chọn từ danh sách)");
+    }
+
+    if (validationErrors.length > 0) {
+      alert(
+        `Vui lòng điền đầy đủ thông tin bắt buộc:\n• ${validationErrors.join(
+          "\n• "
+        )}\n\nĐặc biệt là thông tin Phường/Xã để xác định vị trí chính xác của dự án.`
+      );
+      return;
+    }
+
     try {
+      // Prepare data for submission - convert developer object to developer ID
+      const submissionData = {
+        ...form,
+        developer: selectedDeveloper, // Use selected developer ID instead of developer object
+      };
+
       if (editingProject) {
         await ProjectService.updateProject({
-          ...form,
+          ...submissionData,
           id: editingProject.id,
         } as UpdateProjectRequest);
         handleCloseModal();
@@ -382,7 +557,7 @@ export default function AdminProjectPage() {
       } else {
         // Create new project and redirect to detail page
         const result = await ProjectService.addProject(
-          form as CreateProjectRequest
+          submissionData as CreateProjectRequest
         );
         if (result.success && result.data) {
           handleCloseModal();
@@ -503,11 +678,38 @@ export default function AdminProjectPage() {
                 <h4 className="text-sm font-medium text-gray-700">
                   Vị trí dự án *
                 </h4>
+
+                {/* Important notice about ward selection */}
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg
+                        className="w-4 h-4 text-amber-400 mt-0.5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                    <div className="ml-2">
+                      <p className="text-sm text-amber-800">
+                        <strong>Quan trọng:</strong> Vui lòng chọn đầy đủ{" "}
+                        <strong>Phường/Xã</strong> để xác định vị trí chính xác
+                        của dự án. Thông tin này cần thiết cho việc tìm kiếm và
+                        lọc dự án theo khu vực.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 gap-4">
-                  {" "}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tỉnh/Thành phố *
+                      <span className="text-red-500">*</span> Tỉnh/Thành phố
                     </label>
                     <select
                       name="provinceCode"
@@ -524,12 +726,14 @@ export default function AdminProjectPage() {
                       ))}
                     </select>
                     {locationLoading.provinces && (
-                      <span className="text-xs text-gray-500">Đang tải...</span>
+                      <span className="text-xs text-blue-500">
+                        Đang tải danh sách tỉnh/thành...
+                      </span>
                     )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quận/Huyện *
+                      <span className="text-red-500">*</span> Quận/Huyện
                     </label>
                     <select
                       name="districtCode"
@@ -547,7 +751,45 @@ export default function AdminProjectPage() {
                       ))}
                     </select>
                     {locationLoading.districts && (
-                      <span className="text-xs text-gray-500">Đang tải...</span>
+                      <span className="text-xs text-blue-500">
+                        Đang tải danh sách quận/huyện...
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <span className="text-red-500">*</span> Phường/Xã (Bắt
+                      buộc để xác định vị trí chính xác)
+                    </label>
+                    <select
+                      name="wardCode"
+                      value={selectedWard}
+                      onChange={handleLocationChange}
+                      required
+                      disabled={!selectedDistrict || locationLoading.wards}
+                      className={`w-full px-3 py-2 border rounded-lg ${
+                        !selectedWard && selectedDistrict
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      <option value="">-- Vui lòng chọn Phường/Xã --</option>
+                      {wards.map((ward) => (
+                        <option key={ward.code} value={ward.code}>
+                          {ward.name}
+                        </option>
+                      ))}
+                    </select>
+                    {locationLoading.wards && (
+                      <span className="text-xs text-blue-500">
+                        Đang tải danh sách phường/xã...
+                      </span>
+                    )}
+                    {!selectedWard && selectedDistrict && (
+                      <p className="text-xs text-red-500 mt-1">
+                        ⚠️ Phường/Xã là thông tin bắt buộc để xác định vị trí
+                        chính xác của dự án
+                      </p>
                     )}
                   </div>
                 </div>
@@ -693,156 +935,132 @@ export default function AdminProjectPage() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên chủ đầu tư *
+                  Chọn chủ đầu tư *
                 </label>
-                <input
-                  name="developer.name"
-                  value={form.developer?.name || ""}
-                  onChange={handleChange}
+                <select
+                  value={selectedDeveloper}
+                  onChange={(e) => {
+                    const developerId = e.target.value;
+                    setSelectedDeveloper(developerId);
+
+                    if (developerId) {
+                      const selected = developers.find(
+                        (dev) => dev._id === developerId
+                      );
+                      if (selected) {
+                        setForm((prev) => ({
+                          ...prev,
+                          developer: {
+                            name: selected.name,
+                            logo: selected.logo,
+                            phone: "",
+                            email: "",
+                          },
+                          contact: {
+                            ...prev.contact,
+                            hotline: selected.phone || "",
+                            email: selected.email || "",
+                          },
+                        }));
+                      }
+                    } else {
+                      setForm((prev) => ({
+                        ...prev,
+                        developer: {
+                          name: "",
+                          logo: "",
+                          phone: "",
+                          email: "",
+                        },
+                        contact: {
+                          ...prev.contact,
+                          hotline: "",
+                          email: "",
+                        },
+                      }));
+                    }
+                  }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
+                >
+                  <option value="">-- Chọn chủ đầu tư --</option>
+                  {developers.map((dev) => (
+                    <option key={dev._id} value={dev._id}>
+                      {dev.name}
+                    </option>
+                  ))}
+                </select>
+                {developers.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Đang tải danh sách chủ đầu tư...
+                  </p>
+                )}
               </div>
 
-              {/* Upload logo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Logo chủ đầu tư
-                </label>
-
-                {/* Current logo preview */}
-                {form.developer?.logo && (
-                  <div className="mb-3">
-                    <div className="relative w-32 h-20 border border-gray-300 rounded-lg overflow-hidden">
-                      <Image
-                        src={form.developer.logo}
-                        alt="Logo preview"
-                        width={128}
-                        height={80}
-                        className="w-full h-full object-contain bg-gray-50"
-                        unoptimized
-                      />
+              {/* Display selected developer info */}
+              {selectedDeveloper &&
+                typeof form.developer === "object" &&
+                form.developer?.name && (
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Thông tin chủ đầu tư đã chọn:
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      {form.developer.logo && (
+                        <div className="w-16 h-16 relative">
+                          <Image
+                            src={form.developer.logo}
+                            alt={`${form.developer.name} logo`}
+                            width={64}
+                            height={64}
+                            className="w-16 h-16 object-contain rounded border"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {form.developer.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Số điện thoại và email sẽ được tự động điền vào phần
+                          liên hệ
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Upload button */}
-                <div className="mb-3">
-                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center py-2">
-                      <svg
-                        className="w-6 h-6 mb-2 text-gray-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                        />
-                      </svg>
-                      <p className="text-xs text-gray-500">
-                        Click để upload logo
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const files = e.target.files;
-                        if (!files || files.length === 0) return;
-
-                        setUploading(true);
-                        try {
-                          const uploadResults =
-                            await UploadService.uploadImages(files);
-                          const successfulUpload = uploadResults.find(
-                            (result) => result.success
-                          );
-
-                          if (successfulUpload?.data?.url) {
-                            setForm((prev) => ({
-                              ...prev,
-                              developer: {
-                                name: prev.developer?.name || "",
-                                phone: prev.developer?.phone || "",
-                                email: prev.developer?.email || "",
-                                logo: successfulUpload.data!.url,
-                              },
-                            }));
-                          }
-                        } catch (error) {
-                          console.error("Error uploading logo:", error);
-                          alert("Có lỗi xảy ra khi upload logo");
-                        } finally {
-                          setUploading(false);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-
-                {/* Manual URL input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hoặc nhập URL logo thủ công
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      name="developer.logo"
-                      value={form.developer?.logo || ""}
-                      onChange={handleChange}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                      placeholder="https://example.com/logo.png"
-                    />
-                    {form.developer?.logo && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setForm((prev) => ({
-                            ...prev,
-                            developer: {
-                              name: prev.developer?.name || "",
-                              phone: prev.developer?.phone || "",
-                              email: prev.developer?.email || "",
-                              logo: "",
-                            },
-                          }));
-                        }}
-                        className="px-3 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
-                      >
-                        Xóa
-                      </button>
-                    )}
+              {/* Link to manage developers */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <strong>Không tìm thấy chủ đầu tư?</strong>
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      Bạn có thể thêm chủ đầu tư mới trong trang quản lý chủ đầu
+                      tư
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Bạn muốn chuyển đến trang quản lý chủ đầu tư? Thông tin đang nhập sẽ bị mất."
+                        )
+                      ) {
+                        router.push("/admin/quan-ly-chu-dau-tu");
+                      }
+                    }}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                  >
+                    Quản lý chủ đầu tư
+                  </button>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số điện thoại
-                </label>
-                <input
-                  name="developer.phone"
-                  value={form.developer?.phone || ""}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  name="developer.email"
-                  value={form.developer?.email || ""}
-                  onChange={handleChange}
-                  type="email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Hotline liên hệ
@@ -1244,23 +1462,74 @@ export default function AdminProjectPage() {
       <div className="flex-1">
         <AdminHeader />
         <main className="p-6">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Quản lý dự án
-              </h1>
-              <p className="text-gray-600">
-                Thêm, sửa, xóa các dự án bất động sản để người dùng chọn khi
-                đăng tin
-              </p>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Quản lý dự án
+                </h1>
+                <p className="text-gray-600">
+                  Thêm, sửa, xóa các dự án bất động sản để người dùng chọn khi
+                  đăng tin
+                </p>
+              </div>
+              <button
+                onClick={() => handleOpenModal()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Thêm dự án
+              </button>
             </div>
-            <button
-              onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Thêm dự án
-            </button>
+
+            {/* Important notice about ward requirement */}
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="w-5 h-5 text-amber-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-amber-800">
+                    Yêu cầu thông tin vị trí đầy đủ
+                  </h3>
+                  <div className="mt-2 text-sm text-amber-700">
+                    <p>
+                      Khi thêm hoặc chỉnh sửa dự án,{" "}
+                      <strong>bắt buộc phải chọn đầy đủ Phường/Xã</strong> để:
+                    </p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Xác định vị trí chính xác của dự án</li>
+                      <li>Hỗ trợ tìm kiếm và lọc dự án theo khu vực</li>
+                      <li>
+                        Hiển thị breadcrumb và điều hướng đúng cho người dùng
+                      </li>
+                    </ul>
+                    <p className="mt-2">
+                      {projectsMissingWardCount > 0 ? (
+                        <span className="text-red-600 font-medium">
+                          ⚠️ Hiện có {projectsMissingWardCount} dự án thiếu
+                          thông tin Phường/Xã và cần được cập nhật.
+                        </span>
+                      ) : (
+                        <span className="text-green-600">
+                          ✅ Tất cả dự án đã có đầy đủ thông tin Phường/Xã.
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow">
@@ -1278,6 +1547,9 @@ export default function AdminProjectPage() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Vị trí
+                        <div className="text-xs font-normal text-gray-400 mt-0.5">
+                          (Tỉnh - Huyện - Phường)
+                        </div>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Chủ đầu tư
@@ -1299,8 +1571,17 @@ export default function AdminProjectPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {projects.map((project) => (
                       <tr key={project.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">{project.name}</td>
-                        <td className="px-6 py-4">{project.location}</td>
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-gray-900">
+                            {project.name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <ProjectLocationDisplay
+                            location={project.locationObj}
+                            variant="compact"
+                          />
+                        </td>
                         <td className="px-6 py-4">{project.developer}</td>
                         <td className="px-6 py-4">
                           <span

@@ -2,13 +2,26 @@
 
 import React from "react";
 import { PropertyDetail } from "@/components/property-detail/PropertyDetail";
-import ProjectDetail from "@/components/project-detail/ProjectDetail";
 import { PropertyListing } from "@/components/property-listing/PropertyListing";
 import { notFound } from "next/navigation";
 import { postService } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
-import { ProjectService } from "@/services/projectService";
-import { createSlug } from "@/utils/helpers";
+import Header from "@/components/header/Header";
+import Footer from "@/components/footer/Footer";
+
+// Utility function để tạo slug
+function createSlug(text: string): string {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
 
 interface DynamicPageProps {
   params: {
@@ -266,11 +279,15 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       }
 
       return (
-        <PropertyDetail
-          property={propertyData}
-          breadcrumbData={breadcrumbData}
-          transactionType={urlData.transactionType}
-        />
+        <>
+          <Header />
+          <PropertyDetail
+            property={propertyData}
+            breadcrumbData={breadcrumbData}
+            transactionType={urlData.transactionType}
+          />
+          <Footer />
+        </>
       );
     }
 
@@ -278,79 +295,49 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
     else if (urlData.type === "property-listing") {
       console.log("Fetching properties for location:", urlData.location);
 
-      // Define location filter type
-      interface LocationFilter {
-        status: string;
-        type?: string;
-        "location.provinceCode"?: string;
-        "location.districtCode"?: string;
-        "location.wardCode"?: string;
-      }
-
-      // Tạo filter object để query database
-      const locationFilter: LocationFilter = {
-        status: "active",
-      };
+      // Tạo filter object tương thích với backend API searchPosts method
+      const searchParams: Record<string, string | number> = {};
 
       // Add type filter - Giữ nguyên giá trị từ URL (mua-ban -> ban, cho-thue -> cho-thue)
       if (urlData.transactionType) {
-        locationFilter.type =
+        searchParams.type =
           urlData.transactionType === "mua-ban" ? "ban" : "cho-thue";
       }
 
-      // Get location codes
-      try {
-        // Step 1: Get province code
-        if (urlData.location?.city) {
-          const provinces = await locationService.getProvinces();
-          const province = provinces?.find(
-            (p) =>
-              p.codename === urlData.location.city ||
-              createSlug(p.name) === urlData.location.city
-          );
-          if (province) {
-            locationFilter["location.provinceCode"] = province.code;
-
-            // Step 2: Get district code if province found
-            if (urlData.location?.district) {
-              const districts = await locationService.getDistricts(
-                province.code
-              );
-              const district = districts?.find(
-                (d) =>
-                  d.codename === urlData.location.district ||
-                  createSlug(d.name) === urlData.location.district
-              );
-              if (district) {
-                locationFilter["location.districtCode"] = district.code;
-
-                // Step 3: Get ward code if district found
-                if (urlData.location?.ward) {
-                  const wards = await locationService.getWards(
-                    province.code,
-                    district.code
-                  );
-                  const ward = wards?.find(
-                    (w) =>
-                      w.codename === urlData.location.ward ||
-                      createSlug(w.name) === urlData.location.ward
-                  );
-                  if (ward) {
-                    locationFilter["location.wardCode"] = ward.code;
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error getting location codes:", error);
+      // Add location filters using city, districts, and wards parameters (tương thích với backend)
+      if (urlData.location?.city) {
+        searchParams.city = urlData.location.city;
       }
 
-      console.log("Location filter:", locationFilter);
+      if (urlData.location?.district) {
+        searchParams.districts = urlData.location.district;
+      }
 
-      // Fetch properties từ database với filter mới
-      const posts = await postService.getPostsByFilter(locationFilter);
+      if (urlData.location?.ward) {
+        searchParams.wards = urlData.location.ward;
+      }
+
+      console.log("Search params:", searchParams);
+
+      // Debug log để kiểm tra location parsing
+      console.log("URL Location details:", {
+        city: urlData.location?.city,
+        district: urlData.location?.district,
+        ward: urlData.location?.ward,
+        level: urlData.level,
+      });
+
+      // Fetch properties từ database với filter mới sử dụng searchPosts method
+      const response = await postService.searchPosts(searchParams);
+      console.log("Search response:", response);
+
+      let posts = [];
+      if (!response || !response.success) {
+        console.error("Search failed:", response?.message || "Unknown error");
+        posts = [];
+      } else {
+        posts = response?.data?.posts || [];
+      }
       console.log("Fetched posts:", posts);
 
       // Get proper Vietnamese names for breadcrumb
@@ -380,28 +367,23 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       };
 
       return (
-        <PropertyListing
-          properties={posts || []}
-          location={breadcrumbData}
-          transactionType={urlData.transactionType || "mua-ban"}
-          level={(urlData.level as "ward" | "district" | "city") || "city"}
-        />
+        <>
+          <Header />
+          <PropertyListing
+            properties={posts || []}
+            location={breadcrumbData}
+            transactionType={urlData.transactionType || "mua-ban"}
+            level={(urlData.level as "ward" | "district" | "city") || "city"}
+          />
+          <Footer />
+        </>
       );
     }
 
-    // Xử lý project detail và listing tương tự...
+    // Xử lý project detail - tạm thời return notFound cho đến khi có ProjectService
     else if (urlData.type === "project-detail") {
-      if (!urlData.id) {
-        return notFound();
-      }
-
-      const project = await ProjectService.getProjectById(urlData.id);
-
-      if (!project) {
-        return notFound();
-      }
-
-      return <ProjectDetail projectSlug={project.slug} />;
+      // TODO: Implement project detail when ProjectService is available
+      return notFound();
     }
   } catch (error) {
     console.error("Error fetching data:", error);

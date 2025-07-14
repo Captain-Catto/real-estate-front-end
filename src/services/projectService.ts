@@ -36,6 +36,111 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 };
 
 export const ProjectService = {
+  // Get all projects with filters and pagination (public access)
+  getProjectsWithFilters: async (
+    options: {
+      page?: number;
+      limit?: number;
+      provinceCode?: string;
+      districtCode?: string;
+      wardCode?: string;
+      status?: string;
+      search?: string;
+      sortBy?: string;
+    } = {}
+  ): Promise<{
+    projects: Project[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+  }> => {
+    try {
+      const params = new URLSearchParams();
+
+      if (options.page) params.append("page", options.page.toString());
+      if (options.limit) params.append("limit", options.limit.toString());
+      if (options.provinceCode)
+        params.append("provinceCode", options.provinceCode);
+      if (options.districtCode)
+        params.append("districtCode", options.districtCode);
+      if (options.wardCode) params.append("wardCode", options.wardCode);
+      if (options.status) params.append("status", options.status);
+      if (options.search) params.append("search", options.search);
+      if (options.sortBy) params.append("sortBy", options.sortBy);
+
+      const queryString = params.toString();
+      const url = queryString
+        ? `${API_BASE_URL}/projects?${queryString}`
+        : `${API_BASE_URL}/projects`;
+
+      console.log("🌐 Calling Projects API:", url);
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        // Transform projects to match frontend interface
+        const transformedProjects = result.data.projects.map(
+          (project: Project & { _id: string }) => ({
+            ...project,
+            id: project._id,
+            specifications: project.specifications || {},
+            facilities: project.facilities || [],
+            faqs: project.faqs || [],
+            videos: project.videos || [],
+            locationInsights: project.locationInsights || {
+              schools: [],
+              hospitals: [],
+              supermarkets: [],
+              parks: [],
+              restaurants: [],
+            },
+            developer: project.developer || {
+              name: "",
+              logo: "",
+              phone: "",
+              email: "",
+            },
+            contact: project.contact || {
+              hotline: "",
+              email: "",
+            },
+            map: project.map || {
+              lat: project.latitude || 0,
+              lng: project.longitude || 0,
+            },
+          })
+        );
+
+        return {
+          projects: transformedProjects,
+          pagination: result.data.pagination,
+        };
+      }
+
+      return {
+        projects: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: 12,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching projects with filters:", error);
+      throw error;
+    }
+  },
+
   // Get all projects (for admin listing)
   getProjects: async (): Promise<ProjectListItem[]> => {
     try {
@@ -54,7 +159,8 @@ export const ProjectService = {
           (project: {
             _id: string;
             name: string;
-            location: {
+            fullLocation?: string;
+            location?: {
               provinceCode: string;
               districtCode: string;
               wardCode?: string;
@@ -67,9 +173,12 @@ export const ProjectService = {
           }) => ({
             id: project._id,
             name: project.name,
-            location: `${project.location?.districtCode || ""} - ${
-              project.location?.provinceCode || ""
-            }`,
+            location:
+              project.fullLocation ||
+              `${project.location?.districtCode || ""} - ${
+                project.location?.provinceCode || ""
+              }`,
+            locationObj: project.location, // Add full location object for checking ward
             developer: project.developer?.name || "",
             status: project.status,
             totalUnits: project.totalUnits,
@@ -129,6 +238,61 @@ export const ProjectService = {
       return null;
     } catch (error) {
       console.error("Error fetching project by ID:", error);
+      throw error;
+    }
+  },
+
+  // Get project by slug (full details)
+  getProjectBySlug: async (slug: string): Promise<Project | null> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/projects/slug/${slug}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const project = result.data;
+        // Ensure all required properties are initialized and convert _id to id
+        return {
+          ...project,
+          id: project._id,
+          specifications: project.specifications || {},
+          facilities: project.facilities || [],
+          faqs: project.faqs || [],
+          videos: project.videos || [],
+          locationInsights: project.locationInsights || {
+            schools: [],
+            hospitals: [],
+            supermarkets: [],
+            parks: [],
+            restaurants: [],
+          },
+          developer: project.developer || {
+            name: "",
+            logo: "",
+            phone: "",
+            email: "",
+          },
+          contact: project.contact || {
+            hotline: "",
+            email: "",
+          },
+          map: project.map || {
+            lat: 0,
+            lng: 0,
+          },
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error fetching project by slug:", error);
       throw error;
     }
   },

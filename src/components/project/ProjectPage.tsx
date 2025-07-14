@@ -1,56 +1,25 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
+import React, { useState } from "react";
+import Link from "next/link";
 import { Breadcrumb } from "@/components/property-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
 import { ProjectSearchBar } from "./ProjectSearchBar";
-import { ProjectCard } from "./ProjectCard";
 import { ProjectNews } from "./ProjectNews";
-import testCardImg from "@/assets/images/card-img.jpg";
+import { LocationNavigationBar } from "./LocationNavigationBar";
+import { LocationSearch } from "./LocationSearch";
+import { ProjectListCard } from "./ProjectListCard";
+import { useProjects } from "@/hooks/useProjects";
+import { useLocationNames } from "@/hooks/useLocationNames";
 import { Menu, Transition } from "@headlessui/react";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
 
 interface ProjectPageProps {
   title: string;
-  totalCount: number;
+  provinceCode?: string;
+  districtCode?: string;
+  wardCode?: string;
 }
-
-// Mock data for projects
-const mockProjects = [
-  {
-    id: "1",
-    title: "Vinhomes Golden City",
-    status: "updating",
-    area: "240,57 ha",
-    units: 4937,
-    location:
-      "Phường Hòa Nghĩa, Quận Dương Kinh và xã Đông Phương, xã Đại Đồng, huyện Kiến Thụy, Hải Phòng",
-    summary:
-      "Vinhomes Golden City là khu đô thị thông minh nằm tại cửa ngõ phía Đông Nam tọa lạc tại quận Dương Kinh và huyện Kiến Thụy do Công ty Cổ phần Vinhomes làm chủ đầu tư...",
-    images: [testCardImg, testCardImg, testCardImg],
-    imageCount: 9,
-    developer: "Tập đoàn Vingroup",
-    developerLogo: testCardImg,
-    slug: "vinhomes-golden-city-pj6350",
-  },
-  {
-    id: "2",
-    title: "The Fullton",
-    status: "updating",
-    area: "25 ha",
-    units: null,
-    location: "Xã Tân Quang, Huyện Văn Lâm, Hưng Yên",
-    summary:
-      "The Fullton là dự án thấp tầng đầu tiên của CapitaLand Development tại Hưng Yên, nằm trong khu đô thị Vinhomes Ocean Park 3 thuộc huyện Văn Lâm, tỉnh Hưng Yên...",
-    images: [testCardImg, testCardImg, testCardImg],
-    imageCount: 6,
-    developer: "CapitaLand Development (Việt Nam)",
-    developerLogo: testCardImg,
-    slug: "the-fullton-pj6346",
-  },
-  // Add more mock projects...
-];
 
 const sortOptions = [
   { value: "1", label: "Mới nhất" },
@@ -63,22 +32,118 @@ function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-export function ProjectPage({ title, totalCount }: ProjectPageProps) {
+export function ProjectPage({
+  title,
+  provinceCode,
+  districtCode,
+  wardCode,
+}: ProjectPageProps) {
   const [sortBy, setSortBy] = useState("1");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
+
+  // Use hook to fetch projects based on location
+  const {
+    projects,
+    loading,
+    error,
+    totalCount: actualTotalCount,
+    totalPages: apiTotalPages,
+  } = useProjects({
+    provinceCode,
+    districtCode,
+    wardCode,
+    page: currentPage,
+    limit: itemsPerPage,
+    sortBy,
+  });
+
+  // Get location names for breadcrumb
+  const { locationNames } = useLocationNames(
+    provinceCode,
+    districtCode,
+    wardCode
+  );
 
   // Format numbers consistently
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("vi-VN").format(num);
   };
 
+  // Build dynamic breadcrumb based on location
+  const buildBreadcrumb = () => {
+    const items: Array<{ label: string; href: string; isActive?: boolean }> = [
+      { label: "Trang chủ", href: "/" },
+      { label: "Dự án", href: "/du-an" },
+    ];
+
+    // Add province level
+    if (provinceCode && locationNames.provinceName) {
+      items.push({
+        label: locationNames.provinceName,
+        href: `/du-an?provinceCode=${provinceCode}`,
+      });
+
+      // Add district level
+      if (districtCode && locationNames.districtName) {
+        items.push({
+          label: locationNames.districtName,
+          href: `/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}`,
+        });
+
+        // Add ward level
+        if (wardCode && locationNames.wardName) {
+          items.push({
+            label: locationNames.wardName,
+            href: `/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}&wardCode=${wardCode}`,
+            isActive: true,
+          });
+        } else {
+          // District is the most specific level
+          items[items.length - 1].isActive = true;
+        }
+      } else {
+        // Province is the most specific level
+        items[items.length - 1].isActive = true;
+      }
+    } else {
+      // Default - all projects
+      items[items.length - 1].isActive = true;
+    }
+
+    return items;
+  };
+
+  // Build dynamic title based on location
+  const getPageTitle = () => {
+    if (wardCode && locationNames.wardName) {
+      return `Dự án tại ${locationNames.wardName}, ${locationNames.districtName}, ${locationNames.provinceName}`;
+    } else if (districtCode && locationNames.districtName) {
+      return `Dự án tại ${locationNames.districtName}, ${locationNames.provinceName}`;
+    } else if (provinceCode && locationNames.provinceName) {
+      return `Dự án tại ${locationNames.provinceName}`;
+    }
+    return title;
+  };
+
+  // Get appropriate count text based on location level
+  const getCountText = () => {
+    const count = actualTotalCount; // Always use actual count from API
+    if (wardCode && locationNames.wardName) {
+      return `${formatNumber(count)} dự án tại ${locationNames.wardName}`;
+    } else if (districtCode && locationNames.districtName) {
+      return `${formatNumber(count)} dự án tại ${locationNames.districtName}`;
+    } else if (provinceCode && locationNames.provinceName) {
+      return `${formatNumber(count)} dự án tại ${locationNames.provinceName}`;
+    }
+    return `${formatNumber(count)} dự án toàn quốc`;
+  };
+
   // Breadcrumb items
-  const breadcrumbItems = [
-    { label: "Trang chủ", href: "/" },
-    { label: "Dự án", href: "/du-an", isActive: true },
-  ];
+  const breadcrumbItems = buildBreadcrumb();
+  const pageTitle = getPageTitle();
+  const countText = getCountText();
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -91,7 +156,8 @@ export function ProjectPage({ title, totalCount }: ProjectPageProps) {
   };
 
   // Pagination logic
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const totalPages =
+    apiTotalPages || Math.ceil(actualTotalCount / itemsPerPage);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -106,6 +172,13 @@ export function ProjectPage({ title, totalCount }: ProjectPageProps) {
           {/* Search Bar */}
           <ProjectSearchBar />
 
+          {/* Location Search */}
+          <LocationSearch
+            currentProvinceCode={provinceCode}
+            currentDistrictCode={districtCode}
+            currentWardCode={wardCode}
+          />
+
           {/* Main Content */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Project Listings */}
@@ -115,8 +188,18 @@ export function ProjectPage({ title, totalCount }: ProjectPageProps) {
                 <Breadcrumb items={breadcrumbItems} />
               </div>
 
+              {/* Location Navigation Bar */}
+              <LocationNavigationBar
+                provinceCode={provinceCode}
+                districtCode={districtCode}
+                wardCode={wardCode}
+                currentCount={actualTotalCount}
+              />
+
               {/* Page Title */}
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">{title}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-6">
+                {pageTitle}
+              </h1>
 
               {/* Summary Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -125,9 +208,8 @@ export function ProjectPage({ title, totalCount }: ProjectPageProps) {
                   <span className="text-gray-700">
                     Hiện đang có{" "}
                     <span className="font-semibold text-gray-900">
-                      {formatNumber(totalCount)}
-                    </span>{" "}
-                    dự án
+                      {countText}
+                    </span>
                   </span>
                 </div>
 
@@ -191,11 +273,84 @@ export function ProjectPage({ title, totalCount }: ProjectPageProps) {
               </div>
 
               {/* Project List */}
-              <div className="space-y-4 mb-8">
-                {mockProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
+              {loading ? (
+                <div className="space-y-4 mb-8">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-6 animate-pulse"
+                    >
+                      <div className="flex gap-6">
+                        <div className="w-48 h-32 bg-gray-200 rounded-lg"></div>
+                        <div className="flex-1">
+                          <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                          <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+                          <div className="space-y-2">
+                            <div className="h-3 bg-gray-200 rounded"></div>
+                            <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
+                  <div className="flex items-center">
+                    <i className="fas fa-exclamation-triangle text-red-500 mr-3"></i>
+                    <div>
+                      <h3 className="text-red-800 font-medium">
+                        Có lỗi xảy ra
+                      </h3>
+                      <p className="text-red-600 text-sm mt-1">
+                        Không thể tải danh sách dự án. Vui lòng thử lại sau.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : projects && projects.length > 0 ? (
+                <div className="space-y-4 mb-8">
+                  {projects.map((project) => (
+                    <ProjectListCard key={project.id} project={project} />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i className="fas fa-search text-gray-400 text-2xl"></i>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Không tìm thấy dự án nào
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {wardCode && locationNames.wardName
+                      ? `Hiện tại chưa có dự án nào tại ${locationNames.wardName}`
+                      : districtCode && locationNames.districtName
+                      ? `Hiện tại chưa có dự án nào tại ${locationNames.districtName}`
+                      : provinceCode && locationNames.provinceName
+                      ? `Hiện tại chưa có dự án nào tại ${locationNames.provinceName}`
+                      : "Hiện tại chưa có dự án nào phù hợp với tiêu chí tìm kiếm"}
+                  </p>
+                  <div className="flex justify-center gap-4">
+                    {(districtCode || wardCode) && (
+                      <Link
+                        href={`/du-an?provinceCode=${provinceCode}`}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        <i className="fas fa-expand-alt mr-2"></i>
+                        Xem tất cả tại {locationNames.provinceName}
+                      </Link>
+                    )}
+                    <Link
+                      href="/du-an"
+                      className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                      <i className="fas fa-globe mr-2"></i>
+                      Xem tất cả dự án
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               {/* Pagination */}
               <Pagination
