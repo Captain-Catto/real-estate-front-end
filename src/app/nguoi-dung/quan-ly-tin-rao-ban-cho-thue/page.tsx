@@ -9,18 +9,145 @@ import { useEditPostModal } from "@/hooks/useEditPostModal";
 import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import UserHeader from "@/components/user/UserHeader";
 import { postService } from "@/services/postsService";
+import { ProjectService } from "@/services/projectService";
 import { useAuth } from "@/hooks/useAuth"; // Changed from @/store/hooks to @/hooks/useAuth
-import {
-  useRouter as useNextRouter,
-  useSearchParams,
-  usePathname,
-} from "next/navigation";
+import { useRouter as useNextRouter, useSearchParams } from "next/navigation";
 import { Pagination } from "@/components/common/Pagination";
+
+// Skeleton Component
+function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`animate-pulse bg-gray-200 rounded ${className}`}
+      {...props}
+    />
+  );
+}
+
+// Posts Loading Skeleton Component
+function PostsLoadingSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Image Skeleton */}
+            <div className="w-full lg:w-48 h-32 bg-gray-200 rounded-lg flex-shrink-0">
+              <Skeleton className="w-full h-full" />
+            </div>
+
+            {/* Content Skeleton */}
+            <div className="flex-1">
+              {/* Title and Status */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-20" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm mb-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+
+              {/* Address and Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Initial Loading Skeleton Component for the entire page
+function InitialLoadingSkeleton() {
+  return (
+    <div className="flex">
+      {/* Sidebar Skeleton - Hidden on mobile */}
+      <div className="w-24 min-h-screen p-4 hidden lg:block">
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-12 rounded-lg" />
+          <Skeleton className="h-12 w-12 rounded-lg" />
+          <Skeleton className="h-12 w-12 rounded-lg" />
+          <Skeleton className="h-12 w-12 rounded-lg" />
+        </div>
+      </div>
+
+      {/* Main Content Skeleton */}
+      <div className="bg-white rounded-lg shadow w-full">
+        {/* Header Section Skeleton */}
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div>
+                <Skeleton className="h-5 w-32 mb-2" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <Skeleton className="h-10 w-10 rounded-lg" />
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area Skeleton */}
+        <div className="p-6">
+          {/* Page Title Skeleton */}
+          <div className="mb-6">
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-80" />
+          </div>
+
+          {/* Search and Filter Section Skeleton */}
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Skeleton className="h-12 flex-1" />
+              <Skeleton className="h-12 w-32" />
+              <Skeleton className="h-12 w-24" />
+            </div>
+          </div>
+
+          {/* Filter Tags Skeleton */}
+          <div className="mb-6 hidden sm:block">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Skeleton key={i} className="h-10 w-24" />
+              ))}
+            </div>
+          </div>
+
+          {/* Posts Loading Skeleton */}
+          <PostsLoadingSkeleton />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function QuanLyTinPage() {
   const router = useNextRouter();
   const searchParams = useSearchParams();
-  const pathname = usePathname();
   // Use the enhanced auth hook from the hooks directory
   const {
     user,
@@ -30,12 +157,9 @@ export default function QuanLyTinPage() {
   } = useAuth();
 
   // Định nghĩa fetchPosts function sẽ được dùng trong hook và useEffect
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [refreshTrigger] = useState(0);
 
-  const editModal = useEditPostModal(() => {
-    // Callback được gọi khi edit thành công - trigger refresh
-    setRefreshTrigger((prev) => prev + 1);
-  });
+  const editModal = useEditPostModal();
 
   // Get user data from the authenticated user instead of using mock data
   const userData = user
@@ -61,6 +185,212 @@ export default function QuanLyTinPage() {
     return "Chào buổi tối 🌙";
   }
 
+  // Helper function to format package information
+  const getPackageDisplayInfo = (post: any) => {
+    if (!post.package) return null;
+
+    const packageName =
+      typeof post.package === "string"
+        ? post.package
+        : post.package.name || "Gói tin";
+    const packageDuration =
+      typeof post.package === "string" ? null : post.package.duration;
+    const packagePrice =
+      typeof post.package === "string" ? null : post.package.price;
+
+    return {
+      name: packageName,
+      duration: packageDuration,
+      price: packagePrice,
+    };
+  };
+
+  // Helper function to get project name
+  const getProjectName = (post: any) => {
+    if (!post.project) return null;
+
+    // If project is a string, return it
+    if (typeof post.project === "string") {
+      return post.project;
+    }
+
+    // If project is an object, get name or title
+    if (typeof post.project === "object") {
+      return (
+        post.project.name ||
+        post.project.title ||
+        post.project.projectName ||
+        "Dự án"
+      );
+    }
+
+    return null;
+  };
+
+  // State để cache thông tin project
+  const [projectsCache, setProjectsCache] = useState<Record<string, any>>({});
+
+  // Helper function to get project details
+  const getProjectDetails = async (post: any) => {
+    if (!post.project) return null;
+
+    let projectId: string | null = null;
+
+    // If project is a string, it might be the ID
+    if (typeof post.project === "string") {
+      projectId = post.project;
+    }
+
+    // If project is an object, get the ID
+    if (typeof post.project === "object" && post.project._id) {
+      projectId = post.project._id;
+    }
+
+    if (!projectId) return null;
+
+    // Check cache first
+    if (projectsCache[projectId]) {
+      return projectsCache[projectId];
+    }
+
+    try {
+      const projectData = await ProjectService.getProjectById(projectId);
+      if (projectData) {
+        // Update cache
+        setProjectsCache((prev) => ({
+          ...prev,
+          [projectId]: projectData,
+        }));
+        return projectData;
+      }
+    } catch (error) {
+      console.error("Error fetching project details:", error);
+    }
+
+    return null;
+  };
+
+  // Helper function to create project URL
+  const createProjectUrl = (project: any) => {
+    if (!project) return "#";
+
+    // Create slug from project name
+    const createSlug = (text: string) => {
+      if (!text) return "";
+      return text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+    };
+
+    const slug = project.slug || createSlug(project.name);
+    return `/du-an/${slug}`;
+  };
+
+  // Project Badge Component
+  const ProjectBadge = ({ post }: { post: any }) => {
+    const [projectInfo, setProjectInfo] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      const loadProject = async () => {
+        if (!post.project) return;
+
+        let projectId: string | null = null;
+
+        // If project is a string, it might be the ID
+        if (typeof post.project === "string") {
+          projectId = post.project;
+        }
+
+        // If project is an object, get the ID
+        if (typeof post.project === "object" && post.project._id) {
+          projectId = post.project._id;
+        }
+
+        if (!projectId) return;
+
+        // Check cache first
+        if (projectsCache[projectId]) {
+          setProjectInfo(projectsCache[projectId]);
+          return;
+        }
+
+        try {
+          setLoading(true);
+          const startTime = Date.now();
+          const minLoadingTime = 300; // Shorter delay for individual components
+          
+          const projectData = await ProjectService.getProjectById(projectId);
+          if (projectData) {
+            // Update cache
+            setProjectsCache((prev) => ({
+              ...prev,
+              [projectId]: projectData,
+            }));
+            setProjectInfo(projectData);
+          }
+          
+          // Ensure minimum loading time for smooth skeleton display
+          const elapsedTime = Date.now() - startTime;
+          const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+          
+          setTimeout(() => {
+            setLoading(false);
+          }, remainingTime);
+        } catch (error) {
+          console.error("Error fetching project details:", error);
+          // For errors, still respect minimum loading time to avoid flashing
+          setTimeout(() => {
+            setLoading(false);
+          }, 300);
+        }
+      };
+
+      loadProject();
+    }, [post.project]);
+
+    if (!post.project) return null;
+
+    // Show loading state with skeleton
+    if (loading) {
+      return <Skeleton className="h-6 w-24 rounded-full" />;
+    }
+
+    // If we have project info, show with link
+    if (projectInfo) {
+      const projectUrl = createProjectUrl(projectInfo);
+      return (
+        <Link
+          href={projectUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium hover:bg-purple-200 transition-colors cursor-pointer"
+          title={`Xem thông tin dự án ${projectInfo.name}`}
+        >
+          {projectInfo.name}
+        </Link>
+      );
+    }
+
+    // Fallback to simple name display
+    const projectName = getProjectName(post);
+    if (projectName) {
+      return (
+        <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+          {projectName}
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   // State cho post
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +405,6 @@ export default function QuanLyTinPage() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
   const mobileNotificationRef = useRef<HTMLDivElement>(null);
   const desktopNotificationRef = useRef<HTMLDivElement>(null);
-  const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
   // State cho search và filter
   const [searchValue, setSearchValue] = useState("");
@@ -114,69 +443,26 @@ export default function QuanLyTinPage() {
 
   // Handle edit post
   const handleEditPost = (post: any) => {
-    editModal.openModal(post);
+    editModal.open(post);
+  };
+
+  // Create a wrapper to handle the type mismatch between hook and modal
+  const handleUpdateFormData = (
+    field: string | number | symbol,
+    value: string | number | undefined
+  ) => {
+    editModal.updateFormData(field as any, value);
   };
 
   // Handle view post
   const handleViewPost = (post: any) => {
     if (post.status === "active") {
-      // Tin đăng đang hoạt động - tạo URL SEO theo dynamic route
-      const createSeoUrl = (postData: any) => {
-        const transactionType =
-          postData.type === "ban" ? "mua-ban" : "cho-thue";
-
-        // Tạo slug từ location
-        const createLocationSlug = (text: string) => {
-          if (!text) return "";
-          return text
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[đĐ]/g, "d")
-            .replace(/[^a-z0-9\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-")
-            .trim();
-        };
-
-        // Tạo slug từ title
-        const createTitleSlug = (title: string) => {
-          if (!title) return "tin-dang";
-          return title
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[đĐ]/g, "d")
-            .replace(/[^a-z0-9\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-")
-            .trim();
-        };
-
-        if (
-          postData.location?.province &&
-          postData.location?.district &&
-          postData.location?.ward
-        ) {
-          const provinceSlug = createLocationSlug(postData.location.province);
-          const districtSlug = createLocationSlug(postData.location.district);
-          const wardSlug = createLocationSlug(postData.location.ward);
-          const titleSlug = createTitleSlug(postData.title);
-
-          return `/${transactionType}/${provinceSlug}/${districtSlug}/${wardSlug}/${postData._id}-${titleSlug}`;
-        } else {
-          // Fallback nếu không có đủ thông tin location
-          const titleSlug = createTitleSlug(postData.title);
-          return `/${transactionType}/chi-tiet/${postData._id}-${titleSlug}`;
-        }
-      };
-
       const viewUrl = createSeoUrl(post);
       window.open(viewUrl, "_blank");
     } else if (post.status === "pending" || post.status === "waiting_display") {
       // Tin đăng chờ duyệt - xem preview
       alert(
-        "Tin đăng đang chờ duyệt. Bạn có thể xem preview trong phần chỉnh sửa."
+        "Tin đăng đang chờ duyệt. Bạn có thể xem trước thông tin trong phần chỉnh sửa."
       );
     } else if (post.status === "rejected") {
       // Tin đăng bị từ chối - chỉ có thể chỉnh sửa
@@ -184,6 +470,56 @@ export default function QuanLyTinPage() {
     } else {
       // Các trạng thái khác
       alert("Tin đăng này không thể xem được ở trạng thái hiện tại.");
+    }
+  };
+
+  // Helper function to create SEO URL for posts
+  const createSeoUrl = (postData: any) => {
+    const transactionType = postData.type === "ban" ? "mua-ban" : "cho-thue";
+
+    // Tạo slug từ location
+    const createLocationSlug = (text: string) => {
+      if (!text) return "";
+      return text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+    };
+
+    // Tạo slug từ title
+    const createTitleSlug = (title: string) => {
+      if (!title) return "tin-dang";
+      return title
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[đĐ]/g, "d")
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+    };
+
+    if (
+      postData.location?.province &&
+      postData.location?.district &&
+      postData.location?.ward
+    ) {
+      const provinceSlug = createLocationSlug(postData.location.province);
+      const districtSlug = createLocationSlug(postData.location.district);
+      const wardSlug = createLocationSlug(postData.location.ward);
+      const titleSlug = createTitleSlug(postData.title);
+
+      return `/${transactionType}/${provinceSlug}/${districtSlug}/${wardSlug}/${postData._id}-${titleSlug}`;
+    } else {
+      // Fallback nếu không có đủ thông tin location
+      const titleSlug = createTitleSlug(postData.title);
+      return `/${transactionType}/chi-tiet/${postData._id}-${titleSlug}`;
     }
   };
 
@@ -265,6 +601,10 @@ export default function QuanLyTinPage() {
     setLoading(true);
     setError(null);
 
+    // Minimum loading time để skeleton hiển thị đủ lâu
+    const startTime = Date.now();
+    const minLoadingTime = 500; // 500ms
+
     // Tạo tham số tìm kiếm và lọc để gửi đến API
     const params = {
       page: currentPage,
@@ -295,7 +635,13 @@ export default function QuanLyTinPage() {
         setError(err.message || "Lỗi khi tải bài viết");
       })
       .finally(() => {
-        setLoading(false);
+        // Đảm bảo skeleton hiển thị ít nhất minLoadingTime
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+        
+        setTimeout(() => {
+          setLoading(false);
+        }, remainingTime);
       });
   }, [
     currentPage,
@@ -492,11 +838,8 @@ export default function QuanLyTinPage() {
   // Show loading state when checking authentication or fetching user data
   if (userLoading || !isInitialized) {
     return (
-      <div className="flex min-h-screen bg-gray-100 items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải thông tin...</p>
-        </div>
+      <div className="min-h-screen bg-gray-100">
+        <InitialLoadingSkeleton />
       </div>
     );
   }
@@ -829,7 +1172,7 @@ export default function QuanLyTinPage() {
             </div>
 
             {loading ? (
-              <div>Đang tải bài viết...</div>
+              <PostsLoadingSkeleton />
             ) : error ? (
               <div className="text-red-600">{error}</div>
             ) : filteredPosts.length > 0 ? (
@@ -861,12 +1204,31 @@ export default function QuanLyTinPage() {
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
                             <div>
                               <Link
-                                href={`/tin-dang/${post.id}`}
+                                href={
+                                  post.status === "active"
+                                    ? createSeoUrl(post)
+                                    : "#"
+                                }
                                 className="font-semibold text-gray-900 mb-1 line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer block"
+                                onClick={(e) => {
+                                  if (post.status !== "active") {
+                                    e.preventDefault();
+                                    handleViewPost(post);
+                                  }
+                                }}
+                                target={
+                                  post.status === "active"
+                                    ? "_blank"
+                                    : undefined
+                                }
+                                rel={
+                                  post.status === "active"
+                                    ? "noopener noreferrer"
+                                    : undefined
+                                }
                               >
-                                {" "}
                                 {post.title}
-                              </Link>{" "}
+                              </Link>
                               <p className="text-sm text-gray-600">
                                 Mã tin: {post._id}
                               </p>
@@ -877,6 +1239,9 @@ export default function QuanLyTinPage() {
                               >
                                 {statusInfo.label}
                               </span>
+                              {(() => {
+                                return <ProjectBadge post={post} />;
+                              })()}
                               {post.featured && (
                                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
                                   Nổi bật
@@ -927,7 +1292,7 @@ export default function QuanLyTinPage() {
                               </div>
                             )}
 
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                             <div>
                               <span className="font-medium">Giá:</span>{" "}
                               {post.price}
@@ -942,18 +1307,77 @@ export default function QuanLyTinPage() {
                             </div>
                             <div>
                               <span className="font-medium">Hết hạn:</span>{" "}
-                              {new Date(post.expiryDate).toLocaleDateString(
+                              {new Date(post.expiredAt).toLocaleDateString(
                                 "vi-VN"
                               )}
                             </div>
+
+                            {/* Package Information */}
+                            {(() => {
+                              const packageInfo = getPackageDisplayInfo(post);
+                              return packageInfo ? (
+                                <div>
+                                  <span className="font-medium">Gói tin:</span>{" "}
+                                  <span className="text-blue-600">
+                                    {packageInfo.name}
+                                  </span>
+                                  {packageInfo.duration && (
+                                    <span className="text-xs text-gray-500 ml-1">
+                                      ({packageInfo.duration} ngày)
+                                    </span>
+                                  )}
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
 
+                          {/* Additional Package Details - Show only if package exists */}
+                          {(() => {
+                            const packageInfo = getPackageDisplayInfo(post);
+                            return packageInfo && packageInfo.price ? (
+                              <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    className="text-blue-600"
+                                  >
+                                    <path
+                                      fill="currentColor"
+                                      d="M12 2L13.09 8.26L19 9L13.09 9.74L12 16L10.91 9.74L5 9L10.91 8.26L12 2Z"
+                                    />
+                                  </svg>
+                                  <span className="font-medium text-blue-800">
+                                    Gói {packageInfo.name}
+                                  </span>
+                                  <span className="text-blue-600">
+                                    -{" "}
+                                    {new Intl.NumberFormat("vi-VN").format(
+                                      packageInfo.price
+                                    )}
+                                    đ
+                                  </span>
+                                  {packageInfo.duration && (
+                                    <span className="text-blue-600">
+                                      / {packageInfo.duration} ngày
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Địa chỉ:</span>{" "}
-                              {post.location.street}, {post.location.ward},{" "}
-                              {post.location.district}, {post.location.province}
-                            </p>
+                            <div className="text-sm text-gray-600">
+                              <p>
+                                <span className="font-medium">Địa chỉ:</span>{" "}
+                                {post.location.street}, {post.location.ward},{" "}
+                                {post.location.district},{" "}
+                                {post.location.province}
+                              </p>
+                            </div>
 
                             <div className="flex gap-2">
                               {post.status === "rejected" ? (
@@ -1004,7 +1428,7 @@ export default function QuanLyTinPage() {
                             {/* Add Edit Modal */}
                             <EditPostModal
                               isOpen={editModal.isOpen}
-                              onClose={editModal.closeModal}
+                              onClose={editModal.close}
                               currentStep={editModal.currentStep}
                               editingPost={editModal.editingPost}
                               formData={editModal.formData}
@@ -1012,10 +1436,20 @@ export default function QuanLyTinPage() {
                               selectedPackage={editModal.selectedPackage}
                               nextStep={editModal.nextStep}
                               prevStep={editModal.prevStep}
-                              updateFormData={editModal.updateFormData}
+                              updateFormData={handleUpdateFormData}
                               setSelectedImages={editModal.setSelectedImages}
                               setSelectedPackage={editModal.setSelectedPackage}
-                              handleSubmit={editModal.handleSubmit}
+                              handleBasicSubmit={editModal.handleBasicSubmit}
+                              handleImageSubmit={editModal.handleImageSubmit}
+                              handlePackageSubmit={
+                                editModal.handlePackageSubmit
+                              }
+                              existingImages={editModal.existingImages}
+                              updateExistingImages={
+                                editModal.updateExistingImages
+                              }
+                              categories={editModal.categories}
+                              projects={editModal.projects}
                               provinces={editModal.provinces}
                               districts={editModal.districts}
                               wards={editModal.wards}

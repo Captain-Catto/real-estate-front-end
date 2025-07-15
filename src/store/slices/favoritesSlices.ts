@@ -43,7 +43,7 @@ export const fetchFavoritesAsync = createAsyncThunk(
         // Chuyển đổi dữ liệu từ API sang định dạng FavoriteItem
         return response.data.favorites.map((fav: any) => ({
           id: fav.post._id,
-          type: "property",
+          type: "property" as const,
           title: fav.post.title,
           price: fav.post.price,
           location:
@@ -53,7 +53,10 @@ export const fetchFavoritesAsync = createAsyncThunk(
           area: fav.post.area + " m²",
           bedrooms: fav.post.bedrooms,
           bathrooms: fav.post.bathrooms,
-          propertyType: fav.post.category,
+          propertyType:
+            typeof fav.post.category === "object"
+              ? fav.post.category?.name
+              : fav.post.category,
           addedAt: fav.createdAt,
         }));
       }

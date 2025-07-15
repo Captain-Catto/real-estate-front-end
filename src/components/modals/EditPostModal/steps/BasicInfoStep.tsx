@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
-import "leaflet/dist/leaflet.css";
 import { ProjectService } from "@/services/projectService";
 import { categoryService, Category } from "@/services/categoryService";
 
@@ -63,22 +62,6 @@ export default function BasicInfoStep({
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-
-  const [latLng, setLatLng] = useState<{
-    osmData?: {
-      lat?: string;
-      lon?: string;
-      boundingbox?: string[];
-      display_name?: string;
-    };
-  } | null>(null);
-
-  // const MapView = dynamic(() => import("@/components/common/MapView"), {
-  //   ssr: false, // Quan trọng: không render ở server
-  //   loading: () => (
-  //     <div className="bg-gray-100 animate-pulse h-[300px] rounded-lg"></div>
-  //   ),
-  // });
 
   // Update the useEffect to match locations by name or code and handle selected values properly
   useEffect(() => {
@@ -154,6 +137,12 @@ export default function BasicInfoStep({
 
     // Find ward code by name if we have a name but not a code
     if (formData.location?.ward && wards.length > 0) {
+      console.log("🔍 Looking for ward:", formData.location.ward);
+      console.log(
+        "📋 Available wards:",
+        wards.map((w) => `${w.name} (${w.code})`)
+      );
+
       // Try to find the ward by code first
       const wardByCode = wards.find((w) => w.code === formData.location.ward);
 
@@ -175,14 +164,25 @@ export default function BasicInfoStep({
           );
         } else {
           console.log(
-            "Ward not found by name or code:",
+            "❌ Ward not found by name or code:",
             formData.location.ward
+          );
+          console.log(
+            "Available ward names:",
+            wards.map((w) => w.name)
           );
         }
       } else {
         setSelectedWard(wardByCode.code);
         console.log("Found ward by code:", wardByCode.name);
       }
+    } else if (formData.location?.ward) {
+      console.log(
+        "⚠️ Ward specified but wards list is empty. Ward:",
+        formData.location.ward,
+        "Wards length:",
+        wards.length
+      );
     }
 
     // Set street address
@@ -362,90 +362,6 @@ export default function BasicInfoStep({
       console.log("Project selected:", project?.name || "None");
     }
   };
-
-  const fetchLatLng = useCallback(async () => {
-    try {
-      if (!selectedProvince || !selectedDistrict || !selectedWard) return;
-
-      const province = provinces.find(
-        (p) => String(p.code) === String(selectedProvince)
-      );
-      const district = districts.find(
-        (d) => String(d.code) === String(selectedDistrict)
-      );
-      const ward = wards.find((w) => String(w.code) === String(selectedWard));
-
-      if (!province || !district || !ward) return;
-
-      const fullAddress = [
-        streetAddress,
-        ward.name,
-        district.name,
-        province.name,
-        "Việt Nam",
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        fullAddress
-      )}&countrycodes=VN&limit=1`;
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "RealEstateApp/1.0 (contact@yourapp.com)",
-        },
-      });
-      const data = await response.json();
-
-      if (data.length > 0) {
-        // Lưu trữ toàn bộ data từ OSM để sử dụng
-        setLatLng({
-          osmData: {
-            lat: data[0].lat,
-            lon: data[0].lon,
-            boundingbox: data[0].boundingbox,
-            display_name: data[0].display_name,
-          },
-        });
-        console.log("osmdata", latLng?.osmData);
-      } else {
-        // Fallback nếu không tìm thấy
-        setLatLng({
-          osmData: {
-            lat: "10.7769",
-            lon: "106.7009",
-            display_name: "Vị trí mặc định",
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching lat/lng:", error);
-      setLatLng(null);
-    }
-  }, [
-    selectedProvince,
-    selectedDistrict,
-    selectedWard,
-    streetAddress,
-    provinces,
-    districts,
-    wards,
-    latLng,
-  ]);
-
-  useEffect(() => {
-    if (selectedProvince && selectedDistrict && selectedWard) {
-      fetchLatLng();
-    } else {
-      setLatLng(null);
-    }
-  }, [
-    selectedProvince,
-    selectedDistrict,
-    selectedWard,
-    streetAddress,
-    fetchLatLng,
-  ]);
 
   return (
     <div className="space-y-8">
@@ -653,21 +569,6 @@ export default function BasicInfoStep({
                 "Địa chỉ sẽ được tạo tự động khi bạn chọn các thông tin trên"}
             </div>
           </div>
-          {/* {latLng && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Vị trí trên bản đồ</h4>
-              <div
-                key={`map-${selectedProvince}-${selectedDistrict}-${selectedWard}-${Date.now()}`}
-              >
-                <MapView osmData={latLng.osmData} />
-              </div>
-              {latLng.osmData?.display_name && (
-                <p className="mt-2 text-sm text-gray-500">
-                  {latLng.osmData.display_name}
-                </p>
-              )}
-            </div>
-          )} */}
         </div>
       </div>
 

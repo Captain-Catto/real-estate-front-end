@@ -31,5 +31,6 @@ export interface EditPostForm {
   packageId: string;
   packageDuration: number;
   images: string[];
-  [key: string]: any; // For dynamic form fields
+  project?: string; // Add project field
+  [key: string]: unknown; // For dynamic form fields
 }

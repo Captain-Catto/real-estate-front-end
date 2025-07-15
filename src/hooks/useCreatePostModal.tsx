@@ -273,8 +273,8 @@ export function useCreatePostModal() {
           district: formData.location?.district || "",
           ward: formData.location?.ward || "",
           street: formData.location?.street || "",
-          project: formData.location?.project || "",
         },
+        project: formData.location?.project || "", // Extract project to top level
         type: formData.type,
       };
 

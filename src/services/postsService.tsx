@@ -85,8 +85,8 @@ export interface CreatePostData {
     district: string;
     ward: string;
     street: string;
-    project?: string;
   };
+  project?: string; // Move project to top level
 
   // Property Details
   legalDocs: string;
@@ -108,6 +108,9 @@ export interface CreatePostData {
   packageId: string;
   packageDuration: number;
   package?: "free" | "basic" | "premium" | "vip"; // Add package field for backend enum
+
+  // Images
+  images?: string[]; // Add images field for updates
 }
 
 export interface PostFilters {
@@ -306,7 +309,7 @@ class PostService {
   ): Promise<any> {
     try {
       const updateData: any = { ...postData };
-      if (imageUrls && imageUrls.length > 0) {
+      if (imageUrls !== undefined) {
         updateData.images = imageUrls;
       }
 
@@ -368,7 +371,7 @@ class PostService {
   ): Promise<any> {
     try {
       const updateData: any = { ...postData };
-      if (imageUrls && imageUrls.length > 0) {
+      if (imageUrls !== undefined) {
         updateData.images = imageUrls;
       }
 
@@ -472,6 +475,27 @@ class PostService {
       return data.data.post;
     } catch (error) {
       console.error("Error fetching post by ID:", error);
+      throw error;
+    }
+  }
+
+  // Get similar posts
+  async getSimilarPosts(postId: string, limit: number = 6): Promise<any> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/posts/${postId}/similar?limit=${limit}`
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch similar posts");
+      }
+
+      const data = await response.json();
+      console.log("Fetched similar posts:", data);
+      return data.data;
+    } catch (error) {
+      console.error("Error fetching similar posts:", error);
       throw error;
     }
   }

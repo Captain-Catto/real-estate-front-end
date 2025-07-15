@@ -15,14 +15,23 @@ interface EditPostModalProps {
   selectedPackage: any;
   nextStep: () => void;
   prevStep: () => void;
-  updateFormData: (updates: any) => void;
+  updateFormData: (
+    field: string | number | symbol,
+    value: string | number | undefined
+  ) => void;
   setSelectedImages: (images: File[]) => void;
   setSelectedPackage: (pkg: any) => void;
-  handleSubmit: () => void;
-  provinces?: any[];
-  districts?: any[];
-  wards?: any[];
-  locationLoading?: boolean;
+  handleBasicSubmit: () => void;
+  handleImageSubmit: () => void;
+  handlePackageSubmit: () => void;
+  existingImages: string[];
+  updateExistingImages: (images: string[]) => void;
+  categories: any[];
+  projects: any[];
+  provinces: any[];
+  districts: any[];
+  wards: any[];
+  locationLoading: boolean;
 }
 export default function EditPostModal({
   isOpen,
@@ -37,11 +46,17 @@ export default function EditPostModal({
   updateFormData,
   setSelectedImages,
   setSelectedPackage,
-  handleSubmit,
-  provinces = [],
-  districts = [],
-  wards = [],
-  locationLoading = false,
+  handleBasicSubmit,
+  handleImageSubmit,
+  handlePackageSubmit,
+  existingImages,
+  updateExistingImages,
+  categories,
+  projects,
+  provinces,
+  districts,
+  wards,
+  locationLoading,
 }: EditPostModalProps) {
   // Xác định trạng thái tin đăng - CHUẨN HÓA STATUS CODES
   const isExpired = editingPost?.status === "expired"; // Hết hạn - cần chọn gói mới
@@ -83,10 +98,14 @@ export default function EditPostModal({
           formData.area
         );
       case 2:
-        return (
-          selectedImages.length > 0 ||
-          (formData.images && formData.images.length > 0)
-        );
+        const hasImages =
+          selectedImages.length > 0 || existingImages.length > 0;
+        console.log("🔍 Step 2 canProceed check:", {
+          selectedImages: selectedImages.length,
+          existingImages: existingImages.length,
+          hasImages,
+        });
+        return hasImages;
       case 3:
         return needsPackageSelection ? selectedPackage : true;
       default:
@@ -120,12 +139,31 @@ export default function EditPostModal({
     return "Lưu thay đổi";
   };
 
+  const handleSubmit = () => {
+    if (currentStep === 1) {
+      handleBasicSubmit();
+    } else if (currentStep === 2) {
+      // Always handle images first, then proceed
+      handleImageSubmit();
+    } else if (currentStep === 3 && needsPackageSelection) {
+      handlePackageSubmit();
+    }
+  };
+
   const getSubmitButtonColor = () => {
     if (isExpired) return "bg-blue-600 hover:bg-blue-700";
     if (isWaitingPayment) return "bg-green-600 hover:bg-green-700";
     if (isRejected) return "bg-orange-600 hover:bg-orange-700";
     if (isNearExpiry) return "bg-yellow-600 hover:bg-yellow-700";
     return "bg-green-600 hover:bg-green-700";
+  };
+
+  // Create a wrapper to convert the hook's image handling to what ImageUploadStep expects
+  const handleUpdateFormData = (updates: { images?: string[] }) => {
+    // Handle existing images update
+    if (updates.images) {
+      updateExistingImages(updates.images);
+    }
   };
 
   return (
@@ -253,19 +291,20 @@ export default function EditPostModal({
               {currentStep === 1 && (
                 <BasicInfoStep
                   formData={formData}
-                  updateFormData={updateFormData}
-                  provinces={provinces || []}
-                  districts={districts || []}
-                  wards={wards || []}
-                  locationLoading={locationLoading || false}
+                  updateFormData={handleUpdateFormData}
+                  provinces={provinces}
+                  districts={districts}
+                  wards={wards}
+                  locationLoading={locationLoading}
                 />
               )}
               {currentStep === 2 && (
                 <ImageUploadStep
                   selectedImages={selectedImages}
                   setSelectedImages={setSelectedImages}
-                  existingImages={formData.images || []}
-                  updateFormData={updateFormData}
+                  existingImages={existingImages}
+                  updateFormData={handleUpdateFormData}
+                  updateExistingImages={updateExistingImages}
                 />
               )}
               {/* Chỉ hiển thị PackageSelectionStep khi cần */}

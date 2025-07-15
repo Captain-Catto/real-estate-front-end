@@ -6,6 +6,7 @@ interface ImageUploadStepProps {
   setSelectedImages: (images: File[]) => void;
   existingImages?: string[]; // URLs of existing images from the post
   updateFormData?: (updates: { images?: string[] }) => void; // Function to update parent's formData
+  updateExistingImages?: (images: string[]) => void; // Function to update existingImages in parent
 }
 
 export default function ImageUploadStep({
@@ -13,6 +14,7 @@ export default function ImageUploadStep({
   setSelectedImages,
   existingImages = [],
   updateFormData,
+  updateExistingImages,
 }: ImageUploadStepProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [existingImageUrls, setExistingImageUrls] =
@@ -37,6 +39,11 @@ export default function ImageUploadStep({
     if (updateFormData) {
       updateFormData({ images: newUrls });
     }
+
+    // Update parent's existingImages state if the function is provided
+    if (updateExistingImages) {
+      updateExistingImages(newUrls);
+    }
   };
 
   // Move an existing image in the order
@@ -49,6 +56,11 @@ export default function ImageUploadStep({
     // Update parent's formData if the function is provided
     if (updateFormData) {
       updateFormData({ images: newUrls });
+    }
+
+    // Update parent's existingImages state if the function is provided
+    if (updateExistingImages) {
+      updateExistingImages(newUrls);
     }
   };
 
@@ -66,7 +78,26 @@ export default function ImageUploadStep({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      setSelectedImages([...selectedImages, ...files].slice(0, 20)); // Giới hạn 20 ảnh
+      // Tính tổng số ảnh hiện có (existing + selected)
+      const totalCurrentImages =
+        existingImageUrls.length + selectedImages.length;
+      const remainingSlots = Math.max(0, 20 - totalCurrentImages);
+
+      if (remainingSlots === 0) {
+        alert(
+          "Bạn đã đạt giới hạn 20 ảnh. Vui lòng xóa một số ảnh cũ trước khi thêm ảnh mới."
+        );
+        return;
+      }
+
+      const filesToAdd = files.slice(0, remainingSlots);
+      setSelectedImages([...selectedImages, ...filesToAdd]);
+
+      if (files.length > remainingSlots) {
+        alert(
+          `Chỉ có thể thêm ${remainingSlots} ảnh nữa. Đã thêm ${filesToAdd.length} ảnh.`
+        );
+      }
     }
   };
 

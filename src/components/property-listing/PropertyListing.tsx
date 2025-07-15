@@ -269,10 +269,14 @@ const PropertyCard = React.memo(
       price: property.price,
       location: property.location,
       image: property.images?.[0] || "/placeholder.jpg",
+      slug: property.slug || property._id, // Added missing slug
       area: property.area,
       bedrooms: property.bedrooms,
       bathrooms: property.bathrooms,
-      propertyType: property.category,
+      propertyType:
+        typeof property.category === "object"
+          ? property.category?.name
+          : property.category,
     };
 
     return (

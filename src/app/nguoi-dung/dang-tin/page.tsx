@@ -364,31 +364,29 @@ export default function DangTinPage() {
               </div>
 
               {/* Content */}
-              <div className="p-6">
-                <div className="max-w-4xl mx-auto">
-                  {currentStep === 1 && (
-                    <BasicInfoStep
-                      formData={formData}
-                      updateFormData={updateFormData}
-                      provinces={provinces}
-                      districts={districts}
-                      wards={wards}
-                      locationLoading={locationLoading}
-                    />
-                  )}
-                  {currentStep === 2 && (
-                    <ImageUploadStep
-                      selectedImages={selectedImages}
-                      setSelectedImages={setSelectedImages}
-                    />
-                  )}
-                  {currentStep === 3 && (
-                    <PackageSelectionStep
-                      selectedPackage={selectedPackage}
-                      setSelectedPackage={setSelectedPackage}
-                    />
-                  )}
-                </div>
+              <div className="max-w-4xl mx-auto py-6">
+                {currentStep === 1 && (
+                  <BasicInfoStep
+                    formData={formData}
+                    updateFormData={updateFormData}
+                    provinces={provinces}
+                    districts={districts}
+                    wards={wards}
+                    locationLoading={locationLoading}
+                  />
+                )}
+                {currentStep === 2 && (
+                  <ImageUploadStep
+                    selectedImages={selectedImages}
+                    setSelectedImages={setSelectedImages}
+                  />
+                )}
+                {currentStep === 3 && (
+                  <PackageSelectionStep
+                    selectedPackage={selectedPackage}
+                    setSelectedPackage={setSelectedPackage}
+                  />
+                )}
               </div>
 
               {/* Footer */}

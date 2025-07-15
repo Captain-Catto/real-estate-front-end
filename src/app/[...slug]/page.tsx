@@ -163,6 +163,7 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       }
 
       const post = await postService.getPostById(urlData.id);
+      console.log("Fetched post data:", post);
 
       if (!post) {
         console.log("Property not found for ID:", urlData.id);
@@ -193,7 +194,7 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
         bedrooms: post.bedrooms,
         bathrooms: post.bathrooms,
         floors: post.floors,
-        propertyType: post.category || "Chưa xác định",
+        propertyType: post.category?.name || post.category || "Chưa xác định",
         legalDocs: post.legalDocs || "",
         furniture: post.furniture || "",
         houseDirection: post.houseDirection || "",
@@ -211,6 +212,9 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
           ? new Date(post.createdAt).toLocaleDateString("vi-VN")
           : "Chưa xác định",
         postType: post.packageId || "Chưa xác định",
+        project: post.project || null, // Add project field
+        latitude: post.latitude || undefined,
+        longitude: post.longitude || undefined,
       };
 
       // Fetch proper Vietnamese location names for breadcrumb

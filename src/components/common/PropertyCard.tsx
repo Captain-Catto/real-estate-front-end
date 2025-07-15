@@ -24,7 +24,7 @@ interface PropertyCardProps {
     bedrooms?: number;
     bathrooms?: number;
     propertyType?: string;
-    category?: string;
+    category?: string | { name: string; slug: string; _id: string };
     createdAt?: string;
     status?: string;
   };
@@ -72,12 +72,17 @@ export function PropertyCard({ property }: PropertyCardProps) {
     title: property.title,
     price: formattedPrice,
     location: locationText,
-    images: imageUrl,
+    image: imageUrl, // Changed from images to image
     slug,
     area: formattedArea,
     bedrooms: property.bedrooms,
     bathrooms: property.bathrooms,
-    propertyType: property.propertyType || property.category,
+    propertyType:
+      property.propertyType ||
+      (typeof property.category === "object"
+        ? property.category?.name
+        : property.category) ||
+      "Chưa xác định",
   };
 
   // Format ngày đăng

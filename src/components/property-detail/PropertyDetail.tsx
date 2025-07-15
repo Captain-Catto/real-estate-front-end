@@ -1,11 +1,74 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "../project-detail/Breadcrumb";
+import { PropertyGallery } from "./PropertyGallery";
+import { ProjectService } from "@/services/projectService";
+import { DeveloperService } from "@/services/developerService";
+import { Project } from "@/types/project";
+import { Developer } from "@/types/developer";
+import { DisplayMap } from "./DisplayMap";
+import SimilarPosts from "./SimilarPosts";
 
 interface PropertyDetailProps {
-  property: any;
+  property: {
+    id: string;
+    title: string;
+    price: string;
+    currency?: string;
+    location: string;
+    fullLocation?: string;
+    description?: string;
+    area?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    floors?: number;
+    propertyType?: string;
+    legalDocs?: string;
+    furniture?: string;
+    houseDirection?: string;
+    balconyDirection?: string;
+    roadWidth?: string;
+    frontWidth?: string;
+    postedDate?: string;
+    postType?: string;
+    images?: string[];
+    slug: string;
+    locationCode?: {
+      province: string;
+      district: string;
+      ward: string;
+    };
+    latitude?: number;
+    longitude?: number;
+    author?: {
+      username: string;
+      email: string;
+      phone: string;
+      avatar?: string;
+    };
+    project?:
+      | {
+          _id: string;
+          name: string;
+          slug: string;
+          address?: string;
+          status?: string;
+          priceRange?: string;
+          area?: string;
+          totalUnits?: number;
+          images?: string[];
+          latitude?: number;
+          longitude?: number;
+          developer?: {
+            name: string;
+            logo?: string;
+          };
+        }
+      | string; // Can be either populated project object or ObjectId string
+  };
   breadcrumbData?: {
     city: string;
     district: string;
@@ -22,6 +85,132 @@ export function PropertyDetail({
   console.log("Rendering PropertyDetail with property:", property);
   console.log("breadcrumbData:", breadcrumbData);
   console.log("transactionType:", transactionType);
+  console.log("property.project:", property.project);
+
+  // State for fetched project data
+  const [fetchedProject, setFetchedProject] = useState<Project | null>(null);
+  const [projectLoading, setProjectLoading] = useState(false);
+
+  // State for fetched developer data
+  const [fetchedDeveloper, setFetchedDeveloper] = useState<Developer | null>(
+    null
+  );
+  const [developerLoading, setDeveloperLoading] = useState(false);
+
+  // Type guard to check if project is populated object
+  const isProjectPopulated = (project: unknown): project is Project => {
+    return Boolean(
+      project &&
+        typeof project === "object" &&
+        project !== null &&
+        "name" in project &&
+        "slug" in project
+    );
+  };
+
+  // Type guard to check if developer is populated object
+  const isDeveloperPopulated = (developer: unknown): developer is Developer => {
+    return Boolean(
+      developer &&
+        typeof developer === "object" &&
+        developer !== null &&
+        "name" in developer &&
+        "_id" in developer
+    );
+  };
+
+  // Effect to fetch project data if only ObjectId is provided
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      if (
+        property.project &&
+        typeof property.project === "string" &&
+        !fetchedProject
+      ) {
+        setProjectLoading(true);
+        try {
+          console.log("Fetching project data for ID:", property.project);
+          const projectData = await ProjectService.getProjectById(
+            property.project
+          );
+          if (projectData) {
+            setFetchedProject(projectData);
+            console.log("Project data fetched:", projectData);
+          }
+        } catch (error) {
+          console.error("Error fetching project data:", error);
+        } finally {
+          setProjectLoading(false);
+        }
+      }
+    };
+
+    fetchProjectData();
+  }, [property.project, fetchedProject]);
+
+  // Effect to fetch developer data when we have project with developer ID
+  useEffect(() => {
+    const fetchDeveloperData = async () => {
+      // Get populated project (either from property or fetched)
+      const currentProject =
+        property.project && isProjectPopulated(property.project)
+          ? property.project
+          : fetchedProject;
+
+      if (
+        currentProject?.developer &&
+        typeof currentProject.developer === "string"
+      ) {
+        setDeveloperLoading(true);
+        try {
+          console.log(
+            "Fetching developer data for ID:",
+            currentProject.developer
+          );
+          const developerData = await DeveloperService.getDeveloperById(
+            currentProject.developer
+          );
+          if (developerData) {
+            setFetchedDeveloper(developerData);
+            console.log("Developer data fetched:", developerData);
+          }
+        } catch (error) {
+          console.error("Error fetching developer data:", error);
+        } finally {
+          setDeveloperLoading(false);
+        }
+      }
+    };
+
+    fetchDeveloperData();
+  }, [property.project, fetchedProject]);
+
+  // Check if we have a populated project (either from property or fetched)
+  const populatedProject =
+    property.project && isProjectPopulated(property.project)
+      ? property.project
+      : fetchedProject;
+
+  console.log("Populated project:", populatedProject);
+
+  // Check if we have a populated developer (either from project or fetched)
+  const populatedDeveloper = (() => {
+    // If project has populated developer, use it
+    if (
+      populatedProject?.developer &&
+      isDeveloperPopulated(populatedProject.developer)
+    ) {
+      return populatedProject.developer;
+    }
+    // Otherwise use fetched developer
+    return fetchedDeveloper;
+  })();
+
+  console.log("Populated developer:", populatedDeveloper);
+
+  // Check if we should show project section (when project ID exists or populated project is available)
+  const shouldShowProject =
+    Boolean(property.project) && (populatedProject || projectLoading);
 
   // Utility function để tạo slug
   const createSlug = (text: string): string => {
@@ -169,67 +358,14 @@ export function PropertyDetail({
           {/* Main Content */}
           <div className="lg:col-span-2">
             {/* Image Gallery */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-              <div className="relative">
-                {property.images && property.images.length > 0 ? (
-                  <div className="relative h-96 w-full">
-                    <Image
-                      src={property.images[0]}
-                      alt={property.title}
-                      fill
-                      className="object-cover"
-                      priority
-                      onError={(e) => {
-                        e.currentTarget.src = "/placeholder.jpg";
-                      }}
-                    />
-                    {/* Image Counter */}
-                    {property.images.length > 1 && (
-                      <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm">
-                        1 / {property.images.length}
-                      </div>
-                    )}
-                    {/* Favorite Button */}
-                    <div className="absolute top-4 right-4">
-                      <FavoriteButton item={favoriteItem} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-96 bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-500">Không có hình ảnh</span>
-                  </div>
-                )}
-
-                {/* Additional Images Grid */}
-                {property.images && property.images.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2 p-4">
-                    {property.images
-                      .slice(1, 5)
-                      .map((image: string, index: number) => (
-                        <div
-                          key={index}
-                          className="relative h-20 cursor-pointer hover:opacity-80 transition-opacity"
-                        >
-                          <Image
-                            src={image}
-                            alt={`${property.title} - ${index + 2}`}
-                            fill
-                            className="object-cover rounded"
-                            onError={(e) => {
-                              e.currentTarget.src = "/placeholder.jpg";
-                            }}
-                          />
-                          {index === 3 && property.images.length > 5 && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded">
-                              <span className="text-white text-sm font-medium">
-                                +{property.images.length - 4}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                )}
+            <div className="relative mb-6">
+              <PropertyGallery
+                images={property.images || []}
+                title={property.title}
+              />
+              {/* Favorite Button Overlay */}
+              <div className="absolute top-4 right-4 z-10">
+                <FavoriteButton item={favoriteItem} />
               </div>
             </div>
 
@@ -369,34 +505,212 @@ export function PropertyDetail({
               </div>
             )}
 
-            {/* Map */}
-            {property.locationCode && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-xl font-bold mb-4">Vị trí trên bản đồ</h2>
-                <div className="h-64 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500">
-                    Bản đồ sẽ được hiển thị tại đây
-                  </span>
-                </div>
+            {/* Project Information - Only show if property has project */}
+            {shouldShowProject && (
+              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-xl font-bold mb-4">Thông tin dự án</h2>
+
+                {projectLoading || developerLoading ? (
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <div className="animate-pulse flex space-x-4">
+                      <div className="rounded-lg bg-gray-300 h-24 w-32"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+                        <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+                      </div>
+                    </div>
+                  </div>
+                ) : populatedProject ? (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    {/* Project Header with Image */}
+                    <div className="flex flex-col lg:flex-row">
+                      {/* Project Image */}
+                      {populatedProject.images &&
+                        populatedProject.images.length > 0 && (
+                          <div className="lg:w-48 lg:h-32 w-full h-48 relative flex-shrink-0">
+                            <Image
+                              src={populatedProject.images[0]}
+                              alt={populatedProject.name}
+                              fill
+                              className="object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src =
+                                  "/images/default-project.jpg";
+                              }}
+                            />
+                          </div>
+                        )}
+
+                      {/* Project Main Info */}
+                      <div className="flex-1 p-4">
+                        {/* Project Name and Status */}
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                          <h3 className="text-xl font-bold">
+                            <Link
+                              href={`/du-an/${populatedProject.slug}`}
+                              className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                            >
+                              {populatedProject.name}
+                            </Link>
+                          </h3>
+                          {populatedProject.status && (
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                populatedProject.status === "Đang bán"
+                                  ? "bg-green-100 text-green-800"
+                                  : populatedProject.status === "Sắp mở bán"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : populatedProject.status === "Đã bàn giao"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {populatedProject.status}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Location */}
+                        {populatedProject.address && (
+                          <div className="flex items-start mb-3">
+                            <i className="fas fa-map-marker-alt text-gray-400 mt-1 mr-2 flex-shrink-0"></i>
+                            <span className="text-gray-600 text-sm leading-relaxed">
+                              {populatedProject.address}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Key Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                          {populatedProject.priceRange && (
+                            <div className="flex items-center">
+                              <i className="fas fa-tag text-gray-400 mr-2 w-4"></i>
+                              <div>
+                                <span className="text-gray-600 text-sm">
+                                  Giá từ:{" "}
+                                </span>
+                                <span className="font-semibold text-red-600">
+                                  {populatedProject.priceRange}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {populatedProject.area && (
+                            <div className="flex items-center">
+                              <i className="fas fa-expand-arrows-alt text-gray-400 mr-2 w-4"></i>
+                              <div>
+                                <span className="text-gray-600 text-sm">
+                                  Diện tích:{" "}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {populatedProject.area}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {populatedProject.totalUnits && (
+                            <div className="flex items-center">
+                              <i className="fas fa-building text-gray-400 mr-2 w-4"></i>
+                              <div>
+                                <span className="text-gray-600 text-sm">
+                                  Tổng số căn:{" "}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {populatedProject.totalUnits}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Developer Info */}
+                        {populatedDeveloper && (
+                          <div className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
+                            <div className="flex items-center">
+                              <i className="fas fa-industry text-blue-600 mr-2"></i>
+                              <div className="flex-1">
+                                <span className="text-gray-600 text-sm font-medium">
+                                  Chủ đầu tư:
+                                </span>
+                                <div className="font-semibold text-gray-900 text-base">
+                                  {populatedDeveloper.name}
+                                </div>
+                                {/* Show additional developer info if available */}
+                                {(populatedDeveloper.phone ||
+                                  populatedDeveloper.email) && (
+                                  <div className="mt-2 space-y-1">
+                                    {populatedDeveloper.phone && (
+                                      <div className="text-xs text-gray-600 flex items-center">
+                                        <i className="fas fa-phone mr-1"></i>
+                                        {populatedDeveloper.phone}
+                                      </div>
+                                    )}
+                                    {populatedDeveloper.email && (
+                                      <div className="text-xs text-gray-600 flex items-center">
+                                        <i className="fas fa-envelope mr-1"></i>
+                                        {populatedDeveloper.email}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {/* Developer logo if available */}
+                              {populatedDeveloper.logo && (
+                                <div className="ml-3 w-12 h-12 flex-shrink-0">
+                                  <Image
+                                    src={populatedDeveloper.logo}
+                                    alt={populatedDeveloper.name}
+                                    width={48}
+                                    height={48}
+                                    className="w-full h-full object-contain rounded-lg"
+                                    unoptimized
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500">
+                    <p>Không thể tải thông tin dự án</p>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* Map - Show if property has coordinates OR project has coordinates */}
+            {(property.latitude && property.longitude) ||
+            (populatedProject?.latitude && populatedProject?.longitude) ? (
+              <DisplayMap
+                latitude={property.latitude || populatedProject?.latitude}
+                longitude={property.longitude || populatedProject?.longitude}
+                title={
+                  populatedProject
+                    ? `${property.title} - ${populatedProject.name}`
+                    : property.title
+                }
+                address={
+                  populatedProject?.address ||
+                  property.fullLocation ||
+                  property.location
+                }
+              />
+            ) : null}
+
             {/* Similar Properties */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h3 className="text-lg font-bold mb-4">Tin đăng tương tự</h3>
-              <div className="space-y-4">
-                {/* Placeholder cho similar properties */}
-                <div className="text-center text-gray-500 py-8">
-                  Đang tải các tin đăng tương tự...
-                </div>
-              </div>
-            </div>
+            <SimilarPosts postId={property.id} limit={6} />
           </div>
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
             {/* Contact Info */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6 sticky top-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6 sticky top-18">
               <h3 className="text-lg font-bold mb-4">Thông tin liên hệ</h3>
 
               {/* Author Info */}
@@ -421,7 +735,6 @@ export function PropertyDetail({
                   <div className="font-medium text-gray-900">
                     {property.author?.username || "Không rõ"}
                   </div>
-                  <div className="text-sm text-gray-500">Người đăng</div>
                 </div>
               </div>
 
@@ -464,14 +777,6 @@ export function PropertyDetail({
                 <button className="w-full bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors">
                   <i className="fas fa-share mr-2"></i>
                   Chia sẻ
-                </button>
-              </div>
-
-              {/* Report */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <button className="text-sm text-gray-500 hover:text-gray-700">
-                  <i className="fas fa-flag mr-1"></i>
-                  Báo cáo tin đăng
                 </button>
               </div>
             </div>

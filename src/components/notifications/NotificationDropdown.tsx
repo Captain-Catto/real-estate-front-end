@@ -202,26 +202,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     }
   };
 
-  // Create demo notifications (for testing)
-  const createDemoNotifications = async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
-
-      await fetch("http://localhost:8080/api/notifications/demo", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Refresh notifications
-      fetchNotifications();
-    } catch (error) {
-      console.error("Error creating demo notifications:", error);
-    }
-  };
-
   // Handle notification click - navigate to link if available
   const handleNotificationClick = (notification: Notification) => {
     if (notification.data.actionButton?.link) {
@@ -288,13 +268,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   Đánh dấu tất cả đã đọc
                 </button>
               )}
-              <button
-                onClick={createDemoNotifications}
-                className="text-sm text-purple-600 hover:text-purple-800"
-                title="Tạo demo notifications"
-              >
-                Demo
-              </button>
             </div>
           </div>
 
@@ -309,12 +282,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
               <div className="p-8 text-center text-gray-500">
                 <BellIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p>Chưa có thông báo nào</p>
-                <button
-                  onClick={createDemoNotifications}
-                  className="mt-2 px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
-                >
-                  Tạo demo notifications
-                </button>
               </div>
             ) : (
               <div>
