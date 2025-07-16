@@ -40,9 +40,11 @@ interface CategoryPageProps {
   totalCount: number;
   categoryType: "ban" | "cho-thue";
   activeFilters?: {
+    type?: "ban" | "cho-thue"; // Thêm type property
     propertyType?: string;
     city?: string;
     districts?: string[];
+    ward?: string; // Thêm ward vào activeFilters interface
     price?: string;
     area?: string;
   };
@@ -76,10 +78,14 @@ export function CategoryPage({
       quan_1: "Quận 1",
       quan_2: "Quận 2",
       quan_3: "Quận 3",
+      quan_7: "Quận 7", // Thêm mapping cho Quận 7
       quan_go_vap: "Quận Gò Vấp",
       phuong_da_kao: "Phường Đa Kao",
       phuong_16: "Phường 16",
       phuong_17: "Phường 17",
+      phuong_tan_phong: "Phường Tân Phong", // Thêm mapping cho ward test
+      phuong_tan_kieng: "Phường Tân Kiểng", // Thêm mapping cho ward từ URL test
+      phuong_tan_thuan_tay: "Phường Tân Thuận Tây", // Thêm mapping cho ward khác
       // Thêm các mapping khác nếu cần
     };
 
@@ -102,6 +108,7 @@ export function CategoryPage({
       "cua-hang": "Cửa hàng",
       "kho-nha-xuong": "Kho, nhà xưởng",
       "bat-dong-san-khac": "BĐS khác",
+      "bat-dong-san-thuong-mai": "Bất động sản thương mại",
       // Thêm các mapping khác nếu cần
     };
 
@@ -153,6 +160,34 @@ export function CategoryPage({
       href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}?city=${
         searchParams.city
       }`,
+      isActive: false,
+    });
+  }
+
+  // Thêm xử lý districts
+  if (searchParams.districts) {
+    const districtsDisplayName = formatLocationName(
+      searchParams.districts.toString()
+    );
+
+    breadcrumbItems.push({
+      label: districtsDisplayName,
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}?city=${
+        searchParams.city
+      }&districts=${searchParams.districts}`,
+      isActive: false,
+    });
+  }
+
+  // Thêm xử lý ward
+  if (searchParams.ward) {
+    const wardDisplayName = formatLocationName(searchParams.ward.toString());
+
+    breadcrumbItems.push({
+      label: wardDisplayName,
+      href: `/${categoryType === "ban" ? "mua-ban" : "cho-thue"}?city=${
+        searchParams.city
+      }&districts=${searchParams.districts}&ward=${searchParams.ward}`,
       isActive: false,
     });
   }

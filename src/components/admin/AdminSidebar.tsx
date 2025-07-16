@@ -70,6 +70,21 @@ const menuItems = [
     href: "/admin/quan-ly-danh-muc",
     icon: DocumentTextIcon,
   },
+  {
+    name: "Quản lý thông báo",
+    href: "/admin/quan-ly-thong-bao",
+    icon: NewspaperIcon,
+  },
+  {
+    name: "Quản lý diện tích",
+    href: "/admin/quan-ly-dien-tich",
+    icon: DocumentTextIcon,
+  },
+  {
+    name: "Quản lý giá",
+    href: "/admin/quan-ly-gia",
+    icon: DocumentTextIcon,
+  },
 ];
 
 export default function AdminSidebar() {

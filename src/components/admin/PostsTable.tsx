@@ -134,25 +134,25 @@ export default function PostsTable({
     <>
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-80 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tin đăng
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-64 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thông tin
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tác giả
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-32 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày tạo
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="w-32 px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Thao tác
                 </th>
               </tr>
@@ -160,46 +160,60 @@ export default function PostsTable({
             <tbody className="bg-white divide-y divide-gray-200">
               {posts.map((post) => (
                 <tr key={post._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 w-16 h-16">
-                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <div className="flex-shrink-0 w-12 h-12">
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
                           <span className="text-gray-500 text-xs">IMG</span>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="flex items-center gap-2">
+                      <div className="ml-3">
+                        <div className="flex items-center gap-1">
                           {getPriorityIcon(post.priority || "normal")}
-                          <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
+                          <div
+                            className="text-sm font-medium text-gray-900 truncate max-w-xs"
+                            title={post.title}
+                          >
                             {post.title}
                           </div>
                         </div>
-                        <div className="text-sm text-gray-500">#{post._id}</div>
+                        <div className="text-xs text-gray-500 truncate">
+                          #{post._id}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium">
+                      <div className="font-medium truncate">
                         {formatPrice(post.price)}{" "}
                         {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                       </div>
-                      <div className="text-gray-500">
-                        {post.area}m² • {post.location.district},{" "}
-                        {post.location.province}
+                      <div className="text-xs text-gray-500 truncate">
+                        {post.area}m² • {post.location.district}
                       </div>
-                      <div className="text-gray-500">
+                      <div className="text-xs text-gray-500">
                         {post.views.toLocaleString()} lượt xem
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium">{post.author.username}</div>
-                      <div className="text-gray-500">{post.author.email}</div>
+                      <div
+                        className="font-medium truncate"
+                        title={post.author.username}
+                      >
+                        {post.author.username}
+                      </div>
+                      <div
+                        className="text-xs text-gray-500 truncate"
+                        title={post.author.email}
+                      >
+                        {post.author.email}
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-3">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
                         post.status
@@ -208,10 +222,10 @@ export default function PostsTable({
                       {getStatusText(post.status)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-3 text-xs text-gray-500">
                     {formatDate(post.createdAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-3 py-3 text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       {/* View Button */}
                       <button

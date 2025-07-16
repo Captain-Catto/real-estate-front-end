@@ -528,12 +528,12 @@ export function PropertyDetail({
                       {/* Project Image */}
                       {populatedProject.images &&
                         populatedProject.images.length > 0 && (
-                          <div className="lg:w-48 lg:h-32 w-full h-48 relative flex-shrink-0">
+                          <div className="w-full h-64 relative lg:flex-1">
                             <Image
                               src={populatedProject.images[0]}
                               alt={populatedProject.name}
                               fill
-                              className="object-cover"
+                              className="object-cover rounded-t-lg"
                               onError={(e) => {
                                 e.currentTarget.src =
                                   "/images/default-project.jpg";
@@ -556,7 +556,7 @@ export function PropertyDetail({
                           </h3>
                           {populatedProject.status && (
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap max-w-fit ${
                                 populatedProject.status === "Đang bán"
                                   ? "bg-green-100 text-green-800"
                                   : populatedProject.status === "Sắp mở bán"
@@ -570,6 +570,28 @@ export function PropertyDetail({
                             </span>
                           )}
                         </div>
+
+                        {/* Chủ đầu tư: chỉ tên và logo dưới tên dự án */}
+                        {populatedDeveloper && (
+                          <div className="flex items-center mt-2 mb-2">
+                            {populatedDeveloper.logo && (
+                              <Image
+                                src={populatedDeveloper.logo}
+                                alt={populatedDeveloper.name}
+                                width={28}
+                                height={28}
+                                className="inline-block align-middle rounded-full border border-gray-200 bg-white mr-2"
+                                unoptimized
+                              />
+                            )}
+                            <Link
+                              href={`/chu-dau-tu/${populatedDeveloper._id}`}
+                              className="font-semibold text-blue-700 text-sm align-middle hover:underline"
+                            >
+                              {populatedDeveloper.name}
+                            </Link>
+                          </div>
+                        )}
 
                         {/* Location */}
                         {populatedProject.address && (
@@ -624,55 +646,21 @@ export function PropertyDetail({
                               </div>
                             </div>
                           )}
-                        </div>
-
-                        {/* Developer Info */}
-                        {populatedDeveloper && (
-                          <div className="bg-gray-50 rounded-lg p-3 border-l-4 border-blue-500">
+                          {/* Mật độ xây dựng */}
+                          {populatedProject.density && (
                             <div className="flex items-center">
-                              <i className="fas fa-industry text-blue-600 mr-2"></i>
-                              <div className="flex-1">
-                                <span className="text-gray-600 text-sm font-medium">
-                                  Chủ đầu tư:
+                              <i className="fas fa-th-large text-gray-400 mr-2 w-4"></i>
+                              <div>
+                                <span className="text-gray-600 text-sm">
+                                  Mật độ xây dựng:{" "}
                                 </span>
-                                <div className="font-semibold text-gray-900 text-base">
-                                  {populatedDeveloper.name}
-                                </div>
-                                {/* Show additional developer info if available */}
-                                {(populatedDeveloper.phone ||
-                                  populatedDeveloper.email) && (
-                                  <div className="mt-2 space-y-1">
-                                    {populatedDeveloper.phone && (
-                                      <div className="text-xs text-gray-600 flex items-center">
-                                        <i className="fas fa-phone mr-1"></i>
-                                        {populatedDeveloper.phone}
-                                      </div>
-                                    )}
-                                    {populatedDeveloper.email && (
-                                      <div className="text-xs text-gray-600 flex items-center">
-                                        <i className="fas fa-envelope mr-1"></i>
-                                        {populatedDeveloper.email}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                <span className="font-medium text-gray-900">
+                                  {populatedProject.density}
+                                </span>
                               </div>
-                              {/* Developer logo if available */}
-                              {populatedDeveloper.logo && (
-                                <div className="ml-3 w-12 h-12 flex-shrink-0">
-                                  <Image
-                                    src={populatedDeveloper.logo}
-                                    alt={populatedDeveloper.name}
-                                    width={48}
-                                    height={48}
-                                    className="w-full h-full object-contain rounded-lg"
-                                    unoptimized
-                                  />
-                                </div>
-                              )}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

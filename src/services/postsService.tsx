@@ -130,9 +130,6 @@ export interface PostsStats {
   pending: number;
   rejected: number;
   expired: number;
-  vip: number;
-  premium: number;
-  normal: number;
 }
 
 export interface UploadImageResponse {
@@ -521,6 +518,7 @@ class PostService {
   // tìm bài viết
   async searchPosts(filters = {}, page = 1, limit = 20): Promise<any> {
     try {
+      console.log("SearchPosts input filters:", filters);
       const queryParams = new URLSearchParams();
       queryParams.append("page", String(page));
       queryParams.append("limit", String(limit));
@@ -528,8 +526,8 @@ class PostService {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
           if (Array.isArray(value)) {
-            // Special handling for districts - need to join with commas
-            if (key === "districts") {
+            // Special handling for districts and wards - need to join with commas
+            if (key === "districts" || key === "wards") {
               queryParams.append(key, value.join(","));
             } else {
               // Normal handling for other array values
@@ -558,11 +556,14 @@ class PostService {
         }
       );
 
+      const result = await response.json();
+      console.log("SearchPosts API Response:", result);
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
-      return await response.json();
+      return await result;
     } catch (error) {
       console.error("Error searching posts:", error);
       return {
@@ -716,11 +717,6 @@ export class AdminPostsService {
           pending: posts.filter((p: Post) => p.status === "pending").length,
           rejected: posts.filter((p: Post) => p.status === "rejected").length,
           expired: posts.filter((p: Post) => p.status === "expired").length,
-          vip: posts.filter((p: Post) => p.package === "vip").length,
-          premium: posts.filter((p: Post) => p.package === "premium").length,
-          normal: posts.filter(
-            (p: Post) => !p.package || p.package === "normal"
-          ).length,
         };
 
         return stats;
@@ -737,9 +733,6 @@ export class AdminPostsService {
         pending: 0,
         rejected: 0,
         expired: 0,
-        vip: 0,
-        premium: 0,
-        normal: 0,
       };
     }
   }

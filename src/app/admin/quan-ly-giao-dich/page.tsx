@@ -5,11 +5,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import { Pagination } from "@/components/common/Pagination";
 import {
   MagnifyingGlassIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon,
   CurrencyDollarIcon,
-  UserIcon,
   ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -107,9 +103,6 @@ export default function AdminTransactionsPage() {
       currency: "VND",
     }).format(Math.abs(amount));
 
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleString("vi-VN", { hour12: false });
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
@@ -162,57 +155,57 @@ export default function AdminTransactionsPage() {
 
           {/* Stats Cards */}
           {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-lg shadow">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow">
                 <div className="flex items-center">
-                  <ChartBarIcon className="h-8 w-8 text-blue-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
+                  <ChartBarIcon className="h-6 w-6 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-600">
                       Tổng giao dịch
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {stats.totalTransactions}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg shadow">
+              <div className="bg-white p-4 rounded-lg shadow">
                 <div className="flex items-center">
-                  <CurrencyDollarIcon className="h-8 w-8 text-green-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
+                  <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-600">
                       Tổng số tiền
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(stats.totalAmount)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg shadow">
+              <div className="bg-white p-4 rounded-lg shadow">
                 <div className="flex items-center">
-                  <CurrencyDollarIcon className="h-8 w-8 text-blue-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
+                  <CurrencyDollarIcon className="h-6 w-6 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-600">
                       Nạp tiền
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(stats.totalTopup)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg shadow">
+              <div className="bg-white p-4 rounded-lg shadow">
                 <div className="flex items-center">
-                  <CurrencyDollarIcon className="h-8 w-8 text-orange-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">
+                  <CurrencyDollarIcon className="h-6 w-6 text-orange-600" />
+                  <div className="ml-3">
+                    <p className="text-xs font-medium text-gray-600">
                       Thanh toán tin
                     </p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(stats.totalPostPayments)}
                     </p>
                   </div>
@@ -222,8 +215,8 @@ export default function AdminTransactionsPage() {
           )}
 
           {/* Filters */}
-          <div className="bg-white rounded-lg shadow mb-6 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow mb-6 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -278,28 +271,28 @@ export default function AdminTransactionsPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : transactions.length > 0 ? (
-                <table className="w-full">
+                <table className="w-full table-fixed">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Mã giao dịch
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Người dùng
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Loại
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Mô tả
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Số tiền
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Trạng thái
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Ngày tạo
                       </th>
                     </tr>
@@ -309,73 +302,81 @@ export default function AdminTransactionsPage() {
                       const transactionType = getTransactionType(payment);
                       return (
                         <tr key={payment._id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 font-mono text-sm text-gray-900">
+                          <td
+                            className="px-3 py-3 font-mono text-xs text-gray-900 truncate"
+                            title={payment.orderId}
+                          >
                             {payment.orderId}
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <UserIcon className="w-5 h-5 text-blue-500" />
-                              <div>
-                                <div className="font-medium">
-                                  {payment.userId?.username || "N/A"}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {payment.userId?.email || "N/A"}
-                                </div>
-                              </div>
+                          <td className="px-3 py-3">
+                            <div
+                              className="text-xs font-medium truncate"
+                              title={payment.userId?.username || "N/A"}
+                            >
+                              {payment.userId?.username || "N/A"}
+                            </div>
+                            <div
+                              className="text-xs text-gray-500 truncate"
+                              title={payment.userId?.email || "N/A"}
+                            >
+                              {payment.userId?.email || "N/A"}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm">
+                          <td className="px-3 py-3 text-xs">
                             <span
-                              className={`inline-flex items-center gap-1 ${transactionType.color}`}
+                              className={`${transactionType.color} font-medium`}
                             >
-                              <CurrencyDollarIcon className="w-4 h-4" />
                               {transactionType.label}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm">
-                            <div className="max-w-xs truncate">
+                          <td className="px-3 py-3 text-sm">
+                            <div
+                              className="truncate"
+                              title={payment.description}
+                            >
                               {payment.description}
                             </div>
                             {payment.postId?.title && (
-                              <div className="text-xs text-blue-600 truncate max-w-xs">
+                              <div
+                                className="text-xs text-blue-600 truncate"
+                                title={`Tin: ${payment.postId.title}`}
+                              >
                                 Tin: {payment.postId.title}
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm font-semibold">
+                          <td className="px-3 py-3 text-xs font-semibold">
                             <span className="text-green-700">
                               {formatCurrency(payment.amount)}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 py-3">
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
                                 payment.status
                               )}`}
                             >
-                              {payment.status === "completed" && (
-                                <>
-                                  <CheckCircleIcon className="w-4 h-4 mr-1" />
-                                  Hoàn thành
-                                </>
-                              )}
-                              {payment.status === "pending" && (
-                                <>
-                                  <ClockIcon className="w-4 h-4 mr-1" />
-                                  Đang xử lý
-                                </>
-                              )}
-                              {payment.status === "failed" && (
-                                <>
-                                  <XCircleIcon className="w-4 h-4 mr-1" />
-                                  Thất bại
-                                </>
-                              )}
+                              {payment.status === "completed" && "Hoàn thành"}
+                              {payment.status === "pending" && "Đang xử lý"}
+                              {payment.status === "failed" && "Thất bại"}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-xs text-gray-500">
-                            {formatDate(payment.createdAt)}
+                          <td className="px-3 py-3 text-xs text-gray-500">
+                            <div>
+                              {new Date(payment.createdAt).toLocaleDateString(
+                                "vi-VN"
+                              )}
+                            </div>
+                            <div>
+                              {new Date(payment.createdAt).toLocaleTimeString(
+                                "vi-VN",
+                                {
+                                  hour12: false,
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

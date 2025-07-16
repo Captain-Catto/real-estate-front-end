@@ -9,23 +9,15 @@ import { locationService } from "@/services/locationService";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
 
-// Utility function để tạo slug
-function createSlug(text: string): string {
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-}
-
 interface DynamicPageProps {
   params: {
     slug: string[];
+  };
+  searchParams?: {
+    city?: string;
+    districts?: string;
+    ward?: string;
+    [key: string]: string | string[] | undefined;
   };
 }
 
@@ -107,6 +99,16 @@ function parseUrl(slug: string[]) {
     };
   }
 
+  // URL listing với query parameters: /mua-ban?city=...&districts=...&ward=...
+  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 1) {
+    return {
+      type: "property-listing",
+      transactionType: slug[0],
+      location: {}, // Location sẽ được lấy từ searchParams
+      level: "query", // Listing với query parameters
+    };
+  }
+
   // URL dự án chi tiết: /du-an/ha-noi/nam-tu-liem/my-dinh/12345-vinhomes
   if (slug[0] === "du-an" && slug.length === 5) {
     const idSlug = slug[4];
@@ -141,8 +143,12 @@ function parseUrl(slug: string[]) {
   return null;
 }
 
-export default async function DynamicPage({ params }: DynamicPageProps) {
-  const { slug } = params;
+export default async function DynamicPage({
+  params,
+  searchParams = {},
+}: DynamicPageProps) {
+  const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
   const urlData = parseUrl(slug);
 
   console.log("URL Data parsed:", urlData);
@@ -298,30 +304,64 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
     // ⭐ Xử lý trang listing properties theo địa điểm
     else if (urlData.type === "property-listing") {
       console.log("Fetching properties for location:", urlData.location);
+      console.log("Search parameters from URL:", resolvedSearchParams);
 
       // Tạo filter object tương thích với backend API searchPosts method
-      const searchParams: Record<string, string | number> = {};
+      const searchFilters: Record<string, string | number> = {
+        status: "active",
+      };
 
       // Add type filter - Giữ nguyên giá trị từ URL (mua-ban -> ban, cho-thue -> cho-thue)
       if (urlData.transactionType) {
-        searchParams.type =
+        searchFilters.type =
           urlData.transactionType === "mua-ban" ? "ban" : "cho-thue";
       }
 
-      // Add location filters using city, districts, and wards parameters (tương thích với backend)
-      if (urlData.location?.city) {
-        searchParams.city = urlData.location.city;
+      // Prioritize query parameters if available
+      if (resolvedSearchParams.city) {
+        searchFilters.city = resolvedSearchParams.city as string;
+      } else if (urlData.location?.city) {
+        searchFilters.city = urlData.location.city;
       }
 
-      if (urlData.location?.district) {
-        searchParams.districts = urlData.location.district;
+      if (resolvedSearchParams.districts) {
+        searchFilters.districts = resolvedSearchParams.districts as string;
+      } else if (urlData.location?.district) {
+        searchFilters.districts = urlData.location.district;
       }
 
-      if (urlData.location?.ward) {
-        searchParams.wards = urlData.location.ward;
+      // Important fix: Check for 'ward' parameter from query string (both singular and plural forms)
+      if (resolvedSearchParams.ward) {
+        console.log(
+          "Found ward (singular) in searchParams:",
+          resolvedSearchParams.ward
+        );
+        searchFilters.wards = resolvedSearchParams.ward as string;
+      } else if (resolvedSearchParams.wards) {
+        console.log(
+          "Found wards (plural) in searchParams:",
+          resolvedSearchParams.wards
+        );
+        searchFilters.wards = resolvedSearchParams.wards as string;
+      } else if (urlData.location?.ward) {
+        console.log("Found ward in urlData:", urlData.location.ward);
+        searchFilters.wards = urlData.location.ward;
       }
 
-      console.log("Search params:", searchParams);
+      // Add other search parameters that might be in the query string
+      ["price", "area", "bedrooms", "bathrooms", "category"].forEach(
+        (param) => {
+          if (resolvedSearchParams[param]) {
+            searchFilters[param] = resolvedSearchParams[param] as string;
+          }
+        }
+      );
+
+      console.log("Final search filters:", searchFilters);
+      console.log(
+        "Final search filters type check - wards:",
+        typeof searchFilters.wards
+      );
 
       // Debug log để kiểm tra location parsing
       console.log("URL Location details:", {
@@ -332,7 +372,7 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       });
 
       // Fetch properties từ database với filter mới sử dụng searchPosts method
-      const response = await postService.searchPosts(searchParams);
+      const response = await postService.searchPosts(searchFilters);
       console.log("Search response:", response);
 
       let posts = [];
@@ -347,10 +387,27 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       // Get proper Vietnamese names for breadcrumb
       let locationNames;
       try {
+        // Use query parameters if available, otherwise use URL path segments
+        const citySlug =
+          (resolvedSearchParams.city as string) || urlData.location?.city;
+        const districtSlug =
+          (resolvedSearchParams.districts as string) ||
+          urlData.location?.district;
+        const wardSlug =
+          (resolvedSearchParams.ward as string) ||
+          (resolvedSearchParams.wards as string) ||
+          urlData.location?.ward;
+
+        console.log("Breadcrumb slug parameters:", {
+          citySlug,
+          districtSlug,
+          wardSlug,
+        });
+
         locationNames = await locationService.getBreadcrumbFromSlug(
-          urlData.location?.city || undefined,
-          (urlData.location?.district ?? undefined) as string | undefined,
-          (urlData.location?.ward ?? undefined) as string | undefined
+          citySlug || undefined,
+          districtSlug || undefined,
+          wardSlug || undefined
         );
       } catch (error) {
         console.error("Error getting location names:", error);
@@ -360,15 +417,54 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
       const breadcrumbData = {
         city:
           locationNames?.city ||
-          urlData.location?.city?.replace(/-/g, " ") ||
+          (resolvedSearchParams.city as string)?.replace(/[_-]/g, " ") ||
+          urlData.location?.city?.replace(/[_-]/g, " ") ||
           "",
         district:
           locationNames?.district ||
-          (urlData.location?.district ?? "").replace(/-/g, " "),
+          (resolvedSearchParams.districts as string)?.replace(/[_-]/g, " ") ||
+          (urlData.location?.district ?? "").replace(/[_-]/g, " "),
         ward:
           locationNames?.ward ||
-          (urlData.location?.ward ?? "").replace(/-/g, " "),
+          (resolvedSearchParams.ward as string)?.replace(/[_-]/g, " ") ||
+          (resolvedSearchParams.wards as string)?.replace(/[_-]/g, " ") ||
+          (urlData.location?.ward ?? "").replace(/[_-]/g, " "),
       };
+
+      // Debug log để kiểm tra breadcrumbData được truyền vào PropertyListing
+      console.log("=== BREADCRUMB DATA DEBUG ===");
+      console.log("locationNames from API:", locationNames);
+      console.log("searchParams:", {
+        city: resolvedSearchParams.city,
+        districts: resolvedSearchParams.districts,
+        ward: resolvedSearchParams.ward,
+        wards: resolvedSearchParams.wards,
+      });
+      console.log(
+        "Final breadcrumbData passed to PropertyListing:",
+        breadcrumbData
+      );
+      console.log("Ward check - locationNames?.ward:", locationNames?.ward);
+      console.log(
+        "Ward check - fallback:",
+        (resolvedSearchParams.ward as string)?.replace(/[_-]/g, " ")
+      );
+      console.log("=== END DEBUG ===");
+
+      // Determine the level based on available location data
+      let level: "ward" | "district" | "city" = "city";
+      if (urlData.level === "query") {
+        // For query-based URLs, determine level from available parameters
+        if (resolvedSearchParams.ward || resolvedSearchParams.wards) {
+          level = "ward";
+        } else if (resolvedSearchParams.districts) {
+          level = "district";
+        } else if (resolvedSearchParams.city) {
+          level = "city";
+        }
+      } else {
+        level = (urlData.level as "ward" | "district" | "city") || "city";
+      }
 
       return (
         <>
@@ -377,7 +473,8 @@ export default async function DynamicPage({ params }: DynamicPageProps) {
             properties={posts || []}
             location={breadcrumbData}
             transactionType={urlData.transactionType || "mua-ban"}
-            level={(urlData.level as "ward" | "district" | "city") || "city"}
+            level={level}
+            searchParams={resolvedSearchParams}
           />
           <Footer />
         </>

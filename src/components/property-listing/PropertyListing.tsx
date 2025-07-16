@@ -1,12 +1,14 @@
 // Component mới để hiển thị danh sách bất động sản theo địa điểm
 
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "../project-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
+import SearchSection from "@/components/home/SearchSection";
+import { locationService } from "@/services/locationService";
 
 interface PropertyListingProps {
   properties: any[];
@@ -17,6 +19,15 @@ interface PropertyListingProps {
   };
   transactionType: string;
   level: "city" | "district" | "ward";
+  searchParams?: {
+    city?: string;
+    districts?: string;
+    ward?: string;
+    category?: string;
+    price?: string;
+    area?: string;
+    [key: string]: string | string[] | undefined;
+  };
 }
 
 export function PropertyListing({
@@ -24,9 +35,101 @@ export function PropertyListing({
   location,
   transactionType,
   level,
+  searchParams = {},
 }: PropertyListingProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [locationData, setLocationData] = useState<{
+    initialCity: any | null;
+    initialDistricts: any[];
+    initialWard: any | null;
+  }>({
+    initialCity: null,
+    initialDistricts: [],
+    initialWard: null,
+  });
   const itemsPerPage = 20;
+
+  // Fetch location data để populate vào SearchSection
+  useEffect(() => {
+    const fetchLocationData = async () => {
+      try {
+        // Convert location names thành proper Location objects với codes
+        let cityData = null;
+        let districtsData: any[] = [];
+        let wardData = null;
+
+        // Fetch city data nếu có
+        if (location.city) {
+          // Sử dụng locationService để tìm city theo tên
+          const provinces = await locationService.getProvinces();
+          cityData = provinces.find(
+            (p) => p.name === location.city || p.codename === searchParams.city
+          );
+        }
+
+        // Fetch districts data nếu có
+        if (location.district && cityData) {
+          const districts = await locationService.getDistricts(cityData.code);
+          const districtData = districts.find(
+            (d) =>
+              d.name === location.district ||
+              d.codename === searchParams.districts
+          );
+          if (districtData) {
+            districtsData = [districtData];
+          }
+        }
+
+        // Fetch ward data nếu có
+        if (location.ward && districtsData.length > 0) {
+          const wards = await locationService.getWards(
+            cityData?.code || "",
+            districtsData[0].code
+          );
+          wardData = wards.find(
+            (w) => w.name === location.ward || w.codename === searchParams.ward
+          );
+        }
+
+        setLocationData({
+          initialCity: cityData,
+          initialDistricts: districtsData,
+          initialWard: wardData,
+        });
+      } catch (error) {
+        console.error("Error fetching location data:", error);
+        // Fallback to simple objects if API fails
+        setLocationData({
+          initialCity: location.city
+            ? { code: "", name: location.city, codename: "" }
+            : null,
+          initialDistricts: location.district
+            ? [{ code: "", name: location.district, codename: "" }]
+            : [],
+          initialWard: location.ward
+            ? { code: "", name: location.ward, codename: "" }
+            : null,
+        });
+      }
+    };
+
+    fetchLocationData();
+  }, [location, searchParams]);
+
+  // Debug log để kiểm tra category data
+  console.log("=== SEARCH SECTION DEBUG ===", {
+    initialCategory: searchParams.category,
+    locationData,
+    searchParams,
+  });
+
+  // Debug log để kiểm tra data nhận được
+  console.log("=== PROPERTY LISTING COMPONENT DEBUG ===");
+  console.log("Received location prop:", location);
+  console.log("Received transactionType:", transactionType);
+  console.log("Received level:", level);
+  console.log("Properties count:", properties.length);
+  console.log("=== END PROPERTY LISTING DEBUG ===");
 
   // Utility function để tạo slug
   const createSlug = (text: string): string => {
@@ -153,23 +256,17 @@ export function PropertyListing({
           <Breadcrumb items={breadcrumbItems} />
         </div>
 
-        {/* Page Header */}
+        {/* Search Section */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            {getPageTitle()}
-          </h1>
-          <p className="text-gray-600">
-            Tìm thấy{" "}
-            <span className="font-semibold text-blue-600">
-              {properties.length}
-            </span>{" "}
-            bất động sản
-            {location.ward && ` tại ${location.ward}`}
-            {location.district &&
-              ` ${location.ward ? "," : "tại"} ${location.district}`}
-            {location.city &&
-              ` ${location.district ? "," : "tại"} ${location.city}`}
-          </p>
+          <SearchSection
+            initialSearchType={transactionType === "mua-ban" ? "buy" : "rent"}
+            initialCity={locationData.initialCity}
+            initialDistricts={locationData.initialDistricts}
+            initialWard={locationData.initialWard}
+            initialCategory={searchParams.category as string}
+            initialPrice={searchParams.price as string}
+            initialArea={searchParams.area as string}
+          />
         </div>
 
         {properties.length === 0 ? (

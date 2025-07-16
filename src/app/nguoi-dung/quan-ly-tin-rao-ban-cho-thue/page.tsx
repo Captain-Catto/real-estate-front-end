@@ -325,7 +325,7 @@ export default function QuanLyTinPage() {
           setLoading(true);
           const startTime = Date.now();
           const minLoadingTime = 300; // Shorter delay for individual components
-          
+
           const projectData = await ProjectService.getProjectById(projectId);
           if (projectData) {
             // Update cache
@@ -335,11 +335,11 @@ export default function QuanLyTinPage() {
             }));
             setProjectInfo(projectData);
           }
-          
+
           // Ensure minimum loading time for smooth skeleton display
           const elapsedTime = Date.now() - startTime;
           const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
-          
+
           setTimeout(() => {
             setLoading(false);
           }, remainingTime);
@@ -638,7 +638,7 @@ export default function QuanLyTinPage() {
         // Đảm bảo skeleton hiển thị ít nhất minLoadingTime
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
-        
+
         setTimeout(() => {
           setLoading(false);
         }, remainingTime);

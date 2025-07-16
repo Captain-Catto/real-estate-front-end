@@ -393,6 +393,9 @@ export const locationService = {
     districtSlug?: string,
     wardSlug?: string
   ) => {
+    console.log("=== getBreadcrumbFromSlug CALLED ===");
+    console.log("Input parameters:", { citySlug, districtSlug, wardSlug });
+
     try {
       let cityName = "";
       let districtName = "";
@@ -400,20 +403,28 @@ export const locationService = {
       let provinceCode = "";
       let districtCode = "";
 
+      // Helper function để normalize slug cho comparison
+      const normalizeSlugForComparison = (slug: string) => {
+        return slug
+          .replace(/[_-]/g, "-") // Chuyển cả _ và - thành -
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[đĐ]/g, "d")
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-");
+      };
+
       // Lấy tên tỉnh/thành
       if (citySlug) {
         try {
           const provinces = await locationService.getProvinces();
+          const normalizedCitySlug = normalizeSlugForComparison(citySlug);
           const province = provinces?.find(
             (p) =>
-              p.codename === citySlug ||
-              p.name
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/[đĐ]/g, "d")
-                .replace(/[^a-z0-9\s-]/g, "")
-                .replace(/\s+/g, "-") === citySlug
+              p.codename === normalizedCitySlug ||
+              normalizeSlugForComparison(p.name) === normalizedCitySlug
           );
 
           if (province) {
@@ -426,7 +437,7 @@ export const locationService = {
 
         // Fallback nếu không tìm thấy tên từ API
         if (!cityName) {
-          cityName = citySlug.replace(/-/g, " ");
+          cityName = citySlug.replace(/[_-]/g, " ");
         }
       }
 
@@ -434,16 +445,12 @@ export const locationService = {
       if (districtSlug && provinceCode) {
         try {
           const districts = await locationService.getDistricts(provinceCode);
+          const normalizedDistrictSlug =
+            normalizeSlugForComparison(districtSlug);
           const district = districts?.find(
             (d) =>
-              d.codename === districtSlug ||
-              d.name
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/[đĐ]/g, "d")
-                .replace(/[^a-z0-9\s-]/g, "")
-                .replace(/\s+/g, "-") === districtSlug
+              d.codename === normalizedDistrictSlug ||
+              normalizeSlugForComparison(d.name) === normalizedDistrictSlug
           );
 
           if (district) {
@@ -456,7 +463,7 @@ export const locationService = {
 
         // Fallback nếu không tìm thấy tên từ API
         if (!districtName) {
-          districtName = districtSlug.replace(/-/g, " ");
+          districtName = districtSlug.replace(/[_-]/g, " ");
         }
       }
 
@@ -467,16 +474,11 @@ export const locationService = {
             provinceCode,
             districtCode
           );
+          const normalizedWardSlug = normalizeSlugForComparison(wardSlug);
           const ward = wards?.find(
             (w) =>
-              w.codename === wardSlug ||
-              w.name
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .replace(/[đĐ]/g, "d")
-                .replace(/[^a-z0-9\s-]/g, "")
-                .replace(/\s+/g, "-") === wardSlug
+              w.codename === normalizedWardSlug ||
+              normalizeSlugForComparison(w.name) === normalizedWardSlug
           );
 
           if (ward) {
@@ -487,6 +489,7 @@ export const locationService = {
           // Log thêm thông tin để debug
           console.log("Debug info:", {
             wardSlug,
+            normalizedWardSlug: normalizeSlugForComparison(wardSlug),
             provinceCode,
             districtCode,
           });
@@ -495,7 +498,7 @@ export const locationService = {
 
       // Fallback nếu không tìm thấy tên từ API
       if (!wardName && wardSlug) {
-        wardName = wardSlug.replace(/-/g, " ");
+        wardName = wardSlug.replace(/[_-]/g, " ");
       }
 
       // Log kết quả để debug
@@ -513,9 +516,9 @@ export const locationService = {
     } catch (error) {
       console.error("Error getting breadcrumb from slug:", error);
       return {
-        city: citySlug?.replace(/-/g, " ") || "",
-        district: districtSlug?.replace(/-/g, " ") || "",
-        ward: wardSlug?.replace(/-/g, " ") || "",
+        city: citySlug?.replace(/[_-]/g, " ") || "",
+        district: districtSlug?.replace(/[_-]/g, " ") || "",
+        ward: wardSlug?.replace(/[_-]/g, " ") || "",
       };
     }
   },

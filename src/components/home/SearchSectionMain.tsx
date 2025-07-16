@@ -128,90 +128,72 @@ export default function SearchSectionMain() {
     const fetchSearchOptions = async () => {
       setLoadingSearchOptions(true);
       try {
-        // 1. Tải danh mục
-        const categoriesResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/categories`
-        );
-
-        if (!categoriesResponse.ok) {
-          throw new Error(
-            `Error fetching categories: ${categoriesResponse.status}`
+        // 1. Tải danh mục sử dụng categoryService
+        try {
+          const isProject = searchType === "project";
+          const filteredCategories = await categoryService.getByProjectType(
+            isProject
           );
+          setCategories(filteredCategories);
+        } catch (error) {
+          console.error("Error fetching categories:", error);
+          setCategories([]);
         }
 
-        const categoriesResult = await categoriesResponse.json();
+        // 2. Tải khoảng giá sử dụng priceRangeService
+        try {
+          const priceTypeParam =
+            searchType === "buy"
+              ? "ban"
+              : searchType === "rent"
+              ? "cho-thue"
+              : "project";
 
-        // Lọc danh mục theo searchType
-        let filteredCategories = [];
-        if (searchType === "project") {
-          filteredCategories =
-            categoriesResult.data?.categories?.filter(
-              (cat: { isProject: boolean }) => cat.isProject
-            ) || [];
-        } else {
-          filteredCategories =
-            categoriesResult.data?.categories?.filter(
-              (cat: { isProject: boolean }) => !cat.isProject
-            ) || [];
-        }
+          const priceRanges = await priceRangeService.getByType(priceTypeParam);
 
-        setCategories(filteredCategories);
-
-        // 2. Tải khoảng giá
-        const priceTypeParam =
-          searchType === "buy"
-            ? "ban"
-            : searchType === "rent"
-            ? "thue"
-            : "project";
-        const priceResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/price-ranges/type/${priceTypeParam}`
-        );
-
-        if (!priceResponse.ok) {
-          throw new Error(
-            `Error fetching price ranges: ${priceResponse.status}`
+          // Sắp xếp khoảng giá theo name hoặc id
+          const sortedPriceRanges = [...priceRanges].sort((a, b) =>
+            a.name.localeCompare(b.name)
           );
+
+          setPriceRanges(sortedPriceRanges);
+        } catch (error) {
+          console.error("Error fetching price ranges:", error);
+          // Fallback: sử dụng getAll nếu getByType thất bại
+          try {
+            const allPriceRanges = await priceRangeService.getAll();
+            const filteredByType = allPriceRanges.filter((range) => {
+              const searchTypeMapping = {
+                buy: "ban",
+                rent: "cho-thue",
+                project: "project",
+              };
+              return range.type === searchTypeMapping[searchType];
+            });
+            const sortedPriceRanges = [...filteredByType].sort((a, b) =>
+              a.name.localeCompare(b.name)
+            );
+            setPriceRanges(sortedPriceRanges);
+          } catch (fallbackError) {
+            console.error("Error fetching all price ranges:", fallbackError);
+            setPriceRanges([]);
+          }
         }
 
-        const priceResult = await priceResponse.json();
-        const priceRanges = priceResult.data?.priceRanges || [];
+        // 3. Tải khoảng diện tích sử dụng areaService
+        try {
+          const areaRanges = await areaService.getAll();
 
-        // Sắp xếp khoảng giá theo thứ tự tăng dần
-        const sortedPriceRanges = [...priceRanges].sort((a, b) => {
-          if (a.minValue === 0 && b.minValue !== 0) return -1;
-          if (b.minValue === 0 && a.minValue !== 0) return 1;
-          return a.minValue - b.minValue;
-        });
+          // Sắp xếp khoảng diện tích theo name
+          const sortedAreaRanges = [...areaRanges].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
 
-        setPriceRanges(sortedPriceRanges);
-
-        // 3. Tải khoảng diện tích
-        const areaResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/areas`
-        );
-
-        if (!areaResponse.ok) {
-          throw new Error(`Error fetching area ranges: ${areaResponse.status}`);
+          setAreaRanges(sortedAreaRanges);
+        } catch (error) {
+          console.error("Error fetching area ranges:", error);
+          setAreaRanges([]);
         }
-
-        const areaResult = await areaResponse.json();
-        const areaRanges = areaResult.data?.areas || [];
-
-        // Sắp xếp khoảng diện tích theo thứ tự tăng dần
-        const sortedAreaRanges = [...areaRanges].sort((a, b) => {
-          if (a.minValue === 0 && b.minValue !== 0) return -1;
-          if (b.minValue === 0 && a.minValue !== 0) return 1;
-          return a.minValue - b.minValue;
-        });
-
-        setAreaRanges(sortedAreaRanges);
       } catch (error) {
         console.error("Error fetching search options:", error);
       } finally {

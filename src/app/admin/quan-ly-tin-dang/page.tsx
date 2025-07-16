@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import PostsTable from "@/components/admin/PostsTable";
@@ -15,7 +16,22 @@ import {
 } from "@/services/postsService";
 
 export default function AdminPostsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { hasRole, isAuthenticated, loading: authLoading } = useAuth();
+
+  // Kiểm tra quyền truy cập - chỉ admin và employee mới được vào
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      const hasAccess = hasRole(["admin", "employee"]);
+      if (!hasAccess) {
+        // Nếu không có quyền, chuyển hướng về trang chủ
+        router.push("/");
+        return;
+      }
+    }
+  }, [hasRole, isAuthenticated, authLoading, router]);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<StatsType>({
     total: 0,
@@ -23,9 +39,6 @@ export default function AdminPostsPage() {
     pending: 0,
     rejected: 0,
     expired: 0,
-    vip: 0,
-    premium: 0,
-    normal: 0,
   });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -112,49 +125,69 @@ export default function AdminPostsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-
-      <div className="flex-1">
-        <AdminHeader />
-
-        <main className="p-6">
-          {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Quản lý tin đăng
-            </h1>
-            <p className="text-gray-600">
-              Quản lý tất cả tin đăng bất động sản
-            </p>
+      {/* Show loading while checking authentication and permissions */}
+      {authLoading && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="text-gray-700">
+              Đang kiểm tra quyền truy cập...
+            </span>
           </div>
+        </div>
+      )}
 
-          {/* Stats */}
-          <PostsStats stats={stats} onFilterChange={handleFilterChange} />
+      {/* Only render admin interface if user has proper permissions */}
+      {!authLoading && hasRole(["admin", "employee"]) && (
+        <>
+          <AdminSidebar />
 
-          {/* Filters */}
-          <PostsFilter filters={filters} onFilterChange={handleFilterChange} />
+          <div className="flex-1">
+            <AdminHeader />
 
-          {/* Posts Table */}
-          <PostsTable
-            posts={posts}
-            loading={loading}
-            onApprove={handleApprovePost}
-            onReject={handleRejectPost}
-            onDelete={handleDeletePost}
-          />
+            <main className="p-6">
+              {/* Page Header */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Quản lý tin đăng
+                </h1>
+                <p className="text-gray-600">
+                  Quản lý tất cả tin đăng bất động sản
+                </p>
+              </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-6">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
+              {/* Stats */}
+              <PostsStats stats={stats} onFilterChange={handleFilterChange} />
+
+              {/* Filters */}
+              <PostsFilter
+                filters={filters}
+                onFilterChange={handleFilterChange}
               />
-            </div>
-          )}
-        </main>
-      </div>
+
+              {/* Posts Table */}
+              <PostsTable
+                posts={posts}
+                loading={loading}
+                onApprove={handleApprovePost}
+                onReject={handleRejectPost}
+                onDelete={handleDeletePost}
+              />
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
+            </main>
+          </div>
+        </>
+      )}
     </div>
   );
 }

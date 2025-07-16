@@ -189,11 +189,23 @@ export default function SearchSection({
     }
   }, [initialWard]);
 
+  // Effect to set initial category after categories are loaded
   useEffect(() => {
-    if (initialCategory && initialCategory !== selectedPropertyType) {
-      setSelectedPropertyType(initialCategory);
+    if (categories.length > 0 && initialCategory && !selectedPropertyType) {
+      console.log("Setting initial category after categories loaded:", {
+        initialCategory,
+        categories: categories.map((c) => ({ slug: c.slug, name: c.name })),
+      });
+
+      const matchingCategory = categories.find(
+        (c) => c.slug === initialCategory
+      );
+      if (matchingCategory) {
+        console.log("Found matching category:", matchingCategory.name);
+        setSelectedPropertyType(initialCategory);
+      }
     }
-  }, [initialCategory]);
+  }, [categories, initialCategory, selectedPropertyType]);
 
   useEffect(() => {
     if (initialPrice && initialPrice !== selectedPrice) {
@@ -804,7 +816,7 @@ export default function SearchSection({
                   <span className="flex-1 text-left">
                     {selectedPropertyType
                       ? categories.find((c) => c.slug === selectedPropertyType)
-                          ?.name
+                          ?.name || `Loại BĐS (${selectedPropertyType})`
                       : "Loại BĐS"}
                   </span>
                 </button>
