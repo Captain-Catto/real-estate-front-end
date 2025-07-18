@@ -1,4 +1,5 @@
 import React from "react";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import {
   DndContext,
   closestCenter,
@@ -34,7 +35,11 @@ interface SortableRowProps {
   onEdit: (price: Price) => void;
   onDelete: (price: Price) => void;
   onToggleStatus: (price: Price) => void;
-  formatPrice: (min?: number, max?: number, type?: "ban" | "cho-thue" | "project") => string;
+  formatPrice: (
+    min?: number,
+    max?: number,
+    type?: "ban" | "cho-thue" | "project"
+  ) => string;
 }
 
 function SortableRow({
@@ -99,10 +104,11 @@ function SortableRow({
               : "bg-purple-100 text-purple-800"
           }`}
         >
-          {price.type === "ban" && "🏠"}
-          {price.type === "cho-thue" && "🔑"}
-          {price.type === "project" && "🏗️"}
-          {price.type === "ban" ? "Mua bán" : price.type === "cho-thue" ? "Cho thuê" : "Dự án"}
+          {price.type === "ban"
+            ? "Mua bán"
+            : price.type === "cho-thue"
+            ? "Cho thuê"
+            : "Dự án"}
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -120,7 +126,6 @@ function SortableRow({
               : "bg-red-100 text-red-800 hover:bg-red-200"
           }`}
         >
-          {price.isActive ? "👁️" : "🙈"}
           {price.isActive ? "Hoạt động" : "Ẩn"}
         </button>
       </td>
@@ -128,15 +133,17 @@ function SortableRow({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onEdit(price)}
-            className="text-blue-600 hover:text-blue-900"
+            className="p-1 text-blue-600 hover:text-blue-900"
+            title="Chỉnh sửa"
           >
-            ✏️
+            <PencilIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDelete(price)}
-            className="text-red-600 hover:text-red-900"
+            className="p-1 text-red-600 hover:text-red-900"
+            title="Xóa"
           >
-            🗑️
+            <TrashIcon className="h-4 w-4" />
           </button>
         </div>
       </td>
@@ -150,7 +157,11 @@ interface DraggablePriceTableProps {
   onDelete: (price: Price) => void;
   onToggleStatus: (price: Price) => void;
   onReorder: (newOrder: Price[]) => void;
-  formatPrice: (min?: number, max?: number, type?: "ban" | "cho-thue" | "project") => string;
+  formatPrice: (
+    min?: number,
+    max?: number,
+    type?: "ban" | "cho-thue" | "project"
+  ) => string;
 }
 
 export default function DraggablePriceTable({

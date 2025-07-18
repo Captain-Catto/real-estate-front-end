@@ -4,7 +4,12 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  EyeIcon,
+} from "@heroicons/react/24/outline";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { locationService, Location } from "@/services/locationService";
@@ -21,6 +26,9 @@ import {
 export default function AdminProjectPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<ProjectListItem[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [modalLoading, setModalLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -28,6 +36,9 @@ export default function AdminProjectPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [modalStep, setModalStep] = useState(1);
   const [projectsMissingWardCount, setProjectsMissingWardCount] = useState(0);
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "Đang bán" | "Sắp mở bán" | "Đã bàn giao" | "Khác"
+  >("all");
 
   // Location states
   const [provinces, setProvinces] = useState<Location[]>([]);
@@ -101,6 +112,24 @@ export default function AdminProjectPage() {
     fetchProvinces();
     fetchDevelopers();
   }, []);
+
+  // Filter projects based on status
+  useEffect(() => {
+    if (filterStatus === "all") {
+      setFilteredProjects(projects);
+    } else if (filterStatus === "Khác") {
+      setFilteredProjects(
+        projects.filter(
+          (project) =>
+            !["Đang bán", "Sắp mở bán", "Đã bàn giao"].includes(project.status)
+        )
+      );
+    } else {
+      setFilteredProjects(
+        projects.filter((project) => project.status === filterStatus)
+      );
+    }
+  }, [projects, filterStatus]);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -1530,6 +1559,70 @@ export default function AdminProjectPage() {
                 </div>
               </div>
             </div>
+
+            {/* Status Filter Tabs */}
+            <div className="mb-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Bộ lọc trạng thái dự án
+                  </h2>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFilterStatus("all")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterStatus === "all"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("Đang bán")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterStatus === "Đang bán"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Đang bán
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("Sắp mở bán")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterStatus === "Sắp mở bán"
+                        ? "bg-yellow-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Sắp mở bán
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("Đã bàn giao")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterStatus === "Đã bàn giao"
+                        ? "bg-green-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Đã bàn giao
+                  </button>
+                  <button
+                    onClick={() => setFilterStatus("Khác")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterStatus === "Khác"
+                        ? "bg-gray-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Khác
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg shadow">
@@ -1569,68 +1662,92 @@ export default function AdminProjectPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {projects.map((project) => (
-                      <tr key={project.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">
-                            {project.name}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <ProjectLocationDisplay
-                            location={project.locationObj}
-                            variant="compact"
-                          />
-                        </td>
-                        <td className="px-6 py-4">{project.developer}</td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              project.status === "Đã bàn giao"
-                                ? "bg-green-100 text-green-800"
-                                : project.status === "Đang bán"
-                                ? "bg-blue-100 text-blue-800"
-                                : project.status === "Sắp mở bán"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {project.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">{project.totalUnits}</td>
-                        <td className="px-6 py-4">{project.area}</td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleOpenModal(project)}
-                              className="p-1 text-blue-600 hover:text-blue-900"
-                              title="Chỉnh sửa nhanh"
+                    {filteredProjects.length > 0 ? (
+                      filteredProjects.map((project) => (
+                        <tr key={project.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-900">
+                              {project.name}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <ProjectLocationDisplay
+                              location={project.locationObj}
+                              variant="compact"
+                            />
+                          </td>
+                          <td className="px-6 py-4">{project.developer}</td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                project.status === "Đã bàn giao"
+                                  ? "bg-green-100 text-green-800"
+                                  : project.status === "Đang bán"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : project.status === "Sắp mở bán"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
                             >
-                              <PencilIcon className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                router.push(
-                                  `/admin/quan-ly-du-an/${project.id}`
-                                )
-                              }
-                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                              title="Chỉnh sửa chi tiết"
-                            >
-                              Chi tiết
-                            </button>
-                            <button
-                              onClick={() => handleDelete(project.id)}
-                              className="p-1 text-red-600 hover:text-red-900"
-                              title="Xóa"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
+                              {project.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">{project.totalUnits}</td>
+                          <td className="px-6 py-4">{project.area}</td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() =>
+                                  router.push(
+                                    `/admin/quan-ly-du-an/${project.id}`
+                                  )
+                                }
+                                className="p-1 text-green-600 hover:text-green-900"
+                                title="Xem chi tiết"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleOpenModal(project)}
+                                className="p-1 text-blue-600 hover:text-blue-900"
+                                title="Chỉnh sửa nhanh"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(project.id)}
+                                className="p-1 text-red-600 hover:text-red-900"
+                                title="Xóa"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="px-6 py-8 text-center text-gray-500"
+                        >
+                          <div className="flex flex-col items-center">
+                            <p className="text-lg font-medium">
+                              Không có dự án nào
+                            </p>
+                            <p className="text-sm mt-1">
+                              {filterStatus === "all"
+                                ? "Chưa có dự án nào được tạo"
+                                : `Không có dự án nào với trạng thái "${
+                                    filterStatus === "Khác"
+                                      ? "khác"
+                                      : filterStatus
+                                  }"`}
+                            </p>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               )}

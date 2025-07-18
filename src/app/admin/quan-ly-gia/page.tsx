@@ -25,7 +25,9 @@ export default function PricesManagement() {
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [filterType, setFilterType] = useState<"all" | "ban" | "cho-thue" | "project">("all");
+  const [filterType, setFilterType] = useState<
+    "all" | "ban" | "cho-thue" | "project"
+  >("all");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -253,7 +255,11 @@ export default function PricesManagement() {
     }));
   };
 
-  const formatPrice = (min?: number, max?: number, type?: "ban" | "cho-thue" | "project") => {
+  const formatPrice = (
+    min?: number,
+    max?: number,
+    type?: "ban" | "cho-thue" | "project"
+  ) => {
     if (!min && !max) return "Thỏa thuận";
     if (min === 0 && max === -1) return "Thỏa thuận";
 
@@ -306,72 +312,16 @@ export default function PricesManagement() {
                     Quản lý Khoảng giá
                   </h1>
                   <p className="text-gray-600 mt-1">
-                    Quản lý khoảng giá cho mua bán, cho thuê và dự án bất động sản
+                    Quản lý khoảng giá cho mua bán, cho thuê và dự án bất động
+                    sản
                   </p>
                 </div>
                 <button
                   onClick={() => setShowForm(true)}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm"
                 >
-                  ➕ Thêm khoảng giá
+                  Thêm khoảng giá
                 </button>
-              </div>
-
-              {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <span className="text-2xl">📊</span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Tổng cộng</p>
-                      <p className="text-2xl font-bold text-gray-900">{prices.length}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <span className="text-2xl">🏠</span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Mua bán</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {prices.filter(p => p.type === "ban").length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <span className="text-2xl">🔑</span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Cho thuê</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {prices.filter(p => p.type === "cho-thue").length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <span className="text-2xl">🏗️</span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">Dự án</p>
-                      <p className="text-2xl font-bold text-purple-600">
-                        {prices.filter(p => p.type === "project").length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -382,11 +332,8 @@ export default function PricesManagement() {
                   <h2 className="text-lg font-semibold text-gray-900">
                     Bộ lọc khoảng giá
                   </h2>
-                  <div className="text-sm text-gray-500">
-                    Tổng: {prices.length} khoảng giá
-                  </div>
                 </div>
-                
+
                 {/* Type Filter Tabs */}
                 <div className="flex gap-2">
                   <button
@@ -397,7 +344,7 @@ export default function PricesManagement() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    📊 Tất cả ({prices.length})
+                    Tất cả
                   </button>
                   <button
                     onClick={() => setFilterType("ban")}
@@ -407,7 +354,7 @@ export default function PricesManagement() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    🏠 Mua bán ({prices.filter(p => p.type === "ban").length})
+                    Mua bán
                   </button>
                   <button
                     onClick={() => setFilterType("cho-thue")}
@@ -417,7 +364,7 @@ export default function PricesManagement() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    🔑 Cho thuê ({prices.filter(p => p.type === "cho-thue").length})
+                    Cho thuê
                   </button>
                   <button
                     onClick={() => setFilterType("project")}
@@ -427,38 +374,7 @@ export default function PricesManagement() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    🏗️ Dự án ({prices.filter(p => p.type === "project").length})
-                  </button>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, type: "ban" }));
-                      setShowForm(true);
-                    }}
-                    className="px-3 py-1.5 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-                  >
-                    + Giá mua bán
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, type: "cho-thue" }));
-                      setShowForm(true);
-                    }}
-                    className="px-3 py-1.5 text-xs bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors"
-                  >
-                    + Giá cho thuê
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, type: "project" }));
-                      setShowForm(true);
-                    }}
-                    className="px-3 py-1.5 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
-                  >
-                    + Giá dự án
+                    Dự án
                   </button>
                 </div>
               </div>
@@ -476,7 +392,7 @@ export default function PricesManagement() {
                       onClick={resetForm}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      ✕
+                      X
                     </button>
                   </div>
 
@@ -521,19 +437,25 @@ export default function PricesManagement() {
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            type: e.target.value as "ban" | "cho-thue" | "project",
+                            type: e.target.value as
+                              | "ban"
+                              | "cho-thue"
+                              | "project",
                           }))
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="ban">🏠 Mua bán</option>
-                        <option value="cho-thue">🔑 Cho thuê</option>
-                        <option value="project">🏗️ Dự án</option>
+                        <option value="ban">Mua bán</option>
+                        <option value="cho-thue">Cho thuê</option>
+                        <option value="project">Dự án</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
-                        {formData.type === "ban" && "Khoảng giá cho việc mua bán bất động sản"}
-                        {formData.type === "cho-thue" && "Khoảng giá cho việc cho thuê bất động sản"}
-                        {formData.type === "project" && "Khoảng giá cho các dự án bất động sản"}
+                        {formData.type === "ban" &&
+                          "Khoảng giá cho việc mua bán bất động sản"}
+                        {formData.type === "cho-thue" &&
+                          "Khoảng giá cho việc cho thuê bất động sản"}
+                        {formData.type === "project" &&
+                          "Khoảng giá cho các dự án bất động sản"}
                       </p>
                     </div>
 
@@ -557,9 +479,11 @@ export default function PricesManagement() {
                             placeholder="0"
                           />
                           <span className="absolute right-3 top-2 text-sm text-gray-500">
-                            {formData.type === "ban" ? "VNĐ" : 
-                             formData.type === "cho-thue" ? "VNĐ/tháng" : 
-                             "VNĐ/m²"}
+                            {formData.type === "ban"
+                              ? "VNĐ"
+                              : formData.type === "cho-thue"
+                              ? "VNĐ/tháng"
+                              : "VNĐ/m²"}
                           </span>
                         </div>
                       </div>
@@ -583,9 +507,11 @@ export default function PricesManagement() {
                             placeholder="-1 = không giới hạn"
                           />
                           <span className="absolute right-3 top-2 text-sm text-gray-500">
-                            {formData.type === "ban" ? "VNĐ" : 
-                             formData.type === "cho-thue" ? "VNĐ/tháng" : 
-                             "VNĐ/m²"}
+                            {formData.type === "ban"
+                              ? "VNĐ"
+                              : formData.type === "cho-thue"
+                              ? "VNĐ/tháng"
+                              : "VNĐ/m²"}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
@@ -617,7 +543,7 @@ export default function PricesManagement() {
                         type="submit"
                         className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
                       >
-                        💾 {editingPrice ? "Cập nhật" : "Tạo mới"}
+                        {editingPrice ? "Cập nhật" : "Tạo mới"}
                       </button>
                       <button
                         type="button"

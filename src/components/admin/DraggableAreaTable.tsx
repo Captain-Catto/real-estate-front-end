@@ -1,4 +1,5 @@
 import React from "react";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import {
   DndContext,
   closestCenter,
@@ -113,7 +114,6 @@ function SortableRow({
               : "bg-red-100 text-red-800 hover:bg-red-200"
           }`}
         >
-          {area.isActive ? "👁️" : "🙈"}
           {area.isActive ? "Hoạt động" : "Ẩn"}
         </button>
       </td>
@@ -121,15 +121,17 @@ function SortableRow({
         <div className="flex items-center gap-2">
           <button
             onClick={() => onEdit(area)}
-            className="text-blue-600 hover:text-blue-900"
+            className="p-1 text-blue-600 hover:text-blue-900"
+            title="Chỉnh sửa"
           >
-            ✏️
+            <PencilIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDelete(area)}
-            className="text-red-600 hover:text-red-900"
+            className="p-1 text-red-600 hover:text-red-900"
+            title="Xóa"
           >
-            🗑️
+            <TrashIcon className="h-4 w-4" />
           </button>
         </div>
       </td>

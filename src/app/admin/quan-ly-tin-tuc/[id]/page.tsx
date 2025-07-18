@@ -1,176 +1,594 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
+import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { NewsArticleDetail } from "@/components/news/NewsArticleDetail";
-import {
-  CheckCircleIcon,
-  XCircleIcon,
-  TrashIcon,
-  ArrowLeftIcon,
-} from "@heroicons/react/24/outline";
+import { newsService } from "@/services/newsService";
+import { UploadService } from "@/services/uploadService";
+import dynamic from "next/dynamic";
+import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 
-// Mock service
-const NewsService = {
-  getNewsById: async (id: string) => {
-    // Replace with real API
-    await new Promise((r) => setTimeout(r, 300));
-    if (id === "NEWS001")
-      return {
-        id: "NEWS001",
-        title: "Thị trường bất động sản 2024: Xu hướng mới",
-        content: "<p>Nội dung chi tiết bài viết...</p>",
-        excerpt: "Xu hướng mới của thị trường bất động sản năm 2024...",
-        author: { name: "Nguyễn Văn A", slug: "nguyenvana", avatar: "" },
-        publishedAt: "2024-06-10T09:15:00Z",
-        updatedAt: "2024-06-10T09:15:00Z",
-        readTime: 4,
-        featuredImage: "",
-        tags: ["BĐS", "Xu hướng"],
-        category: "thi-truong",
-        relatedArticles: [],
-        status: "pending",
-      };
-    return null;
-  },
-  approveNews: async (id: string) => {
-    await new Promise((r) => setTimeout(r, 300));
-    return { success: true };
-  },
-  rejectNews: async (id: string) => {
-    await new Promise((r) => setTimeout(r, 300));
-    return { success: true };
-  },
-  deleteNews: async (id: string) => {
-    await new Promise((r) => setTimeout(r, 300));
-    return { success: true };
-  },
+// Dynamically import Quill editor to avoid SSR issues
+const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 bg-gray-100 rounded border flex items-center justify-center">
+      Đang tải editor...
+    </div>
+  ),
+});
+
+interface NewsData {
+  _id: string;
+  title: string;
+  content: string;
+  featuredImage?: string;
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
+  status: "draft" | "pending" | "published" | "rejected";
+  isHot: boolean;
+  isFeatured: boolean;
+  author: {
+    _id: string;
+    username: string;
+    email: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+const categoryLabels = {
+  "mua-ban": "Mua bán",
+  "cho-thue": "Cho thuê",
+  "tai-chinh": "Tài chính",
+  "phong-thuy": "Phong thủy",
+  chung: "Chung",
 };
 
-export default function AdminNewsDetailPage() {
+export default function EditNewsPage() {
   const router = useRouter();
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : params.id?.[0];
-  const [news, setNews] = useState<any>(null);
+  const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [news, setNews] = useState<NewsData | null>(null);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    content: "",
+    featuredImage: "",
+    category: "chung" as
+      | "mua-ban"
+      | "cho-thue"
+      | "tai-chinh"
+      | "phong-thuy"
+      | "chung",
+    status: "draft" as "draft" | "pending" | "published" | "rejected",
+    isHot: false,
+    isFeatured: false,
+  });
+
+  const newsId = params.id as string;
+
+  const fetchNews = useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching news with ID:", newsId); // Debug log
+      const response = await newsService.getNewsById(newsId);
+      console.log("API Response:", response); // Debug log
+      if (response.success) {
+        const newsData = response.data;
+        console.log("News data:", newsData); // Debug log
+        setNews(newsData);
+
+        // Update form data with the fetched news data
+        setFormData({
+          title: newsData.title || "",
+          content: newsData.content || "",
+          featuredImage: newsData.featuredImage || "",
+          category: newsData.category || "chung",
+          status: newsData.status || "draft",
+          isHot: newsData.isHot || false,
+          isFeatured: newsData.isFeatured || false,
+        });
+
+        console.log("Form data updated:", {
+          title: newsData.title,
+          category: newsData.category,
+          status: newsData.status,
+          isHot: newsData.isHot,
+          isFeatured: newsData.isFeatured,
+        });
+      } else {
+        console.error("API Error:", response); // Debug log
+        alert("Không tìm thấy tin tức");
+        router.push("/admin/quan-ly-tin-tuc");
+      }
+    } catch (error) {
+      console.error("Error fetching news:", error);
+      alert("Có lỗi xảy ra khi tải tin tức");
+      router.push("/admin/quan-ly-tin-tuc");
+    } finally {
+      setLoading(false);
+    }
+  }, [newsId, router]);
 
   useEffect(() => {
-    if (!id) return;
-    NewsService.getNewsById(id).then((data) => {
-      setNews(data);
-      setLoading(false);
-    });
-  }, [id]);
+    if (isAuthenticated && newsId) {
+      fetchNews();
+    }
+  }, [isAuthenticated, newsId, fetchNews]);
 
-  const handleApprove = async () => {
-    await NewsService.approveNews(id);
-    alert("Đã duyệt bài viết!");
-    router.refresh();
-  };
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      if (
+        formData.featuredImage &&
+        formData.featuredImage.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(formData.featuredImage);
+      }
+    };
+  }, [formData.featuredImage]);
 
-  const handleReject = async () => {
-    await NewsService.rejectNews(id);
-    alert("Đã từ chối bài viết!");
-    router.refresh();
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.content) {
+      alert("Vui lòng điền đầy đủ tiêu đề và nội dung");
+      return;
+    }
 
-  const handleDelete = async () => {
-    if (confirm("Bạn có chắc chắn muốn xóa bài này?")) {
-      await NewsService.deleteNews(id);
-      alert("Đã xóa bài viết!");
-      router.push("/admin/quan-ly-tin-tuc");
+    try {
+      setSaving(true);
+      
+      // Prepare data để gửi lên server
+      const updateData = { ...formData };
+      
+      // Nếu có file ảnh mới được chọn, upload trước
+      if (selectedImageFile) {
+        console.log("Uploading new image:", selectedImageFile.name);
+        const uploadResult = await UploadService.uploadImage(selectedImageFile);
+        
+        if (uploadResult.success && uploadResult.data?.url) {
+          updateData.featuredImage = uploadResult.data.url;
+          console.log("Image uploaded successfully:", uploadResult.data.url);
+          
+          // Clear selected file sau khi upload thành công
+          setSelectedImageFile(null);
+        } else {
+          alert("Không thể upload ảnh. Vui lòng thử lại.");
+          return;
+        }
+      } else if (formData.featuredImage.startsWith("blob:")) {
+        // Nếu vẫn còn blob URL mà không có file mới, không gửi ảnh
+        updateData.featuredImage = news?.featuredImage || "";
+      }
+      
+      console.log("Sending update data:", updateData);
+      const response = await newsService.updateNews(newsId, updateData);
+      
+      if (response.success) {
+        alert("Cập nhật tin tức thành công!");
+        router.push("/admin/quan-ly-tin-tuc");
+      } else {
+        alert(response.message || "Có lỗi xảy ra");
+      }
+    } catch (error) {
+      console.error("Error updating news:", error);
+      alert("Có lỗi xảy ra khi cập nhật tin tức");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="p-6 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </main>
-        </div>
-      </div>
-    );
+  const handleDelete = async () => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa tin tức "${news?.title}"?`)) return;
 
-  if (!news)
+    try {
+      const response = await newsService.deleteNews(newsId);
+      if (response.success) {
+        alert("Đã xóa tin tức thành công!");
+        router.push("/admin/quan-ly-tin-tuc");
+      } else {
+        alert(response.message || "Có lỗi xảy ra");
+      }
+    } catch (error) {
+      console.error("Error deleting news:", error);
+      alert("Có lỗi xảy ra khi xóa tin tức");
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert("Vui lòng chọn file ảnh hợp lệ");
+        return;
+      }
+      
+      // Validate file size (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Kích thước file không được vượt quá 5MB");
+        return;
+      }
+
+      // Clean up previous blob URL to prevent memory leaks
+      if (
+        formData.featuredImage &&
+        formData.featuredImage.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(formData.featuredImage);
+      }
+
+      // Lưu file để upload sau và tạo blob URL cho preview
+      setSelectedImageFile(file);
+      const imageUrl = URL.createObjectURL(file);
+      setFormData({ ...formData, featuredImage: imageUrl });
+
+      console.log("New image selected:", file.name, "Size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Vui lòng đăng nhập
+          </h1>
+          <button
+            onClick={() => router.push("/dang-nhap")}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Đăng nhập
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-100">
         <AdminSidebar />
         <div className="flex-1">
           <AdminHeader />
-          <main className="p-6 flex flex-col items-center">
-            <h2 className="text-2xl font-bold mb-4">Không tìm thấy bài viết</h2>
-            <button
-              onClick={() => router.push("/admin/quan-ly-tin-tuc")}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Quay lại danh sách
-            </button>
+          <main className="p-6">
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-64 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
           </main>
         </div>
       </div>
     );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1">
         <AdminHeader />
-        <main className="p-6 max-w-4xl mx-auto">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 mb-6 text-blue-600 hover:underline"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-            Quay lại
-          </button>
-          <div className="flex items-center gap-3 mb-6">
-            <span
-              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                news.status === "approved"
-                  ? "bg-green-100 text-green-800"
-                  : news.status === "pending"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {news.status === "approved"
-                ? "Đã duyệt"
-                : news.status === "pending"
-                ? "Chờ duyệt"
-                : "Đã từ chối"}
-            </span>
-            {news.status === "pending" && (
-              <>
-                <button
-                  onClick={handleApprove}
-                  className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  <CheckCircleIcon className="w-4 h-4" />
-                  Duyệt tin
-                </button>
-                <button
-                  onClick={handleReject}
-                  className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  <XCircleIcon className="w-4 h-4" />
-                  Từ chối tin
-                </button>
-              </>
+        <main className="p-6">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => router.push("/admin/quan-ly-tin-tuc")}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                  >
+                    <ArrowLeftIcon className="w-5 h-5" />
+                    Quay lại
+                  </button>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Chỉnh sửa tin tức
+                  </h1>
+                </div>
+                {user?.role === "admin" && (
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                    Xóa tin tức
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* News Info */}
+            {news && (
+              <div className="mb-6 bg-white rounded-lg shadow p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Tác giả:</span>
+                    <p className="font-medium">
+                      {news.author?.username || "Không có tác giả"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Ngày tạo:</span>
+                    <p className="font-medium">
+                      {new Date(news.createdAt).toLocaleDateString("vi-VN")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Ngày cập nhật:</span>
+                    <p className="font-medium">
+                      {new Date(news.updatedAt).toLocaleDateString("vi-VN")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">ID:</span>
+                    <p className="font-medium text-xs">{news._id}</p>
+                  </div>
+                </div>
+              </div>
             )}
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-red-100"
-            >
-              <TrashIcon className="w-4 h-4" />
-              Xóa
-            </button>
+
+            {/* Edit Form */}
+            <div className="bg-white rounded-lg shadow">
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tiêu đề *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập tiêu đề tin tức..."
+                    required
+                  />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Danh mục *
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        category: e.target.value as
+                          | "mua-ban"
+                          | "cho-thue"
+                          | "tai-chinh"
+                          | "phong-thuy"
+                          | "chung",
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    {Object.entries(categoryLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Featured Image */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ảnh đại diện
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {selectedImageFile && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      ✓ Đã chọn ảnh mới: {selectedImageFile.name} - Sẽ được upload khi lưu
+                    </p>
+                  )}
+                  {formData.featuredImage && (
+                    <div className="mt-2">
+                      {formData.featuredImage.startsWith("blob:") ? (
+                        // Hiển thị blob URL cho ảnh mới upload
+                        <div>
+                          <Image
+                            src={formData.featuredImage}
+                            alt="Preview ảnh mới"
+                            width={128}
+                            height={80}
+                            className="w-32 h-20 object-cover rounded border"
+                            onError={() => {
+                              console.error(
+                                "Blob URL không thể hiển thị:",
+                                formData.featuredImage
+                              );
+                            }}
+                          />
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-gray-500">Preview ảnh mới</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (formData.featuredImage.startsWith("blob:")) {
+                                  URL.revokeObjectURL(formData.featuredImage);
+                                }
+                                setFormData({ ...formData, featuredImage: news?.featuredImage || "" });
+                                setSelectedImageFile(null);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800"
+                            >
+                              Hủy chọn
+                            </button>
+                          </div>
+                        </div>
+                      ) : formData.featuredImage.startsWith("http") ? (
+                        // Hiển thị URL thông thường từ server
+                        <div>
+                          <Image
+                            src={formData.featuredImage}
+                            alt="Ảnh hiện tại"
+                            width={128}
+                            height={80}
+                          className="w-32 h-20 object-cover rounded border"
+                          onError={() => {
+                            console.error(
+                              "Không thể tải ảnh từ URL:",
+                              formData.featuredImage
+                            );
+                          }}
+                        />
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs text-gray-500">Ảnh hiện tại từ server</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, featuredImage: "" });
+                              setSelectedImageFile(null);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Xóa ảnh
+                          </button>
+                        </div>
+                        </div>
+                      ) : (
+                        // Placeholder cho các trường hợp khác (local path, relative path, etc.)
+                        <div className="w-32 h-20 bg-gray-200 rounded border flex items-center justify-center">
+                          <div className="text-center">
+                            <span className="text-xs text-gray-500 block">
+                              Ảnh hiện tại
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {formData.featuredImage.length > 20
+                                ? formData.featuredImage.slice(0, 20) + "..."
+                                : formData.featuredImage}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nội dung *
+                  </label>
+                  <div className="border border-gray-300 rounded-lg">
+                    <EditorWrapper
+                      value={formData.content}
+                      onChange={(content: string) =>
+                        setFormData({ ...formData, content })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Options */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Trạng thái
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          status: e.target.value as
+                            | "draft"
+                            | "pending"
+                            | "published"
+                            | "rejected",
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="draft">Bản nháp</option>
+                      <option value="pending">Chờ duyệt</option>
+                      {user?.role === "admin" && (
+                        <option value="published">Đã xuất bản</option>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isHot"
+                      checked={formData.isHot}
+                      onChange={(e) =>
+                        setFormData({ ...formData, isHot: e.target.checked })
+                      }
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label
+                      htmlFor="isHot"
+                      className="ml-2 text-sm text-gray-700"
+                    >
+                      Tin nóng
+                    </label>
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isFeatured"
+                      checked={formData.isFeatured}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          isFeatured: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label
+                      htmlFor="isFeatured"
+                      className="ml-2 text-sm text-gray-700"
+                    >
+                      Tin nổi bật
+                    </label>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin/quan-ly-tin-tuc")}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {saving ? "Đang lưu..." : "Cập nhật tin tức"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-          <NewsArticleDetail article={news} popularArticles={[]} />
         </main>
       </div>
     </div>

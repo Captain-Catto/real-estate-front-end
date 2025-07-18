@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggableAreaTable from "@/components/admin/DraggableAreaTable";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import { fetchWithAuth } from "@/services/authService";
 
 interface Area {
@@ -283,26 +284,52 @@ export default function AreasManagement() {
                 onClick={() => setShowForm(true)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
               >
-                ➕ Thêm diện tích
+                <PlusIcon className="w-5 h-5" />
+                Thêm diện tích
               </button>
             </div>
 
-            {/* Filters */}
+            {/* Type Filter Tabs */}
             <div className="mb-6">
-              <div className="flex gap-4">
-                <select
-                  value={filterType}
-                  onChange={(e) =>
-                    setFilterType(
-                      e.target.value as "all" | "property" | "project"
-                    )
-                  }
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Tất cả loại</option>
-                  <option value="property">Bất động sản</option>
-                  <option value="project">Dự án</option>
-                </select>
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Bộ lọc loại diện tích
+                  </h2>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFilterType("all")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterType === "all"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setFilterType("property")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterType === "property"
+                        ? "bg-green-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Bất động sản
+                  </button>
+                  <button
+                    onClick={() => setFilterType("project")}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      filterType === "project"
+                        ? "bg-purple-600 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    Dự án
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -318,7 +345,7 @@ export default function AreasManagement() {
                       onClick={resetForm}
                       className="text-gray-500 hover:text-gray-700"
                     >
-                      ✕
+                      ×
                     </button>
                   </div>
 
@@ -435,7 +462,7 @@ export default function AreasManagement() {
                         type="submit"
                         className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
                       >
-                        💾 {editingArea ? "Cập nhật" : "Tạo mới"}
+                        {editingArea ? "Cập nhật" : "Tạo mới"}
                       </button>
                       <button
                         type="button"
