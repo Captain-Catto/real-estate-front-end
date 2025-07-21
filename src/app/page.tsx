@@ -1,7 +1,7 @@
 "use client";
 import SearchSectionMain from "@/components/home/SearchSectionMain";
 import { FeaturedProperties } from "@/components/home/FeaturedProperties";
-import { NewsSection } from "@/components/home/NewsSection";
+import FixedNewsSection from "@/components/home/FixedNewsSection";
 import { StatsSection } from "@/components/home/StatsSection";
 import { FeaturedProject } from "@/components/home/FeaturedProject";
 import Header from "@/components/header/Header";
@@ -21,7 +21,7 @@ export default function Home() {
         </section>
 
         {/* News Section */}
-        <NewsSection />
+        <FixedNewsSection />
 
         {/* Featured Properties */}
         <FeaturedProperties />

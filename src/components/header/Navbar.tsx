@@ -512,6 +512,21 @@ export function Navbar() {
                         </Link>
                       )}
                     </MenuItem>
+
+                    <MenuItem>
+                      {({ focus }) => (
+                        <Link
+                          href="/tin-tuc/chung"
+                          className={`${
+                            focus
+                              ? "bg-gray-50 text-[#e03c31]"
+                              : "text-gray-700"
+                          } group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors`}
+                        >
+                          Chung
+                        </Link>
+                      )}
+                    </MenuItem>
                   </div>
                 </MenuItems>
               </Transition>

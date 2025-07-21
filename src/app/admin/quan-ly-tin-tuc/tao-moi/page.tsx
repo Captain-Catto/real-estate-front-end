@@ -4,17 +4,33 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import QuillEditor from "@/components/admin/QuillEditor";
+import dynamic from "next/dynamic";
 import { newsService, CreateNewsData } from "@/services/newsService";
 import { ArrowLeftIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 
+// Dynamically import Quill editor to avoid SSR issues
+const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 bg-gray-100 rounded border flex items-center justify-center">
+      Đang tải editor...
+    </div>
+  ),
+});
+
+/**
+ * News Lifecycle:
+ * - pending: Chờ duyệt (bài đang chờ quản trị viên duyệt)
+ * - published: Đã xuất bản (đang hiển thị cho người dùng)
+ * - rejected: Đã hạ (không hiển thị cho người dùng, sẽ tự động xóa sau 30 ngày)
+ */
 interface NewsFormData {
   title: string;
   content: string;
   featuredImage: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
-  status: "draft" | "pending" | "published";
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  status: "pending" | "published" | "rejected";
   isHot: boolean;
   isFeatured: boolean;
 }
@@ -24,7 +40,7 @@ const categories = [
   { value: "cho-thue", label: "Cho thuê" },
   { value: "tai-chinh", label: "Tài chính" },
   { value: "phong-thuy", label: "Phong thủy" },
-  { value: "chung", label: "Chung" },
+  { value: "tong-hop", label: "Tổng hợp" },
 ];
 
 export default function CreateNewsPage() {
@@ -35,8 +51,8 @@ export default function CreateNewsPage() {
     title: "",
     content: "",
     featuredImage: "",
-    category: "chung",
-    status: "draft",
+    category: "tong-hop",
+    status: "pending", // Default to pending status
     isHot: false,
     isFeatured: false,
   });
@@ -76,7 +92,19 @@ export default function CreateNewsPage() {
   };
 
   const handleContentChange = (content: string) => {
-    setFormData((prev) => ({ ...prev, content }));
+    console.log("Content changed, length:", content.length);
+    // Sử dụng setFormData để cập nhật state mà không làm mất các giá trị khác
+    setFormData((prev) => {
+      // Đảm bảo các giá trị khác được giữ nguyên
+      const updatedFormData = {
+        ...prev,
+        content: content,
+      };
+
+      // Log giá trị content mới để debug
+      console.log("Content updated to:", content);
+      return updatedFormData;
+    });
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,9 +113,26 @@ export default function CreateNewsPage() {
 
     setUploading(true);
     try {
-      const imageUrl = URL.createObjectURL(file);
-      setFormData((prev) => ({ ...prev, featuredImage: imageUrl }));
-      console.log("Upload image:", file.name);
+      // Sử dụng UploadService để tải ảnh lên server
+      const { UploadService } = await import("@/services/uploadService");
+      const response = await UploadService.uploadImage(file);
+
+      if (response.success && response.data?.url) {
+        setFormData((prev) => {
+          console.log("Updating image URL. Previous state:", prev);
+          // Đảm bảo tất cả các trường khác được giữ nguyên
+          const updatedState = {
+            ...prev,
+            featuredImage: response.data!.url,
+          };
+          console.log("State after image upload:", updatedState);
+          return updatedState;
+        });
+        console.log("Uploaded image successfully:", response.data.url);
+      } else {
+        console.error("Upload failed:", response);
+        alert("Lỗi khi tải ảnh lên");
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       alert("Lỗi khi tải ảnh lên");
@@ -98,37 +143,92 @@ export default function CreateNewsPage() {
 
   const handleSubmit = async (
     e: React.FormEvent,
-    status?: "draft" | "pending" | "published"
+    status?: "pending" | "published" | "rejected"
   ) => {
     e.preventDefault();
 
-    if (!formData.title.trim() || !formData.content.trim()) {
-      alert("Vui lòng nhập tiêu đề và nội dung");
+    // Kiểm tra dữ liệu đầu vào
+    if (!formData.title.trim()) {
+      alert("Vui lòng nhập tiêu đề bài viết");
       return;
     }
 
+    // Kiểm tra nếu nội dung có thực sự trống
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = formData.content;
+
+    // Lấy text content (chỉ nội dung văn bản, không có HTML)
+    const textContent = tempDiv.textContent || tempDiv.innerText || "";
+
+    // Log chi tiết để debug
+    console.log("HTML Content:", formData.content);
+    console.log("Text Content:", textContent);
+    console.log("Content Length:", formData.content.length);
+    console.log("Text Length:", textContent.length);
+
+    // Kiểm tra nếu nội dung chỉ chứa khoảng trắng hoặc những thẻ HTML trống
+    if (
+      !textContent.trim() &&
+      (!formData.content ||
+        formData.content === "<p></p>" ||
+        formData.content === "<p><br></p>" ||
+        formData.content === "<p><br/></p>")
+    ) {
+      alert("Vui lòng nhập nội dung bài viết");
+      return;
+    }
+
+    // Đảm bảo status mặc định là "pending" (chờ duyệt)
+    const finalStatus = status || "pending";
+
     setSaving(true);
     try {
+      console.log("Submitting form data:", formData);
+
+      // Tạo một bản sao hoàn toàn mới của formData để tránh tham chiếu
+      const formDataCopy = JSON.parse(JSON.stringify(formData));
+
+      // Debug để xác nhận dữ liệu trước khi gửi
+      console.log("Form data copy:", formDataCopy);
+      console.log("Content length:", formDataCopy.content.length);
+
+      // Loại bỏ các thẻ HTML không cần thiết nếu cần
+      // Lưu ý: Chỉ thực hiện nếu bạn muốn làm sạch HTML trước khi gửi
+      /* 
+      const sanitizedContent = formDataCopy.content
+        .replace(/(<p>(\s|&nbsp;|<br\s*\/?>)*<\/p>)+$/g, '') // Loại bỏ các đoạn trống ở cuối
+        .trim();
+      */
+
       const createData: CreateNewsData = {
-        ...formData,
-        status: status || formData.status,
+        ...formDataCopy,
+        status: finalStatus,
       };
 
+      console.log("Final data to submit:", createData);
       const response = await newsService.createNews(createData);
 
       if (response.success) {
-        alert(`Đã tạo tin tức thành công!`);
+        const message =
+          finalStatus === "pending"
+            ? "Đã tạo tin tức thành công! Tin tức của bạn sẽ được kiểm duyệt trước khi xuất bản."
+            : "Đã xuất bản tin tức thành công!";
+        alert(message);
         router.push("/admin/quan-ly-tin-tuc");
       } else {
-        alert(response.message || "Có lỗi xảy ra");
+        alert(response.message || "Có lỗi xảy ra khi tạo tin tức");
       }
     } catch (error) {
       console.error("Error creating news:", error);
-      alert("Có lỗi xảy ra khi tạo tin tức");
+      const errorMessage =
+        error instanceof Error ? error.message : "Có lỗi không xác định xảy ra";
+      alert(`Lỗi: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
   };
+
+  console.log("Current form state:", formData);
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -241,12 +341,12 @@ export default function CreateNewsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nội dung *
                   </label>
-                  <QuillEditor
-                    value={formData.content}
-                    onChange={handleContentChange}
-                    placeholder="Nhập nội dung tin tức..."
-                    height="400px"
-                  />
+                  <div className="border border-gray-300 rounded-lg">
+                    <EditorWrapper
+                      value={formData.content}
+                      onChange={handleContentChange}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -260,10 +360,12 @@ export default function CreateNewsPage() {
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="draft">Bản nháp</option>
                       <option value="pending">Chờ duyệt</option>
                       {user?.role === "admin" && (
-                        <option value="published">Đã xuất bản</option>
+                        <>
+                          <option value="published">Đã xuất bản</option>
+                          <option value="rejected">Đã hạ</option>
+                        </>
                       )}
                     </select>
                   </div>
@@ -300,20 +402,11 @@ export default function CreateNewsPage() {
                 <div className="flex gap-4 pt-6 border-t border-gray-200">
                   <button
                     type="button"
-                    onClick={(e) => handleSubmit(e, "draft")}
-                    disabled={saving}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-                  >
-                    {saving ? "Đang lưu..." : "Lưu nháp"}
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={(e) => handleSubmit(e, "pending")}
                     disabled={saving}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {saving ? "Đang gửi..." : "Gửi duyệt"}
+                    {saving ? "Đang đăng tin..." : "Đăng tin"}
                   </button>
 
                   {user?.role === "admin" && (

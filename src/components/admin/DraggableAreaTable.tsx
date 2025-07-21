@@ -105,7 +105,7 @@ function SortableRow({
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
         {area.order}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="px-6 py-4 whitespace-nowrap ">
         <button
           onClick={() => onToggleStatus(area)}
           className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${

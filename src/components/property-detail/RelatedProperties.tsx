@@ -44,15 +44,15 @@ export function RelatedProperties({
     },
     {
       id: "2",
-      title: "Chung cư cao cấp Vinhomes",
+      title: "Căn hộ cao cấp Vinhomes",
       price: "3.8 tỷ",
       location: "Ba Đình, Hà Nội",
       images: ["/images/property-2.jpg"],
-      slug: "chung-cu-vinhomes-2",
+      slug: "can-ho-vinhomes-2",
       area: "75 m²",
       bedrooms: 2,
       bathrooms: 2,
-      propertyType: "Chung cư",
+      propertyType: "Căn hộ",
       postedDate: "1 tuần trước",
     },
     // Thêm nhiều properties để test
@@ -66,7 +66,7 @@ export function RelatedProperties({
       area: `${Math.floor(Math.random() * 50 + 50)} m²`,
       bedrooms: Math.floor(Math.random() * 3 + 1),
       bathrooms: Math.floor(Math.random() * 3 + 1),
-      propertyType: ["Nhà phố", "Chung cư", "Biệt thự"][
+      propertyType: ["Nhà phố", "Căn hộ", "Biệt thự"][
         Math.floor(Math.random() * 3)
       ],
       postedDate: `${Math.floor(Math.random() * 30 + 1)} ngày trước`,

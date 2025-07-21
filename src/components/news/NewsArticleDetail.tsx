@@ -8,8 +8,8 @@ import { vi } from "date-fns/locale";
 
 interface Author {
   name: string;
-  slug: string;
-  avatar: string;
+  slug?: string;
+  avatar?: string;
 }
 
 interface Article {
@@ -17,7 +17,7 @@ interface Article {
   slug: string;
   title: string;
   content: string;
-  excerpt: string;
+  excerpt?: string;
   author: Author;
   publishedAt: string;
   updatedAt: string;
@@ -25,12 +25,14 @@ interface Article {
   featuredImage?: string;
   tags: string[];
   category: string;
+  views?: number;
 }
 
 interface PopularArticle {
   id: string;
   title: string;
   slug: string;
+  category?: string; // Thêm category cho URL chuẩn hóa
 }
 
 interface Props {
@@ -109,7 +111,7 @@ export function NewsArticleDetail({
                   <li>/</li>
                   <li>
                     <Link href={`/tin-tuc/${category}`}>
-                      {getCategoryName(category)}
+                      {getCategoryName(category || article.category)}
                     </Link>
                   </li>
                 </>
@@ -119,8 +121,7 @@ export function NewsArticleDetail({
                 {article.title}
               </li>
             </ol>
-          </nav>
-
+          </nav>{" "}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
             {/* Main Content */}
             <div className="xl:col-span-8">
@@ -136,18 +137,18 @@ export function NewsArticleDetail({
 
                   {/* Author Info */}
                   <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
-                    <Link
-                      href={`/wiki/tac-gia/${article.author.slug}`}
-                      className="flex-shrink-0"
-                    >
+                    <div className="flex-shrink-0">
                       <Image
-                        src={article.author.avatar}
+                        src={
+                          article.author.avatar ||
+                          "/assets/images/default-avatar.jpg"
+                        }
                         alt={article.author.name}
                         width={48}
                         height={48}
                         className="rounded-full"
                       />
-                    </Link>
+                    </div>
                     <div>
                       <div className="text-sm text-gray-600">
                         <span>Được đăng bởi </span>
@@ -306,22 +307,30 @@ export function NewsArticleDetail({
                     Bài viết được xem nhiều nhất
                   </h2>
                   <div className="space-y-4">
-                    {popularArticles.map((popularArticle, index) => (
-                      <div
-                        key={popularArticle.id}
-                        className="flex items-start gap-3"
-                      >
-                        <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white text-sm font-bold rounded flex items-center justify-center">
-                          {index + 1}
-                        </div>
-                        <Link
-                          href={`/tin-tuc/${popularArticle.slug}`}
-                          className="text-gray-900 hover:text-blue-600 font-medium text-sm leading-tight line-clamp-3 transition-colors"
+                    {popularArticles && popularArticles.length > 0 ? (
+                      popularArticles.map((popularArticle, index) => (
+                        <div
+                          key={popularArticle.id || index}
+                          className="flex items-start gap-3"
                         >
-                          {popularArticle.title}
-                        </Link>
-                      </div>
-                    ))}
+                          <div className="flex-shrink-0 w-6 h-6 bg-red-600 text-white text-sm font-bold rounded flex items-center justify-center">
+                            {index + 1}
+                          </div>
+                          <Link
+                            href={`/tin-tuc/${
+                              popularArticle.category || "tong-hop"
+                            }/${popularArticle.slug}`}
+                            className="text-gray-900 hover:text-blue-600 font-medium text-sm leading-tight line-clamp-3 transition-colors"
+                          >
+                            {popularArticle.title || "Tin tức bất động sản"}
+                          </Link>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        Không có tin tức phổ biến
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -335,11 +344,11 @@ export function NewsArticleDetail({
 
 function getCategoryName(category: string) {
   const names: { [key: string]: string } = {
-    "khu-vuc": "Khu vực",
     "tai-chinh": "Tài chính",
     "phong-thuy": "Phong thủy",
     "mua-ban": "Mua bán",
     "cho-thue": "Cho thuê",
+    "tong-hop": "Tổng hợp",
   };
   return names[category] || category;
 }

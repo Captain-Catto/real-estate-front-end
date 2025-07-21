@@ -5,6 +5,7 @@ import Link from "next/link";
 import testImg from "@/assets/images/card-img.jpg";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
+import { newsService, NewsItem } from "@/services/newsService";
 
 // Types
 interface Article {
@@ -20,12 +21,7 @@ interface Article {
   views?: number;
 }
 
-interface Location {
-  id: string;
-  name: string;
-  slug: string;
-  image: string;
-}
+// Đã loại bỏ interface Location
 
 interface NewsProps {
   initialArticles?: Article[];
@@ -210,67 +206,213 @@ const mockPopularArticles: Article[] = [
   },
 ];
 
-const mockHotLocations: Location[] = [
-  {
-    id: "hn",
-    name: "Hà Nội",
-    slug: "ha-noi",
-    image: testImg.src,
-  },
-  {
-    id: "hcm",
-    name: "Hồ Chí Minh",
-    slug: "ho-chi-minh",
-    image: testImg.src,
-  },
-];
-
-const mockBigLocations: Location[] = [
-  {
-    id: "br-vt",
-    name: "Bà Rịa - Vũng Tàu",
-    slug: "ba-ria-vung-tau",
-    image: testImg.src,
-  },
-  { id: "bd", name: "Bình Dương", slug: "binh-duong", image: testImg.src },
-  { id: "dn", name: "Đà Nẵng", slug: "da-nang", image: testImg.src },
-  { id: "dong-nai", name: "Đồng Nai", slug: "dong-nai", image: testImg.src },
-  { id: "hp", name: "Hải Phòng", slug: "hai-phong", image: testImg.src },
-  { id: "hy", name: "Hưng Yên", slug: "hung-yen", image: testImg.src },
-  { id: "kh", name: "Khánh Hòa", slug: "khanh-hoa", image: testImg.src },
-  { id: "la", name: "Long An", slug: "long-an", image: testImg.src },
-  { id: "qn", name: "Quảng Nam", slug: "quang-nam", image: testImg.src },
-  { id: "qni", name: "Quảng Ninh", slug: "quang-ninh", image: testImg.src },
-];
+// Đã loại bỏ mockHotLocations và mockBigLocations theo yêu cầu
 
 export function News({ initialArticles = [] }: NewsProps) {
   const [articles, setArticles] = useState<Article[]>(
-    initialArticles.length > 0 ? initialArticles : mockArticles
+    initialArticles.length > 0 ? initialArticles : []
   );
+  const [featuredArticles, setFeaturedArticles] = useState<Article[]>([]);
+  const [hotArticles, setHotArticles] = useState<Article[]>([]);
+  const [popularArticles, setPopularArticles] =
+    useState<Article[]>(mockPopularArticles);
   const [loading, setLoading] = useState(false);
-  const [showMoreLocations, setShowMoreLocations] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
+  // Fetch all types of articles
   useEffect(() => {
-    // Only fetch if no initial articles provided
-    if (initialArticles.length === 0) {
+    const fetchAllArticles = async () => {
       setLoading(true);
-      setTimeout(() => {
+      try {
+        // Fetch regular articles
+        const articlesResponse = await newsService.getPublishedNews({
+          page: 1,
+          limit: 10,
+        });
+
+        if (articlesResponse.success && articlesResponse.data) {
+          const transformedArticles = articlesResponse.data.news.map(
+            (item) => ({
+              id: item._id,
+              title: item.title,
+              slug: item.slug,
+              excerpt: item.content
+                ? item.content
+                    .replace(/<\/?[^>]+(>|$)/g, "")
+                    .substring(0, 160) + "..."
+                : "",
+              image: item.featuredImage || testImg.src,
+              publishedAt: new Date(
+                item.publishedAt || item.createdAt
+              ).toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              author: item.author?.username || "Biên tập viên",
+              category: item.category || "tong-hop",
+              tags: [],
+              views: item.views || 0,
+            })
+          );
+
+          setArticles(transformedArticles);
+          setTotalPages(articlesResponse.data.pagination?.totalPages || 1);
+        }
+
+        // Fetch featured articles
+        const featuredResponse = await newsService.getPublishedNews({
+          featured: true,
+          limit: 4,
+        });
+
+        if (featuredResponse.success && featuredResponse.data) {
+          const transformedFeatured = featuredResponse.data.news.map(
+            (item) => ({
+              id: item._id,
+              title: item.title,
+              slug: item.slug,
+              excerpt: item.content
+                ? item.content
+                    .replace(/<\/?[^>]+(>|$)/g, "")
+                    .substring(0, 160) + "..."
+                : "",
+              image: item.featuredImage || testImg.src,
+              publishedAt: new Date(
+                item.publishedAt || item.createdAt
+              ).toLocaleDateString("vi-VN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              author: item.author?.username || "Biên tập viên",
+              category: item.category || "tong-hop",
+              tags: [],
+              views: item.views || 0,
+            })
+          );
+
+          setFeaturedArticles(transformedFeatured);
+        }
+
+        // Fetch hot articles
+        const hotResponse = await newsService.getPublishedNews({
+          hot: true,
+          limit: 3,
+        });
+
+        if (hotResponse.success && hotResponse.data) {
+          const transformedHot = hotResponse.data.news.map((item) => ({
+            id: item._id,
+            title: item.title,
+            slug: item.slug,
+            excerpt: item.content
+              ? item.content.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 160) +
+                "..."
+              : "",
+            image: item.featuredImage || testImg.src,
+            publishedAt: new Date(
+              item.publishedAt || item.createdAt
+            ).toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            author: item.author?.username || "Biên tập viên",
+            category: item.category || "tong-hop",
+            tags: [],
+            views: item.views || 0,
+          }));
+
+          setHotArticles(transformedHot);
+        }
+
+        // Fetch popular articles (by view count)
+        const popularResponse = await newsService.getPublishedNews({
+          sort: "views",
+          order: "desc",
+          limit: 5,
+        });
+
+        if (
+          popularResponse.success &&
+          popularResponse.data &&
+          popularResponse.data.news.length > 0
+        ) {
+          const transformedPopular = popularResponse.data.news.map((item) => ({
+            id: item._id,
+            title: item.title,
+            slug: item.slug,
+            category: item.category || "tong-hop",
+            excerpt: "",
+            image: "",
+            publishedAt: "",
+            author: "",
+            views: item.views || 0,
+          }));
+
+          setPopularArticles(transformedPopular);
+        }
+      } catch (error) {
+        console.error("Error fetching articles:", error);
+
+        // Fallback to mock data if API calls fail
         setArticles(mockArticles);
+        setFeaturedArticles([mockFeaturedArticle, ...mockHighlightArticles]);
+        setHotArticles(mockHighlightArticles);
+      } finally {
         setLoading(false);
-      }, 1000);
+      }
+    };
+
+    if (initialArticles.length === 0) {
+      fetchAllArticles();
     }
   }, [initialArticles]);
 
   const loadMoreArticles = async () => {
+    if (loading || page >= totalPages) return;
+
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Loading more articles...");
-        setLoading(false);
-      }, 1000);
+      const nextPage = page + 1;
+      const response = await newsService.getPublishedNews({
+        page: nextPage,
+        limit: 10,
+      });
+
+      if (response.success && response.data) {
+        const newArticles = response.data.news.map((item) => ({
+          id: item._id,
+          title: item.title,
+          slug: item.slug,
+          excerpt: item.content
+            ? item.content.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 160) +
+              "..."
+            : "",
+          image: item.featuredImage || testImg.src,
+          publishedAt: new Date(
+            item.publishedAt || item.createdAt
+          ).toLocaleDateString("vi-VN"),
+          author: item.author?.username || "Biên tập viên",
+          category: item.category || "tong-hop",
+          tags: [],
+          views: item.views || 0,
+        }));
+
+        setArticles((prev) => [...prev, ...newArticles]);
+        setPage(nextPage);
+      }
     } catch (error) {
       console.error("Error loading more articles:", error);
+    } finally {
       setLoading(false);
     }
   };
@@ -300,55 +442,124 @@ export function News({ initialArticles = [] }: NewsProps) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {/* Main Featured Article */}
             <div className="lg:col-span-2">
-              <Link
-                href={`/tin-tuc/${mockFeaturedArticle.slug}`}
-                className="block group"
-              >
-                <div className="relative h-64 lg:h-80 rounded-lg overflow-hidden">
-                  <Image
-                    src={mockFeaturedArticle.image}
-                    alt={mockFeaturedArticle.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <div className="text-sm mb-2 opacity-90">
-                      {mockFeaturedArticle.publishedAt} •{" "}
-                      {mockFeaturedArticle.category}
+              {featuredArticles.length > 0 ? (
+                <Link
+                  href={`/tin-tuc/${featuredArticles[0].category}/${featuredArticles[0].slug}`}
+                  className="block group"
+                >
+                  <div className="relative h-64 lg:h-80 rounded-lg overflow-hidden">
+                    <Image
+                      src={featuredArticles[0].image}
+                      alt={featuredArticles[0].title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute top-4 left-4 z-10">
+                      <span className="bg-red-600 text-white text-xs font-medium px-2 py-1 rounded-sm">
+                        TIN NỔI BẬT
+                      </span>
                     </div>
-                    <h3 className="text-xl lg:text-2xl font-bold mb-3 line-clamp-2">
-                      {mockFeaturedArticle.title}
-                    </h3>
-                    <p className="text-sm lg:text-base opacity-90 line-clamp-3">
-                      {mockFeaturedArticle.excerpt}
-                    </p>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <div className="text-sm mb-2 opacity-90">
+                        {featuredArticles[0].publishedAt} •{" "}
+                        {featuredArticles[0].author}
+                      </div>
+                      <h3 className="text-xl lg:text-2xl font-bold mb-3 line-clamp-2">
+                        {featuredArticles[0].title}
+                      </h3>
+                      <p className="text-sm lg:text-base opacity-90 line-clamp-3">
+                        {featuredArticles[0].excerpt}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              ) : (
+                <Link
+                  href={`/tin-tuc/${mockFeaturedArticle.slug}`}
+                  className="block group"
+                >
+                  <div className="relative h-64 lg:h-80 rounded-lg overflow-hidden">
+                    <Image
+                      src={mockFeaturedArticle.image}
+                      alt={mockFeaturedArticle.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute top-4 left-4 z-10">
+                      <span className="bg-red-600 text-white text-xs font-medium px-2 py-1 rounded-sm">
+                        TIN NỔI BẬT
+                      </span>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <div className="text-sm mb-2 opacity-90">
+                        {mockFeaturedArticle.publishedAt} •{" "}
+                        {mockFeaturedArticle.category}
+                      </div>
+                      <h3 className="text-xl lg:text-2xl font-bold mb-3 line-clamp-2">
+                        {mockFeaturedArticle.title}
+                      </h3>
+                      <p className="text-sm lg:text-base opacity-90 line-clamp-3">
+                        {mockFeaturedArticle.excerpt}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              )}
             </div>
 
-            {/* Side Articles */}
+            {/* Side Articles (Hot News) */}
             <div className="space-y-4">
-              {mockHighlightArticles.map((article) => (
-                <div
-                  key={article.id}
-                  className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="text-xs text-gray-500 mb-2">
-                    {article.publishedAt} • {article.category}
-                  </div>
-                  <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                    <Link
-                      href={`/tin-tuc/${article.slug}`}
-                      className="line-clamp-3"
+              {hotArticles.length > 0
+                ? hotArticles.slice(0, 3).map((article) => (
+                    <div
+                      key={article.id}
+                      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                     >
-                      {article.title}
-                    </Link>
-                  </h3>
-                </div>
-              ))}
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs text-gray-500">
+                          {article.publishedAt}
+                        </span>
+                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-sm">
+                          TIN NÓNG
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+                        <Link
+                          href={`/tin-tuc/${article.category}/${article.slug}`}
+                          className="line-clamp-3"
+                        >
+                          {article.title}
+                        </Link>
+                      </h3>
+                    </div>
+                  ))
+                : mockHighlightArticles.map((article) => (
+                    <div
+                      key={article.id}
+                      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs text-gray-500">
+                          {article.publishedAt}
+                        </span>
+                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-sm">
+                          TIN NÓNG
+                        </span>
+                      </div>
+                      <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+                        <Link
+                          href={`/tin-tuc/${article.slug}`}
+                          className="line-clamp-3"
+                        >
+                          {article.title}
+                        </Link>
+                      </h3>
+                    </div>
+                  ))}
             </div>
           </div>
 
@@ -397,10 +608,28 @@ export function News({ initialArticles = [] }: NewsProps) {
                               fill
                               className="object-cover"
                             />
-                            <div className="absolute top-3 left-3">
+                            <div className="absolute top-3 left-3 flex flex-wrap gap-2">
                               <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                                {article.category}
+                                {article.category === "mua-ban"
+                                  ? "Mua bán"
+                                  : article.category === "cho-thue"
+                                  ? "Cho thuê"
+                                  : article.category === "tai-chinh"
+                                  ? "Tài chính"
+                                  : article.category === "phong-thuy"
+                                  ? "Phong thủy"
+                                  : "Tổng hợp"}
                               </span>
+                              {article.id.includes("hot") && (
+                                <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
+                                  TIN NÓNG
+                                </span>
+                              )}
+                              {article.id.includes("featured") && (
+                                <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
+                                  NỔI BẬT
+                                </span>
+                              )}
                             </div>
                           </Link>
                         </div>
@@ -453,35 +682,54 @@ export function News({ initialArticles = [] }: NewsProps) {
               {/* Mobile Sections */}
               <div className="xl:hidden mt-8 space-y-8">
                 {/* Popular Articles Mobile */}
-                <PopularArticles articles={mockPopularArticles} />
-
-                {/* Hot Locations Mobile */}
-                <HotLocations
-                  locations={mockHotLocations}
-                  showMore={showMoreLocations}
-                  onToggleMore={() => setShowMoreLocations(!showMoreLocations)}
-                />
-
-                {/* Big Locations Mobile */}
-                <BigLocations locations={mockBigLocations} />
+                <PopularArticles articles={popularArticles} />
               </div>
             </div>
 
             {/* Sidebar - Desktop Only */}
             <div className="hidden xl:block space-y-8">
               {/* Popular Articles */}
-              <PopularArticles articles={mockPopularArticles} />
+              <PopularArticles articles={popularArticles} />
 
-              {/* Hot Locations */}
+              {/* Tag Cloud - Added instead of location sections */}
               <div className="sticky top-6 space-y-8">
-                <HotLocations
-                  locations={mockHotLocations}
-                  showMore={showMoreLocations}
-                  onToggleMore={() => setShowMoreLocations(!showMoreLocations)}
-                />
-
-                {/* Big Locations */}
-                <BigLocations locations={mockBigLocations} />
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">
+                    Danh mục tin tức
+                  </h2>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href="/tin-tuc/mua-ban"
+                      className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition-colors"
+                    >
+                      Mua bán
+                    </Link>
+                    <Link
+                      href="/tin-tuc/cho-thue"
+                      className="px-3 py-2 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors"
+                    >
+                      Cho thuê
+                    </Link>
+                    <Link
+                      href="/tin-tuc/tai-chinh"
+                      className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200 transition-colors"
+                    >
+                      Tài chính
+                    </Link>
+                    <Link
+                      href="/tin-tuc/phong-thuy"
+                      className="px-3 py-2 bg-orange-100 text-orange-800 rounded-full text-sm hover:bg-orange-200 transition-colors"
+                    >
+                      Phong thủy
+                    </Link>
+                    <Link
+                      href="/tin-tuc/tong-hop"
+                      className="px-3 py-2 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                    >
+                      Tổng hợp
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -507,7 +755,9 @@ function PopularArticles({ articles }: { articles: Article[] }) {
               {index + 1}
             </div>
             <Link
-              href={`/tin-tuc/${article.slug}`}
+              href={`/tin-tuc/${article.category || "tong-hop"}/${
+                article.slug
+              }`}
               className="text-gray-900 hover:text-blue-600 transition-colors font-medium line-clamp-3 text-sm"
             >
               {article.title}
@@ -519,82 +769,4 @@ function PopularArticles({ articles }: { articles: Article[] }) {
   );
 }
 
-// Hot Locations Component
-function HotLocations({
-  locations,
-  showMore,
-  onToggleMore,
-}: {
-  locations: Location[];
-  showMore: boolean;
-  onToggleMore: () => void;
-}) {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">
-        Thị trường BĐS tại các tỉnh / thành sôi động nhất
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {locations.map((location) => (
-          <Link
-            key={location.id}
-            href={`/tin-tuc/bat-dong-san-${location.slug}`}
-            className="block relative h-32 rounded-lg overflow-hidden group"
-          >
-            <Image
-              src={location.image}
-              alt={location.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white font-semibold text-lg">
-                {location.name}
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
-      <button
-        onClick={onToggleMore}
-        className="w-full mt-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors xl:hidden"
-      >
-        Xem thêm
-      </button>
-    </div>
-  );
-}
-
-// Big Locations Component
-function BigLocations({ locations }: { locations: Location[] }) {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">
-        Thị trường BĐS tại 10 tỉnh / thành phố lớn
-      </h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-4">
-        {locations.map((location) => (
-          <Link
-            key={location.id}
-            href={`/tin-tuc/bat-dong-san-${location.slug}`}
-            className="block text-center group"
-          >
-            <div className="w-full h-20 relative rounded-lg mb-2 overflow-hidden">
-              <Image
-                src={location.image}
-                alt={location.name}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/80 to-blue-600/80 group-hover:from-blue-600/80 group-hover:to-blue-700/80 transition-colors"></div>
-            </div>
-            <span className="text-sm text-gray-700 group-hover:text-blue-600 transition-colors">
-              {location.name}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
+// Đã loại bỏ HotLocations và BigLocations Component theo yêu cầu

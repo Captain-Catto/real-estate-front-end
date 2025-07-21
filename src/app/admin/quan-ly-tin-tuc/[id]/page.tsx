@@ -20,13 +20,19 @@ const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
   ),
 });
 
+/**
+ * News Lifecycle:
+ * - pending: Chờ duyệt (bài đang chờ quản trị viên duyệt)
+ * - published: Đã xuất bản (đang hiển thị cho người dùng)
+ * - rejected: Đã hạ (không hiển thị cho người dùng, sẽ tự động xóa sau 30 ngày)
+ */
 interface NewsData {
   _id: string;
   title: string;
   content: string;
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
-  status: "draft" | "pending" | "published" | "rejected";
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  status: "draft" | "pending" | "published" | "rejected"; // Keep draft for now for compatibility
   isHot: boolean;
   isFeatured: boolean;
   author: {
@@ -43,7 +49,7 @@ const categoryLabels = {
   "cho-thue": "Cho thuê",
   "tai-chinh": "Tài chính",
   "phong-thuy": "Phong thủy",
-  chung: "Chung",
+  "tong-hop": "Tổng hợp",
 };
 
 export default function EditNewsPage() {
@@ -58,13 +64,13 @@ export default function EditNewsPage() {
     title: "",
     content: "",
     featuredImage: "",
-    category: "chung" as
+    category: "tong-hop" as
       | "mua-ban"
       | "cho-thue"
       | "tai-chinh"
       | "phong-thuy"
-      | "chung",
-    status: "draft" as "draft" | "pending" | "published" | "rejected",
+      | "tong-hop",
+    status: "pending" as "draft" | "pending" | "published" | "rejected", // Default to pending now
     isHot: false,
     isFeatured: false,
   });
@@ -83,11 +89,14 @@ export default function EditNewsPage() {
         setNews(newsData);
 
         // Update form data with the fetched news data
+        // Log the content specifically to debug
+        console.log("Content from API:", newsData.content);
+
         setFormData({
           title: newsData.title || "",
           content: newsData.content || "",
           featuredImage: newsData.featuredImage || "",
-          category: newsData.category || "chung",
+          category: newsData.category || "tong-hop",
           status: newsData.status || "draft",
           isHot: newsData.isHot || false,
           isFeatured: newsData.isFeatured || false,
@@ -141,19 +150,24 @@ export default function EditNewsPage() {
 
     try {
       setSaving(true);
-      
+
       // Prepare data để gửi lên server
-      const updateData = { ...formData };
-      
+      // Ensure we have the correct type for the API
+      const updateData = {
+        ...formData,
+        // Make sure status is compatible with the API
+        status: formData.status === "draft" ? "pending" : formData.status,
+      };
+
       // Nếu có file ảnh mới được chọn, upload trước
       if (selectedImageFile) {
         console.log("Uploading new image:", selectedImageFile.name);
         const uploadResult = await UploadService.uploadImage(selectedImageFile);
-        
+
         if (uploadResult.success && uploadResult.data?.url) {
           updateData.featuredImage = uploadResult.data.url;
           console.log("Image uploaded successfully:", uploadResult.data.url);
-          
+
           // Clear selected file sau khi upload thành công
           setSelectedImageFile(null);
         } else {
@@ -164,10 +178,10 @@ export default function EditNewsPage() {
         // Nếu vẫn còn blob URL mà không có file mới, không gửi ảnh
         updateData.featuredImage = news?.featuredImage || "";
       }
-      
+
       console.log("Sending update data:", updateData);
       const response = await newsService.updateNews(newsId, updateData);
-      
+
       if (response.success) {
         alert("Cập nhật tin tức thành công!");
         router.push("/admin/quan-ly-tin-tuc");
@@ -203,11 +217,11 @@ export default function EditNewsPage() {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         alert("Vui lòng chọn file ảnh hợp lệ");
         return;
       }
-      
+
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert("Kích thước file không được vượt quá 5MB");
@@ -227,7 +241,12 @@ export default function EditNewsPage() {
       const imageUrl = URL.createObjectURL(file);
       setFormData({ ...formData, featuredImage: imageUrl });
 
-      console.log("New image selected:", file.name, "Size:", (file.size / 1024 / 1024).toFixed(2) + "MB");
+      console.log(
+        "New image selected:",
+        file.name,
+        "Size:",
+        (file.size / 1024 / 1024).toFixed(2) + "MB"
+      );
     }
   };
 
@@ -372,7 +391,7 @@ export default function EditNewsPage() {
                           | "cho-thue"
                           | "tai-chinh"
                           | "phong-thuy"
-                          | "chung",
+                          | "tong-hop",
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -399,7 +418,8 @@ export default function EditNewsPage() {
                   />
                   {selectedImageFile && (
                     <p className="text-sm text-blue-600 mt-1">
-                      ✓ Đã chọn ảnh mới: {selectedImageFile.name} - Sẽ được upload khi lưu
+                      ✓ Đã chọn ảnh mới: {selectedImageFile.name} - Sẽ được
+                      upload khi lưu
                     </p>
                   )}
                   {formData.featuredImage && (
@@ -421,14 +441,21 @@ export default function EditNewsPage() {
                             }}
                           />
                           <div className="flex items-center justify-between mt-1">
-                            <p className="text-xs text-gray-500">Preview ảnh mới</p>
+                            <p className="text-xs text-gray-500">
+                              Preview ảnh mới
+                            </p>
                             <button
                               type="button"
                               onClick={() => {
-                                if (formData.featuredImage.startsWith("blob:")) {
+                                if (
+                                  formData.featuredImage.startsWith("blob:")
+                                ) {
                                   URL.revokeObjectURL(formData.featuredImage);
                                 }
-                                setFormData({ ...formData, featuredImage: news?.featuredImage || "" });
+                                setFormData({
+                                  ...formData,
+                                  featuredImage: news?.featuredImage || "",
+                                });
                                 setSelectedImageFile(null);
                               }}
                               className="text-xs text-red-600 hover:text-red-800"
@@ -445,27 +472,29 @@ export default function EditNewsPage() {
                             alt="Ảnh hiện tại"
                             width={128}
                             height={80}
-                          className="w-32 h-20 object-cover rounded border"
-                          onError={() => {
-                            console.error(
-                              "Không thể tải ảnh từ URL:",
-                              formData.featuredImage
-                            );
-                          }}
-                        />
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-gray-500">Ảnh hiện tại từ server</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, featuredImage: "" });
-                              setSelectedImageFile(null);
+                            className="w-32 h-20 object-cover rounded border"
+                            onError={() => {
+                              console.error(
+                                "Không thể tải ảnh từ URL:",
+                                formData.featuredImage
+                              );
                             }}
-                            className="text-xs text-red-600 hover:text-red-800"
-                          >
-                            Xóa ảnh
-                          </button>
-                        </div>
+                          />
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-gray-500">
+                              Ảnh hiện tại từ server
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, featuredImage: "" });
+                                setSelectedImageFile(null);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800"
+                            >
+                              Xóa ảnh
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         // Placeholder cho các trường hợp khác (local path, relative path, etc.)
@@ -521,10 +550,12 @@ export default function EditNewsPage() {
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="draft">Bản nháp</option>
                       <option value="pending">Chờ duyệt</option>
                       {user?.role === "admin" && (
-                        <option value="published">Đã xuất bản</option>
+                        <>
+                          <option value="published">Đã xuất bản</option>
+                          <option value="rejected">Đã hạ</option>
+                        </>
                       )}
                     </select>
                   </div>

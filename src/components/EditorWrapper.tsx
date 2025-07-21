@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useCallback } from "react";
 
 interface EditorWrapperProps {
   value: string;
@@ -16,7 +17,18 @@ const QuillEditor = dynamic(() => import("./QuillEditor"), {
 });
 
 const EditorWrapper: React.FC<EditorWrapperProps> = ({ value, onChange }) => {
-  return <QuillEditor value={value} onChange={onChange} />;
+  console.log("EditorWrapper received value:", value);
+
+  // Sử dụng useCallback để tránh tạo lại hàm onChange mỗi khi render
+  const handleChange = useCallback(
+    (content: string) => {
+      console.log("EditorWrapper onChange called with:", content);
+      onChange(content);
+    },
+    [onChange]
+  );
+
+  return <QuillEditor value={value} onChange={handleChange} />;
 };
 
 export default EditorWrapper;

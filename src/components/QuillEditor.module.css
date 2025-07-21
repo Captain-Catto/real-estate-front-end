@@ -1,0 +1,32 @@
+/* QuillEditor custom styles */
+.quillContainer :global(.ql-editor img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem 0;
+}
+
+.quillContainer :global(.ql-editor p) {
+  margin-bottom: 0.5rem;
+}
+
+.quillContainer :global(.ql-container) {
+  font-size: 16px;
+  min-height: 200px;
+}
+
+.quillContainer :global(.ql-toolbar) {
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+}
+
+.quillContainer :global(.ql-container) {
+  border-bottom-left-radius: 0.25rem;
+  border-bottom-right-radius: 0.25rem;
+}
+
+/* Custom image resizing - requires Quill image resize module if needed */
+.quillContainer :global(.ql-snow .ql-editor img.ql-resize-handle) {
+  box-sizing: border-box;
+  cursor: nwse-resize;
+}

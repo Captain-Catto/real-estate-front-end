@@ -38,8 +38,8 @@ function ArticleCard({
         <Image
           src={article.image}
           alt={article.title}
-          layout="fill"
-          objectFit="cover"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="w-full h-full object-cover"
         />
       </div>
@@ -65,7 +65,7 @@ export function NewsCategoryPage({
   category,
   articles,
 }: NewsCategoryPageProps) {
-  const categoryInfo = {
+  const categoryInfo: Record<string, { title: string; description: string }> = {
     "khu-vuc": {
       title: "Tin tức theo khu vực",
       description:
@@ -86,6 +86,10 @@ export function NewsCategoryPage({
     "cho-thue": {
       title: "Tin tức cho thuê",
       description: "Thông tin thị trường cho thuê bất động sản",
+    },
+    "tong-hop": {
+      title: "Tin tức tổng hợp",
+      description: "Tổng hợp các tin tức mới nhất về thị trường bất động sản",
     },
   };
 

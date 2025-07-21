@@ -18,7 +18,7 @@ const categoryNames = {
   "cho-thue": "Cho thuê",
   "tai-chinh": "Tài chính",
   "phong-thuy": "Phong thủy",
-  chung: "Chung",
+  "tong-hop": "Tổng hợp",
 };
 
 const categoryColors = {
@@ -26,7 +26,7 @@ const categoryColors = {
   "cho-thue": "bg-green-100 text-green-800",
   "tai-chinh": "bg-purple-100 text-purple-800",
   "phong-thuy": "bg-orange-100 text-orange-800",
-  chung: "bg-gray-100 text-gray-800",
+  "tong-hop": "bg-gray-100 text-gray-800",
 };
 
 interface NewsProps {

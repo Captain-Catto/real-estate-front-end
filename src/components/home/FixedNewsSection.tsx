@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { NewsItem } from "@/services/newsService";
-import { newsService } from "@/services/newsService";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import { newsService } from "@/services/newsService";
 
 // Định nghĩa kiểu dữ liệu cho news
 interface TransformedNewsItem {
@@ -16,7 +15,20 @@ interface TransformedNewsItem {
   slug: string;
   isHot?: boolean;
   isFeatured?: boolean;
-  category?: string; // Thêm category để định dạng URL chuẩn
+  category?: string; // Thêm category cho URL chuẩn
+}
+
+// Định nghĩa kiểu dữ liệu NewsItem từ API
+interface NewsItem {
+  _id: string;
+  title: string;
+  slug: string;
+  featuredImage?: string;
+  createdAt: string;
+  isHot?: boolean;
+  isFeatured?: boolean;
+  content?: string;
+  category: string; // Thêm trường category để dùng trong URL
 }
 
 interface NewsDataState {
@@ -51,6 +63,8 @@ const tabs = [
   { key: "tin-tuc", label: "Tin tức" },
 ];
 
+// Sử dụng API service thực tế từ newsService
+
 // Hàm chuyển đổi từ NewsItem sang TransformedNewsItem
 const transformNewsItem = (item: NewsItem): TransformedNewsItem => {
   return {
@@ -68,7 +82,7 @@ const transformNewsItem = (item: NewsItem): TransformedNewsItem => {
   };
 };
 
-export default function NewsSection() {
+const FixedNewsSection = () => {
   const [activeTab, setActiveTab] = useState("tin-noi-bat");
   const [selectedNews, setSelectedNews] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -76,49 +90,56 @@ export default function NewsSection() {
   const [newsData, setNewsData] = useState<NewsDataState>(placeholderData);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch news data from API
+  // Fetch news data
   useEffect(() => {
     const fetchNews = async () => {
       setIsLoading(true);
       try {
-        // Fetch featured news
-        const featuredResponse = await newsService.getFeaturedNews(6);
-        // Fetch hot news
-        const hotResponse = await newsService.getHotNews(6);
-        // Fetch regular news
-        const regularResponse = await newsService.getPublishedNews({
-          limit: 10,
-          featured: false,
-          hot: false,
+        // Sử dụng API thông thường để lấy tất cả tin tức thay vì gọi nhiều API
+        const response = await newsService.getPublishedNews({
+          limit: 20,
+          page: 1,
         });
 
-        // Transform data
-        const featuredNews =
-          featuredResponse.success && featuredResponse.data
-            ? featuredResponse.data.map(transformNewsItem)
-            : [];
+        console.log("News API response:", response);
 
-        const hotNews =
-          hotResponse.success && hotResponse.data
-            ? hotResponse.data.map(transformNewsItem)
-            : [];
+        if (response.success && response.data && response.data.news) {
+          // Lọc dữ liệu từ một API duy nhất
+          const allNews = response.data.news;
+          console.log("All news:", allNews);
 
-        const regularNews =
-          regularResponse.success && regularResponse.data.news
-            ? regularResponse.data.news.map(transformNewsItem)
-            : [];
+          // Lọc ra tin nổi bật (isFeatured = true)
+          const featuredNews = allNews
+            .filter((item) => item.isFeatured)
+            .map((item) => transformNewsItem(item));
 
-        // Update state with real data
-        setNewsData({
-          "tin-noi-bat":
-            featuredNews.length > 0
-              ? featuredNews
-              : placeholderData["tin-noi-bat"],
-          "tin-tuc":
-            hotNews.length > 0
-              ? [...hotNews, ...regularNews].slice(0, 10)
-              : placeholderData["tin-tuc"],
-        });
+          // Lọc ra tin nóng (isHot = true)
+          const hotNews = allNews
+            .filter((item) => item.isHot)
+            .map((item) => transformNewsItem(item));
+
+          // Các tin thông thường (không nổi bật, không nóng)
+          const regularNews = allNews
+            .filter((item) => !item.isFeatured && !item.isHot)
+            .map((item) => transformNewsItem(item));
+
+          // Update state with real data
+          setNewsData({
+            "tin-noi-bat":
+              featuredNews.length > 0
+                ? featuredNews
+                : placeholderData["tin-noi-bat"],
+            "tin-tuc":
+              hotNews.length > 0
+                ? [...hotNews, ...regularNews].slice(0, 10)
+                : placeholderData["tin-tuc"],
+          });
+        } else {
+          console.error(
+            "Failed to fetch news or invalid data format:",
+            response
+          );
+        }
       } catch (error) {
         console.error("Error fetching news data:", error);
         // Keep placeholder data in case of error
@@ -160,7 +181,7 @@ export default function NewsSection() {
   ) => {
     if (!isMounted) return;
 
-    // Đặt tin được chọn để hiển thị trên giao diện
+    // Chỉ đặt tin được chọn để hiển thị trên giao diện
     setSelectedNews(index);
 
     // Chỉ chuyển hướng trên mobile/tablet
@@ -367,4 +388,6 @@ export default function NewsSection() {
       </div>
     </section>
   );
-}
+};
+
+export default FixedNewsSection;

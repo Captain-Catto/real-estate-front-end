@@ -17,15 +17,21 @@ export interface NewsAuthor {
   avatar?: string;
 }
 
+/**
+ * News Lifecycle:
+ * - pending: Chờ duyệt (bài đang chờ quản trị viên duyệt)
+ * - published: Đã xuất bản (đang hiển thị cho người dùng)
+ * - rejected: Đã hạ (không hiển thị cho người dùng, sẽ tự động xóa sau 30 ngày)
+ */
 export interface NewsItem {
   _id: string;
   title: string;
   slug: string;
   content: string;
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
   author: NewsAuthor;
-  status: "draft" | "pending" | "published" | "rejected";
+  status: "draft" | "pending" | "published" | "rejected"; // draft is deprecated but kept for compatibility
   publishedAt?: string;
   views: number;
   readTime: number;
@@ -77,8 +83,8 @@ export interface CreateNewsData {
   title: string;
   content: string;
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
-  status?: "draft" | "pending" | "published" | "rejected";
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  status?: "pending" | "published" | "rejected"; // Default is "pending"
   isHot?: boolean;
   isFeatured?: boolean;
 }
@@ -504,7 +510,7 @@ export const newsService = {
       "cho-thue": "Cho thuê",
       "tai-chinh": "Tài chính",
       "phong-thuy": "Phong thủy",
-      chung: "Chung",
+      "tong-hop": "Tổng hợp",
     };
     return categoryNames[category] || category;
   },
@@ -515,7 +521,7 @@ export const newsService = {
       "Cho thuê": "cho-thue",
       "Tài chính": "tai-chinh",
       "Phong thủy": "phong-thuy",
-      Chung: "chung",
+      "Tổng hợp": "tong-hop",
     };
     return categoryMap[category] || category.toLowerCase().replace(/\s+/g, "-");
   },
