@@ -9,7 +9,6 @@ import {
   TrashIcon,
   XMarkIcon,
   MapIcon,
-  BuildingOfficeIcon,
   HomeIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
@@ -17,19 +16,24 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   locationService,
   AdminProvince,
-  AdminDistrict,
   AdminWard,
 } from "@/services/locationService";
 
-type ModalType = "province" | "district" | "ward" | "delete" | null;
+type ModalType = "province" | "ward" | "delete" | null;
 type ActionType = "add" | "edit" | "delete";
 
 interface FormData {
   name: string;
-  code?: number;
-  codename: string;
+  code?: string;
+  slug?: string;
+  type?: string;
+  name_with_type?: string;
+  path?: string;
+  path_with_type?: string;
+  parent_code?: string;
+  // Fields only for frontend UI compatibility
+  codename?: string;
   division_type?: string;
-  phone_code?: number;
   short_codename?: string;
 }
 
@@ -41,8 +45,6 @@ export default function AdminLocationPage() {
   const [provinces, setProvinces] = useState<AdminProvince[]>([]);
   const [selectedProvince, setSelectedProvince] =
     useState<AdminProvince | null>(null);
-  const [selectedDistrict, setSelectedDistrict] =
-    useState<AdminDistrict | null>(null);
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -53,14 +55,20 @@ export default function AdminLocationPage() {
   const [actionType, setActionType] = useState<ActionType>("add");
   const [formData, setFormData] = useState<FormData>({
     name: "",
-    code: undefined,
+    code: "",
+    slug: "",
+    type: "",
+    name_with_type: "",
+    path: "",
+    path_with_type: "",
+    parent_code: "",
+    // UI fields
     codename: "",
     division_type: "",
-    phone_code: undefined,
     short_codename: "",
   });
   const [editingItem, setEditingItem] = useState<
-    AdminProvince | AdminDistrict | AdminWard | null
+    AdminProvince | AdminWard | null
   >(null);
 
   // Authentication check
@@ -81,6 +89,7 @@ export default function AdminLocationPage() {
     try {
       setLoading(true);
       const result = await locationService.admin.getProvinces();
+      console.log("Fetched provinces:", result);
       if (result.success) {
         setProvinces(result.data);
       } else {
@@ -97,34 +106,42 @@ export default function AdminLocationPage() {
   const openModal = (
     type: ModalType,
     action: ActionType,
-    item?: AdminProvince | AdminDistrict | AdminWard
+    item?: AdminProvince | AdminWard
   ) => {
     setModalType(type);
     setActionType(action);
     setEditingItem(item || null);
 
     if (action === "edit" && item) {
+      const existingType = "type" in item ? (item as AdminProvince).type : "";
+      const existingNameWithType =
+        "name_with_type" in item ? (item as AdminProvince).name_with_type : "";
+
       setFormData({
         name: item.name,
-        code: item.code,
+        code: String(item.code),
         codename: item.codename,
         division_type: item.division_type || "",
-        phone_code: "phone_code" in item ? item.phone_code : undefined,
         short_codename: "short_codename" in item ? item.short_codename : "",
+        // Thêm các trường mới cho province
+        type: existingType || "",
+        name_with_type:
+          existingNameWithType ||
+          (existingType && item.name
+            ? existingType === "tinh"
+              ? `Tỉnh ${item.name}`
+              : `Thành phố ${item.name}`
+            : ""),
       });
     } else {
       setFormData({
         name: "",
-        code: undefined,
+        code: "",
         codename: "",
-        division_type:
-          modalType === "province"
-            ? "province"
-            : modalType === "district"
-            ? "district"
-            : "ward",
-        phone_code: undefined,
+        division_type: type === "province" ? "province" : "ward",
         short_codename: "",
+        type: "",
+        name_with_type: "",
       });
     }
   };
@@ -135,11 +152,12 @@ export default function AdminLocationPage() {
     setEditingItem(null);
     setFormData({
       name: "",
-      code: undefined,
+      code: "",
       codename: "",
       division_type: "",
-      phone_code: undefined,
       short_codename: "",
+      type: "",
+      name_with_type: "",
     });
   };
 
@@ -153,39 +171,52 @@ export default function AdminLocationPage() {
 
       if (modalType === "province") {
         if (actionType === "add") {
-          result = await locationService.admin.addProvince(formData);
+          result = await locationService.admin.addProvince({
+            name: formData.name,
+            code: formData.code,
+            codename: formData.codename,
+            division_type: formData.division_type,
+            type: formData.type,
+            name_with_type: formData.name_with_type,
+          });
         } else {
           result = await locationService.admin.updateProvince(
             editingItem!._id,
-            formData
-          );
-        }
-      } else if (modalType === "district") {
-        if (actionType === "add") {
-          result = await locationService.admin.addDistrict(
-            selectedProvince!._id,
-            formData
-          );
-        } else {
-          result = await locationService.admin.updateDistrict(
-            selectedProvince!._id,
-            editingItem!._id,
-            formData
+            {
+              name: formData.name,
+              code: formData.code,
+              codename: formData.codename,
+              division_type: formData.division_type,
+              type: formData.type,
+              name_with_type: formData.name_with_type,
+            }
           );
         }
       } else if (modalType === "ward") {
         if (actionType === "add") {
           result = await locationService.admin.addWard(
             selectedProvince!._id,
-            selectedDistrict!._id,
-            formData
+            "", // Không cần district ID
+            {
+              name: formData.name,
+              code: formData.code,
+              codename: formData.codename,
+              division_type: formData.division_type,
+              short_codename: formData.short_codename,
+            }
           );
         } else {
           result = await locationService.admin.updateWard(
             selectedProvince!._id,
-            selectedDistrict!._id,
+            "", // Không cần district ID
             editingItem!._id,
-            formData
+            {
+              name: formData.name,
+              code: formData.code,
+              codename: formData.codename,
+              division_type: formData.division_type,
+              short_codename: formData.short_codename,
+            }
           );
         }
       }
@@ -200,12 +231,6 @@ export default function AdminLocationPage() {
               (p: AdminProvince) => p._id === selectedProvince._id
             );
             setSelectedProvince(updatedProvince || null);
-            if (selectedDistrict && updatedProvince) {
-              const updatedDistrict = updatedProvince.districts.find(
-                (d: AdminDistrict) => d._id === selectedDistrict._id
-              );
-              setSelectedDistrict(updatedDistrict || null);
-            }
           }
         }
         closeModal();
@@ -229,19 +254,13 @@ export default function AdminLocationPage() {
       let result;
 
       if (editingItem && "districts" in editingItem) {
-        // Province
+        // Province (có districts property)
         result = await locationService.admin.deleteProvince(editingItem._id);
-      } else if (editingItem && "wards" in editingItem && selectedProvince) {
-        // District
-        result = await locationService.admin.deleteDistrict(
-          selectedProvince._id,
-          editingItem._id
-        );
-      } else if (selectedProvince && selectedDistrict) {
+      } else if (selectedProvince) {
         // Ward
         result = await locationService.admin.deleteWard(
           selectedProvince._id,
-          selectedDistrict._id,
+          "", // Không cần district ID
           editingItem._id
         );
       }
@@ -252,14 +271,8 @@ export default function AdminLocationPage() {
         if (provincesResult.success) {
           setProvinces(provincesResult.data);
           if (editingItem && "districts" in editingItem) {
+            // If deleted a province, clear all selections
             setSelectedProvince(null);
-            setSelectedDistrict(null);
-          } else if (editingItem && "wards" in editingItem) {
-            const updatedProvince = provincesResult.data.find(
-              (p: AdminProvince) => p._id === selectedProvince?._id
-            );
-            setSelectedProvince(updatedProvince || null);
-            setSelectedDistrict(null);
           }
         }
         closeModal();
@@ -278,10 +291,7 @@ export default function AdminLocationPage() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Đang tải...</p>
-        </div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -290,442 +300,374 @@ export default function AdminLocationPage() {
     return null;
   }
 
+  // Get wards from selected province (direct from province, no districts)
+  const getWardsFromProvince = (province: AdminProvince): AdminWard[] => {
+    // Trong cấu trúc mới, wards có thể được lưu trực tiếp trong province
+    // hoặc trong districts[0] để tương thích
+    if (province.districts && province.districts.length > 0) {
+      // Lấy tất cả wards từ tất cả districts
+      return province.districts.flatMap((district) => district.wards || []);
+    }
+    return [];
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
       <div className="flex-1">
         <AdminHeader />
-        <main className="p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-6">
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">
               Quản lý địa chính
             </h1>
-            <div className="text-sm text-gray-600">
-              Tổng: {provinces.length} tỉnh/thành phố
-            </div>
+            <p className="text-gray-600 mt-2">
+              Quản lý cấu trúc 2 tầng: Tỉnh/Thành phố → Phường/Xã
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Danh sách tỉnh/thành */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <MapIcon className="w-5 h-5 text-blue-600" />
-                  <h2 className="font-semibold text-gray-900">
-                    Tỉnh/Thành phố
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Provinces Column */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <MapIcon className="w-5 h-5 mr-2 text-blue-600" />
+                    Tỉnh/Thành phố ({provinces.length})
                   </h2>
+                  <button
+                    onClick={() => openModal("province", "add")}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-1" />
+                    Thêm
+                  </button>
                 </div>
-                <button
-                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  onClick={() => openModal("province", "add")}
-                  title="Thêm tỉnh/thành"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Thêm
-                </button>
               </div>
-
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="p-4 max-h-96 overflow-y-auto">
                 {provinces.map((province) => (
                   <div
                     key={province._id}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                    className={`p-3 rounded-lg cursor-pointer mb-2 transition-colors ${
                       selectedProvince?._id === province._id
                         ? "bg-blue-50 border-2 border-blue-200"
-                        : "hover:bg-gray-50 border border-gray-200"
+                        : "bg-gray-50 hover:bg-gray-100"
                     }`}
-                    onClick={() => {
-                      setSelectedProvince(province);
-                      setSelectedDistrict(null);
-                    }}
+                    onClick={() => setSelectedProvince(province)}
                   >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {province.name}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900">
+                          {province.name}
+                        </h3>
+                        {province.name_with_type && (
+                          <p className="text-sm text-gray-600">
+                            {province.name_with_type}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500">
+                          Mã: {province.code}
+                          {province.type && (
+                            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                              {province.type === "thanh-pho"
+                                ? "Thành phố"
+                                : "Tỉnh"}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-sm text-blue-600">
+                          {getWardsFromProvince(province).length} phường/xã
+                        </p>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {province.codename} • Code: {province.code}
-                        {province.phone_code &&
-                          ` • Phone: ${province.phone_code}`}
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openModal("province", "edit", province);
+                          }}
+                          className="p-1 text-gray-500 hover:text-blue-600"
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(province);
+                            setModalType("delete");
+                          }}
+                          className="p-1 text-gray-500 hover:text-red-600"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {province.division_type} • {province.districts.length}{" "}
-                        quận/huyện
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        className="p-1.5 hover:bg-gray-100 rounded"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openModal("province", "edit", province);
-                        }}
-                        title="Sửa"
-                      >
-                        <PencilIcon className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        className="p-1.5 hover:bg-red-100 rounded"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingItem(province);
-                          setModalType("delete");
-                        }}
-                        title="Xóa"
-                      >
-                        <TrashIcon className="w-4 h-4 text-red-500" />
-                      </button>
                     </div>
                   </div>
                 ))}
+                {provinces.length === 0 && (
+                  <div className="text-center py-8">
+                    <MapIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Chưa có tỉnh/thành phố nào</p>
+                  </div>
+                )}
               </div>
-
-              {provinces.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <MapIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Chưa có tỉnh/thành phố nào</p>
-                </div>
-              )}
             </div>
 
-            {/* Danh sách quận/huyện */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <BuildingOfficeIcon className="w-5 h-5 text-green-600" />
-                  <h2 className="font-semibold text-gray-900">Quận/Huyện</h2>
+            {/* Wards Column (Direct from Province) */}
+            <div className="lg:col-span-2 bg-white rounded-lg shadow-md">
+              <div className="p-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <HomeIcon className="w-5 h-5 mr-2 text-green-600" />
+                    Phường/Xã{" "}
+                    {selectedProvince && (
+                      <span className="text-sm font-normal text-gray-500 ml-2">
+                        - {selectedProvince.name}
+                      </span>
+                    )}
+                  </h2>
+                  <button
+                    onClick={() => openModal("ward", "add")}
+                    disabled={!selectedProvince}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-1" />
+                    Thêm phường/xã
+                  </button>
                 </div>
-                <button
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => openModal("district", "add")}
-                  disabled={!selectedProvince}
-                  title="Thêm quận/huyện"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Thêm
-                </button>
               </div>
-
-              {selectedProvince ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {selectedProvince.districts.map((district) => (
-                    <div
-                      key={district._id}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedDistrict?._id === district._id
-                          ? "bg-green-50 border-2 border-green-200"
-                          : "hover:bg-gray-50 border border-gray-200"
-                      }`}
-                      onClick={() => setSelectedDistrict(district)}
-                    >
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {district.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {district.codename} • Code: {district.code}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {district.division_type} • {district.wards.length}{" "}
-                          phường/xã
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          className="p-1.5 hover:bg-gray-100 rounded"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openModal("district", "edit", district);
-                          }}
-                          title="Sửa"
+              <div className="p-4">
+                {selectedProvince ? (
+                  <div className="max-h-96 overflow-y-auto">
+                    {getWardsFromProvince(selectedProvince).map(
+                      (ward: AdminWard) => (
+                        <div
+                          key={ward._id}
+                          className="p-3 bg-gray-50 rounded-lg mb-2 flex items-center justify-between"
                         >
-                          <PencilIcon className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          className="p-1.5 hover:bg-red-100 rounded"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItem(district);
-                            setModalType("delete");
-                          }}
-                          title="Xóa"
-                        >
-                          <TrashIcon className="w-4 h-4 text-red-500" />
-                        </button>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {ward.name}
+                            </h4>
+                            <p className="text-sm text-gray-500">
+                              Mã: {ward.code} | {ward.codename}
+                            </p>
+                          </div>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => openModal("ward", "edit", ward)}
+                              className="p-1 text-gray-500 hover:text-green-600"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingItem(ward);
+                                setModalType("delete");
+                              }}
+                              className="p-1 text-gray-500 hover:text-red-600"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    )}
+                    {getWardsFromProvince(selectedProvince).length === 0 && (
+                      <div className="text-center py-8">
+                        <HomeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">
+                          Chưa có phường/xã nào trong {selectedProvince.name}
+                        </p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Chọn tỉnh/thành phố để xem quận/huyện</p>
-                </div>
-              )}
-
-              {selectedProvince && selectedProvince.districts.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <BuildingOfficeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Chưa có quận/huyện nào</p>
-                </div>
-              )}
-            </div>
-
-            {/* Danh sách phường/xã */}
-            <div className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <HomeIcon className="w-5 h-5 text-orange-600" />
-                  <h2 className="font-semibold text-gray-900">Phường/Xã</h2>
-                </div>
-                <button
-                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() => openModal("ward", "add")}
-                  disabled={!selectedDistrict}
-                  title="Thêm phường/xã"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Thêm
-                </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <ExclamationTriangleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      Vui lòng chọn một tỉnh/thành phố để xem phường/xã
+                    </p>
+                  </div>
+                )}
               </div>
-
-              {selectedDistrict ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {selectedDistrict.wards.map((ward) => (
-                    <div
-                      key={ward._id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {ward.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {ward.codename} • Code: {ward.code}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {ward.division_type} • {ward.short_codename}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          className="p-1.5 hover:bg-gray-100 rounded"
-                          onClick={() => openModal("ward", "edit", ward)}
-                          title="Sửa"
-                        >
-                          <PencilIcon className="w-4 h-4 text-gray-500" />
-                        </button>
-                        <button
-                          className="p-1.5 hover:bg-red-100 rounded"
-                          onClick={() => {
-                            setEditingItem(ward);
-                            setModalType("delete");
-                          }}
-                          title="Xóa"
-                        >
-                          <TrashIcon className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <HomeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Chọn quận/huyện để xem phường/xã</p>
-                </div>
-              )}
-
-              {selectedDistrict && selectedDistrict.wards.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <HomeIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                  <p>Chưa có phường/xã nào</p>
-                </div>
-              )}
             </div>
           </div>
-        </main>
+        </div>
       </div>
 
-      {/* Modal for Add/Edit */}
-      {(modalType === "province" ||
-        modalType === "district" ||
-        modalType === "ward") && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold">
-                {actionType === "add" ? "Thêm" : "Sửa"}{" "}
-                {modalType === "province"
-                  ? "tỉnh/thành phố"
-                  : modalType === "district"
-                  ? "quận/huyện"
-                  : "phường/xã"}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tên <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={`Nhập tên ${
-                    modalType === "province"
-                      ? "tỉnh/thành phố"
-                      : modalType === "district"
-                      ? "quận/huyện"
-                      : "phường/xã"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mã (Code)
-                </label>
-                <input
-                  type="number"
-                  value={formData.code || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      code: e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Để trống để tự động tạo mã"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Codename <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.codename}
-                  onChange={(e) =>
-                    setFormData({ ...formData, codename: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Nhập codename (ví dụ: thanh_pho_ho_chi_minh)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Loại hành chính
-                </label>
-                <select
-                  value={formData.division_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, division_type: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {/* Add/Edit Modal */}
+      {(modalType === "province" || modalType === "ward") && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {actionType === "add" ? "Thêm" : "Chỉnh sửa"}{" "}
+                  {modalType === "province" ? "tỉnh/thành phố" : "phường/xã"}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  {modalType === "province" && (
-                    <>
-                      <option value="province">Tỉnh</option>
-                      <option value="city">Thành phố trung ương</option>
-                    </>
-                  )}
-                  {modalType === "district" && (
-                    <>
-                      <option value="district">Quận</option>
-                      <option value="town">Huyện</option>
-                      <option value="city">Thành phố</option>
-                      <option value="township">Thị xã</option>
-                    </>
-                  )}
-                  {modalType === "ward" && (
-                    <>
-                      <option value="ward">Phường</option>
-                      <option value="commune">Xã</option>
-                      <option value="township">Thị trấn</option>
-                    </>
-                  )}
-                </select>
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
               </div>
 
-              {modalType === "province" && (
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mã điện thoại
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.phone_code || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        phone_code: e.target.value
-                          ? parseInt(e.target.value)
-                          : undefined,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Ví dụ: 28 (cho TP.HCM)"
-                  />
-                </div>
-              )}
-
-              {(modalType === "district" || modalType === "ward") && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tên viết tắt
+                    Tên *
                   </label>
                   <input
                     type="text"
-                    value={formData.short_codename || ""}
+                    required
+                    value={formData.name}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setFormData({
+                        ...formData,
+                        name: newName,
+                        // Tự động cập nhật name_with_type khi tên thay đổi
+                        name_with_type:
+                          formData.type && newName
+                            ? formData.type === "tinh"
+                              ? `Tỉnh ${newName}`
+                              : `Thành phố ${newName}`
+                            : "",
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={
+                      modalType === "province"
+                        ? "Hồ Chí Minh"
+                        : "Phường Bến Nghé"
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mã số
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.code || ""}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        short_codename: e.target.value,
+                        code: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Để trống để sử dụng codename"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="12"
                   />
                 </div>
-              )}
-            </div>
 
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                disabled={saving}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  saving || !formData.name.trim() || !formData.codename.trim()
-                }
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {saving
-                  ? "Đang lưu..."
-                  : actionType === "add"
-                  ? "Thêm"
-                  : "Cập nhật"}
-              </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Codename *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.codename}
+                    onChange={(e) =>
+                      setFormData({ ...formData, codename: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={
+                      modalType === "province"
+                        ? "thanh_pho_ho_chi_minh"
+                        : "phuong_ben_nghe"
+                    }
+                  />
+                </div>
+
+                {modalType === "province" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Loại *
+                      </label>
+                      <select
+                        required
+                        value={formData.type || ""}
+                        onChange={(e) => {
+                          const selectedType = e.target.value;
+                          setFormData({
+                            ...formData,
+                            type: selectedType,
+                            // Tự động tạo name_with_type dựa trên type và name
+                            name_with_type: formData.name
+                              ? selectedType === "tinh"
+                                ? `Tỉnh ${formData.name}`
+                                : `Thành phố ${formData.name}`
+                              : "",
+                          });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Chọn loại</option>
+                        <option value="thanh-pho">Thành phố</option>
+                        <option value="tinh">Tỉnh</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tên đầy đủ
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={formData.name_with_type || ""}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                        placeholder="Sẽ tự động tạo dựa trên loại và tên"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Tự động tạo dựa trên loại và tên đã nhập
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {modalType === "ward" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Short codename
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.short_codename || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          short_codename: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="ben_nghe"
+                    />
+                  </div>
+                )}
+
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400"
+                  >
+                    {saving ? "Đang lưu..." : "Lưu"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -733,54 +675,49 @@ export default function AdminLocationPage() {
 
       {/* Delete Confirmation Modal */}
       {modalType === "delete" && editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold text-red-600">
-                Xác nhận xóa
-              </h3>
-              <button
-                onClick={closeModal}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <ExclamationTriangleIcon className="w-8 h-8 text-red-500" />
-                <div>
-                  <p className="font-medium">Bạn có chắc chắn muốn xóa?</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    <strong>{editingItem.name}</strong>
-                  </p>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600 mr-2" />
+                  Xác nhận xóa
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
               </div>
-              <p className="text-sm text-gray-600">
-                Hành động này không thể hoàn tác.
-                {"districts" in editingItem &&
-                  ` Tất cả ${editingItem.districts.length} quận/huyện sẽ bị xóa.`}
-                {"wards" in editingItem &&
-                  ` Tất cả ${editingItem.wards.length} phường/xã sẽ bị xóa.`}
-              </p>
-            </div>
 
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                disabled={saving}
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={saving}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {saving ? "Đang xóa..." : "Xóa"}
-              </button>
+              <p className="text-gray-600 mb-6">
+                Bạn có chắc chắn muốn xóa{" "}
+                {"districts" in editingItem ? "tỉnh/thành phố" : "phường/xã"}{" "}
+                <strong>{editingItem.name}</strong>?
+                {editingItem && "districts" in editingItem && (
+                  <span className="block text-red-600 text-sm mt-2">
+                    ⚠️ Việc này sẽ xóa tất cả phường/xã thuộc tỉnh/thành phố
+                    này!
+                  </span>
+                )}
+              </p>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={closeModal}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400"
+                >
+                  {saving ? "Đang xóa..." : "Xóa"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

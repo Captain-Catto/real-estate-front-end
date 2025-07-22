@@ -42,10 +42,8 @@ export default function AdminProjectPage() {
 
   // Location states
   const [provinces, setProvinces] = useState<Location[]>([]);
-  const [districts, setDistricts] = useState<Location[]>([]);
   const [wards, setWards] = useState<Location[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<string>("");
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   const [selectedWard, setSelectedWard] = useState<string>("");
 
   // Developer states
@@ -54,11 +52,9 @@ export default function AdminProjectPage() {
 
   const [locationLoading, setLocationLoading] = useState<{
     provinces: boolean;
-    districts: boolean;
     wards: boolean;
   }>({
     provinces: false,
-    districts: false,
     wards: false,
   });
   const [form, setForm] = useState<Partial<CreateProjectRequest>>({
@@ -67,7 +63,6 @@ export default function AdminProjectPage() {
     address: "",
     location: {
       provinceCode: "",
-      districtCode: "",
       wardCode: "",
     },
     latitude: 0,
@@ -192,24 +187,11 @@ export default function AdminProjectPage() {
     }
   };
 
-  const fetchDistricts = async (provinceCode: string) => {
+  const fetchWards = async (provinceCode: string) => {
     if (!provinceCode) return;
-    setLocationLoading((prev) => ({ ...prev, districts: true }));
-    try {
-      const data = await locationService.getDistricts(provinceCode);
-      setDistricts(data);
-    } catch (error) {
-      console.error("Error fetching districts:", error);
-    } finally {
-      setLocationLoading((prev) => ({ ...prev, districts: false }));
-    }
-  };
-
-  const fetchWards = async (provinceCode: string, districtCode: string) => {
-    if (!provinceCode || !districtCode) return;
     setLocationLoading((prev) => ({ ...prev, wards: true }));
     try {
-      const data = await locationService.getWards(provinceCode, districtCode);
+      const data = await locationService.getWardsFromProvince(provinceCode);
       setWards(data);
     } catch (error) {
       console.error("Error fetching wards:", error);
@@ -223,31 +205,14 @@ export default function AdminProjectPage() {
 
     if (name === "provinceCode") {
       setSelectedProvince(value);
-      setSelectedDistrict("");
       setSelectedWard("");
-      setDistricts([]);
       setWards([]);
-      fetchDistricts(value);
+      fetchWards(value);
 
       setForm((prev) => ({
         ...prev,
         location: {
           provinceCode: value,
-          districtCode: "",
-          wardCode: "",
-        },
-      }));
-    } else if (name === "districtCode") {
-      setSelectedDistrict(value);
-      setSelectedWard("");
-      setWards([]);
-      fetchWards(selectedProvince, value);
-
-      setForm((prev) => ({
-        ...prev,
-        location: {
-          provinceCode: prev.location?.provinceCode || "",
-          districtCode: value,
           wardCode: "",
         },
       }));
@@ -258,7 +223,6 @@ export default function AdminProjectPage() {
         ...prev,
         location: {
           provinceCode: prev.location?.provinceCode || "",
-          districtCode: prev.location?.districtCode || "",
           wardCode: value,
         },
       }));
@@ -268,19 +232,14 @@ export default function AdminProjectPage() {
   // Load location data for editing
   const loadLocationData = async (project: Project) => {
     if (project.location) {
-      const { provinceCode, districtCode, wardCode } = project.location;
+      const { provinceCode, wardCode } = project.location;
 
       if (provinceCode) {
         setSelectedProvince(provinceCode);
-        await fetchDistricts(provinceCode);
+        await fetchWards(provinceCode);
 
-        if (districtCode) {
-          setSelectedDistrict(districtCode);
-          await fetchWards(provinceCode, districtCode);
-
-          if (wardCode) {
-            setSelectedWard(wardCode);
-          }
+        if (wardCode) {
+          setSelectedWard(wardCode);
         }
       }
     }
@@ -355,7 +314,6 @@ export default function AdminProjectPage() {
         address: "",
         location: {
           provinceCode: "",
-          districtCode: "",
           wardCode: "",
         },
         latitude: 0,
@@ -397,10 +355,7 @@ export default function AdminProjectPage() {
 
       // Reset location selections
       setSelectedProvince("");
-      setSelectedDistrict("");
       setSelectedWard("");
-      setSelectedDeveloper("");
-      setDistricts([]);
       setWards([]);
     }
     setShowModal(true);
@@ -537,10 +492,6 @@ export default function AdminProjectPage() {
 
     if (!form.location?.provinceCode) {
       validationErrors.push("Tỉnh/Thành phố");
-    }
-
-    if (!form.location?.districtCode) {
-      validationErrors.push("Quận/Huyện");
     }
 
     if (!form.location?.wardCode) {
@@ -727,9 +678,9 @@ export default function AdminProjectPage() {
                     <div className="ml-2">
                       <p className="text-sm text-amber-800">
                         <strong>Quan trọng:</strong> Vui lòng chọn đầy đủ{" "}
-                        <strong>Phường/Xã</strong> để xác định vị trí chính xác
-                        của dự án. Thông tin này cần thiết cho việc tìm kiếm và
-                        lọc dự án theo khu vực.
+                        <strong>Tỉnh/Thành phố và Phường/Xã</strong> để xác định
+                        vị trí chính xác của dự án. Thông tin này cần thiết cho
+                        việc tìm kiếm và lọc dự án theo khu vực.
                       </p>
                     </div>
                   </div>
@@ -762,31 +713,6 @@ export default function AdminProjectPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <span className="text-red-500">*</span> Quận/Huyện
-                    </label>
-                    <select
-                      name="districtCode"
-                      value={selectedDistrict}
-                      onChange={handleLocationChange}
-                      required
-                      disabled={!selectedProvince || locationLoading.districts}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">-- Chọn Quận/Huyện --</option>
-                      {districts.map((district) => (
-                        <option key={district.code} value={district.code}>
-                          {district.name}
-                        </option>
-                      ))}
-                    </select>
-                    {locationLoading.districts && (
-                      <span className="text-xs text-blue-500">
-                        Đang tải danh sách quận/huyện...
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       <span className="text-red-500">*</span> Phường/Xã (Bắt
                       buộc để xác định vị trí chính xác)
                     </label>
@@ -795,9 +721,9 @@ export default function AdminProjectPage() {
                       value={selectedWard}
                       onChange={handleLocationChange}
                       required
-                      disabled={!selectedDistrict || locationLoading.wards}
+                      disabled={!selectedProvince || locationLoading.wards}
                       className={`w-full px-3 py-2 border rounded-lg ${
-                        !selectedWard && selectedDistrict
+                        !selectedWard && selectedProvince
                           ? "border-red-300 bg-red-50"
                           : "border-gray-300"
                       }`}
@@ -814,7 +740,7 @@ export default function AdminProjectPage() {
                         Đang tải danh sách phường/xã...
                       </span>
                     )}
-                    {!selectedWard && selectedDistrict && (
+                    {!selectedWard && selectedProvince && (
                       <p className="text-xs text-red-500 mt-1">
                         ⚠️ Phường/Xã là thông tin bắt buộc để xác định vị trí
                         chính xác của dự án
@@ -1511,55 +1437,6 @@ export default function AdminProjectPage() {
               </button>
             </div>
 
-            {/* Important notice about ward requirement */}
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg
-                    className="w-5 h-5 text-amber-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-amber-800">
-                    Yêu cầu thông tin vị trí đầy đủ
-                  </h3>
-                  <div className="mt-2 text-sm text-amber-700">
-                    <p>
-                      Khi thêm hoặc chỉnh sửa dự án,{" "}
-                      <strong>bắt buộc phải chọn đầy đủ Phường/Xã</strong> để:
-                    </p>
-                    <ul className="list-disc list-inside mt-1 space-y-1">
-                      <li>Xác định vị trí chính xác của dự án</li>
-                      <li>Hỗ trợ tìm kiếm và lọc dự án theo khu vực</li>
-                      <li>
-                        Hiển thị breadcrumb và điều hướng đúng cho người dùng
-                      </li>
-                    </ul>
-                    <p className="mt-2">
-                      {projectsMissingWardCount > 0 ? (
-                        <span className="text-red-600 font-medium">
-                          ⚠️ Hiện có {projectsMissingWardCount} dự án thiếu
-                          thông tin Phường/Xã và cần được cập nhật.
-                        </span>
-                      ) : (
-                        <span className="text-green-600">
-                          ✅ Tất cả dự án đã có đầy đủ thông tin Phường/Xã.
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Status Filter Tabs */}
             <div className="mb-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -1641,7 +1518,7 @@ export default function AdminProjectPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                         Vị trí
                         <div className="text-xs font-normal text-gray-400 mt-0.5">
-                          (Tỉnh - Huyện - Phường)
+                          (Tỉnh - Phường)
                         </div>
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -1673,6 +1550,7 @@ export default function AdminProjectPage() {
                           <td className="px-6 py-4">
                             <ProjectLocationDisplay
                               location={project.locationObj}
+                              address={project.address}
                               variant="compact"
                             />
                           </td>

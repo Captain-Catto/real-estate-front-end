@@ -1,4 +1,5 @@
 import { refreshToken } from "./authService";
+import { categoryService } from "./categoryService";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -16,7 +17,6 @@ export interface Post {
   price: number;
   location: {
     province: string;
-    district: string;
     ward: string;
     street?: string;
     project?: string;
@@ -82,7 +82,7 @@ export interface CreatePostData {
   currency: string;
   location: {
     province: string;
-    district: string;
+    district: string; // Keep for backend compatibility
     ward: string;
     street: string;
   };
@@ -206,6 +206,15 @@ class PostService {
       const safePostData = {
         ...postData,
         package: postData.package || "free", // Fallback to "free" if package is null/undefined
+        // Lọc bỏ empty string cho direction fields để tránh enum validation error
+        houseDirection:
+          postData.houseDirection && postData.houseDirection.trim() !== ""
+            ? postData.houseDirection
+            : undefined,
+        balconyDirection:
+          postData.balconyDirection && postData.balconyDirection.trim() !== ""
+            ? postData.balconyDirection
+            : undefined,
       };
 
       Object.entries(safePostData).forEach(([key, value]) => {
@@ -604,6 +613,93 @@ class PostService {
     } catch (error) {
       console.error("Error fetching posts:", error);
       throw error;
+    }
+  }
+
+  // Helper function to get category name by ID
+  async getCategoryName(categoryId: string): Promise<string> {
+    try {
+      const category = await categoryService.getById(categoryId);
+      return category?.name || "Không xác định";
+    } catch (error) {
+      console.error("Error fetching category name:", error);
+      return "Không xác định";
+    }
+  }
+
+  // Helper function to get multiple category names efficiently
+  async getCategoryNames(
+    categoryIds: string[]
+  ): Promise<{ [key: string]: string }> {
+    try {
+      const categories = await categoryService.getAll();
+      const categoryMap: { [key: string]: string } = {};
+
+      categoryIds.forEach((id) => {
+        const category = categories.find(
+          (cat) => cat._id === id || cat.id === id
+        );
+        categoryMap[id] = category?.name || "Không xác định";
+      });
+
+      return categoryMap;
+    } catch (error) {
+      console.error("Error fetching category names:", error);
+      return categoryIds.reduce((acc, id) => {
+        acc[id] = "Không xác định";
+        return acc;
+      }, {} as { [key: string]: string });
+    }
+  }
+
+  // Helper function to get user name by ID
+  async getUserName(userId: string): Promise<string> {
+    try {
+      const { getUserById } = await import("./userService");
+      const response = await getUserById(userId);
+      return response.success && response.data?.user
+        ? response.data.user.username
+        : "Không xác định";
+    } catch (error) {
+      console.error("Error fetching user name:", error);
+      return "Không xác định";
+    }
+  }
+
+  // Helper function to get multiple user names efficiently
+  async getUserNames(userIds: string[]): Promise<{ [key: string]: string }> {
+    try {
+      const { getUserById } = await import("./userService");
+      const userMap: { [key: string]: string } = {};
+
+      // Fetch all users in parallel
+      const userPromises = userIds.map(async (id) => {
+        try {
+          const response = await getUserById(id);
+          return {
+            id,
+            name:
+              response.success && response.data?.user
+                ? response.data.user.username
+                : "Không xác định",
+          };
+        } catch {
+          return { id, name: "Không xác định" };
+        }
+      });
+
+      const users = await Promise.all(userPromises);
+      users.forEach(({ id, name }) => {
+        userMap[id] = name;
+      });
+
+      return userMap;
+    } catch (error) {
+      console.error("Error fetching user names:", error);
+      return userIds.reduce((acc, id) => {
+        acc[id] = "Không xác định";
+        return acc;
+      }, {} as { [key: string]: string });
     }
   }
 }

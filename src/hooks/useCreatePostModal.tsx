@@ -13,7 +13,7 @@ interface FormData {
   category: string;
   location: {
     province: string;
-    district: string;
+    district?: string; // Optional for backend compatibility
     ward: string;
     street?: string;
     project?: string;
@@ -56,7 +56,6 @@ export function useCreatePostModal() {
     category: "", // Will be set from API
     location: {
       province: "",
-      district: "",
       ward: "",
       street: "",
       project: "",
@@ -130,7 +129,6 @@ export function useCreatePostModal() {
         category: defaultCategory, // Use default category from API
         location: {
           province: "",
-          district: "",
           ward: "",
           street: "",
         },
@@ -270,12 +268,15 @@ export function useCreatePostModal() {
         package: mapPackageIdToPackage(selectedPackage.id), // Add package field
         location: {
           province: formData.location?.province || "",
-          district: formData.location?.district || "",
+          district: "", // Thêm district rỗng cho backend compatibility
           ward: formData.location?.ward || "",
           street: formData.location?.street || "",
         },
         project: formData.location?.project || "", // Extract project to top level
         type: formData.type,
+        // Xử lý direction fields để tránh empty string
+        houseDirection: formData.houseDirection || undefined,
+        balconyDirection: formData.balconyDirection || undefined,
       };
 
       // Step 2: Create the post

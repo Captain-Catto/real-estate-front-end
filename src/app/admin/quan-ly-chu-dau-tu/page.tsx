@@ -14,6 +14,10 @@ import { UploadService } from "@/services/uploadService";
 
 export default function AdminDeveloperPage() {
   const [developers, setDevelopers] = useState<DeveloperListItem[]>([]);
+  const [filteredDevelopers, setFilteredDevelopers] = useState<
+    DeveloperListItem[]
+  >([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -35,11 +39,36 @@ export default function AdminDeveloperPage() {
     fetchDevelopers();
   }, []);
 
+  useEffect(() => {
+    if (developers.length > 0) {
+      const filtered = developers.filter((developer) => {
+        const searchTermLower = searchTerm.toLowerCase();
+        return (
+          developer.name.toLowerCase().includes(searchTermLower) ||
+          developer.phone.toLowerCase().includes(searchTermLower) ||
+          developer.email.toLowerCase().includes(searchTermLower) ||
+          (developer.website &&
+            developer.website.toLowerCase().includes(searchTermLower)) ||
+          (developer.address &&
+            developer.address.toLowerCase().includes(searchTermLower))
+        );
+      });
+      setFilteredDevelopers(filtered);
+    } else {
+      setFilteredDevelopers([]);
+    }
+  }, [searchTerm, developers]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
   const fetchDevelopers = async () => {
     setLoading(true);
     try {
       const data = await DeveloperService.getAdminDevelopers();
       setDevelopers(data.developers);
+      setFilteredDevelopers(data.developers);
     } catch (error) {
       console.error("Error fetching developers:", error);
     } finally {
@@ -85,7 +114,7 @@ export default function AdminDeveloperPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setForm((prev) => ({
+    setForm((prev: Partial<CreateDeveloperRequest>) => ({
       ...prev,
       [name]:
         name === "foundedYear"
@@ -104,7 +133,7 @@ export default function AdminDeveloperPage() {
       const successfulUpload = uploadResults.find((result) => result.success);
 
       if (successfulUpload?.data?.url) {
-        setForm((prev) => ({
+        setForm((prev: Partial<CreateDeveloperRequest>) => ({
           ...prev,
           logo: successfulUpload.data!.url,
         }));
@@ -199,11 +228,54 @@ export default function AdminDeveloperPage() {
             </div>
           </div>
 
+          <div className="mb-4">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg
+                    className="h-5 w-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-lg shadow">
             <div className="overflow-x-auto">
               {loading ? (
                 <div className="flex justify-center items-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredDevelopers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <p className="text-gray-500 mb-2">
+                    Không tìm thấy chủ đầu tư phù hợp
+                  </p>
+                  {searchTerm && (
+                    <button
+                      className="text-blue-600 hover:text-blue-800"
+                      onClick={() => setSearchTerm("")}
+                    >
+                      Xóa bộ lọc tìm kiếm
+                    </button>
+                  )}
                 </div>
               ) : (
                 <table className="w-full">
@@ -227,7 +299,7 @@ export default function AdminDeveloperPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {developers.map((developer) => (
+                    {filteredDevelopers.map((developer) => (
                       <tr key={developer._id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center">

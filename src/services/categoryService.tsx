@@ -109,7 +109,7 @@ export const categoryService = {
    */
   getById: async (id: string): Promise<Category | null> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/categories/id/${id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

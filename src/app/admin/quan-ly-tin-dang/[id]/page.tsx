@@ -28,6 +28,7 @@ export default function AdminPostDetailPage() {
     try {
       const postData = await adminPostsService.getPostById(postId);
       if (postData) {
+        console.log("Fetched post data:", postData);
         setPost(postData);
       } else {
         setError("Không tìm thấy bài viết");

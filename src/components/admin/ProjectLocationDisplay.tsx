@@ -5,7 +5,6 @@ import { useLocationNames } from "@/hooks/useLocationNames";
 interface ProjectLocationDisplayProps {
   location?: {
     provinceCode?: string;
-    districtCode?: string;
     wardCode?: string;
   };
   address?: string;
@@ -19,12 +18,18 @@ export function ProjectLocationDisplay({
 }: ProjectLocationDisplayProps) {
   const { locationNames, loading } = useLocationNames(
     location?.provinceCode,
-    location?.districtCode,
+    undefined, // không có district
     location?.wardCode
   );
-  console.log("Location props:", location);
-  console.log("LocationNames result:", locationNames);
-  console.log("Loading state:", loading);
+
+  // Debug logs để kiểm tra dữ liệu
+  console.log("🏗️ ProjectLocationDisplay - Location props:", location);
+  console.log(
+    "🏗️ ProjectLocationDisplay - LocationNames result:",
+    locationNames
+  );
+  console.log("🏗️ ProjectLocationDisplay - Loading state:", loading);
+  console.log("🏗️ ProjectLocationDisplay - Address:", address);
 
   // Build complete location display
   const getCompleteLocation = () => {
@@ -39,13 +44,15 @@ export function ProjectLocationDisplay({
       locationParts.push(address);
     }
 
-    // Thêm các cấp hành chính theo thứ tự ward -> district -> province
-    if (locationNames.wardName) locationParts.push(locationNames.wardName);
-    if (locationNames.districtName)
-      locationParts.push(locationNames.districtName);
-    if (locationNames.provinceName)
+    // Thêm các cấp hành chính theo thứ tự ward -> province (không có district)
+    if (locationNames.wardName) {
+      locationParts.push(locationNames.wardName);
+    }
+    if (locationNames.provinceName) {
       locationParts.push(locationNames.provinceName);
+    }
 
+    // Nếu có dữ liệu từ API
     if (locationParts.length > 0) {
       return locationParts.join(", ");
     }
@@ -53,6 +60,15 @@ export function ProjectLocationDisplay({
     // Fallback: sử dụng fullLocationName từ API nếu có
     if (locationNames.fullLocationName) {
       return locationNames.fullLocationName;
+    }
+
+    // Debug fallback: hiển thị mã codes để debug
+    if (location?.provinceCode || location?.wardCode) {
+      const debugParts = [];
+      if (location.wardCode) debugParts.push(`Ward: ${location.wardCode}`);
+      if (location.provinceCode)
+        debugParts.push(`Province: ${location.provinceCode}`);
+      return `🔍 ${debugParts.join(", ")}`;
     }
 
     return "Chưa có thông tin vị trí đầy đủ";
@@ -67,9 +83,8 @@ export function ProjectLocationDisplay({
     );
   }
 
-  // Check if all required location data is available
-  const hasFullLocation =
-    location?.provinceCode && location?.districtCode && location?.wardCode;
+  // Check if all required location data is available (chỉ cần province và ward)
+  const hasFullLocation = location?.provinceCode && location?.wardCode;
   const hasMissingLocation = !hasFullLocation;
 
   if (variant === "full") {

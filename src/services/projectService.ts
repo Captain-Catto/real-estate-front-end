@@ -42,7 +42,6 @@ export const ProjectService = {
       page?: number;
       limit?: number;
       provinceCode?: string;
-      districtCode?: string;
       wardCode?: string;
       status?: string;
       search?: string;
@@ -64,8 +63,6 @@ export const ProjectService = {
       if (options.limit) params.append("limit", options.limit.toString());
       if (options.provinceCode)
         params.append("provinceCode", options.provinceCode);
-      if (options.districtCode)
-        params.append("districtCode", options.districtCode);
       if (options.wardCode) params.append("wardCode", options.wardCode);
       if (options.status) params.append("status", options.status);
       if (options.search) params.append("search", options.search);
@@ -159,10 +156,10 @@ export const ProjectService = {
           (project: {
             _id: string;
             name: string;
+            address?: string;
             fullLocation?: string;
             location?: {
               provinceCode: string;
-              districtCode: string;
               wardCode?: string;
             };
             developer?: { name?: string };
@@ -173,9 +170,10 @@ export const ProjectService = {
           }) => ({
             id: project._id,
             name: project.name,
+            address: project.address, // Thêm field address
             location:
               project.fullLocation ||
-              `${project.location?.districtCode || ""} - ${
+              `${project.location?.wardCode || ""} - ${
                 project.location?.provinceCode || ""
               }`,
             locationObj: project.location, // Add full location object for checking ward
@@ -385,7 +383,6 @@ export const ProjectService = {
   // Get simplified list of projects for dropdown selection
   getProjectsForSelection: async (
     provinceCode?: string,
-    districtCode?: string,
     wardCode?: string
   ): Promise<
     {
@@ -395,7 +392,6 @@ export const ProjectService = {
       fullLocation: string;
       location: {
         provinceCode: string;
-        districtCode: string;
         wardCode?: string;
       };
     }[]
@@ -404,7 +400,6 @@ export const ProjectService = {
       const params = new URLSearchParams();
 
       if (provinceCode) params.append("provinceCode", provinceCode);
-      if (districtCode) params.append("districtCode", districtCode);
       if (wardCode) params.append("wardCode", wardCode);
 
       const queryString = params.toString();

@@ -7,12 +7,6 @@ import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
 
-interface SelectedDistrict {
-  code: string;
-  name: string;
-  codename: string;
-}
-
 export default function SearchSectionMain() {
   const router = useRouter();
 
@@ -21,9 +15,6 @@ export default function SearchSectionMain() {
     "buy"
   );
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [selectedDistricts, setSelectedDistricts] = useState<
-    SelectedDistrict[]
-  >([]);
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
   const [selectedPrice, setSelectedPrice] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
@@ -39,16 +30,13 @@ export default function SearchSectionMain() {
 
   // Locations data
   const [provinces, setProvinces] = useState<Location[]>([]);
-  const [cityDistricts, setCityDistricts] = useState<Location[]>([]);
-  const [wardsList, setWardsList] = useState<Location[]>([]); // Thêm state cho phường/xã
-  const [selectedWard, setSelectedWard] = useState<string | null>(null); // Thêm state cho phường/xã được chọn
+  const [wardsList, setWardsList] = useState<Location[]>([]); // Phường/xã thuộc tỉnh/thành phố
+  const [selectedWard, setSelectedWard] = useState<string | null>(null); // Phường/xã được chọn
 
   // UI states
   const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   const [showWardDropdown, setShowWardDropdown] = useState(false);
   const [citySearch, setCitySearch] = useState("");
-  const [districtSearch, setDistrictSearch] = useState("");
   const [wardSearch, setWardSearch] = useState("");
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
@@ -60,7 +48,6 @@ export default function SearchSectionMain() {
 
   // Refs for clickaway
   const cityDropdownRef = useRef<HTMLDivElement>(null);
-  const districtDropdownRef = useRef<HTMLDivElement>(null);
   const wardDropdownRef = useRef<HTMLDivElement>(null);
   const propertyDropdownRef = useRef<HTMLDivElement>(null);
   const priceDropdownRef = useRef<HTMLDivElement>(null);
@@ -71,6 +58,7 @@ export default function SearchSectionMain() {
     const fetchProvinces = async () => {
       try {
         const data = await locationService.getProvinces();
+        console.log("Fetched provinces:", data);
         setProvinces(data);
       } catch (error) {
         console.error("Error fetching provinces:", error);
@@ -79,41 +67,21 @@ export default function SearchSectionMain() {
     fetchProvinces();
   }, []);
 
-  // Tải danh sách quận/huyện khi chọn tỉnh/thành
-  useEffect(() => {
-    const fetchDistricts = async () => {
-      if (!selectedCity) {
-        setCityDistricts([]);
-        return;
-      }
-
-      try {
-        const data = await locationService.getDistricts(selectedCity);
-        setCityDistricts(data);
-      } catch (error) {
-        console.error("Error fetching districts:", error);
-        setCityDistricts([]);
-      }
-    };
-
-    fetchDistricts();
-  }, [selectedCity]);
-
-  // Tải danh sách phường/xã khi chọn quận/huyện
+  // Tải danh sách phường/xã khi chọn tỉnh/thành
   useEffect(() => {
     const fetchWards = async () => {
-      if (selectedDistricts.length === 0 || !selectedCity) {
+      if (!selectedCity) {
         setWardsList([]);
         setSelectedWard(null);
         return;
       }
 
       try {
-        // Lấy phường/xã của quận/huyện được chọn
-        const districtCode = selectedDistricts[0].code;
-        const data = await locationService.getWards(selectedCity, districtCode);
+        // Lấy phường/xã trực tiếp từ tỉnh/thành
+        const data = await locationService.getDistricts(selectedCity); // Vẫn sử dụng API cũ để không ảnh hưởng phía client
+        console.log("Fetched wards:", data);
         setWardsList(data);
-        setSelectedWard(null); // Reset selected ward when district changes
+        setSelectedWard(null); // Reset khi thay đổi tỉnh/thành
       } catch (error) {
         console.error("Error fetching wards:", error);
         setWardsList([]);
@@ -121,7 +89,7 @@ export default function SearchSectionMain() {
     };
 
     fetchWards();
-  }, [selectedDistricts, selectedCity]);
+  }, [selectedCity]);
 
   // Tải các tùy chọn tìm kiếm dựa trên loại tìm kiếm
   useEffect(() => {
@@ -215,14 +183,6 @@ export default function SearchSectionMain() {
         setShowCityDropdown(false);
       }
 
-      // District dropdown
-      if (
-        districtDropdownRef.current &&
-        !districtDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowDistrictDropdown(false);
-      }
-
       // Ward dropdown
       if (
         wardDropdownRef.current &&
@@ -299,11 +259,7 @@ export default function SearchSectionMain() {
     setSelectedPrice("");
     setSelectedArea("");
     setSelectedProjectStatus("");
-
-    // Nếu chuyển sang tab dự án và đã chọn nhiều quận/huyện, giữ lại quận/huyện đầu tiên
-    if (newType === "project" && selectedDistricts.length > 1) {
-      setSelectedDistricts([selectedDistricts[0]]);
-    }
+    setSelectedWard(null);
 
     // Cập nhật loại tìm kiếm
     setSearchType(newType);
@@ -315,29 +271,10 @@ export default function SearchSectionMain() {
     codename: string;
   }) => {
     setSelectedCity(province.code);
-    setSelectedDistricts([]);
     setSelectedWard(null);
     setShowCityDropdown(false);
     setCitySearch("");
-    setDistrictSearch("");
     setWardSearch("");
-  };
-
-  const handleDistrictSelect = (district: {
-    code: string;
-    name: string;
-    codename: string;
-  }) => {
-    setSelectedDistricts([
-      {
-        code: district.code,
-        name: district.name,
-        codename: district.codename,
-      },
-    ]);
-    setSelectedWard(null);
-    setShowDistrictDropdown(false);
-    setDistrictSearch("");
   };
 
   const handleWardSelect = (ward: {
@@ -363,8 +300,25 @@ export default function SearchSectionMain() {
     }, 3000);
   };
 
-  // Sửa hàm handleCitySelect để bỏ setLocationSearch
+  // Sửa hàm search để phù hợp với cấu trúc mới
   const handleSearch = () => {
+    // Log the current state for debugging
+    const selectedProvince = selectedCity
+      ? provinces.find((p) => p.code === selectedCity)
+      : null;
+    const selectedWardObj = selectedWard
+      ? wardsList.find((w) => w.code === selectedWard)
+      : null;
+
+    console.log("Search state:", {
+      selectedCity,
+      selectedWard,
+      cityProvince: selectedProvince,
+      wardObject: selectedWardObj,
+      provinceSlug: selectedProvince?.slug,
+      wardSlug: selectedWardObj?.slug,
+    });
+
     // Xác định đường dẫn tìm kiếm dựa trên loại tìm kiếm
     let baseUrl;
     switch (searchType) {
@@ -395,24 +349,29 @@ export default function SearchSectionMain() {
       }
     }
 
-    // Thêm thành phố
+    // Thêm thành phố/tỉnh
     if (selectedCity) {
       const selectedProvince = provinces.find((p) => p.code === selectedCity);
-      if (selectedProvince) {
-        queryParams.append("city", selectedProvince.codename);
+      if (selectedProvince && selectedProvince.slug) {
+        // Ensure we're using a valid slug and not the string "undefined"
+        const provinceSlug =
+          selectedProvince.slug !== "undefined" ? selectedProvince.slug : "";
+        if (provinceSlug) {
+          queryParams.append("province", provinceSlug);
+        }
       }
-    }
-
-    // Thêm quận/huyện
-    if (selectedDistricts.length > 0) {
-      queryParams.append("districts", selectedDistricts[0].codename);
     }
 
     // Thêm phường/xã
     if (selectedWard) {
       const selectedWardObj = wardsList.find((w) => w.code === selectedWard);
-      if (selectedWardObj) {
-        queryParams.append("ward", selectedWardObj.codename);
+      if (selectedWardObj && selectedWardObj.slug) {
+        // Ensure we're using a valid slug and not the string "undefined"
+        const wardSlug =
+          selectedWardObj.slug !== "undefined" ? selectedWardObj.slug : "";
+        if (wardSlug) {
+          queryParams.append("ward", wardSlug);
+        }
       }
     }
 
@@ -439,13 +398,6 @@ export default function SearchSectionMain() {
     // Chuyển hướng đến trang kết quả tìm kiếm
     router.push(searchUrl);
   };
-
-  // Lọc quận/huyện dựa trên từ khóa tìm kiếm
-  const filteredDistricts = districtSearch
-    ? cityDistricts.filter((district) =>
-        district.name.toLowerCase().includes(districtSearch.toLowerCase())
-      )
-    : cityDistricts;
 
   // Lọc phường/xã dựa trên từ khóa tìm kiếm
   const filteredWards = wardSearch
@@ -518,7 +470,7 @@ export default function SearchSectionMain() {
         <div className="space-y-4">
           {" "}
           {/* Hàng 1: Vị trí (province, district, and ward) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* City/Province selection */}
             <div className="w-full">
               <div className="relative" ref={cityDropdownRef}>
@@ -598,7 +550,6 @@ export default function SearchSectionMain() {
                             }`}
                           onClick={() => {
                             setSelectedCity(null);
-                            setSelectedDistricts([]);
                             setSelectedWard(null);
                             setShowCityDropdown(false);
                             setCitySearch("");
@@ -638,13 +589,13 @@ export default function SearchSectionMain() {
               </div>
             </div>
 
-            {/* District selection */}
+            {/* Ward selection */}
             <div className="w-full">
-              <div className="relative" ref={districtDropdownRef}>
+              <div className="relative" ref={wardDropdownRef}>
                 <button
                   onClick={() => {
                     if (selectedCity) {
-                      setShowDistrictDropdown(!showDistrictDropdown);
+                      setShowWardDropdown(!showWardDropdown);
                     } else {
                       // Show feedback message if province is not selected
                       showTemporaryFeedback(
@@ -665,122 +616,6 @@ export default function SearchSectionMain() {
                   ></i>
                   <span
                     className={`${
-                      selectedDistricts.length > 0
-                        ? "text-gray-900 font-medium"
-                        : "text-gray-500"
-                    } flex-1 text-left`}
-                  >
-                    {selectedDistricts.length > 0
-                      ? selectedDistricts[0].name
-                      : "Quận/Huyện"}
-                  </span>
-                  <i
-                    className={`fas fa-chevron-${
-                      showDistrictDropdown ? "up" : "down"
-                    } ${selectedCity ? "text-gray-400" : "text-gray-300"}`}
-                  ></i>
-                </button>
-
-                {showDistrictDropdown && selectedCity && (
-                  <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
-                    <div className="p-3 border-b border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium">
-                          {provinces.find((p) => p.code === selectedCity)
-                            ?.name || "Quận/Huyện"}
-                        </p>
-                      </div>
-
-                      <div className="relative mt-2">
-                        <input
-                          type="text"
-                          placeholder="Tìm kiếm quận/huyện..."
-                          value={districtSearch}
-                          onChange={(e) => setDistrictSearch(e.target.value)}
-                          className="w-full p-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        <i className="fas fa-search absolute left-3.5 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                      </div>
-                    </div>
-
-                    <div className="max-h-60 overflow-y-auto p-2">
-                      <button
-                        className={`w-full px-4 py-2 text-left rounded-md hover:bg-blue-50 transition-colors
-                          ${
-                            selectedDistricts.length === 0
-                              ? "bg-blue-50 text-blue-600 font-medium"
-                              : "text-gray-700"
-                          }`}
-                        onClick={() => {
-                          setSelectedDistricts([]);
-                          setSelectedWard(null);
-                          setShowDistrictDropdown(false);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-globe-asia text-gray-400"></i>
-                          Tất cả quận/huyện
-                        </div>
-                      </button>
-
-                      {filteredDistricts.length === 0 ? (
-                        <p className="text-center text-gray-500 py-4">
-                          Không tìm thấy quận/huyện nào
-                        </p>
-                      ) : (
-                        filteredDistricts.map((district) => (
-                          <button
-                            key={district.code}
-                            onClick={() => handleDistrictSelect(district)}
-                            className={`w-full px-4 py-2.5 text-left rounded-md hover:bg-blue-50 transition-colors flex items-center justify-between
-                              ${
-                                selectedDistricts.length > 0 &&
-                                selectedDistricts[0].code === district.code
-                                  ? "bg-blue-50 text-blue-600 font-medium"
-                                  : "text-gray-700"
-                              }`}
-                          >
-                            <span>{district.name}</span>
-                            {selectedDistricts.length > 0 &&
-                              selectedDistricts[0].code === district.code && (
-                                <i className="fas fa-check text-blue-500"></i>
-                              )}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Ward selection */}
-            <div className="w-full">
-              <div className="relative" ref={wardDropdownRef}>
-                <button
-                  onClick={() => {
-                    if (selectedDistricts.length > 0) {
-                      setShowWardDropdown(!showWardDropdown);
-                    } else {
-                      // Show feedback message if district is not selected
-                      showTemporaryFeedback("Vui lòng chọn quận/huyện trước");
-                    }
-                  }}
-                  className={`w-full p-3.5 border border-gray-300 rounded-xl flex items-center ${
-                    selectedDistricts.length > 0
-                      ? "bg-white hover:border-blue-400"
-                      : "bg-gray-50 cursor-not-allowed"
-                  } transition-all duration-200 group`}
-                >
-                  <i
-                    className={`fas fa-map-marker-alt ${
-                      selectedDistricts.length > 0
-                        ? "text-blue-500"
-                        : "text-gray-400"
-                    } mr-3 text-lg`}
-                  ></i>
-                  <span
-                    className={`${
                       selectedWard
                         ? "text-gray-900 font-medium"
                         : "text-gray-500"
@@ -793,20 +628,17 @@ export default function SearchSectionMain() {
                   <i
                     className={`fas fa-chevron-${
                       showWardDropdown ? "up" : "down"
-                    } ${
-                      selectedDistricts.length > 0
-                        ? "text-gray-400"
-                        : "text-gray-300"
-                    }`}
+                    } ${selectedCity ? "text-gray-400" : "text-gray-300"}`}
                   ></i>
                 </button>
 
-                {showWardDropdown && selectedDistricts.length > 0 && (
+                {showWardDropdown && selectedCity && (
                   <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 animate-fadeIn">
                     <div className="p-3 border-b border-gray-100">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-medium">
-                          {selectedDistricts[0].name || "Phường/Xã"}
+                          {provinces.find((p) => p.code === selectedCity)
+                            ?.name || "Phường/Xã"}
                         </p>
                       </div>
 

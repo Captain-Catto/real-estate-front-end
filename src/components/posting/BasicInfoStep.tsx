@@ -1,19 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { Location } from "@/types/location";
-import { EditPostForm } from "@/types/editPost";
 import { ProjectService } from "@/services/projectService";
 import { categoryService, Category } from "@/services/categoryService";
 
-interface BasicInfoStepProps {
-  formData: EditPostForm & {
-    location: {
-      province?: string;
-      ward?: string;
-      street?: string;
-      project?: string;
-    };
+interface CreatePostFormData {
+  type: "ban" | "cho-thue";
+  category: string;
+  location: {
+    province: string;
+    district?: string;
+    ward: string;
+    street?: string;
+    project?: string;
   };
-  updateFormData: (updates: Partial<EditPostForm>) => void;
+  area: string;
+  price: string;
+  currency: string;
+  legalDocs: string;
+  furniture: string;
+  bedrooms: number;
+  bathrooms: number;
+  floors: number;
+  houseDirection: string;
+  balconyDirection: string;
+  roadWidth: string;
+  frontWidth: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  title: string;
+  description: string;
+}
+
+interface BasicInfoStepProps {
+  formData: CreatePostFormData;
+  updateFormData: (updates: Partial<CreatePostFormData>) => void;
   provinces: Location[];
   wards: Location[];
   locationLoading: boolean;
@@ -171,7 +192,7 @@ export default function BasicInfoStep({
 
           console.log(
             `✅ Loaded ${projects.length} projects:`,
-            projects.map((p) => p.name)
+            projects.map((p: Project) => p.name)
           );
 
           setAvailableProjects(projects);
@@ -278,52 +299,71 @@ export default function BasicInfoStep({
       updateFormData({
         location: {
           ...formData.location,
-          project: project._id,
-          ward: project.location.wardCode, // Auto-select ward from project
+          project: projectId,
+          ward: project.location.wardCode,
         },
       });
-      console.log(
-        "Project selected:",
-        project.name,
-        "- Ward auto-selected:",
-        project.location.wardCode
-      );
     } else {
       updateFormData({
         location: {
           ...formData.location,
-          project: project?._id || "",
+          project: projectId,
         },
       });
-      console.log("Project selected:", project?.name || "None");
     }
+
+    console.log("Project changed to:", projectId);
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Nhu cầu</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          Loại tin đăng
+        </h3>
         <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={() => updateFormData({ type: "ban" })}
-            className={`p-4 border-2 rounded-lg flex flex-col items-center gap-2 transition-colors ${
-              formData.type === "ban"
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <span className="font-medium">Bán</span>
-          </button>
-          <button
-            onClick={() => updateFormData({ type: "cho-thue" })}
-            className={`p-4 border-2 rounded-lg flex flex-col items-center gap-2 transition-colors ${
-              formData.type === "cho-thue"
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <span className="font-medium">Cho thuê</span>
-          </button>
+          <label className="relative">
+            <input
+              type="radio"
+              name="type"
+              value="ban"
+              checked={formData.type === "ban"}
+              onChange={(e) =>
+                updateFormData({ type: e.target.value as "ban" | "cho-thue" })
+              }
+              className="sr-only"
+            />
+            <div
+              className={`p-4 border rounded-lg cursor-pointer text-center ${
+                formData.type === "ban"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <span className="font-medium">Bán</span>
+            </div>
+          </label>
+          <label className="relative">
+            <input
+              type="radio"
+              name="type"
+              value="cho-thue"
+              checked={formData.type === "cho-thue"}
+              onChange={(e) =>
+                updateFormData({ type: e.target.value as "ban" | "cho-thue" })
+              }
+              className="sr-only"
+            />
+            <div
+              className={`p-4 border rounded-lg cursor-pointer text-center ${
+                formData.type === "cho-thue"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <span className="font-medium">Cho thuê</span>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -574,41 +614,6 @@ export default function BasicInfoStep({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label
-              htmlFor="legalDocs"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Giấy tờ pháp lý
-            </label>
-            <select
-              id="legalDocs"
-              value={formData.legalDocs}
-              onChange={(e) => updateFormData({ legalDocs: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            >
-              <option value="Sổ đỏ/ Sổ hồng">Sổ đỏ/ Sổ hồng</option>
-              <option value="Giấy tờ khác">Giấy tờ khác</option>
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="furniture"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Nội thất
-            </label>
-            <select
-              id="furniture"
-              value={formData.furniture}
-              onChange={(e) => updateFormData({ furniture: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-            >
-              <option value="Đầy đủ">Đầy đủ</option>
-              <option value="Cơ bản">Cơ bản</option>
-              <option value="Không nội thất">Không nội thất</option>
-            </select>
-          </div>
-          <div>
-            <label
               htmlFor="houseDirection"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
@@ -616,13 +621,13 @@ export default function BasicInfoStep({
             </label>
             <select
               id="houseDirection"
-              value={formData.houseDirection}
+              value={formData.houseDirection || ""}
               onChange={(e) =>
-                updateFormData({ houseDirection: e.target.value })
+                updateFormData({ houseDirection: e.target.value || undefined })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
-              <option value="">Chọn hướng</option>
+              <option value="">Không xác định</option>
               <option value="Đông">Đông</option>
               <option value="Tây">Tây</option>
               <option value="Nam">Nam</option>
@@ -642,13 +647,15 @@ export default function BasicInfoStep({
             </label>
             <select
               id="balconyDirection"
-              value={formData.balconyDirection}
+              value={formData.balconyDirection || ""}
               onChange={(e) =>
-                updateFormData({ balconyDirection: e.target.value })
+                updateFormData({
+                  balconyDirection: e.target.value || undefined,
+                })
               }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
-              <option value="">Chọn hướng</option>
+              <option value="">Không xác định</option>
               <option value="Đông">Đông</option>
               <option value="Tây">Tây</option>
               <option value="Nam">Nam</option>
@@ -658,96 +665,6 @@ export default function BasicInfoStep({
               <option value="Đông Nam">Đông Nam</option>
               <option value="Tây Nam">Tây Nam</option>
             </select>
-          </div>
-          <div>
-            <label
-              htmlFor="roadWidth"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Độ rộng đường (m)
-            </label>
-            <input
-              id="roadWidth"
-              type="number"
-              value={formData.roadWidth}
-              onChange={(e) => updateFormData({ roadWidth: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập độ rộng đường trước nhà"
-              min={0}
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="frontWidth"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Mặt tiền (m)
-            </label>
-            <input
-              id="frontWidth"
-              type="number"
-              value={formData.frontWidth}
-              onChange={(e) => updateFormData({ frontWidth: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập chiều rộng mặt tiền"
-              min={0}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Thông tin liên hệ
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label
-              htmlFor="contactName"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Tên liên hệ
-            </label>
-            <input
-              id="contactName"
-              type="text"
-              value={formData.contactName}
-              onChange={(e) => updateFormData({ contactName: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập tên liên hệ"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => updateFormData({ email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập email"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label
-              htmlFor="phone"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Số điện thoại
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => updateFormData({ phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập số điện thoại"
-            />
           </div>
         </div>
       </div>

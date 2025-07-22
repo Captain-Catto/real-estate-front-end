@@ -1,7 +1,8 @@
 // src/components/admin/AdminPostDetail.tsx
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -18,6 +19,8 @@ import {
   DocumentIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import { locationService } from "@/services/locationService";
+import { postService } from "@/services/postsService";
 
 interface AdminPostDetailProps {
   post: {
@@ -68,7 +71,6 @@ interface AdminPostDetailProps {
     location:
       | {
           province: string;
-          district: string;
           ward: string;
           street?: string;
         }
@@ -89,6 +91,109 @@ export default function AdminPostDetail({
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [locationName, setLocationName] = useState("");
+  const [categoryName, setCategoryName] = useState("");
+  const [approvedByName, setApprovedByName] = useState("");
+  const [rejectedByName, setRejectedByName] = useState("");
+  const [authorName, setAuthorName] = useState("");
+
+  useEffect(() => {
+    const fetchLocationName = async () => {
+      console.log("🔍 Post location data:", post.location);
+      console.log("🔍 Post location type:", typeof post.location);
+
+      if (typeof post.location === "object" && post.location.province) {
+        try {
+          const name = await locationService.getLocationName(
+            post.location.province,
+            post.location.ward
+          );
+
+          setLocationName(name);
+        } catch (error) {
+          console.error("Error fetching location name:", error);
+          // Fallback
+          setLocationName(
+            post.location.ward
+              ? `${post.location.ward}, ${post.location.province}`
+              : post.location.province
+          );
+        }
+      } else if (typeof post.location === "string") {
+        setLocationName(post.location);
+      } else {
+        // Xử lý trường hợp location có cấu trúc khác
+        console.warn("Unknown location format:", post.location);
+        setLocationName("Vị trí không xác định");
+      }
+    };
+
+    fetchLocationName();
+  }, [post.location]);
+
+  useEffect(() => {
+    const fetchCategoryName = async () => {
+      if (post.category) {
+        console.log("🔍 Fetching category name for:", post.category);
+        try {
+          const name = await postService.getCategoryName(post.category);
+          setCategoryName(name);
+        } catch (error) {
+          console.error("Error fetching category name:", error);
+          setCategoryName("Không xác định");
+        }
+      }
+    };
+
+    fetchCategoryName();
+  }, [post.category]);
+
+  useEffect(() => {
+    const fetchUserNames = async () => {
+      const userIds = [];
+
+      // Check if author is a string (user ID)
+      if (typeof post.author === "string" && post.author) {
+        userIds.push(post.author);
+      }
+
+      // Check if approvedBy is a string (user ID)
+      if (typeof post.approvedBy === "string" && post.approvedBy) {
+        userIds.push(post.approvedBy);
+      }
+
+      // Check if rejectedBy is a string (user ID)
+      if (typeof post.rejectedBy === "string" && post.rejectedBy) {
+        userIds.push(post.rejectedBy);
+      }
+
+      if (userIds.length > 0) {
+        try {
+          console.log("🔍 Fetching user names for:", userIds);
+          const userNames = await postService.getUserNames(userIds);
+
+          if (typeof post.author === "string" && post.author) {
+            setAuthorName(userNames[post.author] || "Không xác định");
+          }
+
+          if (typeof post.approvedBy === "string" && post.approvedBy) {
+            setApprovedByName(userNames[post.approvedBy] || "Không xác định");
+          }
+
+          if (typeof post.rejectedBy === "string" && post.rejectedBy) {
+            setRejectedByName(userNames[post.rejectedBy] || "Không xác định");
+          }
+        } catch (error) {
+          console.error("Error fetching user names:", error);
+          setAuthorName("Không xác định");
+          setApprovedByName("Không xác định");
+          setRejectedByName("Không xác định");
+        }
+      }
+    };
+
+    fetchUserNames();
+  }, [post.author, post.approvedBy, post.rejectedBy]);
 
   const rejectReasons = [
     "Hình ảnh không phù hợp hoặc chất lượng kém",
@@ -158,20 +263,12 @@ export default function AdminPostDetail({
     }
   };
 
-  const getCategoryName = (category: string) => {
-    const categories: Record<string, string> = {
-      apartment: "Căn hộ chung cư",
-      house: "Nhà riêng",
-      villa: "Biệt thự",
-      land: "Đất nền",
-      office: "Văn phòng",
-      shop: "Shophouse",
-    };
-    return categories[category] || category;
-  };
-
   const getTypeName = (type: string) => {
     return type === "ban" ? "Bán" : "Cho thuê";
+  };
+
+  const getCategoryName = () => {
+    return categoryName || "Đang tải...";
   };
 
   const handleReject = () => {
@@ -276,10 +373,20 @@ export default function AdminPostDetail({
                     <UserIcon className="w-4 h-4" />
                     <span className="font-medium">Người từ chối:</span>
                     <span>
-                      {typeof post.rejectedBy === "object"
-                        ? (post.rejectedBy as { username?: string }).username ||
-                          "Admin"
-                        : post.rejectedBy || "Admin"}
+                      {typeof post.rejectedBy === "object" ? (
+                        (post.rejectedBy as { username?: string }).username ||
+                        "Admin"
+                      ) : typeof post.rejectedBy === "string" &&
+                        rejectedByName ? (
+                        <Link
+                          href={`/admin/quan-ly-nguoi-dung/${post.rejectedBy}`}
+                          className="text-red-700 hover:text-red-900 underline cursor-pointer"
+                        >
+                          {rejectedByName}
+                        </Link>
+                      ) : (
+                        post.rejectedBy || "Admin"
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-red-700">
@@ -317,18 +424,7 @@ export default function AdminPostDetail({
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <MapPinIcon className="w-4 h-4" />
-                    <span>
-                      {typeof post.location === "object"
-                        ? [
-                            post.location.street,
-                            post.location.ward,
-                            post.location.district,
-                            post.location.province,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")
-                        : post.location}
-                    </span>
+                    <span>{locationName || "Vị trí không xác định"}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <EyeIcon className="w-4 h-4" />
@@ -363,7 +459,7 @@ export default function AdminPostDetail({
                   <span className="text-sm font-medium">Loại hình</span>
                 </div>
                 <div className="font-bold text-blue-800">
-                  {getTypeName(post.type)} {getCategoryName(post.category)}
+                  {getTypeName(post.type)} {getCategoryName()}
                 </div>
               </div>
 
@@ -480,10 +576,20 @@ export default function AdminPostDetail({
                     <div>
                       <div className="font-medium text-green-800">
                         Đã duyệt bởi{" "}
-                        {typeof post.approvedBy === "object"
-                          ? (post.approvedBy as { username?: string })
-                              .username || "Admin"
-                          : post.approvedBy || "Admin"}
+                        {typeof post.approvedBy === "object" ? (
+                          (post.approvedBy as { username?: string }).username ||
+                          "Admin"
+                        ) : typeof post.approvedBy === "string" &&
+                          approvedByName ? (
+                          <Link
+                            href={`/admin/quan-ly-nguoi-dung/${post.approvedBy}`}
+                            className="text-green-700 hover:text-green-900 underline cursor-pointer"
+                          >
+                            {approvedByName}
+                          </Link>
+                        ) : (
+                          post.approvedBy || "Admin"
+                        )}
                       </div>
                       <div className="text-sm text-green-600">
                         {post.approvedAt ? formatDate(post.approvedAt) : ""}
@@ -498,10 +604,20 @@ export default function AdminPostDetail({
                     <div>
                       <div className="font-medium text-red-800">
                         Đã từ chối bởi{" "}
-                        {typeof post.rejectedBy === "object"
-                          ? (post.rejectedBy as { username?: string })
-                              .username || "Admin"
-                          : post.rejectedBy || "Admin"}
+                        {typeof post.rejectedBy === "object" ? (
+                          (post.rejectedBy as { username?: string }).username ||
+                          "Admin"
+                        ) : typeof post.rejectedBy === "string" &&
+                          rejectedByName ? (
+                          <Link
+                            href={`/admin/quan-ly-nguoi-dung/${post.rejectedBy}`}
+                            className="text-red-700 hover:text-red-900 underline cursor-pointer"
+                          >
+                            {rejectedByName}
+                          </Link>
+                        ) : (
+                          post.rejectedBy || "Admin"
+                        )}
                       </div>
                       <div className="text-sm text-red-600">
                         {post.rejectedAt ? formatDate(post.rejectedAt) : ""}
@@ -534,9 +650,27 @@ export default function AdminPostDetail({
                 </div>
                 <div>
                   <div className="font-medium text-gray-900">
-                    {typeof post.author === "object"
-                      ? post.author.username || "Người dùng"
-                      : post.author}
+                    {typeof post.author === "object" ? (
+                      post.author._id ? (
+                        <Link
+                          href={`/admin/quan-ly-nguoi-dung/${post.author._id}`}
+                          className="text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                        >
+                          {post.author.username || "Người dùng"}
+                        </Link>
+                      ) : (
+                        post.author.username || "Người dùng"
+                      )
+                    ) : typeof post.author === "string" && authorName ? (
+                      <Link
+                        href={`/admin/quan-ly-nguoi-dung/${post.author}`}
+                        className="text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                      >
+                        {authorName}
+                      </Link>
+                    ) : (
+                      post.author || "Người dùng"
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">Người đăng tin</div>
                 </div>

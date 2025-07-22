@@ -18,10 +18,9 @@ interface CreatePostModalProps {
   setSelectedImages: (images: File[]) => void;
   setSelectedPackage: (pkg: any) => void;
   handleSubmit: () => void;
-  provinces: any[]; // Thêm dòng này
-  districts: any[]; // Thêm dòng này
-  wards: any[]; // Thêm dòng này
-  locationLoading: boolean; // Thêm dòng này
+  provinces: any[];
+  wards: any[];
+  locationLoading: boolean;
 }
 
 export default function CreatePostModal({
@@ -39,7 +38,6 @@ export default function CreatePostModal({
   setSelectedPackage,
   handleSubmit,
   provinces,
-  districts,
   wards,
   locationLoading,
 }: CreatePostModalProps) {
@@ -58,7 +56,6 @@ export default function CreatePostModal({
           formData.title &&
           formData.location &&
           formData.location.province &&
-          formData.location.district &&
           formData.location.ward &&
           formData.price &&
           formData.area
@@ -165,7 +162,6 @@ export default function CreatePostModal({
                 formData={formData}
                 updateFormData={updateFormData}
                 provinces={provinces}
-                districts={districts}
                 wards={wards}
                 locationLoading={locationLoading}
               />

@@ -17,7 +17,6 @@ interface FormData {
   category: string;
   location: {
     province: string;
-    district: string;
     ward: string;
     street?: string;
     project?: string;
@@ -114,7 +113,6 @@ export function useEditPostModal() {
     category: "",
     location: {
       province: "",
-      district: "",
       ward: "",
       street: "",
       project: "",

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import {
   EyeIcon,
   CheckIcon,
@@ -9,6 +11,7 @@ import {
   DocumentIcon,
 } from "@heroicons/react/24/outline";
 import { Post } from "@/services/postsService";
+import { locationService, LocationNames } from "@/services/locationService";
 
 interface PostsTableProps {
   posts: Post[];
@@ -28,6 +31,40 @@ export default function PostsTable({
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState("");
+  const [locationNames, setLocationNames] = useState<
+    Record<string, LocationNames>
+  >({});
+
+  // Fetch location names for all posts
+  useEffect(() => {
+    const fetchLocationNames = async () => {
+      const locationMap: Record<string, LocationNames> = {};
+
+      for (const post of posts) {
+        if (post.location?.province && post.location?.ward) {
+          const key = `${post.location.province}-${post.location.ward}`;
+          if (!locationMap[key]) {
+            try {
+              const names = await locationService.getLocationNames(
+                post.location.province,
+                post.location.ward
+              );
+              locationMap[key] = names;
+            } catch (error) {
+              console.error("Error fetching location names:", error);
+              locationMap[key] = {};
+            }
+          }
+        }
+      }
+
+      setLocationNames(locationMap);
+    };
+
+    if (posts.length > 0) {
+      fetchLocationNames();
+    }
+  }, [posts]);
 
   const formatPrice = (price: number) => {
     if (price >= 1000000000) {
@@ -89,6 +126,35 @@ export default function PostsTable({
     }
   };
 
+  const getTypeName = (type: string) => {
+    return type === "ban" ? "Bán" : "Cho thuê";
+  };
+
+  const getTypeBadge = (type: string) => {
+    return type === "ban"
+      ? "bg-blue-100 text-blue-800"
+      : "bg-purple-100 text-purple-800";
+  };
+
+  const getLocationDisplayName = (post: Post) => {
+    if (!post.location?.province || !post.location?.ward) {
+      return {
+        street: post.location?.street || "",
+        ward: post.location?.ward || "N/A",
+        province: post.location?.province || "N/A",
+      };
+    }
+
+    const key = `${post.location.province}-${post.location.ward}`;
+    const names = locationNames[key];
+
+    return {
+      street: post.location?.street || "",
+      ward: names?.wardName || post.location.ward,
+      province: names?.provinceName || post.location.province,
+    };
+  };
+
   const handleReject = (postId: string) => {
     setSelectedPostId(postId);
     setShowRejectModal(true);
@@ -144,6 +210,9 @@ export default function PostsTable({
                   Thông tin
                 </th>
                 <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Địa chỉ
+                </th>
+                <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tác giả
                 </th>
                 <th className="w-32 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -163,38 +232,98 @@ export default function PostsTable({
                   <td className="px-3 py-3">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 w-12 h-12">
-                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <span className="text-gray-500 text-xs">IMG</span>
-                        </div>
+                        {post.images && post.images.length > 0 ? (
+                          <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden relative">
+                            <Image
+                              src={post.images[0]}
+                              alt={post.title}
+                              fill
+                              className="object-cover"
+                              sizes="48px"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                            <span className="text-gray-500 text-xs">IMG</span>
+                          </div>
+                        )}
                       </div>
                       <div className="ml-3">
                         <div className="flex items-center gap-1">
                           {getPriorityIcon(post.priority || "normal")}
-                          <div
-                            className="text-sm font-medium text-gray-900 truncate max-w-xs"
+                          <Link
+                            href={`/admin/quan-ly-tin-dang/${post._id}`}
+                            className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate max-w-xs cursor-pointer transition-colors"
                             title={post.title}
                           >
                             {post.title}
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">
-                          #{post._id}
+                          </Link>
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-3">
                     <div className="text-sm text-gray-900">
-                      <div className="font-medium truncate">
-                        {formatPrice(post.price)}{" "}
-                        {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="font-medium truncate">
+                          {formatPrice(post.price)}{" "}
+                          {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
+                        </div>
+                        <span
+                          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getTypeBadge(
+                            post.type
+                          )}`}
+                        >
+                          {getTypeName(post.type)}
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500 truncate">
-                        {post.area}m² • {post.location.district}
+                        {post.area}m²
                       </div>
                       <div className="text-xs text-gray-500">
                         {post.views.toLocaleString()} lượt xem
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="text-sm text-gray-900">
+                      {(() => {
+                        const locationDisplay = getLocationDisplayName(post);
+                        const fullAddress = [
+                          locationDisplay.street,
+                          locationDisplay.ward,
+                          locationDisplay.province,
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+
+                        return (
+                          <>
+                            {locationDisplay.street && (
+                              <div
+                                className="text-sm truncate"
+                                title={locationDisplay.street}
+                              >
+                                {locationDisplay.street}
+                              </div>
+                            )}
+                            <div
+                              className={`${
+                                locationDisplay.street ? "text-xs" : "text-sm"
+                              } truncate`}
+                              title={locationDisplay.ward}
+                            >
+                              {locationDisplay.ward}
+                            </div>
+                            <div
+                              className="text-xs text-gray-500 truncate"
+                              title={fullAddress}
+                            >
+                              {locationDisplay.province}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </td>
                   <td className="px-3 py-3">

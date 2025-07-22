@@ -39,7 +39,6 @@ export interface ProjectMap {
 
 export interface IProjectLocation {
   provinceCode: string;
-  districtCode: string;
   wardCode: string;
 }
 
@@ -102,6 +101,7 @@ export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
 export interface ProjectListItem {
   id: string;
   name: string;
+  address?: string; // Địa chỉ chi tiết
   location: string; // Keep string for backward compatibility
   locationObj?: IProjectLocation; // Add new field for object
   developer: string;

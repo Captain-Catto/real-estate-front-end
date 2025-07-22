@@ -2,9 +2,15 @@ export interface Location {
   _id: string;
   name: string;
   code: string;
-  codename: string;
-  division_type: string;
-  phone_code: string;
+  codename?: string; // Made optional for backward compatibility
+  slug: string;
+  division_type?: string;
+  phone_code?: string;
+  type?: string;
+  name_with_type?: string;
+  path?: string;
+  path_with_type?: string;
+  parent_code?: string;
 }
 
 export interface Province extends Location {

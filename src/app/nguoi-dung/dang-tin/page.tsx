@@ -1,18 +1,17 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import Footer from "@/components/footer/Footer";
 import { useCreatePostModal } from "@/hooks/useCreatePostModal";
 import CreatePostModal from "@/components/modals/CreatePostModal/CreatePostModal";
-import BasicInfoStep from "@/components/modals/EditPostModal/steps/BasicInfoStep";
+import BasicInfoStep from "@/components/posting/BasicInfoStep";
 import ImageUploadStep from "@/components/modals/EditPostModal/steps/ImageUploadStep";
 import PackageSelectionStep from "@/components/modals/EditPostModal/steps/PackageSelectionStep";
 import UserHeader from "@/components/user/UserHeader";
 import { useAuth } from "@/hooks/useAuth"; // Update to use enhanced hook
 import { useRouter } from "next/navigation";
-import { locationService } from "@/services/locationService";
+import { locationService, Location } from "@/services/locationService";
 
 export default function DangTinPage() {
   const router = useRouter();
@@ -20,11 +19,9 @@ export default function DangTinPage() {
   const { user, isAuthenticated, loading: userLoading } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   // Sử dụng useRef để tránh vòng lặp vô hạn
-  const [hasOpened, setHasOpened] = useState(false);
   const hasOpenedRef = useRef(false);
-  const [provinces, setProvinces] = useState([]);
-  const [districts, setDistricts] = useState([]);
-  const [wards, setWards] = useState([]);
+  const [provinces, setProvinces] = useState<Location[]>([]);
+  const [wards, setWards] = useState<Location[]>([]);
   const [locationLoading, setLocationLoading] = useState(false);
 
   const {
@@ -42,22 +39,6 @@ export default function DangTinPage() {
     setSelectedPackage,
     handleSubmit,
   } = useCreatePostModal();
-
-  // Ensure formData has all required properties for EditPostForm
-  const completeFormData = {
-    ...formData,
-    address: formData.address || "",
-    packageId: formData.packageId || "",
-    packageDuration: formData.packageDuration || 0,
-    images: formData.images || [],
-    location: {
-      province: formData.location?.province,
-      district: formData.location?.district,
-      ward: formData.location?.ward,
-      street: formData.location?.street,
-      project: formData.location?.project,
-    },
-  };
 
   // Redirect nếu chưa đăng nhập - Improved
   useEffect(() => {
@@ -86,7 +67,7 @@ export default function DangTinPage() {
         const data = await locationService.getProvinces();
         setProvinces(data);
       } catch (error) {
-        // handle error
+        console.error("Error loading provinces:", error);
       } finally {
         setLocationLoading(false);
       }
@@ -94,49 +75,26 @@ export default function DangTinPage() {
     fetchProvinces();
   }, []);
 
-  // Lấy quận/huyện khi chọn tỉnh
+  // Lấy phường/xã khi chọn tỉnh
   useEffect(() => {
     if (formData.location?.province) {
-      setDistricts([]);
-      setWards([]);
-      const fetchDistricts = async () => {
-        setLocationLoading(true);
-        try {
-          const data = await locationService.getDistricts(
-            formData.location.province
-          );
-          setDistricts(data);
-        } catch (error) {
-          // handle error
-        } finally {
-          setLocationLoading(false);
-        }
-      };
-      fetchDistricts();
-    }
-  }, [formData.location?.province]);
-
-  // Lấy phường/xã khi chọn quận/huyện
-  useEffect(() => {
-    if (formData.location?.province && formData.location?.district) {
       setWards([]);
       const fetchWards = async () => {
         setLocationLoading(true);
         try {
-          const data = await locationService.getWards(
-            formData.location.province,
-            formData.location.district
+          const data = await locationService.getWardsFromProvince(
+            formData.location.province
           );
           setWards(data);
         } catch (error) {
-          // handle error
+          console.error("Error loading wards:", error);
         } finally {
           setLocationLoading(false);
         }
       };
       fetchWards();
     }
-  }, [formData.location?.province, formData.location?.district]);
+  }, [formData.location?.province]);
 
   // Auto open modal on mobile - Improved logic
   useEffect(() => {
@@ -148,7 +106,6 @@ export default function DangTinPage() {
       !userLoading
     ) {
       hasOpenedRef.current = true;
-      setHasOpened(true);
       openModal();
     }
   }, [isMobile, isAuthenticated, userLoading, isOpen, openModal]);
@@ -287,7 +244,6 @@ export default function DangTinPage() {
           setSelectedPackage={setSelectedPackage}
           handleSubmit={handleSubmit}
           provinces={provinces}
-          districts={districts}
           wards={wards}
           locationLoading={locationLoading}
         />
@@ -370,7 +326,6 @@ export default function DangTinPage() {
                     formData={formData}
                     updateFormData={updateFormData}
                     provinces={provinces}
-                    districts={districts}
                     wards={wards}
                     locationLoading={locationLoading}
                   />

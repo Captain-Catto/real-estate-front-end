@@ -25,11 +25,10 @@ export function useLocationNames(
 
       setLoading(true);
       try {
-        // Use the new single API call
+        // Use the new single API call (chỉ dùng province và ward)
         const names = await locationService.getLocationNames(
           provinceCode,
-          districtCode,
-          wardCode
+          wardCode // wardCode thay cho districtCode
         );
 
         console.log("📍 Location names from API:", names);
