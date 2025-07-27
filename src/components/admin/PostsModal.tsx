@@ -130,7 +130,11 @@ export default function PostModal({
                           ? "VIP"
                           : post.priority === "premium"
                           ? "Premium"
-                          : "Thường"}
+                          : post.priority === "basic"
+                          ? "Cơ bản"
+                          : post.priority === "free"
+                          ? "Miễn phí"
+                          : "Không xác định"}
                       </span>
                     </div>
                   </div>

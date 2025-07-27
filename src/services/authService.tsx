@@ -332,13 +332,15 @@ export const authService = {
         profileCache &&
         Date.now() - profileCache.timestamp < PROFILE_CACHE_DURATION
       ) {
-        console.log("Using cached profile data");
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log("Using cached profile data");
         return profileCache.data;
       }
 
       // Handle concurrent requests
       if (isProfileFetching) {
-        console.log("Profile request already in progress");
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log("Profile request already in progress");
         const startTime = Date.now();
         while (isProfileFetching && Date.now() - startTime < 3000) {
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -378,8 +380,8 @@ export const authService = {
   // Clear profile cache when updating profile
   async updateProfile(profileData: {
     username?: string;
-    email?: string;
     phoneNumber?: string;
+    avatar?: string;
   }): Promise<any> {
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {

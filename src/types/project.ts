@@ -52,6 +52,7 @@ export interface Project {
   latitude: number;
   longitude: number;
   developer: Developer;
+  category?: { _id: string; name: string; isProject: boolean }; // Single category for project type
   images: string[];
   videos?: string[];
   totalUnits: number;

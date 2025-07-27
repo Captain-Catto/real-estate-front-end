@@ -96,7 +96,7 @@ const StatsService = {
   getPostsChart: async () => {
     await new Promise((r) => setTimeout(r, 300));
     return {
-      labels: ["Tin thường", "Tin VIP", "Tin Premium", "Tin Hot"],
+      labels: ["Miễn phí", "Cơ bản", "Premium", "VIP"],
       datasets: [
         {
           data: [4200, 1800, 1500, 1250],

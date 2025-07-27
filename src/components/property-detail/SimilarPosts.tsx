@@ -280,14 +280,21 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
 
                   {/* Type badge */}
                   <div className="absolute top-2 left-2">
-                    {post.package === "vip" || post.priority === "vip" ? (
+                    {post.package === "vip" ? (
                       <span className="px-2 py-1 text-xs font-medium rounded bg-purple-500 text-white">
                         VIP
                       </span>
-                    ) : post.package === "premium" ||
-                      post.priority === "premium" ? (
+                    ) : post.package === "premium" ? (
                       <span className="px-2 py-1 text-xs font-medium rounded bg-orange-500 text-white">
                         Premium
+                      </span>
+                    ) : post.package === "basic" ? (
+                      <span className="px-2 py-1 text-xs font-medium rounded bg-blue-500 text-white">
+                        Cơ bản
+                      </span>
+                    ) : post.package === "free" ? (
+                      <span className="px-2 py-1 text-xs font-medium rounded bg-green-500 text-white">
+                        Miễn phí
                       </span>
                     ) : null}
                   </div>

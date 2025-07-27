@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { Pagination } from "@/components/common/Pagination";
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -43,8 +44,8 @@ export default function UserDetailPage() {
   const [transactions, setTransactions] = useState<UserPayment[]>([]);
   const [logs, setLogs] = useState<UserLog[]>([]);
   const [loading, setLoading] = useState(true);
-  // const [postsLoading, setPostsLoading] = useState(false);
-  // const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "info" | "posts" | "transactions" | "logs"
@@ -53,18 +54,18 @@ export default function UserDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Pagination states
-  // const [postsPagination, setPostsPagination] = useState({
-  //   currentPage: 1,
-  //   totalPages: 1,
-  //   totalItems: 0,
-  //   itemsPerPage: 10,
-  // });
-  // const [paymentsPagination, setPaymentsPagination] = useState({
-  //   currentPage: 1,
-  //   totalPages: 1,
-  //   totalItems: 0,
-  //   itemsPerPage: 10,
-  // });
+  const [postsPagination, setPostsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
+  const [paymentsPagination, setPaymentsPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  });
   const [logsPagination, setLogsPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -73,13 +74,13 @@ export default function UserDetailPage() {
   });
 
   // Filter states
-  // const [postsFilters, setPostsFilters] = useState({
-  //   status: "all",
-  //   type: "all",
-  // });
-  // const [paymentsFilters, setPaymentsFilters] = useState({
-  //   status: "all",
-  // });
+  const [postsFilters, setPostsFilters] = useState({
+    status: "all",
+    type: "all",
+  });
+  const [paymentsFilters, setPaymentsFilters] = useState({
+    status: "all",
+  });
 
   // Form data for editing user
   const [editForm, setEditForm] = useState({
@@ -118,19 +119,19 @@ export default function UserDetailPage() {
 
   const fetchUserPosts = useCallback(
     async (page: number = 1) => {
-      // setPostsLoading(true);
+      setPostsLoading(true);
       try {
         const result = await getUserPosts(userId, {
           page,
-          limit: 10,
-          // status:
-          //   postsFilters.status !== "all" ? postsFilters.status : undefined,
-          // type: postsFilters.type !== "all" ? postsFilters.type : undefined,
+          limit: postsPagination.itemsPerPage,
+          status:
+            postsFilters.status !== "all" ? postsFilters.status : undefined,
+          type: postsFilters.type !== "all" ? postsFilters.type : undefined,
         });
 
         if (result.success && result.data) {
           setPosts(result.data.posts);
-          // setPostsPagination(result.data.pagination);
+          setPostsPagination(result.data.pagination);
         } else {
           console.error("Error fetching user posts:", result.message);
           setPosts([]);
@@ -139,10 +140,15 @@ export default function UserDetailPage() {
         console.error("Error fetching user posts:", error);
         setPosts([]);
       } finally {
-        // setPostsLoading(false);
+        setPostsLoading(false);
       }
     },
-    [userId]
+    [
+      userId,
+      postsPagination.itemsPerPage,
+      postsFilters.status,
+      postsFilters.type,
+    ]
   );
 
   const fetchUserPayments = useCallback(
@@ -241,18 +247,6 @@ export default function UserDetailPage() {
     }
   };
 
-  const handleVerifyUser = async () => {
-    if (!user) return;
-
-    try {
-      // For now, we'll update the user locally
-      // This should be replaced with a real API call when available
-      setUser({ ...user, isVerified: true });
-    } catch (error) {
-      console.error("Error verifying user:", error);
-    }
-  };
-
   // Handle edit user
   const handleEditUser = () => {
     if (!user) return;
@@ -274,7 +268,7 @@ export default function UserDetailPage() {
     try {
       const result = await updateUser(user._id, {
         username: editForm.username,
-        email: editForm.email,
+        // email is not included as it should not be modified
         phoneNumber: editForm.phoneNumber || undefined,
         role: editForm.role,
         status: editForm.status,
@@ -293,6 +287,11 @@ export default function UserDetailPage() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Handle view post - always use admin preview when in admin
+  const handleViewPost = (post: UserPost) => {
+    window.open(`/admin/quan-ly-tin-dang/${post._id}`, "_blank");
   };
 
   const handleCancelEdit = () => {
@@ -328,8 +327,10 @@ export default function UserDetailPage() {
   const formatDetailedDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60)
+    );
+
     if (diffInMinutes < 1) {
       return "Vừa xong";
     } else if (diffInMinutes < 60) {
@@ -367,8 +368,8 @@ export default function UserDetailPage() {
     switch (role) {
       case "admin":
         return "Quản trị viên";
-      case "agent":
-        return "Môi giới";
+      case "employee":
+        return "Nhân viên";
       case "user":
         return "Người dùng";
       default:
@@ -566,16 +567,6 @@ export default function UserDetailPage() {
 
                 {/* Actions */}
                 <div className="flex flex-col lg:flex-row gap-3">
-                  {!user.isVerified && (
-                    <button
-                      onClick={handleVerifyUser}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircleIcon className="h-4 w-4 mr-2" />
-                      Xác thực
-                    </button>
-                  )}
-
                   <select
                     value={user.status}
                     onChange={(e) =>
@@ -785,110 +776,125 @@ export default function UserDetailPage() {
                     </h3>
                   </div>
 
-                  {posts.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Tin đăng
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Thông tin
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Trạng thái
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ngày tạo
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Thao tác
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {posts.map((post) => (
-                            <tr key={post._id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="flex-shrink-0 w-12 h-12">
-                                    {post.images && post.images.length > 0 ? (
-                                      <Image
-                                        src={post.images[0]}
-                                        alt={post.title}
-                                        width={48}
-                                        height={48}
-                                        className="w-12 h-12 object-cover rounded-lg"
-                                      />
-                                    ) : (
-                                      <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                        <span className="text-gray-500 text-xs">
-                                          IMG
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="ml-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
-                                        {post.title}
-                                      </div>
-                                    </div>
-                                    <div className="text-sm text-gray-500">
-                                      #{post._id}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900">
-                                  <div className="font-medium">
-                                    {formatPrice(post.price.toString())}{" "}
-                                    {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
-                                  </div>
-                                  <div className="text-gray-500">
-                                    {post.area}m² • {post.location.province},{" "}
-                                    {post.location.district}
-                                  </div>
-                                  <div className="text-gray-500">
-                                    {post.views.toLocaleString()} lượt xem
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPostStatusColor(
-                                    post.status
-                                  )}`}
-                                >
-                                  {getPostStatusText(post.status)}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {formatDate(post.createdAt)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex items-center justify-end space-x-2">
-                                  <button
-                                    onClick={() => {
-                                      window.open(
-                                        `/du-an/${post._id}`,
-                                        "_blank"
-                                      );
-                                    }}
-                                    className="text-blue-600 hover:text-blue-900"
-                                    title="Xem chi tiết"
-                                  >
-                                    <EyeIcon className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {postsLoading ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
+                  ) : posts.length > 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tin đăng
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Thông tin
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Trạng thái
+                              </th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Ngày tạo
+                              </th>
+                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Thao tác
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {posts.map((post) => (
+                              <tr key={post._id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 w-12 h-12">
+                                      {post.images && post.images.length > 0 ? (
+                                        <Image
+                                          src={post.images[0]}
+                                          alt={post.title}
+                                          width={48}
+                                          height={48}
+                                          className="w-12 h-12 object-cover rounded-lg"
+                                        />
+                                      ) : (
+                                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                          <span className="text-gray-500 text-xs">
+                                            IMG
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
+                                          {post.title}
+                                        </div>
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        #{post._id}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900">
+                                    <div className="font-medium">
+                                      {formatPrice(post.price.toString())}{" "}
+                                      {post.type === "ban"
+                                        ? "VNĐ"
+                                        : "VNĐ/tháng"}
+                                    </div>
+                                    <div className="text-gray-500">
+                                      {post.area}m² • {post.location.province},{" "}
+                                      {post.location.district}
+                                    </div>
+                                    <div className="text-gray-500">
+                                      {post.views.toLocaleString()} lượt xem
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPostStatusColor(
+                                      post.status
+                                    )}`}
+                                  >
+                                    {getPostStatusText(post.status)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {formatDate(post.createdAt)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center justify-end space-x-2">
+                                    <button
+                                      onClick={() => handleViewPost(post)}
+                                      className="p-1 text-blue-600 hover:text-blue-900"
+                                      title="Xem chi tiết trong admin"
+                                    >
+                                      <EyeIcon className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Posts Pagination */}
+                      {postsPagination.totalPages > 1 && (
+                        <div className="mt-6 flex justify-center">
+                          <Pagination
+                            currentPage={postsPagination.currentPage}
+                            totalPages={postsPagination.totalPages}
+                            onPageChange={(page) => fetchUserPosts(page)}
+                            showPages={5}
+                          />
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center py-12">
                       <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -1050,10 +1056,14 @@ export default function UserDetailPage() {
                                   )}
                                   <div>
                                     <div className="text-sm font-medium text-gray-900">
-                                      {log.action === "updated" && "Cập nhật thông tin"}
-                                      {log.action === "statusChanged" && "Thay đổi trạng thái"}
-                                      {log.action === "created" && "Tạo tài khoản"}
-                                      {log.action === "deleted" && "Xóa tài khoản"}
+                                      {log.action === "updated" &&
+                                        "Cập nhật thông tin"}
+                                      {log.action === "statusChanged" &&
+                                        "Thay đổi trạng thái"}
+                                      {log.action === "created" &&
+                                        "Tạo tài khoản"}
+                                      {log.action === "deleted" &&
+                                        "Xóa tài khoản"}
                                     </div>
                                     <div className="text-xs text-gray-500">
                                       {formatDetailedDate(log.createdAt)}
@@ -1065,11 +1075,15 @@ export default function UserDetailPage() {
                               {/* Changed By Info */}
                               <div className="mb-3">
                                 <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-gray-500">Thực hiện bởi:</span>
+                                  <span className="text-gray-500">
+                                    Thực hiện bởi:
+                                  </span>
                                   <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
                                       <span className="text-xs font-medium text-gray-600">
-                                        {log.changedBy?.username?.charAt(0).toUpperCase() || "?"}
+                                        {log.changedBy?.username
+                                          ?.charAt(0)
+                                          .toUpperCase() || "?"}
                                       </span>
                                     </div>
                                     <span className="font-medium text-gray-900">
@@ -1087,48 +1101,68 @@ export default function UserDetailPage() {
                                           : "bg-gray-100 text-gray-800"
                                       }`}
                                     >
-                                      {log.changedBy?.role === "admin" && "Quản trị viên"}
-                                      {log.changedBy?.role === "employee" && "Nhân viên"}
-                                      {log.changedBy?.role === "agent" && "Môi giới"}
-                                      {log.changedBy?.role === "user" && "Người dùng"}
+                                      {log.changedBy?.role === "admin" &&
+                                        "Quản trị viên"}
+                                      {log.changedBy?.role === "employee" &&
+                                        "Nhân viên"}
+                                      {log.changedBy?.role === "employee" &&
+                                        "Nhân viên"}
+                                      {log.changedBy?.role === "user" &&
+                                        "Người dùng"}
                                     </span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Changes Detail */}
-                              {log.changes && Object.keys(log.changes).length > 0 && (
-                                <div className="bg-gray-50 rounded-md p-3">
-                                  <div className="text-sm font-medium text-gray-700 mb-2">
-                                    Chi tiết thay đổi:
+                              {log.changes &&
+                                Object.keys(log.changes).length > 0 && (
+                                  <div className="bg-gray-50 rounded-md p-3">
+                                    <div className="text-sm font-medium text-gray-700 mb-2">
+                                      Chi tiết thay đổi:
+                                    </div>
+                                    <div className="space-y-2">
+                                      {Object.entries(log.changes).map(
+                                        ([field, change]) => (
+                                          <div key={field} className="text-sm">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium text-gray-900 capitalize">
+                                                {field === "username" &&
+                                                  "Tên người dùng"}
+                                                {field === "email" && "Email"}
+                                                {field === "phoneNumber" &&
+                                                  "Số điện thoại"}
+                                                {field === "role" && "Vai trò"}
+                                                {field === "status" &&
+                                                  "Trạng thái"}
+                                                {![
+                                                  "username",
+                                                  "email",
+                                                  "phoneNumber",
+                                                  "role",
+                                                  "status",
+                                                ].includes(field) && field}
+                                              </span>
+                                            </div>
+                                            <div className="ml-4 flex items-center gap-2 text-sm">
+                                              <span className="text-red-600 bg-red-50 px-2 py-1 rounded">
+                                                {String(
+                                                  change.from || "(trống)"
+                                                )}
+                                              </span>
+                                              <span className="text-gray-400">
+                                                →
+                                              </span>
+                                              <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
+                                                {String(change.to || "(trống)")}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="space-y-2">
-                                    {Object.entries(log.changes).map(([field, change]) => (
-                                      <div key={field} className="text-sm">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-gray-900 capitalize">
-                                            {field === "username" && "Tên người dùng"}
-                                            {field === "email" && "Email"}
-                                            {field === "phoneNumber" && "Số điện thoại"}
-                                            {field === "role" && "Vai trò"}
-                                            {field === "status" && "Trạng thái"}
-                                            {!["username", "email", "phoneNumber", "role", "status"].includes(field) && field}
-                                          </span>
-                                        </div>
-                                        <div className="ml-4 flex items-center gap-2 text-sm">
-                                          <span className="text-red-600 bg-red-50 px-2 py-1 rounded">
-                                            {String(change.from || "(trống)")}
-                                          </span>
-                                          <span className="text-gray-400">→</span>
-                                          <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-                                            {String(change.to || "(trống)")}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                                )}
 
                               {/* Details */}
                               {/* {log.details && (
@@ -1182,11 +1216,17 @@ export default function UserDetailPage() {
                             </button>
                             <button
                               onClick={() => {
-                                if (logsPagination.currentPage < logsPagination.totalPages) {
+                                if (
+                                  logsPagination.currentPage <
+                                  logsPagination.totalPages
+                                ) {
                                   fetchUserLogs(logsPagination.currentPage + 1);
                                 }
                               }}
-                              disabled={logsPagination.currentPage >= logsPagination.totalPages}
+                              disabled={
+                                logsPagination.currentPage >=
+                                logsPagination.totalPages
+                              }
                               className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Sau
@@ -1197,17 +1237,23 @@ export default function UserDetailPage() {
                               <p className="text-sm text-gray-700">
                                 Hiển thị{" "}
                                 <span className="font-medium">
-                                  {(logsPagination.currentPage - 1) * logsPagination.itemsPerPage + 1}
+                                  {(logsPagination.currentPage - 1) *
+                                    logsPagination.itemsPerPage +
+                                    1}
                                 </span>{" "}
                                 đến{" "}
                                 <span className="font-medium">
                                   {Math.min(
-                                    logsPagination.currentPage * logsPagination.itemsPerPage,
+                                    logsPagination.currentPage *
+                                      logsPagination.itemsPerPage,
                                     logsPagination.totalItems
                                   )}
                                 </span>{" "}
                                 trong tổng số{" "}
-                                <span className="font-medium">{logsPagination.totalItems}</span> bản ghi
+                                <span className="font-medium">
+                                  {logsPagination.totalItems}
+                                </span>{" "}
+                                bản ghi
                               </p>
                             </div>
                             <div>
@@ -1215,7 +1261,9 @@ export default function UserDetailPage() {
                                 <button
                                   onClick={() => {
                                     if (logsPagination.currentPage > 1) {
-                                      fetchUserLogs(logsPagination.currentPage - 1);
+                                      fetchUserLogs(
+                                        logsPagination.currentPage - 1
+                                      );
                                     }
                                   }}
                                   disabled={logsPagination.currentPage <= 1}
@@ -1224,16 +1272,22 @@ export default function UserDetailPage() {
                                   <span className="sr-only">Trang trước</span>
                                   <ArrowLeftIcon className="h-5 w-5" />
                                 </button>
-                                {Array.from({ length: logsPagination.totalPages }, (_, i) => i + 1)
+                                {Array.from(
+                                  { length: logsPagination.totalPages },
+                                  (_, i) => i + 1
+                                )
                                   .filter(
                                     (page) =>
                                       page === 1 ||
                                       page === logsPagination.totalPages ||
-                                      Math.abs(page - logsPagination.currentPage) <= 1
+                                      Math.abs(
+                                        page - logsPagination.currentPage
+                                      ) <= 1
                                   )
                                   .map((page, index, visiblePages) => {
                                     const showDots =
-                                      index > 0 && visiblePages[index - 1] !== page - 1;
+                                      index > 0 &&
+                                      visiblePages[index - 1] !== page - 1;
                                     return (
                                       <React.Fragment key={page}>
                                         {showDots && (
@@ -1256,11 +1310,19 @@ export default function UserDetailPage() {
                                   })}
                                 <button
                                   onClick={() => {
-                                    if (logsPagination.currentPage < logsPagination.totalPages) {
-                                      fetchUserLogs(logsPagination.currentPage + 1);
+                                    if (
+                                      logsPagination.currentPage <
+                                      logsPagination.totalPages
+                                    ) {
+                                      fetchUserLogs(
+                                        logsPagination.currentPage + 1
+                                      );
                                     }
                                   }}
-                                  disabled={logsPagination.currentPage >= logsPagination.totalPages}
+                                  disabled={
+                                    logsPagination.currentPage >=
+                                    logsPagination.totalPages
+                                  }
                                   className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   <span className="sr-only">Trang sau</span>
@@ -1290,7 +1352,7 @@ export default function UserDetailPage() {
 
           {/* Edit User Modal */}
           {showEditModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
@@ -1363,8 +1425,10 @@ export default function UserDetailPage() {
                           onChange={(e) =>
                             setEditForm({ ...editForm, email: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập email"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                          placeholder="Email không thể thay đổi"
+                          disabled
+                          readOnly
                         />
                       </div>
 
@@ -1403,7 +1467,7 @@ export default function UserDetailPage() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="user">Người dùng</option>
-                          <option value="agent">Môi giới</option>
+                          <option value="employee">Nhân viên</option>
                           <option value="employee">Nhân viên</option>
                           <option value="admin">Quản trị viên</option>
                         </select>

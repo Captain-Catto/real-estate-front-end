@@ -1,5 +1,4 @@
 // Cập nhật để xử lý cả detail và listing pages
-
 import React from "react";
 import { PropertyDetail } from "@/components/property-detail/PropertyDetail";
 import { PropertyListing } from "@/components/property-listing/PropertyListing";
@@ -8,6 +7,7 @@ import { postService } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
+import { PropertyData } from "@/types/property";
 
 interface DynamicPageProps {
   params: {
@@ -15,8 +15,9 @@ interface DynamicPageProps {
   };
   searchParams?: {
     city?: string;
-    districts?: string;
+    province?: string;
     ward?: string;
+    wards?: string;
     [key: string]: string | string[] | undefined;
   };
 }
@@ -25,10 +26,16 @@ interface DynamicPageProps {
 function parseUrl(slug: string[]) {
   console.log("Parsing URL slug:", slug);
 
-  // URL chi tiết: /mua-ban/ha-noi/cau-giay/dich-vong/12345-chung-cu-cao-cap
-  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 5) {
-    const idSlug = slug[4];
+  // URL chi tiết: /mua-ban/ha-noi/dich-vong/12345-chung-cu-cao-cap
+  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 4) {
+    const idSlug = slug[3];
     const id = idSlug.split("-")[0];
+
+    // Thêm kiểm tra để đảm bảo id là một chuỗi hợp lệ (hỗ trợ cả số thuần và MongoDB ObjectID)
+    if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
+      console.log("Invalid ID in URL:", idSlug);
+      return null;
+    }
 
     return {
       type: "property-detail",
@@ -36,8 +43,7 @@ function parseUrl(slug: string[]) {
       transactionType: slug[0],
       location: {
         city: slug[1],
-        district: slug[2],
-        ward: slug[3],
+        ward: slug[2],
       },
       isSeoUrl: true,
     };
@@ -52,6 +58,12 @@ function parseUrl(slug: string[]) {
     const idSlug = slug[2];
     const id = idSlug.split("-")[0];
 
+    // Thêm kiểm tra để đảm bảo ID hợp lệ (tương tự như property detail)
+    if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
+      console.log("Invalid ID in fallback URL:", idSlug);
+      return null;
+    }
+
     return {
       type: "property-detail",
       id,
@@ -60,40 +72,55 @@ function parseUrl(slug: string[]) {
     };
   }
 
-  // URL listing theo khu vực: /mua-ban/tinh-lang-son/huyen-chi-lang/xa-huu-kien
-  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 4) {
+  // URL listing theo khu vực: /mua-ban/tinh-lang-son/xa-huu-kien
+  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 3) {
+    console.log("Detected ward-level URL:", {
+      city: slug[1],
+      ward: slug[2],
+    });
+
+    // Kiểm tra nếu slug[1] không chứa "tinh-" hoặc "thanh-pho-" thì thêm vào
+    let citySlug = slug[1];
+    if (!citySlug.startsWith("tinh-") && !citySlug.startsWith("thanh-pho-")) {
+      console.log("Adding prefix to city slug for better matching");
+      // Thêm prefix cho đúng định dạng API
+      if (
+        citySlug === "ha-noi" ||
+        citySlug === "ho-chi-minh" ||
+        citySlug === "da-nang" ||
+        citySlug === "can-tho" ||
+        citySlug === "hai-phong"
+      ) {
+        citySlug = `thanh-pho-${citySlug}`;
+      } else {
+        citySlug = `tinh-${citySlug}`;
+      }
+    }
+
     return {
       type: "property-listing",
       transactionType: slug[0],
       location: {
-        city: slug[1],
-        district: slug[2],
-        ward: slug[3],
+        city: citySlug,
+        ward: slug[2],
       },
       level: "ward", // Listing theo phường/xã
     };
   }
 
-  // URL listing theo quận/huyện: /mua-ban/tinh-lang-son/huyen-chi-lang
-  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 3) {
-    return {
-      type: "property-listing",
-      transactionType: slug[0],
-      location: {
-        city: slug[1],
-        district: slug[2],
-      },
-      level: "district", // Listing theo quận/huyện
-    };
-  }
-
   // URL listing theo tỉnh/thành: /mua-ban/tinh-lang-son
   if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 2) {
+    // Xử lý đặc biệt cho các tỉnh/thành không có tiền tố
+    console.log("Parsing province-level URL:", slug[1]);
+
+    // Đảm bảo chúng ta lưu đúng slug gốc từ URL
+    const citySlug = slug[1];
+
     return {
       type: "property-listing",
       transactionType: slug[0],
       location: {
-        city: slug[1],
+        city: citySlug,
       },
       level: "city", // Listing theo tỉnh/thành
     };
@@ -109,34 +136,37 @@ function parseUrl(slug: string[]) {
     };
   }
 
-  // URL dự án chi tiết: /du-an/ha-noi/nam-tu-liem/my-dinh/12345-vinhomes
-  if (slug[0] === "du-an" && slug.length === 5) {
-    const idSlug = slug[4];
+  // URL dự án chi tiết: /du-an/ha-noi/my-dinh/12345-vinhomes
+  if (slug[0] === "du-an" && slug.length === 4) {
+    const idSlug = slug[3];
     const id = idSlug.split("-")[0];
+
+    // Thêm kiểm tra ID cho dự án (tương tự như property detail)
+    if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
+      console.log("Invalid project ID in URL:", idSlug);
+      return null;
+    }
 
     return {
       type: "project-detail",
       id,
       location: {
         city: slug[1],
-        district: slug[2],
-        ward: slug[3],
+        ward: slug[2],
       },
       isSeoUrl: true,
     };
   }
 
   // URL dự án listing
-  if (slug[0] === "du-an" && slug.length >= 2 && slug.length <= 4) {
+  if (slug[0] === "du-an" && slug.length >= 2 && slug.length <= 3) {
     return {
       type: "project-listing",
       location: {
         city: slug[1],
-        district: slug[2] || null,
-        ward: slug[3] || null,
+        ward: slug[2] || null,
       },
-      level:
-        slug.length === 2 ? "city" : slug.length === 3 ? "district" : "ward",
+      level: slug.length === 2 ? "city" : "ward",
     };
   }
 
@@ -147,11 +177,14 @@ export default async function DynamicPage({
   params,
   searchParams = {},
 }: DynamicPageProps) {
-  const { slug } = await params;
+  // Đảm bảo chờ đợi params và searchParams
+  const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
+  const { slug } = resolvedParams;
   const urlData = parseUrl(slug);
 
   console.log("URL Data parsed:", urlData);
+  console.log("Search params:", resolvedSearchParams);
 
   if (!urlData) {
     console.log("No URL data found, returning 404");
@@ -159,6 +192,7 @@ export default async function DynamicPage({
   }
 
   try {
+    console.log("===== PROCESSING URL TYPE:", urlData.type, "=====");
     // Xử lý trang chi tiết property
     if (urlData.type === "property-detail") {
       console.log("Fetching property with ID:", urlData.id);
@@ -169,11 +203,19 @@ export default async function DynamicPage({
       }
 
       const post = await postService.getPostById(urlData.id);
-      console.log("Fetched post data:", post);
+      console.log("Fetched post data:", post ? "Success" : "Not found");
 
       if (!post) {
         console.log("Property not found for ID:", urlData.id);
         return notFound();
+      }
+
+      // Increment view count on server side to avoid multiple calls
+      try {
+        await postService.incrementViews(urlData.id);
+        console.log("📊 View incremented for post:", urlData.id);
+      } catch (error) {
+        console.warn("Failed to increment view:", error);
       }
 
       // Transform data như cũ
@@ -224,70 +266,72 @@ export default async function DynamicPage({
       };
 
       // Fetch proper Vietnamese location names for breadcrumb
-      let breadcrumbData:
-        | { city: string; district: string; ward: string }
-        | undefined;
+      let breadcrumbData = {
+        city: "",
+        ward: "",
+        district: "",
+      };
 
       if (urlData.isSeoUrl && urlData.location) {
         try {
-          // Use API to get proper Vietnamese names with diacritics
+          // Sử dụng API đã được cải tiến để lấy tên tiếng Việt đầy đủ
           const locationNames = await locationService.getBreadcrumbFromSlug(
-            urlData.location.city || undefined,
-            (urlData.location.district ?? undefined) as string | undefined,
-            (urlData.location.ward ?? undefined) as string | undefined
+            urlData.location.city || "",
+            null, // District is null in new structure
+            urlData.location.ward || ""
           );
 
-          // Only use API result if we got meaningful data
-          if (
-            locationNames.city ||
-            locationNames.district ||
-            locationNames.ward
-          ) {
+          console.log(
+            "Kết quả breadcrumb từ API cho trang chi tiết:",
+            locationNames
+          );
+
+          // Chỉ sử dụng kết quả API nếu có dữ liệu
+          if (locationNames) {
             breadcrumbData = {
-              city:
-                locationNames.city ||
-                urlData.location.city?.replace(/-/g, " ") ||
-                "",
-              district:
-                locationNames.district ||
-                urlData.location.district?.replace(/-/g, " ") ||
-                "",
-              ward:
-                locationNames.ward ||
-                urlData.location.ward?.replace(/-/g, " ") ||
-                "",
-            };
-          } else {
-            // Fallback to slugs converted to readable format
-            breadcrumbData = {
-              city: urlData.location.city?.replace(/-/g, " ") || "",
-              district: urlData.location.district?.replace(/-/g, " ") || "",
-              ward: urlData.location.ward?.replace(/-/g, " ") || "",
+              city: locationNames.city || "",
+              district: "", // Không còn sử dụng district trong cấu trúc mới
+              ward: locationNames.ward || "",
             };
           }
         } catch (error) {
-          console.error("Error fetching breadcrumb data:", error);
-          // Fallback to slugs converted to readable format
+          console.error("Lỗi khi lấy thông tin địa điểm:", error);
+          // Fallback đơn giản với URL slugs
           breadcrumbData = {
-            city: urlData.location.city?.replace(/-/g, " ") || "",
-            district: urlData.location.district?.replace(/-/g, " ") || "",
-            ward: urlData.location.ward?.replace(/-/g, " ") || "",
+            city:
+              urlData.location.city
+                ?.replace(/^tinh-/, "")
+                ?.replace(/^thanh-pho-/, "")
+                ?.replace(/-/g, " ")
+                ?.split(" ")
+                ?.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                ?.join(" ") || "",
+            district: "", // Không còn sử dụng district
+            ward:
+              urlData.location.ward
+                ?.replace(/^xa-/, "")
+                ?.replace(/^phuong-/, "")
+                ?.replace(/^thi-tran-/, "")
+                ?.replace(/-/g, " ")
+                ?.split(" ")
+                ?.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                ?.join(" ") || "",
           };
         }
       } else if (
         post.location &&
         post.location.province &&
-        post.location.district &&
         post.location.ward
       ) {
-        // Fallback to post location data
+        // Fallback to post location data if available
         breadcrumbData = {
           city: post.location.province,
-          district: post.location.district,
+          district: post.location.district || "",
           ward: post.location.ward,
         };
       }
 
+      // Thêm district mặc định là chuỗi rỗng cho PropertyDetail component nếu nó đang mong đợi cấu trúc cũ
       return (
         <>
           <Header />
@@ -307,7 +351,7 @@ export default async function DynamicPage({
       console.log("Search parameters from URL:", resolvedSearchParams);
 
       // Tạo filter object tương thích với backend API searchPosts method
-      const searchFilters: Record<string, string | number> = {
+      const searchFilters: Record<string, string | number | boolean> = {
         status: "active",
       };
 
@@ -318,37 +362,56 @@ export default async function DynamicPage({
       }
 
       // Prioritize query parameters if available
+      // Hỗ trợ cả city và province trong query parameters
+      let provinceParam = "";
+
+      // Đảm bảo searchParams đã được await
       if (resolvedSearchParams.city) {
-        searchFilters.city = resolvedSearchParams.city as string;
+        provinceParam = resolvedSearchParams.city as string;
+      } else if (resolvedSearchParams.province) {
+        provinceParam = resolvedSearchParams.province as string;
       } else if (urlData.location?.city) {
-        searchFilters.city = urlData.location.city;
+        provinceParam = urlData.location.city;
       }
 
-      if (resolvedSearchParams.districts) {
-        searchFilters.districts = resolvedSearchParams.districts as string;
-      } else if (urlData.location?.district) {
-        searchFilters.districts = urlData.location.district;
+      // Xử lý đặc biệt cho province để loại bỏ tiền tố
+      if (provinceParam) {
+        provinceParam = provinceParam
+          .replace(/^tinh-/, "")
+          .replace(/^thanh-pho-/, "");
+
+        searchFilters.province = provinceParam;
+        console.log("Province filter set to:", provinceParam);
       }
+
+      // Không còn sử dụng districts trong cấu trúc mới
+      // Nếu vẫn có tham số districts trong query string thì bỏ qua
 
       // Important fix: Check for 'ward' parameter from query string (both singular and plural forms)
+      let wardParam = "";
+
+      // Đã đảm bảo resolvedSearchParams được await ở trên
       if (resolvedSearchParams.ward) {
-        console.log(
-          "Found ward (singular) in searchParams:",
-          resolvedSearchParams.ward
-        );
-        searchFilters.wards = resolvedSearchParams.ward as string;
+        wardParam = resolvedSearchParams.ward as string;
       } else if (resolvedSearchParams.wards) {
-        console.log(
-          "Found wards (plural) in searchParams:",
-          resolvedSearchParams.wards
-        );
-        searchFilters.wards = resolvedSearchParams.wards as string;
+        wardParam = resolvedSearchParams.wards as string;
       } else if (urlData.location?.ward) {
-        console.log("Found ward in urlData:", urlData.location.ward);
-        searchFilters.wards = urlData.location.ward;
+        wardParam = urlData.location.ward;
+      }
+
+      // Xử lý ward param, loại bỏ tiền tố nếu có
+      if (wardParam) {
+        wardParam = wardParam
+          .replace(/^xa-/, "")
+          .replace(/^phuong-/, "")
+          .replace(/^thi-tran-/, "");
+
+        searchFilters.wards = wardParam;
+        console.log("Ward filter set to:", wardParam);
       }
 
       // Add other search parameters that might be in the query string
+      // Đã đảm bảo resolvedSearchParams được await ở trên
       ["price", "area", "bedrooms", "bathrooms", "category"].forEach(
         (param) => {
           if (resolvedSearchParams[param]) {
@@ -357,123 +420,237 @@ export default async function DynamicPage({
         }
       );
 
-      console.log("Final search filters:", searchFilters);
       console.log(
-        "Final search filters type check - wards:",
-        typeof searchFilters.wards
+        "Final search filters:",
+        JSON.stringify(searchFilters, null, 2)
       );
 
       // Debug log để kiểm tra location parsing
       console.log("URL Location details:", {
         city: urlData.location?.city,
-        district: urlData.location?.district,
         ward: urlData.location?.ward,
         level: urlData.level,
       });
 
+      // Debug log để kiểm tra query parameters và slug xử lý
+      console.log("Location parameters processing:", {
+        originalProvince: urlData.location?.city,
+        processedProvince: searchFilters.province,
+        originalWard: urlData.location?.ward,
+        processedWard: searchFilters.wards,
+      });
+
       // Fetch properties từ database với filter mới sử dụng searchPosts method
+      console.log(
+        "Calling searchPosts with filters:",
+        JSON.stringify(searchFilters)
+      );
       const response = await postService.searchPosts(searchFilters);
-      console.log("Search response:", response);
+      console.log("Search response status:", response ? "Success" : "Failed");
+      console.log("Search response data structure:", {
+        success: response?.success,
+        count: Array.isArray(response?.data) ? response.data.length : "N/A",
+        dataType: response?.data ? typeof response.data : "N/A",
+        isArray: Array.isArray(response?.data),
+        firstItem:
+          Array.isArray(response?.data) && response.data.length > 0
+            ? "Has data"
+            : "No data",
+      });
 
-      let posts = [];
+      // Log chi tiết hơn về response
+      if (response && response.data) {
+        console.log("Response data type:", typeof response.data);
+        if (Array.isArray(response.data)) {
+          console.log("Array length:", response.data.length);
+          if (response.data.length === 0) {
+            console.log("Empty array returned - no matching properties");
+          } else {
+            console.log("First item sample:", {
+              id: response.data[0]._id,
+              title: response.data[0].title,
+              province: response.data[0].location?.province,
+            });
+          }
+        } else if (response.data && typeof response.data === "object") {
+          console.log("Object data structure:", Object.keys(response.data));
+
+          // Kiểm tra xem có posts array trong response không
+          if (response.data.posts) {
+            console.log(
+              "Found posts array in response.data with length:",
+              Array.isArray(response.data.posts)
+                ? response.data.posts.length
+                : "not an array"
+            );
+
+            if (
+              Array.isArray(response.data.posts) &&
+              response.data.posts.length > 0
+            ) {
+              console.log("First post in posts array:", {
+                id: response.data.posts[0]._id,
+                title: response.data.posts[0].title,
+                province: response.data.posts[0].location?.province,
+              });
+            }
+          }
+
+          // Kiểm tra xem có thông tin searchCriteria không
+          if (response.data.searchCriteria) {
+            console.log(
+              "Search criteria used by API:",
+              response.data.searchCriteria
+            );
+          }
+        } else {
+          console.log("Non-array data:", response.data);
+        }
+      }
+
+      // Đảm bảo posts luôn là một mảng
+      // Sử dụng PropertyData để có kiểu dữ liệu nhất quán với component
+      let posts: PropertyData[] = [];
       if (!response || !response.success) {
-        console.error("Search failed:", response?.message || "Unknown error");
-        posts = [];
+        console.error("Failed to fetch posts:", response);
       } else {
-        posts = response?.data?.posts || [];
+        // Xử lý cả trường hợp data là mảng và object {posts: [...]}
+        if (Array.isArray(response.data)) {
+          posts = response.data;
+        } else if (
+          response.data &&
+          typeof response.data === "object" &&
+          Array.isArray(response.data.posts)
+        ) {
+          posts = response.data.posts;
+          console.log(
+            "Extracted posts from response.data.posts:",
+            posts.length
+          );
+        } else {
+          console.log(
+            "Response data is neither array nor contains posts array"
+          );
+          posts = [];
+        }
       }
-      console.log("Fetched posts:", posts);
+      console.log("Fetched posts count:", posts.length);
 
-      // Get proper Vietnamese names for breadcrumb
-      let locationNames;
-      try {
-        // Use query parameters if available, otherwise use URL path segments
-        const citySlug =
-          (resolvedSearchParams.city as string) || urlData.location?.city;
-        const districtSlug =
-          (resolvedSearchParams.districts as string) ||
-          urlData.location?.district;
-        const wardSlug =
-          (resolvedSearchParams.ward as string) ||
-          (resolvedSearchParams.wards as string) ||
-          urlData.location?.ward;
+      // Kiểm tra xem có posts không, nếu không thì log thêm thông tin
+      if (posts.length === 0) {
+        console.log("No posts found for the search filters. Possible reasons:");
+        console.log("1. No matching posts in database");
+        console.log("2. Province code might be incorrect");
+        console.log("3. API endpoint might have changed");
+        console.log("4. Database connection issues");
 
-        console.log("Breadcrumb slug parameters:", {
-          citySlug,
-          districtSlug,
-          wardSlug,
-        });
-
-        locationNames = await locationService.getBreadcrumbFromSlug(
-          citySlug || undefined,
-          districtSlug || undefined,
-          wardSlug || undefined
-        );
-      } catch (error) {
-        console.error("Error getting location names:", error);
+        // Đã loại bỏ xử lý đặc biệt cho tỉnh Đồng Tháp
       }
 
-      // Sử dụng locationNames cho breadcrumb
-      const breadcrumbData = {
-        city:
-          locationNames?.city ||
-          (resolvedSearchParams.city as string)?.replace(/[_-]/g, " ") ||
-          urlData.location?.city?.replace(/[_-]/g, " ") ||
-          "",
-        district:
-          locationNames?.district ||
-          (resolvedSearchParams.districts as string)?.replace(/[_-]/g, " ") ||
-          (urlData.location?.district ?? "").replace(/[_-]/g, " "),
-        ward:
-          locationNames?.ward ||
-          (resolvedSearchParams.ward as string)?.replace(/[_-]/g, " ") ||
-          (resolvedSearchParams.wards as string)?.replace(/[_-]/g, " ") ||
-          (urlData.location?.ward ?? "").replace(/[_-]/g, " "),
+      // Chuẩn bị slug để gọi API
+      let provinceSlug = "";
+      let wardSlug = "";
+
+      // 1. Ưu tiên lấy từ query params
+      // Đã đảm bảo resolvedSearchParams được await ở trên
+      if (resolvedSearchParams.province || resolvedSearchParams.city) {
+        provinceSlug = (resolvedSearchParams.province ||
+          resolvedSearchParams.city) as string;
+      }
+      // 2. Lấy từ urlData nếu không có trong query params
+      else if (urlData.location?.city) {
+        provinceSlug = urlData.location.city;
+      }
+
+      // Xử lý đặc biệt cho provinceSlug để loại bỏ tiền tố
+      provinceSlug = provinceSlug
+        .replace(/^tinh-/, "")
+        .replace(/^thanh-pho-/, "");
+
+      // Tương tự cho ward
+      // Đã đảm bảo resolvedSearchParams được await ở trên
+      if (resolvedSearchParams.ward || resolvedSearchParams.wards) {
+        wardSlug = (resolvedSearchParams.ward ||
+          resolvedSearchParams.wards) as string;
+      } else if (urlData.location?.ward) {
+        wardSlug = urlData.location.ward;
+      }
+
+      console.log("Slug chuẩn bị gọi API:", { provinceSlug, wardSlug });
+
+      // Lấy tên địa điểm hiển thị đúng với tiếng Việt
+      let breadcrumbData = {
+        city: "",
+        ward: "",
+        district: "", // Luôn trống trong cấu trúc mới
       };
 
-      // Debug log để kiểm tra breadcrumbData được truyền vào PropertyListing
-      console.log("=== BREADCRUMB DATA DEBUG ===");
-      console.log("locationNames from API:", locationNames);
-      console.log("searchParams:", {
-        city: resolvedSearchParams.city,
-        districts: resolvedSearchParams.districts,
-        ward: resolvedSearchParams.ward,
-        wards: resolvedSearchParams.wards,
-      });
-      console.log(
-        "Final breadcrumbData passed to PropertyListing:",
-        breadcrumbData
-      );
-      console.log("Ward check - locationNames?.ward:", locationNames?.ward);
-      console.log(
-        "Ward check - fallback:",
-        (resolvedSearchParams.ward as string)?.replace(/[_-]/g, " ")
-      );
-      console.log("=== END DEBUG ===");
+      try {
+        // Đã loại bỏ việc kiểm tra map dấu tiếng Việt trực tiếp
+        console.log("Current province slug:", provinceSlug);
 
-      // Determine the level based on available location data
-      let level: "ward" | "district" | "city" = "city";
-      if (urlData.level === "query") {
-        // For query-based URLs, determine level from available parameters
-        if (resolvedSearchParams.ward || resolvedSearchParams.wards) {
-          level = "ward";
-        } else if (resolvedSearchParams.districts) {
-          level = "district";
-        } else if (resolvedSearchParams.city) {
-          level = "city";
+        // Gọi API để lấy dữ liệu địa điểm
+        // Đã cải tiến getBreadcrumbFromSlug để xử lý prefix và tìm kiếm chính xác hơn
+        const locationNames = await locationService.getBreadcrumbFromSlug(
+          provinceSlug,
+          null, // không còn sử dụng district
+          wardSlug
+        );
+
+        console.log("Kết quả lấy tên địa điểm:", locationNames);
+
+        // Kết quả từ API đã có định dạng phù hợp (đã capitalize và có dấu tiếng Việt)
+        if (locationNames) {
+          breadcrumbData = {
+            city: locationNames.city || "",
+            district: "", // Luôn trống trong cấu trúc mới
+            ward: locationNames.ward || "",
+          };
         }
-      } else {
-        level = (urlData.level as "ward" | "district" | "city") || "city";
+      } catch (error) {
+        console.error("Lỗi khi lấy dữ liệu địa điểm:", error);
+
+        // Fallback đơn giản nếu API gặp lỗi
+        breadcrumbData = {
+          city: provinceSlug
+            .replace(/^tinh-/, "")
+            .replace(/^thanh-pho-/, "")
+            .replace(/-/g, " ")
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
+          district: "", // Luôn trống trong cấu trúc mới
+          ward: wardSlug
+            .replace(/^xa-/, "")
+            .replace(/^phuong-/, "")
+            .replace(/^thi-tran-/, "")
+            .replace(/-/g, " ")
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" "),
+        };
       }
 
+      console.log("Breadcrumb data:", breadcrumbData);
+
+      // Sử dụng kết quả trực tiếp cho locationForDisplay và đảm bảo định dạng phù hợp
+      const locationForDisplay = {
+        city: breadcrumbData.city,
+        district: breadcrumbData.district || "", // Đảm bảo district luôn có giá trị, dù là rỗng
+        ward: breadcrumbData.ward || "",
+      };
+
+      console.log("Location for display:", locationForDisplay);
+
+      // Đảm bảo dữ liệu được đúng định dạng trước khi truyền vào component
       return (
         <>
           <Header />
           <PropertyListing
-            properties={posts || []}
-            location={breadcrumbData}
-            transactionType={urlData.transactionType || "mua-ban"}
-            level={level}
+            properties={posts}
+            location={locationForDisplay}
+            transactionType={urlData.transactionType || ""}
+            level={(urlData.level as "city" | "district" | "ward") || "city"}
             searchParams={resolvedSearchParams}
           />
           <Footer />
@@ -481,24 +658,42 @@ export default async function DynamicPage({
       );
     }
 
-    // Xử lý project detail - tạm thời return notFound cho đến khi có ProjectService
+    // Xử lý trang chi tiết project
     else if (urlData.type === "project-detail") {
-      // TODO: Implement project detail when ProjectService is available
-      return notFound();
-    }
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Có lỗi xảy ra
-          </h1>
-          <p className="text-gray-600">Vui lòng thử lại sau.</p>
-          <p className="text-sm text-gray-400 mt-2">
-            Error: {error instanceof Error ? error.message : "Unknown error"}
-          </p>
+      // Phần xử lý dự án sẽ được thêm sau khi hoàn thiện trang property
+      return (
+        <div className="container mx-auto p-4">
+          <h1>Chi tiết dự án đang được phát triển</h1>
         </div>
+      );
+    }
+
+    // Default case
+    return (
+      <div className="container mx-auto p-4 my-10 text-center">
+        <h1 className="text-2xl font-bold mb-4">Đang tải...</h1>
+      </div>
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack =
+      error instanceof Error ? error.stack : "No stack trace available";
+
+    console.error("===== ERROR FETCHING DATA =====");
+    console.error("Error message:", errorMessage);
+    console.error("Error details:", error);
+    console.error("URL data:", urlData);
+    console.error("Stack trace:", errorStack);
+
+    return (
+      <div className="container mx-auto p-4 my-10 text-center">
+        <h1 className="text-2xl font-bold mb-4">Có lỗi xảy ra</h1>
+        <p>Không thể tải dữ liệu. Vui lòng thử lại sau.</p>
+        {process.env.NODE_ENV === "development" && (
+          <div className="mt-4 p-4 bg-gray-100 rounded text-left">
+            <p className="text-red-600 font-bold">Error: {errorMessage}</p>
+          </div>
+        )}
       </div>
     );
   }

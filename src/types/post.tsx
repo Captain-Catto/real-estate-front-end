@@ -16,9 +16,6 @@ export interface CreatePostRequest {
   balconyDirection?: string;
   roadWidth?: string;
   frontWidth?: string;
-  contactName: string;
-  email: string;
-  phone: string;
   packageId: string;
   packageDuration: number;
   images: string[];
@@ -42,9 +39,6 @@ export interface Post {
   updatedAt: string;
   expiresAt?: string;
   views: number;
-  contactName: string;
-  email: string;
-  phone: string;
   packageId: string;
   packageDuration: number;
   project?: {

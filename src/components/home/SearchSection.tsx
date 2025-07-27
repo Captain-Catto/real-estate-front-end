@@ -59,7 +59,9 @@ export default function SearchSection({
   const router = useRouter();
 
   // States
-  const [searchType, setSearchType] = useState<"buy" | "rent" | "project">("buy");
+  const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
+    "buy"
+  );
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [selectedWard, setSelectedWard] = useState<string | null>(null);
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
@@ -80,8 +82,9 @@ export default function SearchSection({
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
-  const [showProjectStatusDropdown, setShowProjectStatusDropdown] = useState(false);
-  
+  const [showProjectStatusDropdown, setShowProjectStatusDropdown] =
+    useState(false);
+
   const [citySearch, setCitySearch] = useState("");
   const [wardSearch, setWardSearch] = useState("");
 
@@ -147,18 +150,88 @@ export default function SearchSection({
     if (provinces.length === 0) return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.province) {
-      const matchingProvince = provinces.find(p => p.slug === urlParams.province);
+      // Tìm kiếm theo nhiều tiêu chí: slug, codename hoặc tên không dấu được chuyển thành slug
+      const provinceSlug = urlParams.province.toLowerCase();
+      console.log(
+        "DEBUG SearchSection: Looking for province slug:",
+        provinceSlug
+      );
+      console.log(
+        "DEBUG SearchSection: Available provinces:",
+        provinces
+          .slice(0, 3)
+          .map((p) => ({ name: p.name, slug: p.slug, codename: p.codename }))
+      );
+
+      // Tìm theo tất cả các cách có thể
+      const matchingProvince = provinces.find(
+        (p) =>
+          p.slug === provinceSlug ||
+          p.codename === provinceSlug ||
+          p.codename?.replace(/^tinh-/, "").replace(/^thanh-pho-/, "") ===
+            provinceSlug ||
+          p.slug === "tinh-" + provinceSlug ||
+          p.slug === "thanh-pho-" + provinceSlug ||
+          p.name.toLowerCase() === provinceSlug.replace(/-/g, " ")
+      );
+
       if (matchingProvince) {
         console.log("Found province from URL:", matchingProvince.name);
         setSelectedCity(matchingProvince.code);
       } else {
-        console.log("Province slug not found:", urlParams.province);
+        console.log(
+          "Province slug not found, trying name match:",
+          provinceSlug
+        );
+        // Thử tìm theo tên không dấu
+        const nameMatch = provinces.find(
+          (p) =>
+            p.name
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/\s+/g, "-") === provinceSlug
+        );
+        if (nameMatch) {
+          console.log("Found province by name match:", nameMatch.name);
+          setSelectedCity(nameMatch.code);
+        } else {
+          // Thử lần cuối với tên đầy đủ từ location
+          const cityFromBreadcrumb = provinces.find(
+            (p) => p.name.toLowerCase() === provinceSlug.replace(/-/g, " ")
+          );
+          if (cityFromBreadcrumb) {
+            console.log(
+              "Found province by breadcrumb name:",
+              cityFromBreadcrumb.name
+            );
+            setSelectedCity(cityFromBreadcrumb.code);
+          } else {
+            console.log("Province not found by any method:", provinceSlug);
+          }
+        }
       }
     } else if (initialCity) {
-      console.log("Using initial city from props");
-      setSelectedCity(initialCity.code);
+      console.log("Using initial city from props:", initialCity.name);
+      // Verify if the initialCity exists in provinces list
+      const matchingInitialProvince = provinces.find(
+        (p) => p.code === initialCity.code || p.name === initialCity.name
+      );
+      if (matchingInitialProvince) {
+        console.log(
+          "Found matching province for initialCity:",
+          matchingInitialProvince.name
+        );
+        setSelectedCity(matchingInitialProvince.code);
+      } else {
+        console.log(
+          "Initial city not found in provinces list:",
+          initialCity.name
+        );
+        setSelectedCity(initialCity.code);
+      }
     }
   }, [provinces, initialCity]);
 
@@ -189,18 +262,82 @@ export default function SearchSection({
     if (wardsList.length === 0) return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.ward) {
-      const matchingWard = wardsList.find(w => w.slug === urlParams.ward);
+      // Tìm kiếm theo nhiều tiêu chí: slug, codename hoặc tên không dấu được chuyển thành slug
+      const wardSlug = urlParams.ward.toLowerCase();
+      console.log("DEBUG SearchSection: Looking for ward slug:", wardSlug);
+      console.log(
+        "DEBUG SearchSection: Available wards:",
+        wardsList
+          .slice(0, 3)
+          .map((w) => ({ name: w.name, slug: w.slug, codename: w.codename }))
+      );
+
+      // Tìm theo tất cả các cách có thể
+      const matchingWard = wardsList.find(
+        (w) =>
+          w.slug === wardSlug ||
+          w.codename === wardSlug ||
+          w.codename
+            ?.replace(/^xa-/, "")
+            .replace(/^phuong-/, "")
+            .replace(/^thi-tran-/, "") === wardSlug ||
+          w.slug === "xa-" + wardSlug ||
+          w.slug === "phuong-" + wardSlug ||
+          w.slug === "thi-tran-" + wardSlug ||
+          w.name.toLowerCase() === wardSlug.replace(/-/g, " ")
+      );
+
       if (matchingWard) {
         console.log("Found ward from URL:", matchingWard.name);
         setSelectedWard(matchingWard.code);
       } else {
-        console.log("Ward slug not found:", urlParams.ward);
+        console.log("Ward slug not found, trying name match:", wardSlug);
+        // Thử tìm theo tên không dấu
+        const nameMatch = wardsList.find(
+          (w) =>
+            w.name
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/\s+/g, "-") === wardSlug
+        );
+        if (nameMatch) {
+          console.log("Found ward by name match:", nameMatch.name);
+          setSelectedWard(nameMatch.code);
+        } else {
+          // Thử lần cuối với tên đầy đủ từ location
+          const wardFromBreadcrumb = wardsList.find(
+            (w) => w.name.toLowerCase() === wardSlug.replace(/-/g, " ")
+          );
+          if (wardFromBreadcrumb) {
+            console.log(
+              "Found ward by breadcrumb name:",
+              wardFromBreadcrumb.name
+            );
+            setSelectedWard(wardFromBreadcrumb.code);
+          } else {
+            console.log("Ward not found by any method:", wardSlug);
+          }
+        }
       }
     } else if (initialWard) {
-      console.log("Using initial ward from props");
-      setSelectedWard(initialWard.code);
+      console.log("Using initial ward from props:", initialWard.name);
+      // Verify if the initialWard exists in wardsList
+      const matchingInitialWard = wardsList.find(
+        (w) => w.code === initialWard.code || w.name === initialWard.name
+      );
+      if (matchingInitialWard) {
+        console.log(
+          "Found matching ward for initialWard:",
+          matchingInitialWard.name
+        );
+        setSelectedWard(matchingInitialWard.code);
+      } else {
+        console.log("Initial ward not found in wards list:", initialWard.name);
+        setSelectedWard(initialWard.code);
+      }
     }
   }, [wardsList, initialWard]);
 
@@ -212,23 +349,27 @@ export default function SearchSection({
       // Fetch categories
       try {
         const categoriesResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"}/categories`
+          `${
+            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+          }/categories`
         );
-        
+
         if (categoriesResponse.ok) {
           const categoriesResult = await categoriesResponse.json();
           let filteredCategories = [];
-          
+
           if (searchType === "project") {
-            filteredCategories = categoriesResult.data?.categories?.filter(
-              (cat: { isProject: boolean }) => cat.isProject
-            ) || [];
+            filteredCategories =
+              categoriesResult.data?.categories?.filter(
+                (cat: { isProject: boolean }) => cat.isProject
+              ) || [];
           } else {
-            filteredCategories = categoriesResult.data?.categories?.filter(
-              (cat: { isProject: boolean }) => !cat.isProject
-            ) || [];
+            filteredCategories =
+              categoriesResult.data?.categories?.filter(
+                (cat: { isProject: boolean }) => !cat.isProject
+              ) || [];
           }
-          
+
           console.log("Loaded categories:", filteredCategories.length);
           setCategories(filteredCategories);
         }
@@ -239,19 +380,23 @@ export default function SearchSection({
 
       // Fetch price ranges
       try {
-        const priceTypeParam = 
-          searchType === "buy" ? "ban" : 
-          searchType === "rent" ? "cho-thue" : 
-          "project";
+        const priceTypeParam =
+          searchType === "buy"
+            ? "ban"
+            : searchType === "rent"
+            ? "cho-thue"
+            : "project";
 
         const priceResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"}/price-ranges/type/${priceTypeParam}`
+          `${
+            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+          }/price-ranges/type/${priceTypeParam}`
         );
 
         if (priceResponse.ok) {
           const priceResult = await priceResponse.json();
           const priceRanges = priceResult.data?.priceRanges || [];
-          
+
           // Sort by minValue
           const sortedPriceRanges = [...priceRanges].sort((a, b) => {
             if (a.minValue === 0 && b.minValue !== 0) return -1;
@@ -271,13 +416,16 @@ export default function SearchSection({
       if (searchType !== "project") {
         try {
           const areaResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"}/areas`
+            `${
+              process.env.NEXT_PUBLIC_API_BASE_URL ||
+              "http://localhost:8080/api"
+            }/areas`
           );
 
           if (areaResponse.ok) {
             const areaResult = await areaResponse.json();
             const areaRanges = areaResult.data?.areas || [];
-            
+
             // Sort by minValue
             const sortedAreaRanges = [...areaRanges].sort((a, b) => {
               if (a.minValue === 0 && b.minValue !== 0) return -1;
@@ -303,9 +451,11 @@ export default function SearchSection({
     if (categories.length === 0) return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.category) {
-      const matchingCategory = categories.find(c => c.slug === urlParams.category);
+      const matchingCategory = categories.find(
+        (c) => c.slug === urlParams.category
+      );
       if (matchingCategory) {
         console.log("Found category from URL:", matchingCategory.name);
         setSelectedPropertyType(urlParams.category);
@@ -322,10 +472,10 @@ export default function SearchSection({
     if (priceRanges.length === 0) return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.price) {
-      const matchingPrice = priceRanges.find(p => 
-        p.slug === urlParams.price || p.id === urlParams.price
+      const matchingPrice = priceRanges.find(
+        (p) => p.slug === urlParams.price || p.id === urlParams.price
       );
       if (matchingPrice) {
         console.log("Found price from URL:", matchingPrice.name);
@@ -344,10 +494,10 @@ export default function SearchSection({
     if (areaRanges.length === 0) return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.area) {
-      const matchingArea = areaRanges.find(a => 
-        a.slug === urlParams.area || a.id === urlParams.area
+      const matchingArea = areaRanges.find(
+        (a) => a.slug === urlParams.area || a.id === urlParams.area
       );
       if (matchingArea) {
         console.log("Found area from URL:", matchingArea.name);
@@ -365,9 +515,11 @@ export default function SearchSection({
     if (searchType !== "project") return;
 
     const urlParams = getUrlParams();
-    
+
     if (urlParams.status) {
-      const matchingStatus = projectStatuses.find(s => s.id === urlParams.status);
+      const matchingStatus = projectStatuses.find(
+        (s) => s.id === urlParams.status
+      );
       if (matchingStatus) {
         console.log("Found status from URL:", matchingStatus.name);
         setSelectedProjectStatus(urlParams.status);
@@ -383,22 +535,40 @@ export default function SearchSection({
   // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+      if (
+        cityDropdownRef.current &&
+        !cityDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowCityDropdown(false);
       }
-      if (wardDropdownRef.current && !wardDropdownRef.current.contains(event.target as Node)) {
+      if (
+        wardDropdownRef.current &&
+        !wardDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowWardDropdown(false);
       }
-      if (propertyDropdownRef.current && !propertyDropdownRef.current.contains(event.target as Node)) {
+      if (
+        propertyDropdownRef.current &&
+        !propertyDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowPropertyDropdown(false);
       }
-      if (priceDropdownRef.current && !priceDropdownRef.current.contains(event.target as Node)) {
+      if (
+        priceDropdownRef.current &&
+        !priceDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowPriceDropdown(false);
       }
-      if (areaDropdownRef.current && !areaDropdownRef.current.contains(event.target as Node)) {
+      if (
+        areaDropdownRef.current &&
+        !areaDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowAreaDropdown(false);
       }
-      if (projectStatusDropdownRef.current && !projectStatusDropdownRef.current.contains(event.target as Node)) {
+      if (
+        projectStatusDropdownRef.current &&
+        !projectStatusDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowProjectStatusDropdown(false);
       }
     };
@@ -411,13 +581,13 @@ export default function SearchSection({
   const handleTabChange = (newType: "buy" | "rent" | "project") => {
     console.log("Tab changed to:", newType);
     setSearchType(newType);
-    
+
     // Reset selections when changing tabs
     setSelectedPropertyType("");
     setSelectedPrice("");
     setSelectedArea("");
     setSelectedProjectStatus("");
-    
+
     // Close all dropdowns
     setShowPropertyDropdown(false);
     setShowPriceDropdown(false);
@@ -463,7 +633,7 @@ export default function SearchSection({
 
     // Add province
     if (selectedCity) {
-      const selectedProvince = provinces.find(p => p.code === selectedCity);
+      const selectedProvince = provinces.find((p) => p.code === selectedCity);
       if (selectedProvince?.slug) {
         queryParams.append("province", selectedProvince.slug);
       }
@@ -471,7 +641,7 @@ export default function SearchSection({
 
     // Add ward
     if (selectedWard) {
-      const selectedWardObj = wardsList.find(w => w.code === selectedWard);
+      const selectedWardObj = wardsList.find((w) => w.code === selectedWard);
       if (selectedWardObj?.slug) {
         queryParams.append("ward", selectedWardObj.slug);
       }
@@ -499,20 +669,22 @@ export default function SearchSection({
     }
 
     // Navigate to search results
-    const searchUrl = `${baseUrl}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const searchUrl = `${baseUrl}${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
     console.log("Navigating to:", searchUrl);
     router.push(searchUrl);
   };
 
   // Filtered data for search
   const filteredProvinces = citySearch
-    ? provinces.filter(province =>
+    ? provinces.filter((province) =>
         province.name.toLowerCase().includes(citySearch.toLowerCase())
       )
     : provinces;
 
   const filteredWards = wardSearch
-    ? wardsList.filter(ward =>
+    ? wardsList.filter((ward) =>
         ward.name.toLowerCase().includes(wardSearch.toLowerCase())
       )
     : wardsList;
@@ -567,13 +739,20 @@ export default function SearchSection({
                 className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
               >
                 <i className="fas fa-map-marker-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span className={`${selectedCity ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                <span
+                  className={`${
+                    selectedCity ? "text-gray-900 font-medium" : "text-gray-500"
+                  } flex-1 text-left`}
+                >
                   {selectedCity
-                    ? provinces.find(p => p.code === selectedCity)?.name
-                    : "Toàn quốc"
-                  }
+                    ? provinces.find((p) => p.code === selectedCity)?.name
+                    : "Toàn quốc"}
                 </span>
-                <i className={`fas fa-chevron-${showCityDropdown ? "up" : "down"} text-gray-400 group-hover:text-blue-500`}></i>
+                <i
+                  className={`fas fa-chevron-${
+                    showCityDropdown ? "up" : "down"
+                  } text-gray-400 group-hover:text-blue-500`}
+                ></i>
               </button>
 
               {showCityDropdown && (
@@ -611,17 +790,30 @@ export default function SearchSection({
                   }
                 }}
                 className={`w-full p-3.5 border border-gray-300 rounded-xl flex items-center ${
-                  selectedCity ? "bg-white hover:border-blue-400" : "bg-gray-50 cursor-not-allowed"
+                  selectedCity
+                    ? "bg-white hover:border-blue-400"
+                    : "bg-gray-50 cursor-not-allowed"
                 } transition-all duration-200 group`}
               >
-                <i className={`fas fa-map-marker-alt ${selectedCity ? "text-blue-500" : "text-gray-400"} mr-3 text-lg`}></i>
-                <span className={`${selectedWard ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                <i
+                  className={`fas fa-map-marker-alt ${
+                    selectedCity ? "text-blue-500" : "text-gray-400"
+                  } mr-3 text-lg`}
+                ></i>
+                <span
+                  className={`${
+                    selectedWard ? "text-gray-900 font-medium" : "text-gray-500"
+                  } flex-1 text-left`}
+                >
                   {selectedWard
-                    ? wardsList.find(w => w.code === selectedWard)?.name
-                    : "Phường/Xã"
-                  }
+                    ? wardsList.find((w) => w.code === selectedWard)?.name
+                    : "Phường/Xã"}
                 </span>
-                <i className={`fas fa-chevron-${showWardDropdown ? "up" : "down"} ${selectedCity ? "text-gray-400" : "text-gray-300"}`}></i>
+                <i
+                  className={`fas fa-chevron-${
+                    showWardDropdown ? "up" : "down"
+                  } ${selectedCity ? "text-gray-400" : "text-gray-300"}`}
+                ></i>
               </button>
 
               {showWardDropdown && selectedCity && (
@@ -660,13 +852,23 @@ export default function SearchSection({
                 className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
               >
                 <i className="fas fa-home text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span className={`${selectedPropertyType ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                <span
+                  className={`${
+                    selectedPropertyType
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-500"
+                  } flex-1 text-left`}
+                >
                   {selectedPropertyType
-                    ? categories.find(c => c.slug === selectedPropertyType)?.name || "Loại BĐS"
-                    : "Loại BĐS"
-                  }
+                    ? categories.find((c) => c.slug === selectedPropertyType)
+                        ?.name || "Loại BĐS"
+                    : "Loại BĐS"}
                 </span>
-                <i className={`fas fa-chevron-${showPropertyDropdown ? "up" : "down"} text-gray-400 group-hover:text-blue-500`}></i>
+                <i
+                  className={`fas fa-chevron-${
+                    showPropertyDropdown ? "up" : "down"
+                  } text-gray-400 group-hover:text-blue-500`}
+                ></i>
               </button>
 
               {showPropertyDropdown && (
@@ -696,20 +898,34 @@ export default function SearchSection({
                 className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
               >
                 <i className="fas fa-tag text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span className={`${selectedPrice ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                <span
+                  className={`${
+                    selectedPrice
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-500"
+                  } flex-1 text-left`}
+                >
                   {selectedPrice
-                    ? priceRanges.find(p => p.slug === selectedPrice || p.id === selectedPrice)?.name || "Mức giá"
-                    : "Mức giá"
-                  }
+                    ? priceRanges.find(
+                        (p) =>
+                          p.slug === selectedPrice || p.id === selectedPrice
+                      )?.name || "Mức giá"
+                    : "Mức giá"}
                 </span>
-                <i className={`fas fa-chevron-${showPriceDropdown ? "up" : "down"} text-gray-400 group-hover:text-blue-500`}></i>
+                <i
+                  className={`fas fa-chevron-${
+                    showPriceDropdown ? "up" : "down"
+                  } text-gray-400 group-hover:text-blue-500`}
+                ></i>
               </button>
 
               {showPriceDropdown && (
                 <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
                   <div className="max-h-60 overflow-y-auto">
                     {priceRanges.length === 0 ? (
-                      <div className="px-4 py-2 text-gray-500 text-center">Đang tải...</div>
+                      <div className="px-4 py-2 text-gray-500 text-center">
+                        Đang tải...
+                      </div>
                     ) : (
                       priceRanges.map((price) => (
                         <button
@@ -730,22 +946,42 @@ export default function SearchSection({
             </div>
 
             {/* Area or Project Status */}
-            <div className="relative" ref={searchType === "project" ? projectStatusDropdownRef : areaDropdownRef}>
+            <div
+              className="relative"
+              ref={
+                searchType === "project"
+                  ? projectStatusDropdownRef
+                  : areaDropdownRef
+              }
+            >
               {searchType === "project" ? (
                 // Project Status
                 <>
                   <button
-                    onClick={() => setShowProjectStatusDropdown(!showProjectStatusDropdown)}
+                    onClick={() =>
+                      setShowProjectStatusDropdown(!showProjectStatusDropdown)
+                    }
                     className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
                   >
                     <i className="fas fa-calendar-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                    <span className={`${selectedProjectStatus ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                    <span
+                      className={`${
+                        selectedProjectStatus
+                          ? "text-gray-900 font-medium"
+                          : "text-gray-500"
+                      } flex-1 text-left`}
+                    >
                       {selectedProjectStatus
-                        ? projectStatuses.find(s => s.id === selectedProjectStatus)?.name || "Trạng thái"
-                        : "Trạng thái"
-                      }
+                        ? projectStatuses.find(
+                            (s) => s.id === selectedProjectStatus
+                          )?.name || "Trạng thái"
+                        : "Trạng thái"}
                     </span>
-                    <i className={`fas fa-chevron-${showProjectStatusDropdown ? "up" : "down"} text-gray-400 group-hover:text-blue-500`}></i>
+                    <i
+                      className={`fas fa-chevron-${
+                        showProjectStatusDropdown ? "up" : "down"
+                      } text-gray-400 group-hover:text-blue-500`}
+                    ></i>
                   </button>
 
                   {showProjectStatusDropdown && (
@@ -775,20 +1011,34 @@ export default function SearchSection({
                     className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
                   >
                     <i className="fas fa-vector-square text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                    <span className={`${selectedArea ? "text-gray-900 font-medium" : "text-gray-500"} flex-1 text-left`}>
+                    <span
+                      className={`${
+                        selectedArea
+                          ? "text-gray-900 font-medium"
+                          : "text-gray-500"
+                      } flex-1 text-left`}
+                    >
                       {selectedArea
-                        ? areaRanges.find(a => a.slug === selectedArea || a.id === selectedArea)?.name || "Diện tích"
-                        : "Diện tích"
-                      }
+                        ? areaRanges.find(
+                            (a) =>
+                              a.slug === selectedArea || a.id === selectedArea
+                          )?.name || "Diện tích"
+                        : "Diện tích"}
                     </span>
-                    <i className={`fas fa-chevron-${showAreaDropdown ? "up" : "down"} text-gray-400 group-hover:text-blue-500`}></i>
+                    <i
+                      className={`fas fa-chevron-${
+                        showAreaDropdown ? "up" : "down"
+                      } text-gray-400 group-hover:text-blue-500`}
+                    ></i>
                   </button>
 
                   {showAreaDropdown && (
                     <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
                       <div className="max-h-60 overflow-y-auto">
                         {areaRanges.length === 0 ? (
-                          <div className="px-4 py-2 text-gray-500 text-center">Đang tải...</div>
+                          <div className="px-4 py-2 text-gray-500 text-center">
+                            Đang tải...
+                          </div>
                         ) : (
                           areaRanges.map((area) => (
                             <button

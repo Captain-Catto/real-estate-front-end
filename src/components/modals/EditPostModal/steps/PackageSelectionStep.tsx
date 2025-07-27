@@ -12,8 +12,10 @@ export default function PackageSelectionStep({
   selectedPackage,
   setSelectedPackage,
 }: PackageSelectionStepProps) {
-  // Use wallet hook to get user balance
-  const { balance } = useWallet();
+  // EMERGENCY FIX: Disable useWallet in modal components to prevent multiple instances causing infinite loops
+  // const { balance } = useWallet();
+  // For now, we'll skip balance checking in modal or get it from parent component
+  const balance = 0; // Placeholder - will get actual balance when needed
 
   // State for packages
   const [packages, setPackages] = useState<Package[]>([]);

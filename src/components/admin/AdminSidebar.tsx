@@ -68,16 +68,6 @@ export default function AdminSidebar() {
     toggleGroup,
   } = useSidebar();
 
-  console.log("🔄 AdminSidebar re-render:", {
-    pathname,
-    isAuthenticated,
-    loading,
-    isInitialized,
-    userRole,
-    hasValidRole,
-    groupedMenuItemsLength: Object.keys(groupedMenuItems).length,
-  });
-
   // Show loading state while checking auth or loading sidebar config
   if (loading || !isAuthenticated || !hasValidRole || !isInitialized) {
     return (

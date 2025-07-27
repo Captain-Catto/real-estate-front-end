@@ -47,7 +47,9 @@ export const fetchFavoritesAsync = createAsyncThunk(
           title: fav.post.title,
           price: fav.post.price,
           location:
-            fav.post.location.district + ", " + fav.post.location.province,
+            (fav.post.location.ward || "Không xác định") +
+            ", " +
+            (fav.post.location.province || "Không xác định"),
           image: fav.post.images[0] || "/placeholder.jpg",
           slug: fav.post.slug || fav.post._id,
           area: fav.post.area + " m²",
@@ -61,8 +63,10 @@ export const fetchFavoritesAsync = createAsyncThunk(
         }));
       }
       return rejectWithValue("Failed to fetch favorites");
-    } catch (error: any) {
-      return rejectWithValue(error.message || "An error occurred");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "An error occurred";
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -168,26 +172,23 @@ const favoritesSlice = createSlice({
 
         // Check if the item already exists
         const exists = state.items.some(
-          (item) => item.id === action.payload.post._id
+          (item) => item.id === action.payload.favorite.id
         );
         if (!exists) {
           // Convert API response to FavoriteItem format
           const newFavorite: FavoriteItem = {
-            id: action.payload.post._id,
+            id: action.payload.favorite.id,
             type: "property",
-            title: action.payload.post.title,
-            price: action.payload.post.price,
-            location:
-              action.payload.post.location.district +
-              ", " +
-              action.payload.post.location.province,
-            image: action.payload.post.images[0] || "/placeholder.jpg",
-            slug: action.payload.post.slug || action.payload.post._id,
-            area: action.payload.post.area + " m²",
-            bedrooms: action.payload.post.bedrooms,
-            bathrooms: action.payload.post.bathrooms,
-            propertyType: action.payload.post.category,
-            addedAt: action.payload.createdAt,
+            title: action.payload.favorite.title,
+            price: action.payload.favorite.price,
+            location: action.payload.favorite.location,
+            image: action.payload.favorite.image,
+            slug: action.payload.favorite.slug,
+            area: action.payload.favorite.area,
+            bedrooms: action.payload.favorite.bedrooms,
+            bathrooms: action.payload.favorite.bathrooms,
+            propertyType: action.payload.favorite.propertyType,
+            addedAt: new Date().toISOString(), // Use current date if not available
           };
           state.items.push(newFavorite);
         }

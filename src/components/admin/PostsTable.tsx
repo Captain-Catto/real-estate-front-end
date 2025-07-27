@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -6,19 +6,18 @@ import {
   CheckIcon,
   XMarkIcon,
   TrashIcon,
-  TrophyIcon,
-  StarIcon,
-  DocumentIcon,
 } from "@heroicons/react/24/outline";
 import { Post } from "@/services/postsService";
 import { locationService, LocationNames } from "@/services/locationService";
+import { ProjectService } from "@/services/projectService";
+import { categoryService } from "@/services/categoryService";
 
 interface PostsTableProps {
   posts: Post[];
   loading: boolean;
   onApprove: (postId: string) => void;
   onReject: (postId: string, reason: string) => void;
-  onDelete: (postId: string) => void;
+  onDelete: (postId: string, currentStatus?: string) => void;
 }
 
 export default function PostsTable({
@@ -33,6 +32,13 @@ export default function PostsTable({
   const [selectedPostId, setSelectedPostId] = useState("");
   const [locationNames, setLocationNames] = useState<
     Record<string, LocationNames>
+  >({});
+  const [projectNames, setProjectNames] = useState<Record<string, string>>({});
+  const [categoryNames, setCategoryNames] = useState<Record<string, string>>(
+    {}
+  );
+  const [categoryData, setCategoryData] = useState<
+    Record<string, { name: string; type: string }>
   >({});
 
   // Fetch location names for all posts
@@ -50,9 +56,16 @@ export default function PostsTable({
                 post.location.ward
               );
               locationMap[key] = names;
-            } catch (error) {
-              console.error("Error fetching location names:", error);
-              locationMap[key] = {};
+            } catch {
+              console.warn("Could not fetch location names for:", {
+                province: post.location.province,
+                ward: post.location.ward,
+              });
+              // Set fallback names
+              locationMap[key] = {
+                provinceName: post.location.province,
+                wardName: post.location.ward,
+              };
             }
           }
         }
@@ -61,21 +74,169 @@ export default function PostsTable({
       setLocationNames(locationMap);
     };
 
+    const fetchProjectNames = async () => {
+      const projectMap: Record<string, string> = {};
+
+      for (const post of posts) {
+        // Check both post.project and post.location?.project
+        const projectId = post.project || post.location?.project;
+
+        if (projectId) {
+          // Convert projectId to string if it's an object
+          let projectIdString: string;
+
+          if (typeof projectId === "string") {
+            projectIdString = projectId;
+          } else if (typeof projectId === "object" && projectId !== null) {
+            // Handle case where projectId might be an object with _id property
+            const projectObj = projectId as { _id?: string; id?: string };
+            projectIdString =
+              projectObj._id || projectObj.id || JSON.stringify(projectId);
+          } else {
+            projectIdString = String(projectId);
+          }
+
+          if (!projectMap[projectIdString]) {
+            // Validate project ID format (MongoDB ObjectID should be 24 hex characters)
+            const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(projectIdString);
+
+            if (!isValidObjectId) {
+              projectMap[projectIdString] = "Dự án (ID không hợp lệ)";
+              continue;
+            }
+
+            try {
+              const project = await ProjectService.getProjectById(
+                projectIdString
+              );
+              if (project) {
+                projectMap[projectIdString] = project.name;
+                console.log(
+                  `Found project: ${projectIdString} -> ${project.name}`
+                );
+              } else {
+                console.warn("Project not found:", projectIdString);
+                projectMap[projectIdString] = "Dự án (không tìm thấy)";
+              }
+            } catch (error) {
+              console.warn(
+                "Could not fetch project name for:",
+                projectIdString,
+                error
+              );
+              // Set fallback name
+              projectMap[projectIdString] = "Dự án (lỗi)";
+            }
+          }
+        }
+      }
+
+      setProjectNames(projectMap);
+    };
+
+    const fetchCategoryNames = async () => {
+      const categoryMap: Record<string, string> = {};
+      const categoryDataMap: Record<string, { name: string; type: string }> =
+        {};
+
+      for (const post of posts) {
+        // Debug: Check post.category structure
+        console.log(`🧪 Post category debug:`, {
+          postId: post._id,
+          category: post.category,
+          categoryType: typeof post.category,
+          isString: typeof post.category === "string",
+          isObject: typeof post.category === "object",
+          categoryStringified: JSON.stringify(post.category),
+        });
+
+        // Extract category ID - handle both string and object cases
+        let categoryId: string | null = null;
+        if (typeof post.category === "string") {
+          categoryId = post.category;
+          console.log(`✅ Category is string: ${categoryId}`);
+        } else if (
+          post.category &&
+          typeof post.category === "object" &&
+          "_id" in post.category
+        ) {
+          categoryId = (post.category as { _id: string })._id;
+          console.log(`✅ Category is object, extracted _id: ${categoryId}`);
+        } else if (
+          post.category &&
+          typeof post.category === "object" &&
+          "id" in post.category
+        ) {
+          categoryId = (post.category as { id: string }).id;
+          console.log(`✅ Category is object, extracted id: ${categoryId}`);
+        } else {
+          console.warn(`❌ Unknown category format:`, post.category);
+        }
+
+        if (categoryId && !categoryMap[categoryId]) {
+          try {
+            console.log(`🔍 Fetching category for ObjectId: ${categoryId}`);
+
+            // Check if categoryService has getCategoryById method
+            console.log(
+              `🔧 categoryService methods:`,
+              Object.getOwnPropertyNames(Object.getPrototypeOf(categoryService))
+            );
+
+            const category = await categoryService.getCategoryById(categoryId);
+            console.log(`📝 Category API response:`, category);
+
+            if (category) {
+              categoryMap[categoryId] = category.name;
+              // Convert isProject boolean to type string
+              const categoryType = category.isProject ? "project" : "property";
+              categoryDataMap[categoryId] = {
+                name: category.name,
+                type: categoryType,
+              };
+              console.log(
+                `✅ Found category: ${categoryId} -> ${category.name} (${categoryType})`
+              );
+            } else {
+              console.warn("❌ Category not found:", categoryId);
+              categoryMap[categoryId] = "Danh mục (không tìm thấy)";
+              categoryDataMap[categoryId] = {
+                name: "Danh mục (không tìm thấy)",
+                type: "property",
+              };
+            }
+          } catch (error) {
+            console.error(`❌ Error fetching category ${categoryId}:`, error);
+            categoryMap[categoryId] = "Danh mục (lỗi)";
+            categoryDataMap[categoryId] = {
+              name: "Danh mục (lỗi)",
+              type: "property",
+            };
+          }
+        }
+      }
+
+      setCategoryNames(categoryMap);
+      setCategoryData(categoryDataMap);
+    };
+
     if (posts.length > 0) {
       fetchLocationNames();
+      fetchProjectNames();
+      fetchCategoryNames();
     }
   }, [posts]);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = useCallback((price: number) => {
     if (price >= 1000000000) {
       return `${(price / 1000000000).toFixed(1)} tỷ`;
     } else if (price >= 1000000) {
       return `${(price / 1000000).toFixed(1)} tr`;
     }
     return price.toLocaleString();
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -83,9 +244,9 @@ export default function PostsTable({
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = useCallback((status: string) => {
     switch (status) {
       case "active":
         return "bg-green-100 text-green-800";
@@ -98,9 +259,9 @@ export default function PostsTable({
       default:
         return "bg-gray-100 text-gray-800";
     }
-  };
+  }, []);
 
-  const getStatusText = (status: string) => {
+  const getStatusText = useCallback((status: string) => {
     switch (status) {
       case "active":
         return "Đang hiển thị";
@@ -110,57 +271,159 @@ export default function PostsTable({
         return "Bị từ chối";
       case "expired":
         return "Hết hạn";
+      case "deleted":
+        return "Đã xóa mềm";
       default:
         return "Không xác định";
     }
-  };
+  }, []);
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
+  const getPackageBadge = useCallback((packageType: string | undefined) => {
+    switch (packageType) {
       case "vip":
-        return <TrophyIcon className="w-4 h-4 text-purple-600" />;
+        return (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 min-w-[60px] justify-center">
+            VIP
+          </span>
+        );
       case "premium":
-        return <StarIcon className="w-4 h-4 text-orange-600" />;
+        return (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800 min-w-[60px] justify-center">
+            Premium
+          </span>
+        );
+      case "basic":
+        return (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-600 min-w-[60px] justify-center">
+            Cơ bản
+          </span>
+        );
+      case "free":
+        return (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-600 min-w-[60px] justify-center">
+            Miễn phí
+          </span>
+        );
       default:
-        return <DocumentIcon className="w-4 h-4 text-gray-600" />;
+        return (
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600 min-w-[60px] justify-center">
+            Không xác định
+          </span>
+        );
     }
-  };
+  }, []);
 
-  const getTypeName = (type: string) => {
+  const getTypeName = useCallback((type: string) => {
     return type === "ban" ? "Bán" : "Cho thuê";
-  };
+  }, []);
 
-  const getTypeBadge = (type: string) => {
+  const getTypeBadge = useCallback((type: string) => {
     return type === "ban"
       ? "bg-blue-100 text-blue-800"
       : "bg-purple-100 text-purple-800";
-  };
+  }, []);
 
-  const getLocationDisplayName = (post: Post) => {
-    if (!post.location?.province || !post.location?.ward) {
+  const getProjectBadge = useCallback(
+    (post: Post) => {
+      // Check both post.project and post.location?.project
+      const projectId = post.project || post.location?.project;
+
+      if (!projectId) return null;
+
+      // Ensure projectId is a string, not an object
+      let projectIdString: string;
+
+      if (typeof projectId === "string") {
+        projectIdString = projectId;
+      } else if (typeof projectId === "object" && projectId !== null) {
+        // Handle case where projectId might be an object with _id property
+        const projectObj = projectId as { _id?: string; id?: string };
+        projectIdString =
+          projectObj._id || projectObj.id || JSON.stringify(projectId);
+      } else {
+        projectIdString = String(projectId);
+      }
+
+      const projectName = projectNames[projectIdString] || "Dự án";
+
+      return (
+        <Link
+          href={`/admin/quan-ly-du-an/${projectIdString}`}
+          className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer min-w-[60px] justify-center"
+          title={`Dự án: ${projectName} - Click để xem chi tiết`}
+        >
+          <span className="truncate max-w-16">{projectName}</span>
+        </Link>
+      );
+    },
+    [projectNames]
+  );
+
+  const getCategoryBadge = useCallback(
+    (category: string | { _id: string; name: string } | undefined) => {
+      if (!category) return null;
+
+      // Extract category ID and name
+      let categoryId: string;
+      let categoryName: string;
+
+      if (typeof category === "string") {
+        categoryId = category;
+        categoryName = categoryNames[categoryId] || "Danh mục";
+      } else {
+        categoryId = category._id;
+        categoryName = category.name || categoryNames[categoryId] || "Danh mục";
+      }
+
+      const categoryInfo = categoryData[categoryId];
+      const categoryType = categoryInfo?.type || "property";
+
+      // Different colors for different types
+      const badgeStyle =
+        categoryType === "project"
+          ? "bg-purple-100 text-purple-800"
+          : "bg-indigo-100 text-indigo-800";
+
+      return (
+        <span
+          className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${badgeStyle}`}
+          title={`Danh mục: ${categoryName}`}
+        >
+          <span className="truncate max-w-16">{categoryName}</span>
+        </span>
+      );
+    },
+    [categoryNames, categoryData]
+  );
+
+  const getLocationDisplayName = useCallback(
+    (post: Post) => {
+      if (!post.location?.province || !post.location?.ward) {
+        return {
+          street: post.location?.street || "",
+          ward: post.location?.ward || "N/A",
+          province: post.location?.province || "N/A",
+        };
+      }
+
+      const key = `${post.location.province}-${post.location.ward}`;
+      const names = locationNames[key];
+
       return {
         street: post.location?.street || "",
-        ward: post.location?.ward || "N/A",
-        province: post.location?.province || "N/A",
+        ward: names?.wardName || post.location.ward,
+        province: names?.provinceName || post.location.province,
       };
-    }
+    },
+    [locationNames]
+  );
 
-    const key = `${post.location.province}-${post.location.ward}`;
-    const names = locationNames[key];
-
-    return {
-      street: post.location?.street || "",
-      ward: names?.wardName || post.location.ward,
-      province: names?.provinceName || post.location.province,
-    };
-  };
-
-  const handleReject = (postId: string) => {
+  const handleReject = useCallback((postId: string) => {
     setSelectedPostId(postId);
     setShowRejectModal(true);
-  };
+  }, []);
 
-  const confirmReject = () => {
+  const confirmReject = useCallback(() => {
     if (rejectReason.trim()) {
       onReject(selectedPostId, rejectReason);
       setShowRejectModal(false);
@@ -169,28 +432,102 @@ export default function PostsTable({
     } else {
       alert("Vui lòng nhập lý do từ chối!");
     }
-  };
+  }, [rejectReason, selectedPostId, onReject]);
 
-  const handleViewClick = (post: Post) => {
+  const handleViewClick = useCallback((post: Post) => {
     // chuyển hướng đến trang chi tiết
     window.location.href = `/admin/quan-ly-tin-dang/${post._id}`;
-  };
+  }, []);
+
+  // Memoize table header to prevent unnecessary re-renders
+  const tableHeader = useMemo(
+    () => (
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="w-96 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Tin đăng
+          </th>
+          <th className="w-64 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Thông tin
+          </th>
+          <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Địa chỉ
+          </th>
+          <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Tác giả
+          </th>
+          <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Trạng thái
+          </th>
+          <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Ngày tạo
+          </th>
+          <th className="w-32 px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Thao tác
+          </th>
+        </tr>
+      </thead>
+    ),
+    []
+  );
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, index) => (
-              <div key={index} className="flex space-x-4">
-                <div className="w-16 h-16 bg-gray-200 rounded"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            {tableHeader}
+            <tbody className="bg-white divide-y divide-gray-200">
+              {[...Array(10)].map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td className="px-3 py-3">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-lg"></div>
+                      <div className="ml-3 flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-5 w-12 bg-gray-200 rounded-full"></div>
+                          <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+                          <div className="h-5 w-20 bg-gray-200 rounded-full"></div>
+                          <div className="h-5 w-14 bg-gray-200 rounded-full"></div>
+                        </div>
+                        <div className="h-4 w-48 bg-gray-200 rounded"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="space-y-2">
+                      <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                      <div className="h-3 w-16 bg-gray-200 rounded"></div>
+                      <div className="h-3 w-20 bg-gray-200 rounded"></div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="space-y-1">
+                      <div className="h-3 w-32 bg-gray-200 rounded"></div>
+                      <div className="h-3 w-28 bg-gray-200 rounded"></div>
+                      <div className="h-3 w-24 bg-gray-200 rounded"></div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="h-3 w-20 bg-gray-200 rounded"></div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center justify-end space-x-2">
+                      <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                      <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -201,31 +538,7 @@ export default function PostsTable({
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="w-80 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tin đăng
-                </th>
-                <th className="w-64 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thông tin
-                </th>
-                <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Địa chỉ
-                </th>
-                <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tác giả
-                </th>
-                <th className="w-32 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ngày tạo
-                </th>
-                <th className="w-32 px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
+            {tableHeader}
             <tbody className="bg-white divide-y divide-gray-200">
               {posts.map((post) => (
                 <tr key={post._id} className="hover:bg-gray-50">
@@ -249,8 +562,20 @@ export default function PostsTable({
                         )}
                       </div>
                       <div className="ml-3">
-                        <div className="flex items-center gap-1">
-                          {getPriorityIcon(post.priority || "normal")}
+                        <div className="flex items-center gap-1 flex-wrap mb-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getTypeBadge(
+                              post.type
+                            )}`}
+                            title={getTypeName(post.type)}
+                          >
+                            {getTypeName(post.type)}
+                          </span>
+                          {getCategoryBadge(post.category)}
+                          {getPackageBadge(post.package)}
+                          {getProjectBadge(post)}
+                        </div>
+                        <div className="mt-1">
                           <Link
                             href={`/admin/quan-ly-tin-dang/${post._id}`}
                             className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate max-w-xs cursor-pointer transition-colors"
@@ -269,13 +594,6 @@ export default function PostsTable({
                           {formatPrice(post.price)}{" "}
                           {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
                         </div>
-                        <span
-                          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getTypeBadge(
-                            post.type
-                          )}`}
-                        >
-                          {getTypeName(post.type)}
-                        </span>
                       </div>
                       <div className="text-xs text-gray-500 truncate">
                         {post.area}m²
@@ -328,23 +646,18 @@ export default function PostsTable({
                   </td>
                   <td className="px-3 py-3">
                     <div className="text-sm text-gray-900">
-                      <div
-                        className="font-medium truncate"
+                      <Link
+                        href={`/admin/quan-ly-nguoi-dung/${post.author._id}`}
+                        className="font-medium truncate text-blue-600 hover:text-blue-800 cursor-pointer transition-colors"
                         title={post.author.username}
                       >
                         {post.author.username}
-                      </div>
-                      <div
-                        className="text-xs text-gray-500 truncate"
-                        title={post.author.email}
-                      >
-                        {post.author.email}
-                      </div>
+                      </Link>
                     </div>
                   </td>
                   <td className="px-3 py-3">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
+                      className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getStatusBadge(
                         post.status
                       )}`}
                     >
@@ -359,7 +672,7 @@ export default function PostsTable({
                       {/* View Button */}
                       <button
                         onClick={() => handleViewClick(post)}
-                        className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
                         title="Xem chi tiết"
                       >
                         <EyeIcon className="w-4 h-4" />
@@ -369,7 +682,7 @@ export default function PostsTable({
                       {post.status === "pending" && (
                         <button
                           onClick={() => onApprove(post._id)}
-                          className="text-green-600 hover:text-green-900"
+                          className="text-green-600 hover:text-green-900 transition-colors"
                           title="Duyệt tin"
                         >
                           <CheckIcon className="w-4 h-4" />
@@ -380,18 +693,26 @@ export default function PostsTable({
                       {post.status === "pending" && (
                         <button
                           onClick={() => handleReject(post._id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 transition-colors"
                           title="Từ chối"
                         >
                           <XMarkIcon className="w-4 h-4" />
                         </button>
                       )}
 
-                      {/* Delete Button */}
+                      {/* Delete Button - Soft delete for non-deleted posts, hard delete for deleted posts */}
                       <button
-                        onClick={() => onDelete(post._id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Xóa"
+                        onClick={() => onDelete(post._id, post.status)}
+                        className={`transition-colors ${
+                          post.status === "deleted"
+                            ? "text-red-600 hover:text-red-900"
+                            : "text-orange-600 hover:text-orange-900"
+                        }`}
+                        title={
+                          post.status === "deleted"
+                            ? "Xóa vĩnh viễn"
+                            : "Chuyển vào thùng rác"
+                        }
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -418,7 +739,7 @@ export default function PostsTable({
 
       {/* Reject Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Từ chối tin đăng

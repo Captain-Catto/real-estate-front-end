@@ -4,36 +4,11 @@ import {
   UpdateProjectRequest,
   ProjectListItem,
 } from "@/types/project";
+import { fetchWithAuth } from "./authService";
 
 // API Base URL
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-
-// Helper function to get auth token
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken");
-  }
-  return null;
-};
-
-// Helper function for authenticated requests
-const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  const token = getAuthToken();
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  if (token) {
-    (headers as Record<string, string>).Authorization = `Bearer ${token}`;
-  }
-
-  return fetch(url, {
-    ...options,
-    headers,
-  });
-};
 
 export const ProjectService = {
   // Get all projects with filters and pagination (public access)
@@ -141,8 +116,9 @@ export const ProjectService = {
   // Get all projects (for admin listing)
   getProjects: async (): Promise<ProjectListItem[]> => {
     try {
+      // Set a high limit to get all projects for admin management
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/projects/admin/list`
+        `${API_BASE_URL}/projects/admin/list?limit=1000`
       );
 
       if (!response.ok) {
@@ -383,24 +359,57 @@ export const ProjectService = {
   // Get simplified list of projects for dropdown selection
   getProjectsForSelection: async (
     provinceCode?: string,
-    wardCode?: string
+    wardCode?: string,
+    page?: number,
+    limit?: number,
+    search?: string,
+    includePagination?: boolean,
+    status?: string, // Add status parameter to control filtering
+    categoryId?: string // Add categoryId parameter to filter by project category
   ): Promise<
-    {
-      _id: string;
-      name: string;
-      address: string;
-      fullLocation: string;
-      location: {
-        provinceCode: string;
-        wardCode?: string;
-      };
-    }[]
+    | {
+        _id: string;
+        name: string;
+        address: string;
+        fullLocation: string;
+        location: {
+          provinceCode: string;
+          wardCode?: string;
+        };
+      }[]
+    | {
+        projects: {
+          _id: string;
+          name: string;
+          address: string;
+          fullLocation: string;
+          location: {
+            provinceCode: string;
+            wardCode?: string;
+          };
+        }[];
+        pagination: {
+          currentPage: number;
+          totalPages: number;
+          totalItems: number;
+          itemsPerPage: number;
+          hasMore: boolean;
+        };
+      }
   > => {
     try {
       const params = new URLSearchParams();
 
       if (provinceCode) params.append("provinceCode", provinceCode);
       if (wardCode) params.append("wardCode", wardCode);
+      if (page) params.append("page", page.toString());
+      if (limit) params.append("limit", limit.toString());
+      if (search) params.append("search", search);
+      if (includePagination) params.append("includePagination", "true");
+      if (status) params.append("status", status);
+      if (categoryId) params.append("categoryId", categoryId);
+      // Add parameter to get all projects regardless of status
+      else params.append("status", "all");
 
       const queryString = params.toString();
       const url = queryString
@@ -408,6 +417,7 @@ export const ProjectService = {
         : `${API_BASE_URL}/projects/for-selection`;
 
       console.log("🌐 Calling ProjectService API:", url);
+      console.log("📋 With status parameter:", status || "all");
 
       const response = await fetch(url);
 
@@ -419,15 +429,41 @@ export const ProjectService = {
 
       console.log("📦 ProjectService API Response:", result);
 
-      // Handle both array response and object response
+      // Handle both array response and object response with pagination
+      if (includePagination && result.success && result.data) {
+        console.log(
+          `✅ Found ${
+            result.data.projects?.length || 0
+          } projects with pagination`
+        );
+        return {
+          projects: result.data.projects || [],
+          pagination: result.data.pagination,
+        };
+      }
+
+      // For backward compatibility, return array
       const projects = Array.isArray(result)
         ? result
-        : result.data || result.projects || [];
+        : result.data?.projects || result.projects || [];
+
+      console.log(`✅ Found ${projects.length} projects (array format)`);
 
       return projects;
     } catch (error) {
       console.error("❌ Error fetching projects for selection:", error);
-      return [];
+      return includePagination
+        ? {
+            projects: [],
+            pagination: {
+              currentPage: 1,
+              totalPages: 0,
+              totalItems: 0,
+              itemsPerPage: 50,
+              hasMore: false,
+            },
+          }
+        : [];
     }
   },
 };

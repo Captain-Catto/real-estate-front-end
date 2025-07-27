@@ -27,7 +27,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
 }) => {
   const router = useRouter();
 
-  // Wallet hook with improved implementation
+  // Wallet hook with real-time balance updates
   const { formattedBalance, loading: walletLoading } = useWallet();
 
   // Wallet popup state
@@ -57,7 +57,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   };
 
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="md:pl-24 bg-white border-b border-gray-200">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: User Info */}

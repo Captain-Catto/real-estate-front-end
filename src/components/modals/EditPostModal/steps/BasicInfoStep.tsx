@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
 import { ProjectService } from "@/services/projectService";
@@ -28,6 +28,7 @@ interface Project {
     provinceCode: string;
     wardCode?: string;
   };
+  category?: { _id: string; name: string; isProject: boolean };
 }
 
 export default function BasicInfoStep({
@@ -37,6 +38,10 @@ export default function BasicInfoStep({
   wards,
   locationLoading,
 }: BasicInfoStepProps) {
+  console.log("🏠 BasicInfoStep formData:", formData);
+  console.log("🧭 House direction:", formData.houseDirection);
+  console.log("🌅 Balcony direction:", formData.balconyDirection);
+
   const [selectedProvince, setSelectedProvince] = useState(
     formData.location?.province || ""
   );
@@ -51,6 +56,7 @@ export default function BasicInfoStep({
   );
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const isInitialProjectLoad = useRef(true);
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -159,13 +165,16 @@ export default function BasicInfoStep({
           selectedWard, // Now using ward for project filtering if available
         });
 
-        setProjectsLoading(true);
+        // Only show loading on initial load, not on refetch
+        if (isInitialProjectLoad.current) {
+          setProjectsLoading(true);
+        }
+
         try {
           // Call API with location codes instead of names
           // Now only use province code since district is removed
           const projects = await ProjectService.getProjectsForSelection(
             selectedProvince,
-            undefined, // No district
             selectedWard || undefined // Only pass wardCode if one is selected
           );
 
@@ -175,6 +184,7 @@ export default function BasicInfoStep({
           );
 
           setAvailableProjects(projects);
+          isInitialProjectLoad.current = false; // Mark as no longer initial load
         } catch (error) {
           console.error("❌ Error loading projects:", error);
           setAvailableProjects([]);
@@ -187,6 +197,7 @@ export default function BasicInfoStep({
     } else {
       // Clear projects if no province selected
       setAvailableProjects([]);
+      isInitialProjectLoad.current = true; // Reset for next province selection
     }
   }, [
     selectedProvince,
@@ -201,16 +212,15 @@ export default function BasicInfoStep({
         setCategoriesLoading(true);
         // If project is selected, fetch project categories, otherwise fetch property categories
         const isProjectSelected = Boolean(selectedProject);
-        const result = await categoryService.getByProjectType(
-          isProjectSelected
-        );
+        const result = await categoryService.getCategories();
+        const filteredCategories = result
+          .filter(
+            (cat: Category) =>
+              cat.isProject === isProjectSelected && cat.isActive !== false
+          )
+          .sort((a: Category, b: Category) => (a.order || 0) - (b.order || 0));
 
-        // Filter only active categories and sort by order
-        const activeCategories = result
-          .filter((cat) => cat.isActive !== false)
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-        setCategories(activeCategories);
+        setCategories(filteredCategories);
       } catch (error) {
         console.error("Error fetching categories:", error);
         setCategories([]);
@@ -244,15 +254,18 @@ export default function BasicInfoStep({
 
   const handleWardChange = (wardCode: string) => {
     setSelectedWard(wardCode);
+    // Reset selected project when ward changes
+    setSelectedProject("");
     updateFormData({
       location: {
         ...formData.location,
         ward: wardCode,
+        project: "", // Clear the project when ward changes
       },
     });
 
     // Additional logging for debugging
-    console.log("Ward changed to:", wardCode);
+    console.log("Ward changed to:", wardCode, "- Project reset to empty");
     // The project list will be automatically updated due to the useEffect dependency on selectedWard
   };
 
@@ -275,7 +288,20 @@ export default function BasicInfoStep({
     // If a project is selected and it has a wardCode, automatically set the ward
     if (project && project.location?.wardCode) {
       setSelectedWard(project.location.wardCode);
+
+      // Auto-select category from project if available
+      let selectedCategory = formData.category;
+      if (project.category) {
+        // Use the project's category
+        selectedCategory = project.category._id;
+        console.log(
+          "Auto-selected category from project:",
+          project.category.name
+        );
+      }
+
       updateFormData({
+        category: selectedCategory,
         location: {
           ...formData.location,
           project: project._id,
@@ -286,16 +312,42 @@ export default function BasicInfoStep({
         "Project selected:",
         project.name,
         "- Ward auto-selected:",
-        project.location.wardCode
+        project.location.wardCode,
+        "- Category auto-selected:",
+        selectedCategory
+      );
+    } else if (project) {
+      // Auto-select category from project if available (no ward case)
+      let selectedCategory = formData.category;
+      if (project.category) {
+        selectedCategory = project.category._id;
+        console.log(
+          "Auto-selected category from project:",
+          project.category.name
+        );
+      }
+
+      updateFormData({
+        category: selectedCategory,
+        location: {
+          ...formData.location,
+          project: project._id || "",
+        },
+      });
+      console.log(
+        "Project selected:",
+        project.name,
+        "- Category auto-selected:",
+        selectedCategory
       );
     } else {
       updateFormData({
         location: {
           ...formData.location,
-          project: project?._id || "",
+          project: "",
         },
       });
-      console.log("Project selected:", project?.name || "None");
+      console.log("Project cleared");
     }
   };
 
@@ -494,16 +546,27 @@ export default function BasicInfoStep({
               className="block text-sm font-medium text-gray-700 mb-2"
             >
               Loại BĐS
+              {selectedProject && (
+                <span className="text-sm text-blue-600 ml-2">
+                  (Tự chọn từ dự án)
+                </span>
+              )}
             </label>
             <select
               id="category"
               value={formData.category}
               onChange={(e) => updateFormData({ category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              disabled={categoriesLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                selectedProject ? "bg-gray-100 cursor-not-allowed" : ""
+              }`}
+              disabled={categoriesLoading || !!selectedProject}
             >
               <option value="">
-                {categoriesLoading ? "Đang tải danh mục..." : "Chọn loại BĐS"}
+                {categoriesLoading
+                  ? "Đang tải danh mục..."
+                  : selectedProject
+                  ? "Đã chọn từ dự án"
+                  : "Chọn loại BĐS"}
               </option>
               {categories.map((category) => (
                 <option key={category._id} value={category.name}>
@@ -693,60 +756,42 @@ export default function BasicInfoStep({
               min={0}
             />
           </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Thông tin liên hệ
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label
-              htmlFor="contactName"
+              htmlFor="bedrooms"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Tên liên hệ
+              Số phòng ngủ
             </label>
             <input
-              id="contactName"
-              type="text"
-              value={formData.contactName}
-              onChange={(e) => updateFormData({ contactName: e.target.value })}
+              id="bedrooms"
+              type="number"
+              value={formData.bedrooms || 0}
+              onChange={(e) =>
+                updateFormData({ bedrooms: parseInt(e.target.value) || 0 })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập tên liên hệ"
+              placeholder="Số phòng ngủ"
+              min={0}
             />
           </div>
           <div>
             <label
-              htmlFor="email"
+              htmlFor="bathrooms"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Email
+              Số phòng tắm
             </label>
             <input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => updateFormData({ email: e.target.value })}
+              id="bathrooms"
+              type="number"
+              value={formData.bathrooms || 0}
+              onChange={(e) =>
+                updateFormData({ bathrooms: parseInt(e.target.value) || 0 })
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập email"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label
-              htmlFor="phone"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Số điện thoại
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => updateFormData({ phone: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Nhập số điện thoại"
+              placeholder="Số phòng tắm"
+              min={0}
             />
           </div>
         </div>

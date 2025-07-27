@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { newsService } from "@/services/newsService";
+import { newsService, NewsCategory } from "@/services/newsService";
 import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import {
   PencilIcon,
@@ -18,7 +18,7 @@ import { Pagination } from "@/components/common/Pagination";
 interface NewsItem {
   _id: string;
   title: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "chung";
+  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
   status: "draft" | "pending" | "published" | "rejected";
   author: { _id: string; username: string; email: string };
   views: number;
@@ -27,13 +27,6 @@ interface NewsItem {
   createdAt: string;
   updatedAt: string;
 }
-const categoryLabels = {
-  "mua-ban": "Mua bán",
-  "cho-thue": "Cho thuê",
-  "tai-chinh": "Tài chính",
-  "phong-thuy": "Phong thủy",
-  chung: "Chung",
-};
 const statusLabels = {
   draft: "Bản nháp",
   pending: "Chờ duyệt",
@@ -48,7 +41,8 @@ const statusColors = {
 };
 export default function NewsManagementPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,6 +51,37 @@ export default function NewsManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [categories, setCategories] = useState<NewsCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Authentication check
+  useEffect(() => {
+    if (isAuthenticated !== undefined) {
+      setAccessChecked(true);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch categories from API
+  const fetchCategories = useCallback(async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await newsService.getNewsCategories();
+      console.log("Fetched categories:", response);
+      if (response.success) {
+        setCategories(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, []);
+
+  // Create category labels object from API data
+  const categoryLabels = categories.reduce((acc, category) => {
+    acc[category.slug] = category.name;
+    return acc;
+  }, {} as Record<string, string>);
 
   const fetchNews = useCallback(async () => {
     try {
@@ -85,10 +110,11 @@ export default function NewsManagementPage() {
   }, [currentPage, searchTerm, selectedCategory, selectedStatus, itemsPerPage]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && accessChecked) {
       fetchNews();
+      fetchCategories();
     }
-  }, [isAuthenticated, fetchNews]);
+  }, [isAuthenticated, accessChecked, fetchNews, fetchCategories]);
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa tin tức "${title}"?`)) return;
     try {
@@ -122,16 +148,46 @@ export default function NewsManagementPage() {
       alert("Có lỗi xảy ra khi cập nhật trạng thái");
     }
   };
+
+  if (!accessChecked) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Vui lòng đăng nhập
-          </h1>
+          <div className="mb-4">
+            <svg
+              className="mx-auto h-12 w-12 text-red-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Chưa đăng nhập
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Vui lòng đăng nhập để truy cập trang quản lý tin tức.
+          </p>
           <button
             onClick={() => router.push("/dang-nhap")}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Đăng nhập
           </button>
@@ -139,29 +195,30 @@ export default function NewsManagementPage() {
       </div>
     );
   }
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100 animate-fade-in">
       <AdminSidebar />
       <div className="flex-1">
         <AdminHeader />
         <main className="p-6">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
-            <div className="mb-6">
+            <div className="mb-6 animate-fade-in">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">
                   Quản lý tin tức
                 </h1>
                 <button
                   onClick={() => router.push("/admin/quan-ly-tin-tuc/tao-moi")}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <PlusIcon className="w-5 h-5" /> Tạo tin tức mới
                 </button>
               </div>
             </div>
             {/* Filters */}
-            <div className="mb-6 bg-white p-4 rounded-lg shadow">
+            <div className="mb-6 bg-white p-4 rounded-lg shadow animate-fade-in">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Search */}
                 <div className="relative">
@@ -179,13 +236,18 @@ export default function NewsManagementPage() {
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={categoriesLoading}
                 >
                   <option value="">Tất cả danh mục</option>
-                  {Object.entries(categoryLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                  {categoriesLoading ? (
+                    <option disabled>Đang tải...</option>
+                  ) : (
+                    categories.map((category) => (
+                      <option key={category.slug} value={category.slug}>
+                        {category.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {/* Status Filter */}
                 <select
@@ -223,15 +285,33 @@ export default function NewsManagementPage() {
               </div>
             </div>
             {/* News Table */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white rounded-lg shadow overflow-hidden animate-fade-in">
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">Đang tải...</p>
+                  <p className="mt-4 text-gray-600">Đang tải tin tức...</p>
                 </div>
               ) : news.length === 0 ? (
                 <div className="p-8 text-center">
+                  <div className="mb-4">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
                   <p className="text-gray-600">Không có tin tức nào</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Bắt đầu bằng cách tạo tin tức mới
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -263,7 +343,10 @@ export default function NewsManagementPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {news.map((item) => (
-                        <tr key={item._id} className="hover:bg-gray-50">
+                        <tr
+                          key={item._id}
+                          className="hover:bg-gray-50 transition-colors duration-150"
+                        >
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               <div className="flex-1 min-w-0">
@@ -286,7 +369,7 @@ export default function NewsManagementPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {categoryLabels[item.category]}
+                            {categoryLabels[item.category] || item.category}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
@@ -328,7 +411,7 @@ export default function NewsManagementPage() {
                                 onClick={() =>
                                   window.open(`/tin-tuc/${item._id}`, "_blank")
                                 }
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 hover:text-blue-800 transition-colors"
                                 title="Xem tin tức"
                               >
                                 <EyeIcon className="w-5 h-5" />
@@ -339,7 +422,7 @@ export default function NewsManagementPage() {
                                     `/admin/quan-ly-tin-tuc/${item._id}`
                                   )
                                 }
-                                className="text-green-600 hover:text-green-900"
+                                className="text-green-600 hover:text-green-900 transition-colors"
                                 title="Chỉnh sửa"
                               >
                                 <PencilIcon className="w-5 h-5" />
@@ -349,7 +432,7 @@ export default function NewsManagementPage() {
                                   onClick={() =>
                                     handleDelete(item._id, item.title)
                                   }
-                                  className="text-red-600 hover:text-red-900"
+                                  className="text-red-600 hover:text-red-900 transition-colors"
                                   title="Xóa"
                                 >
                                   <TrashIcon className="w-5 h-5" />
@@ -365,7 +448,7 @@ export default function NewsManagementPage() {
                                           "published"
                                         )
                                       }
-                                      className="text-green-600 hover:text-green-800"
+                                      className="text-green-600 hover:text-green-800 transition-colors"
                                       title="Duyệt"
                                     >
                                       <CheckIcon className="w-5 h-5" />
@@ -374,7 +457,7 @@ export default function NewsManagementPage() {
                                       onClick={() =>
                                         handleStatusChange(item._id, "rejected")
                                       }
-                                      className="text-red-600 hover:text-red-800"
+                                      className="text-red-600 hover:text-red-800 transition-colors"
                                       title="Từ chối"
                                     >
                                       <XMarkIcon className="w-5 h-5" />

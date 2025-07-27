@@ -18,9 +18,13 @@ import {
   StarIcon,
   DocumentIcon,
   ExclamationTriangleIcon,
+  PencilIcon,
+  TrashIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import { locationService } from "@/services/locationService";
 import { postService } from "@/services/postsService";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AdminPostDetailProps {
   post: {
@@ -28,7 +32,13 @@ interface AdminPostDetailProps {
     _id?: string;
     title: string;
     description: string;
-    status: "active" | "pending" | "rejected" | "expired" | "inactive";
+    status:
+      | "pending"
+      | "active"
+      | "rejected"
+      | "expired"
+      | "inactive"
+      | "deleted";
     views: number;
     priority?: string;
     type: string;
@@ -78,6 +88,9 @@ interface AdminPostDetailProps {
   };
   onApprove: (postId: string) => void;
   onReject: (postId: string, reason: string) => void;
+  onEdit?: () => void;
+  onStatusChange?: (postId: string, newStatus: string) => void;
+  onDelete?: (postId: string) => void;
   onBack: () => void;
 }
 
@@ -85,9 +98,16 @@ export default function AdminPostDetail({
   post,
   onApprove,
   onReject,
+  onEdit,
+  onStatusChange,
+  onDelete,
   onBack,
 }: AdminPostDetailProps) {
+  const { hasRole } = useAuth();
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -236,6 +256,10 @@ export default function AdminPostDetail({
         return "text-red-800 bg-red-100 border-red-200";
       case "expired":
         return "text-gray-800 bg-gray-100 border-gray-200";
+      case "inactive":
+        return "text-orange-800 bg-orange-100 border-orange-200";
+      case "deleted":
+        return "text-red-900 bg-red-50 border-red-300";
       default:
         return "text-gray-800 bg-gray-100 border-gray-200";
     }
@@ -258,8 +282,12 @@ export default function AdminPostDetail({
         return "VIP";
       case "premium":
         return "Premium";
+      case "basic":
+        return "Cơ bản";
+      case "free":
+        return "Miễn phí";
       default:
-        return "Thường";
+        return priority || "Không xác định";
     }
   };
 
@@ -305,6 +333,25 @@ export default function AdminPostDetail({
     }
   };
 
+  const handleStatusChange = () => {
+    if (!selectedStatus) {
+      alert("Vui lòng chọn trạng thái!");
+      return;
+    }
+
+    const postId = post._id || post.id;
+    if (!postId) {
+      alert("ID bài viết không hợp lệ!");
+      return;
+    }
+
+    if (onStatusChange) {
+      onStatusChange(postId, selectedStatus);
+    }
+    setShowStatusModal(false);
+    setSelectedStatus("");
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
@@ -329,32 +376,145 @@ export default function AdminPostDetail({
             </div>
           </div>
 
-          {/* Action Buttons - Only show for pending posts */}
-          {post.status === "pending" && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  const postId = post._id || post.id;
-                  if (!postId) {
-                    alert("ID bài viết không hợp lệ!");
-                    return;
-                  }
-                  onApprove(postId);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <CheckIcon className="w-4 h-4" />
-                Duyệt tin
-              </button>
-              <button
-                onClick={() => setShowRejectModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <XMarkIcon className="w-4 h-4" />
-                Từ chối
-              </button>
-            </div>
-          )}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3">
+            {/* Special buttons for deleted posts */}
+            {post.status === "deleted" &&
+              hasRole("admin") &&
+              onStatusChange && (
+                <>
+                  <button
+                    onClick={() => {
+                      const postId = post._id || post.id;
+                      if (!postId) {
+                        alert("ID bài viết không hợp lệ!");
+                        return;
+                      }
+                      if (
+                        confirm(
+                          "Bạn có chắc muốn khôi phục tin đăng này? Tin đăng sẽ chuyển về trạng thái chờ duyệt."
+                        )
+                      ) {
+                        onStatusChange(postId, "pending");
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <CheckIcon className="w-4 h-4" />
+                    Khôi phục tin
+                  </button>
+                  <button
+                    onClick={() => setShowStatusModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Cog6ToothIcon className="w-4 h-4" />
+                    Đổi trạng thái
+                  </button>
+                  {/* Permanent delete button for deleted posts */}
+                  {onDelete && (
+                    <button
+                      onClick={() => {
+                        const postId = post._id || post.id;
+                        if (!postId) {
+                          alert("ID bài viết không hợp lệ!");
+                          return;
+                        }
+                        onDelete(postId);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                      Xóa vĩnh viễn
+                    </button>
+                  )}
+                </>
+              )}
+
+            {/* Normal buttons for non-deleted posts */}
+            {post.status !== "deleted" && (
+              <>
+                {/* Edit button - Only for admin */}
+                {hasRole("admin") && onEdit && (
+                  <button
+                    onClick={() => {
+                      const postId = post._id || post.id;
+                      if (!postId) {
+                        alert("ID bài viết không hợp lệ!");
+                        return;
+                      }
+                      onEdit();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PencilIcon className="w-4 h-4" />
+                    Chỉnh sửa
+                  </button>
+                )}
+
+                {/* Status change button - Only for admin */}
+                {hasRole("admin") && onStatusChange && (
+                  <button
+                    onClick={() => setShowStatusModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  >
+                    <Cog6ToothIcon className="w-4 h-4" />
+                    Đổi trạng thái
+                  </button>
+                )}
+
+                {/* Delete button - Only for admin */}
+                {hasRole("admin") && onStatusChange && (
+                  <button
+                    onClick={() => {
+                      const postId = post._id || post.id;
+                      if (!postId) {
+                        alert("ID bài viết không hợp lệ!");
+                        return;
+                      }
+                      if (
+                        confirm(
+                          "Bạn có chắc muốn chuyển tin đăng này vào thùng rác?"
+                        )
+                      ) {
+                        onStatusChange(postId, "deleted");
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                    Xóa tin
+                  </button>
+                )}
+
+                {/* Status change buttons - For both admin and employee, only show for pending posts */}
+                {post.status === "pending" && (
+                  <>
+                    <button
+                      onClick={() => {
+                        const postId = post._id || post.id;
+                        if (!postId) {
+                          alert("ID bài viết không hợp lệ!");
+                          return;
+                        }
+                        onApprove(postId);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckIcon className="w-4 h-4" />
+                      Duyệt tin
+                    </button>
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                      Từ chối
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -411,6 +571,26 @@ export default function AdminPostDetail({
         </div>
       )}
 
+      {/* Deleted Notice - Show for deleted posts */}
+      {post.status === "deleted" && (
+        <div className="mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <TrashIcon className="w-6 h-6 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">
+                  Tin đăng đã được chuyển vào thùng rác
+                </h3>
+                <p className="text-red-700 text-sm">
+                  Tin đăng này đã bị xóa mềm và hiện đang trong thùng rác. Admin
+                  có thể khôi phục tin đăng bằng cách thay đổi trạng thái.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
@@ -443,6 +623,8 @@ export default function AdminPostDetail({
                   {post.status === "pending" && "Chờ duyệt"}
                   {post.status === "rejected" && "Đã từ chối"}
                   {post.status === "expired" && "Hết hạn"}
+                  {post.status === "inactive" && "Không hoạt động"}
+                  {post.status === "deleted" && "Đã xóa (Thùng rác)"}
                 </span>
                 <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full text-xs">
                   {getPriorityIcon(post.priority)}
@@ -733,6 +915,8 @@ export default function AdminPostDetail({
                   {post.status === "pending" && "Chờ duyệt"}
                   {post.status === "rejected" && "Đã từ chối"}
                   {post.status === "expired" && "Hết hạn"}
+                  {post.status === "inactive" && "Không hoạt động"}
+                  {post.status === "deleted" && "Đã xóa (Thùng rác)"}
                 </span>
               </div>
             </div>
@@ -812,6 +996,104 @@ export default function AdminPostDetail({
                   className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Từ chối tin
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Change Modal */}
+      {showStatusModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Thay đổi trạng thái tin đăng
+              </h3>
+              <button
+                onClick={() => setShowStatusModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Trạng thái mới *
+                </label>
+                <div className="space-y-2">
+                  {[
+                    {
+                      value: "active",
+                      label: "Đang hiển thị",
+                      color: "text-green-600",
+                    },
+                    {
+                      value: "pending",
+                      label: "Chờ duyệt",
+                      color: "text-yellow-600",
+                    },
+                    {
+                      value: "inactive",
+                      label: "Không hoạt động",
+                      color: "text-orange-600",
+                    },
+                    {
+                      value: "expired",
+                      label: "Hết hạn",
+                      color: "text-red-600",
+                    },
+                    {
+                      value: "rejected",
+                      label: "Đã từ chối",
+                      color: "text-red-500",
+                    },
+                    {
+                      value: "deleted",
+                      label: "Chuyển vào thùng rác",
+                      color: "text-red-800",
+                    },
+                  ].map((status) => (
+                    <div key={status.value} className="flex items-center">
+                      <input
+                        type="radio"
+                        id={`status-${status.value}`}
+                        name="postStatus"
+                        value={status.value}
+                        checked={selectedStatus === status.value}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                      />
+                      <label
+                        htmlFor={`status-${status.value}`}
+                        className={`ml-2 text-sm cursor-pointer ${status.color}`}
+                      >
+                        {status.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowStatusModal(false);
+                    setSelectedStatus("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleStatusChange}
+                  disabled={!selectedStatus}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Thay đổi trạng thái
                 </button>
               </div>
             </div>

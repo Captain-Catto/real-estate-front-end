@@ -27,7 +27,7 @@ const UserHeader: React.FC<UserHeaderProps> = ({
 }) => {
   const router = useRouter();
 
-  // Wallet hook with improved implementation
+  // Wallet hook with real-time balance updates
   const { formattedBalance, loading: walletLoading } = useWallet();
 
   // Wallet popup state

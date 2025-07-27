@@ -105,7 +105,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
             />
             {/* Status overlay if needed */}
             {property.status === "expired" && (
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+              <div className="absolute inset-0 backdrop-blur-sm flex items-center justify-center">
                 <div className="bg-black bg-opacity-70 text-white px-4 py-2 text-sm font-semibold rounded">
                   Tin đã hết hạn
                 </div>

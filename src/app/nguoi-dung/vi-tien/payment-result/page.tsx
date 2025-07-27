@@ -11,7 +11,10 @@ export default function PaymentResultPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [statusChecked, setStatusChecked] = useState(false);
+
+  // Wallet hook to refresh balance after payment
   const { refresh: refreshWallet } = useWallet();
+
   const [result, setResult] = useState<{
     success: boolean;
     message: string;

@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { Pagination } from "@/components/common/Pagination";
 import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "@/hooks/useAuth";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { locationService, Location } from "@/services/locationService";
@@ -25,20 +27,31 @@ import {
 
 export default function AdminProjectPage() {
   const router = useRouter();
+  const { hasRole, isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
+
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<ProjectListItem[]>(
     []
   );
+
+  // Utility function for accent-insensitive search
+  const removeAccents = (str: string) => {
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  };
   const [loading, setLoading] = useState(true);
   const [modalLoading, setModalLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [modalStep, setModalStep] = useState(1);
-  const [projectsMissingWardCount, setProjectsMissingWardCount] = useState(0);
   const [filterStatus, setFilterStatus] = useState<
     "all" | "Đang bán" | "Sắp mở bán" | "Đã bàn giao" | "Khác"
   >("all");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Location states
   const [provinces, setProvinces] = useState<Location[]>([]);
@@ -57,6 +70,14 @@ export default function AdminProjectPage() {
     provinces: false,
     wards: false,
   });
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [paginatedProjects, setPaginatedProjects] = useState<ProjectListItem[]>(
+    []
+  );
   const [form, setForm] = useState<Partial<CreateProjectRequest>>({
     name: "",
     slug: "",
@@ -102,29 +123,80 @@ export default function AdminProjectPage() {
     },
   });
 
+  // Authentication check
   useEffect(() => {
-    fetchProjects();
-    fetchProvinces();
-    fetchDevelopers();
-  }, []);
+    if (!accessChecked && user) {
+      setAccessChecked(true);
 
-  // Filter projects based on status
+      if (!isAuthenticated) {
+        router.push("/dang-nhap");
+        return;
+      }
+
+      const hasAccess = hasRole("admin") || hasRole("employee");
+      if (!hasAccess) {
+        router.push("/");
+        return;
+      }
+    }
+  }, [hasRole, isAuthenticated, router, user, accessChecked]);
+
   useEffect(() => {
+    if (user && accessChecked) {
+      fetchProjects();
+      fetchProvinces();
+      fetchDevelopers();
+    }
+  }, [user, accessChecked]);
+
+  // Filter projects based on status and search term
+  useEffect(() => {
+    let filtered = projects;
+
+    // Filter by status
     if (filterStatus === "all") {
-      setFilteredProjects(projects);
+      filtered = projects;
     } else if (filterStatus === "Khác") {
-      setFilteredProjects(
-        projects.filter(
-          (project) =>
-            !["Đang bán", "Sắp mở bán", "Đã bàn giao"].includes(project.status)
-        )
+      filtered = projects.filter(
+        (project) =>
+          !["Đang bán", "Sắp mở bán", "Đã bàn giao"].includes(project.status)
       );
     } else {
-      setFilteredProjects(
-        projects.filter((project) => project.status === filterStatus)
-      );
+      filtered = projects.filter((project) => project.status === filterStatus);
     }
-  }, [projects, filterStatus]);
+
+    // Filter by search term (accent-insensitive)
+    if (searchTerm.trim()) {
+      const searchTermNormalized = removeAccents(searchTerm.trim());
+      filtered = filtered.filter((project) => {
+        const nameMatch = removeAccents(project.name).includes(
+          searchTermNormalized
+        );
+        const addressMatch = removeAccents(project.address || "").includes(
+          searchTermNormalized
+        );
+        const developerMatch = removeAccents(project.developer || "").includes(
+          searchTermNormalized
+        );
+        return nameMatch || addressMatch || developerMatch;
+      });
+    }
+
+    setFilteredProjects(filtered);
+  }, [projects, filterStatus, searchTerm]);
+
+  // Calculate pagination
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedProjects(filteredProjects.slice(startIndex, endIndex));
+    setTotalPages(Math.ceil(filteredProjects.length / itemsPerPage));
+  }, [filteredProjects, currentPage, itemsPerPage]);
+
+  // Reset to first page when itemsPerPage, filter, or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage, filterStatus, searchTerm]);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -145,12 +217,9 @@ export default function AdminProjectPage() {
         return !hasWard;
       });
 
-      setProjectsMissingWardCount(projectsMissingWard.length);
-
       console.log(
         `📍 Tổng số dự án: ${data.length}, Thiếu ward: ${projectsMissingWard.length}`
       );
-      setProjectsMissingWardCount(projectsMissingWard.length);
 
       if (projectsMissingWard.length > 0) {
         console.warn(
@@ -1411,6 +1480,95 @@ export default function AdminProjectPage() {
     }
   };
 
+  if (!accessChecked) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Chưa đăng nhập
+              </h2>
+              <p className="text-gray-600">
+                Vui lòng đăng nhập để truy cập trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasRole("admin")) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Không có quyền truy cập
+              </h2>
+              <p className="text-gray-600">
+                Bạn không có quyền truy cập vào trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
@@ -1437,6 +1595,46 @@ export default function AdminProjectPage() {
               </button>
             </div>
 
+            {/* Search Section */}
+            <div className="mb-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Tìm kiếm dự án
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Tìm theo tên dự án, địa chỉ, chủ đầu tư..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      />
+                      <svg
+                        className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  {searchTerm && (
+                    <div className="text-sm text-gray-600">
+                      Tìm thấy {filteredProjects.length} kết quả
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Status Filter Tabs */}
             <div className="mb-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -1444,6 +1642,24 @@ export default function AdminProjectPage() {
                   <h2 className="text-lg font-semibold text-gray-900">
                     Bộ lọc trạng thái dự án
                   </h2>
+
+                  {/* Items per page selector */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Hiển thị:
+                    </label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <span className="text-sm text-gray-700">/ trang</span>
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -1509,132 +1725,171 @@ export default function AdminProjectPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Tên dự án
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Vị trí
-                        <div className="text-xs font-normal text-gray-400 mt-0.5">
-                          (Tỉnh - Phường)
-                        </div>
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Chủ đầu tư
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Trạng thái
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Tổng căn
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Diện tích
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredProjects.length > 0 ? (
-                      filteredProjects.map((project) => (
-                        <tr key={project.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
-                            <div className="font-medium text-gray-900">
-                              {project.name}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <ProjectLocationDisplay
-                              location={project.locationObj}
-                              address={project.address}
-                              variant="compact"
-                            />
-                          </td>
-                          <td className="px-6 py-4">{project.developer}</td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                project.status === "Đã bàn giao"
-                                  ? "bg-green-100 text-green-800"
-                                  : project.status === "Đang bán"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : project.status === "Sắp mở bán"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {project.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">{project.totalUnits}</td>
-                          <td className="px-6 py-4">{project.area}</td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                <div className="animate-fade-in">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Tên dự án
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Vị trí
+                          <div className="text-xs font-normal text-gray-400 mt-0.5">
+                            (Tỉnh - Phường)
+                          </div>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Chủ đầu tư
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Tổng căn
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Diện tích
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedProjects.length > 0 ? (
+                        paginatedProjects.map((project) => (
+                          <tr key={project.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4">
+                              <div className="font-medium text-gray-900">
+                                <button
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/quan-ly-du-an/${project.id}`
+                                    )
+                                  }
+                                  className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                  title="Xem chi tiết dự án"
+                                >
+                                  {project.name}
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <ProjectLocationDisplay
+                                location={project.locationObj}
+                                address={project.address}
+                                variant="compact"
+                              />
+                            </td>
+                            <td className="px-6 py-4">
                               <button
                                 onClick={() =>
                                   router.push(
-                                    `/admin/quan-ly-du-an/${project.id}`
+                                    `/admin/quan-ly-chu-dau-tu?search=${encodeURIComponent(
+                                      project.developer
+                                    )}`
                                   )
                                 }
-                                className="p-1 text-green-600 hover:text-green-900"
-                                title="Xem chi tiết"
+                                className="text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                title="Xem thông tin chủ đầu tư"
                               >
-                                <EyeIcon className="h-4 w-4" />
+                                {project.developer}
                               </button>
-                              <button
-                                onClick={() => handleOpenModal(project)}
-                                className="p-1 text-blue-600 hover:text-blue-900"
-                                title="Chỉnh sửa nhanh"
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                                  project.status === "Đã bàn giao"
+                                    ? "bg-green-100 text-green-800"
+                                    : project.status === "Đang bán"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : project.status === "Sắp mở bán"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
                               >
-                                <PencilIcon className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(project.id)}
-                                className="p-1 text-red-600 hover:text-red-900"
-                                title="Xóa"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
+                                {project.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">{project.totalUnits}</td>
+                            <td className="px-6 py-4">{project.area}</td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/quan-ly-du-an/${project.id}`
+                                    )
+                                  }
+                                  className="p-1 text-green-600 hover:text-green-900"
+                                  title="Xem chi tiết"
+                                >
+                                  <EyeIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleOpenModal(project)}
+                                  className="p-1 text-blue-600 hover:text-blue-900"
+                                  title="Chỉnh sửa nhanh"
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(project.id)}
+                                  className="p-1 text-red-600 hover:text-red-900"
+                                  title="Xóa"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-6 py-8 text-center text-gray-500"
+                          >
+                            <div className="flex flex-col items-center">
+                              <p className="text-lg font-medium">
+                                Không có dự án nào
+                              </p>
+                              <p className="text-sm mt-1">
+                                {filterStatus === "all"
+                                  ? "Chưa có dự án nào được tạo"
+                                  : `Không có dự án nào với trạng thái "${
+                                      filterStatus === "Khác"
+                                        ? "khác"
+                                        : filterStatus
+                                    }"`}
+                              </p>
                             </div>
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-6 py-8 text-center text-gray-500"
-                        >
-                          <div className="flex flex-col items-center">
-                            <p className="text-lg font-medium">
-                              Không có dự án nào
-                            </p>
-                            <p className="text-sm mt-1">
-                              {filterStatus === "all"
-                                ? "Chưa có dự án nào được tạo"
-                                : `Không có dự án nào với trạng thái "${
-                                    filterStatus === "Khác"
-                                      ? "khác"
-                                      : filterStatus
-                                  }"`}
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredProjects.length > 0 && (
+              <div className="px-6 py-4 bg-white border-t border-gray-200">
+                <div className="flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Enhanced Modal */}
           {showModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">

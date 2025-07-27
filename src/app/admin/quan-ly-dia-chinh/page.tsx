@@ -288,16 +288,93 @@ export default function AdminLocationPage() {
   };
 
   // Show loading or redirect if not admin
-  if (authLoading || loading) {
+  if (!user || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
 
-  if (!user || user.role !== "admin") {
-    return null;
+  if (!user) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Chưa đăng nhập
+              </h2>
+              <p className="text-gray-600">
+                Vui lòng đăng nhập để truy cập trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (user.role !== "admin") {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Không có quyền truy cập
+              </h2>
+              <p className="text-gray-600">
+                Bạn không có quyền truy cập vào trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   // Get wards from selected province (direct from province, no districts)
@@ -327,141 +404,81 @@ export default function AdminLocationPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Provinces Column */}
-            <div className="bg-white rounded-lg shadow-md">
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <MapIcon className="w-5 h-5 mr-2 text-blue-600" />
-                    Tỉnh/Thành phố ({provinces.length})
-                  </h2>
-                  <button
-                    onClick={() => openModal("province", "add")}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <PlusIcon className="w-4 h-4 mr-1" />
-                    Thêm
-                  </button>
+            {loading ? (
+              <div className="lg:col-span-3 flex justify-center items-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Đang tải dữ liệu địa chính...</p>
                 </div>
               </div>
-              <div className="p-4 max-h-96 overflow-y-auto">
-                {provinces.map((province) => (
-                  <div
-                    key={province._id}
-                    className={`p-3 rounded-lg cursor-pointer mb-2 transition-colors ${
-                      selectedProvince?._id === province._id
-                        ? "bg-blue-50 border-2 border-blue-200"
-                        : "bg-gray-50 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setSelectedProvince(province)}
-                  >
+            ) : (
+              <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                {/* Provinces Column */}
+                <div className="bg-white rounded-lg shadow-md">
+                  <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {province.name}
-                        </h3>
-                        {province.name_with_type && (
-                          <p className="text-sm text-gray-600">
-                            {province.name_with_type}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-500">
-                          Mã: {province.code}
-                          {province.type && (
-                            <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                              {province.type === "thanh-pho"
-                                ? "Thành phố"
-                                : "Tỉnh"}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-sm text-blue-600">
-                          {getWardsFromProvince(province).length} phường/xã
-                        </p>
-                      </div>
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openModal("province", "edit", province);
-                          }}
-                          className="p-1 text-gray-500 hover:text-blue-600"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItem(province);
-                            setModalType("delete");
-                          }}
-                          className="p-1 text-gray-500 hover:text-red-600"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <MapIcon className="w-5 h-5 mr-2 text-blue-600" />
+                        Tỉnh/Thành phố ({provinces.length})
+                      </h2>
+                      <button
+                        onClick={() => openModal("province", "add")}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        <PlusIcon className="w-4 h-4 mr-1" />
+                        Thêm
+                      </button>
                     </div>
                   </div>
-                ))}
-                {provinces.length === 0 && (
-                  <div className="text-center py-8">
-                    <MapIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Chưa có tỉnh/thành phố nào</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Wards Column (Direct from Province) */}
-            <div className="lg:col-span-2 bg-white rounded-lg shadow-md">
-              <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                    <HomeIcon className="w-5 h-5 mr-2 text-green-600" />
-                    Phường/Xã{" "}
-                    {selectedProvince && (
-                      <span className="text-sm font-normal text-gray-500 ml-2">
-                        - {selectedProvince.name}
-                      </span>
-                    )}
-                  </h2>
-                  <button
-                    onClick={() => openModal("ward", "add")}
-                    disabled={!selectedProvince}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <PlusIcon className="w-4 h-4 mr-1" />
-                    Thêm phường/xã
-                  </button>
-                </div>
-              </div>
-              <div className="p-4">
-                {selectedProvince ? (
-                  <div className="max-h-96 overflow-y-auto">
-                    {getWardsFromProvince(selectedProvince).map(
-                      (ward: AdminWard) => (
-                        <div
-                          key={ward._id}
-                          className="p-3 bg-gray-50 rounded-lg mb-2 flex items-center justify-between"
-                        >
+                  <div className="p-4 max-h-96 overflow-y-auto">
+                    {provinces.map((province) => (
+                      <div
+                        key={province._id}
+                        className={`p-3 rounded-lg cursor-pointer mb-2 transition-colors ${
+                          selectedProvince?._id === province._id
+                            ? "bg-blue-50 border-2 border-blue-200"
+                            : "bg-gray-50 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setSelectedProvince(province)}
+                      >
+                        <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-medium text-gray-900">
-                              {ward.name}
-                            </h4>
+                            <h3 className="font-medium text-gray-900">
+                              {province.name}
+                            </h3>
+                            {province.name_with_type && (
+                              <p className="text-sm text-gray-600">
+                                {province.name_with_type}
+                              </p>
+                            )}
                             <p className="text-sm text-gray-500">
-                              Mã: {ward.code} | {ward.codename}
+                              Mã: {province.code}
+                              {province.type && (
+                                <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                  {province.type === "thanh-pho"
+                                    ? "Thành phố"
+                                    : "Tỉnh"}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-sm text-blue-600">
+                              {getWardsFromProvince(province).length} phường/xã
                             </p>
                           </div>
                           <div className="flex space-x-1">
                             <button
-                              onClick={() => openModal("ward", "edit", ward)}
-                              className="p-1 text-gray-500 hover:text-green-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal("province", "edit", province);
+                              }}
+                              className="p-1 text-gray-500 hover:text-blue-600"
                             >
                               <PencilIcon className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => {
-                                setEditingItem(ward);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingItem(province);
                                 setModalType("delete");
                               }}
                               className="p-1 text-gray-500 hover:text-red-600"
@@ -470,27 +487,104 @@ export default function AdminLocationPage() {
                             </button>
                           </div>
                         </div>
-                      )
-                    )}
-                    {getWardsFromProvince(selectedProvince).length === 0 && (
+                      </div>
+                    ))}
+                    {provinces.length === 0 && (
                       <div className="text-center py-8">
-                        <HomeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <MapIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500">
-                          Chưa có phường/xã nào trong {selectedProvince.name}
+                          Chưa có tỉnh/thành phố nào
                         </p>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <ExclamationTriangleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      Vui lòng chọn một tỉnh/thành phố để xem phường/xã
-                    </p>
+                </div>
+
+                {/* Wards Column (Direct from Province) */}
+                <div className="lg:col-span-2 bg-white rounded-lg shadow-md">
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <HomeIcon className="w-5 h-5 mr-2 text-green-600" />
+                        Phường/Xã{" "}
+                        {selectedProvince && (
+                          <span className="text-sm font-normal text-gray-500 ml-2">
+                            - {selectedProvince.name}
+                          </span>
+                        )}
+                      </h2>
+                      <button
+                        onClick={() => openModal("ward", "add")}
+                        disabled={!selectedProvince}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        <PlusIcon className="w-4 h-4 mr-1" />
+                        Thêm phường/xã
+                      </button>
+                    </div>
                   </div>
-                )}
+                  <div className="p-4">
+                    {selectedProvince ? (
+                      <div className="max-h-96 overflow-y-auto">
+                        {getWardsFromProvince(selectedProvince).map(
+                          (ward: AdminWard) => (
+                            <div
+                              key={ward._id}
+                              className="p-3 bg-gray-50 rounded-lg mb-2 flex items-center justify-between"
+                            >
+                              <div>
+                                <h4 className="font-medium text-gray-900">
+                                  {ward.name}
+                                </h4>
+                                <p className="text-sm text-gray-500">
+                                  Mã: {ward.code} | {ward.codename}
+                                </p>
+                              </div>
+                              <div className="flex space-x-1">
+                                <button
+                                  onClick={() =>
+                                    openModal("ward", "edit", ward)
+                                  }
+                                  className="p-1 text-gray-500 hover:text-green-600"
+                                >
+                                  <PencilIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingItem(ward);
+                                    setModalType("delete");
+                                  }}
+                                  className="p-1 text-gray-500 hover:text-red-600"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        )}
+                        {getWardsFromProvince(selectedProvince).length ===
+                          0 && (
+                          <div className="text-center py-8">
+                            <HomeIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-gray-500">
+                              Chưa có phường/xã nào trong{" "}
+                              {selectedProvince.name}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <ExclamationTriangleIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">
+                          Vui lòng chọn một tỉnh/thành phố để xem phường/xã
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

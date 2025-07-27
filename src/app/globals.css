@@ -20,6 +20,22 @@ body {
   transition: all 0.2s ease-in-out;
 }
 
+/* Tab animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
 /* Mobile navigation spacing */
 @media (max-width: 991.98px) {
   body {
@@ -94,4 +110,27 @@ body {
 .prose .wp-block-image.size-full img {
   width: 100%;
   height: auto;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Prevents layout shift when scrollbar appears */
+.scrollbar-stable {
+  scrollbar-gutter: stable;
 }

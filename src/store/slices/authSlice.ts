@@ -23,6 +23,8 @@ export interface AuthState {
   loading: boolean;
   error: string | null;
   lastLoginTime: string | null;
+  isInitialized: boolean;
+  sessionExpired: boolean;
 }
 
 // Initial state
@@ -32,6 +34,8 @@ const initialState: AuthState = {
   loading: false,
   error: null,
   lastLoginTime: null,
+  isInitialized: false,
+  sessionExpired: false,
 };
 
 // Async thunks
@@ -120,7 +124,11 @@ export const getProfileAsync = createAsyncThunk(
 export const updateProfileAsync = createAsyncThunk(
   "auth/updateProfile",
   async (
-    profileData: { username?: string; email?: string; phoneNumber?: string },
+    profileData: {
+      username?: string;
+      phoneNumber?: string;
+      avatar?: string;
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -153,6 +161,8 @@ const authSlice = createSlice({
       state.loading = false;
       state.error = null;
       state.lastLoginTime = null;
+      state.isInitialized = false;
+      state.sessionExpired = false;
     },
 
     // Update user profile
@@ -167,17 +177,37 @@ const authSlice = createSlice({
       state.loading = action.payload;
     },
 
+    // Set session expired
+    setSessionExpired: (state, action: PayloadAction<boolean>) => {
+      state.sessionExpired = action.payload;
+      if (action.payload) {
+        state.isAuthenticated = false;
+        state.user = null;
+      }
+    },
+
     // Initialize auth from storage (for app startup)
     initializeAuth: (state) => {
-      const token = localStorage.getItem("accessToken");
-      if (token) {
-        state.isAuthenticated = true;
-        state.loading = false; // Quan trọng: set loading = false
-        // User sẽ được load từ getProfileAsync
+      // Kiểm tra môi trường browser
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+          state.isAuthenticated = true;
+          state.loading = false;
+          state.isInitialized = true;
+          // User sẽ được load từ getProfileAsync
+        } else {
+          state.isAuthenticated = false;
+          state.loading = false;
+          state.user = null;
+          state.isInitialized = true;
+        }
       } else {
+        // Server-side: không có token
         state.isAuthenticated = false;
         state.loading = false;
         state.user = null;
+        state.isInitialized = true;
       }
     },
   },
@@ -279,13 +309,19 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         // Nếu không lấy được profile, có thể token đã expired
+        const errorMessage = action.payload as string;
         if (
-          action.payload?.includes("expired") ||
-          action.payload?.includes("invalid")
+          errorMessage?.includes("expired") ||
+          errorMessage?.includes("invalid") ||
+          errorMessage?.includes("unauthorized")
         ) {
           state.user = null;
           state.isAuthenticated = false;
-          localStorage.removeItem("accessToken");
+          state.sessionExpired = true;
+          // Xóa token từ localStorage an toàn
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("accessToken");
+          }
         }
       });
 
@@ -313,6 +349,7 @@ export const {
   resetAuth,
   updateProfile,
   setLoading,
+  setSessionExpired,
   initializeAuth,
 } = authSlice.actions;
 

@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { categoryService, Category } from "@/services/categoryService";
+import { packageService } from "@/services/packageService";
+import SearchableProjectSelect from "./SearchableProjectSelect";
 
 interface PostsFilterProps {
   filters: {
     status: string;
     type: string;
     category: string;
-    priority: string;
+    package: string;
     search: string;
+    project: string;
     dateFrom: string;
     dateTo: string;
+    searchMode?: string; // Add search mode filter
   };
-  onFilterChange: (filters: any) => void;
+  onFilterChange: (filters: Record<string, string>) => void;
 }
 
 export default function PostsFilter({
@@ -19,8 +24,103 @@ export default function PostsFilter({
   onFilterChange,
 }: PostsFilterProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [packages, setPackages] = useState<string[]>([
+    "vip",
+    "premium",
+    "normal",
+  ]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [searchMode, setSearchMode] = useState<"property" | "project">(
+    "property"
+  );
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+
+  // Fetch packages when component mounts
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const packageList = await packageService.getPriorityTypes();
+        if (packageList && packageList.length > 0) {
+          setPackages(packageList);
+        }
+      } catch (error) {
+        console.error("Error fetching packages:", error);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  // Fetch categories when component mounts
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        console.log("🔄 Fetching categories for admin filter...");
+        const categoryList = await categoryService.getCategories();
+        console.log("📋 Fetched categories:", categoryList);
+        if (categoryList && categoryList.length > 0) {
+          setCategories(categoryList);
+          setFilteredCategories(categoryList);
+          console.log(`✅ Set ${categoryList.length} categories in filter`);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching categories:", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Initialize search mode from filters
+  useEffect(() => {
+    setSearchMode(filters.searchMode === "project" ? "project" : "property");
+  }, [filters.searchMode]);
+
+  // Filter categories based on search mode
+  useEffect(() => {
+    const fetchFilteredData = async () => {
+      if (searchMode === "project") {
+        // When in project mode, fetch only project categories (isProject: true)
+        const projectCategories = await categoryService.getByProjectType(true);
+        setFilteredCategories(projectCategories);
+      } else {
+        // When in property mode, fetch only non-project categories (isProject: false)
+        const propertyCategories = await categoryService.getByProjectType(
+          false
+        );
+        setFilteredCategories(propertyCategories);
+      }
+    };
+
+    fetchFilteredData();
+  }, [searchMode]);
 
   const handleFilterChange = (key: string, value: string) => {
+    console.log(`🔄 Admin filter change: ${key} = ${value}`);
+
+    if (key === "searchMode") {
+      setSearchMode(value as "property" | "project");
+      // Reset category and project when changing search mode
+      onFilterChange({
+        [key]: value,
+        category: "all",
+        project: "all",
+      });
+      return;
+    }
+
+    if (key === "category") {
+      const selectedCategory = categories.find((cat) => cat._id === value);
+      console.log(`📋 Selected category:`, selectedCategory);
+      onFilterChange({ [key]: value });
+      return;
+    }
+
+    if (key === "project") {
+      onFilterChange({ [key]: value });
+      return;
+    }
+
     onFilterChange({ [key]: value });
   };
 
@@ -29,14 +129,17 @@ export default function PostsFilter({
   };
 
   const clearFilters = () => {
+    setSearchMode("property");
     onFilterChange({
       status: "all",
       type: "all",
       category: "all",
-      priority: "all",
+      package: "all",
       search: "",
+      project: "all",
       dateFrom: "",
       dateTo: "",
+      searchMode: "property",
     });
   };
 
@@ -70,6 +173,7 @@ export default function PostsFilter({
             <option value="pending">Chờ duyệt</option>
             <option value="rejected">Bị từ chối</option>
             <option value="expired">Hết hạn</option>
+            <option value="deleted">Đã xóa mềm</option>
           </select>
         </div>
 
@@ -100,68 +204,134 @@ export default function PostsFilter({
 
       {/* Advanced Filters */}
       {showAdvanced && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
-          {/* Category Filter */}
+        <div className="space-y-4 pt-4 border-t border-gray-200">
+          {/* Search Mode Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Loại BĐS
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Loại tìm kiếm
             </label>
-            <select
-              value={filters.category}
-              onChange={(e) => handleFilterChange("category", e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="apartment">Căn hộ</option>
-              <option value="house">Nhà phố</option>
-              <option value="villa">Biệt thự</option>
-              <option value="land">Đất nền</option>
-              <option value="office">Văn phòng</option>
-              <option value="commercial">Thương mại</option>
-            </select>
+            <div className="flex gap-6">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="searchMode"
+                  value="property"
+                  checked={searchMode === "property"}
+                  onChange={(e) =>
+                    handleFilterChange("searchMode", e.target.value)
+                  }
+                  className="mr-2 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">
+                  Tìm theo loại bất động sản
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="searchMode"
+                  value="project"
+                  checked={searchMode === "project"}
+                  onChange={(e) =>
+                    handleFilterChange("searchMode", e.target.value)
+                  }
+                  className="mr-2 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Tìm theo dự án</span>
+              </label>
+            </div>
           </div>
 
-          {/* Priority Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Gói tin
-            </label>
-            <select
-              value={filters.priority}
-              onChange={(e) => handleFilterChange("priority", e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="vip">VIP</option>
-              <option value="premium">Premium</option>
-              <option value="normal">Thường</option>
-            </select>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Category Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {searchMode === "project" ? "Loại dự án" : "Loại BĐS"}
+              </label>
+              <select
+                value={filters.category}
+                onChange={(e) => handleFilterChange("category", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Tất cả</option>
+                {filteredCategories.map((category) => (
+                  <option key={category._id} value={category._id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Date From */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Từ ngày
-            </label>
-            <input
-              type="date"
-              value={filters.dateFrom}
-              onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+            {/* Project Filter - Only show in project mode */}
+            {searchMode === "project" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Dự án
+                </label>
+                <div className="relative">
+                  <SearchableProjectSelect
+                    value={filters.project}
+                    onChange={(value) => handleFilterChange("project", value)}
+                    categoryId={
+                      filters.category !== "all" ? filters.category : undefined
+                    }
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* Date To */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Đến ngày
-            </label>
-            <input
-              type="date"
-              value={filters.dateTo}
-              onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            {/* Package Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gói tin
+              </label>
+              <select
+                value={filters.package}
+                onChange={(e) => handleFilterChange("package", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Tất cả</option>
+                {packages.map((packageType) => (
+                  <option key={packageType} value={packageType}>
+                    {packageType === "vip"
+                      ? "VIP"
+                      : packageType === "premium"
+                      ? "Premium"
+                      : packageType === "basic"
+                      ? "Cơ bản"
+                      : packageType === "free"
+                      ? "Miễn phí"
+                      : packageType}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date From */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Từ ngày
+              </label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Đến ngày
+              </label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => handleFilterChange("dateTo", e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -170,7 +340,8 @@ export default function PostsFilter({
       {(filters.status !== "all" ||
         filters.type !== "all" ||
         filters.category !== "all" ||
-        filters.priority !== "all" ||
+        filters.package !== "all" ||
+        filters.project !== "all" ||
         filters.search ||
         filters.dateFrom ||
         filters.dateTo) && (

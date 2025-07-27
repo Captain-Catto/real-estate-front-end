@@ -151,69 +151,35 @@ export default function ActionButton() {
   ]);
 
   // Auto-refresh notifications every 30 seconds when user is authenticated
+  // EMERGENCY FIX: Disabled to prevent infinite API loops
   useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const refreshInterval = setInterval(() => {
-      fetchNotifications();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(refreshInterval);
-  }, [isAuthenticated, fetchNotifications]);
+    // DISABLED: Causing infinite loops - do not re-enable without fixing dependency cycles
+    // if (!isAuthenticated) return;
+    // const refreshInterval = setInterval(() => {
+    //   fetchNotifications();
+    // }, 30000); // 30 seconds
+    // return () => clearInterval(refreshInterval);
+  }, [isAuthenticated]);
 
   // Handle notification popup visibility
+  // EMERGENCY FIX: Disabled to prevent infinite API loops
   useEffect(() => {
-    if (showNotificationPopup && isAuthenticated) {
-      // Refresh notifications when popup opens
-      fetchNotifications();
-    }
-  }, [showNotificationPopup, isAuthenticated, fetchNotifications]);
+    // DISABLED: Causing infinite loops - do not re-enable without fixing dependency cycles
+    // if (showNotificationPopup && isAuthenticated) {
+    //   // Refresh notifications when popup opens
+    //   fetchNotifications();
+    // }
+  }, [showNotificationPopup, isAuthenticated]);
 
   // Listen for wallet updates to refresh notifications (since payments create notifications)
+  // EMERGENCY FIX: Completely disabled to prevent infinite API loops
   useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const handleStorageChange = (event: StorageEvent) => {
-      if (
-        event.key === "wallet_updated" ||
-        event.key === "wallet_updated_trigger"
-      ) {
-        console.log("[ActionButton] Wallet updated, refreshing notifications");
-        fetchNotifications();
-      }
-    };
-
-    // Listen to storage events for cross-tab synchronization
-    window.addEventListener("storage", handleStorageChange);
-
-    // Listen to BroadcastChannel events if available
-    let broadcastChannel: BroadcastChannel | null = null;
-    if (
-      typeof window !== "undefined" &&
-      typeof BroadcastChannel !== "undefined"
-    ) {
-      try {
-        broadcastChannel = new BroadcastChannel("wallet_updates");
-        broadcastChannel.onmessage = (event) => {
-          if (event.data?.type === "refresh") {
-            console.log(
-              "[ActionButton] Received wallet update broadcast, refreshing notifications"
-            );
-            fetchNotifications();
-          }
-        };
-      } catch (e) {
-        console.error("[ActionButton] Error setting up BroadcastChannel:", e);
-      }
-    }
-
+    // DISABLED: Entire useEffect disabled to prevent infinite loops
+    // Do not re-enable without fixing dependency cycles and multiple hook instances
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      if (broadcastChannel) {
-        broadcastChannel.close();
-      }
+      // Cleanup placeholder
     };
-  }, [isAuthenticated, fetchNotifications]);
+  }, [isAuthenticated]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -476,7 +442,7 @@ export default function ActionButton() {
           leaveFrom="transform opacity-100 scale-100"
           leaveTo="transform opacity-0 scale-95"
         >
-          <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
+          <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden scrollbar-stable">
             {/* Header */}
             <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
               <div className="flex items-center justify-between">
@@ -941,8 +907,8 @@ export default function ActionButton() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <MenuItems className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 focus:outline-none">
-              <div className="py-2">
+            <MenuItems className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 focus:outline-none overflow-hidden">
+              <div className="py-2 overflow-y-auto pr-[17px] scrollbar-stable">
                 <MenuItem>
                   <Link
                     href="/nguoi-dung/tai-khoan"

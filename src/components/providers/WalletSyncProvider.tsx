@@ -21,9 +21,10 @@ export function WalletSyncProvider({
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Các biến để kiểm soát polling và tránh quá nhiều request
-    const SYNC_INTERVAL = 20000; // 20 giây
-    const MIN_SYNC_DELAY = 5000; // 5 giây
+    // TEMPORARY: Disable polling completely to stop infinite loops
+    // TODO: Re-enable with proper coordination between components
+    const SYNC_INTERVAL = 999999999; // Effectively disable polling
+    const MIN_SYNC_DELAY = 60000; // 1 minute minimum
     let syncInterval: NodeJS.Timeout | null = null;
 
     // Hàm kiểm tra xem có nên đồng bộ hóa không
@@ -36,7 +37,8 @@ export function WalletSyncProvider({
     const syncWallet = async () => {
       if (!shouldSync()) return;
 
-      console.log("[WalletSync] Syncing wallet data");
+      // EMERGENCY FIX: Disable console.log to prevent infinite logging
+      // console.log("[WalletSync] Syncing wallet data");
       try {
         // Xóa cache để đảm bảo dữ liệu mới nhất được lấy
         paymentService.invalidateWalletCache();
@@ -44,7 +46,8 @@ export function WalletSyncProvider({
         // Gọi API để đồng bộ hóa ví với lịch sử thanh toán
         const result = await paymentService.syncWallet();
         if (result.success) {
-          console.log("[WalletSync] Wallet synced successfully");
+          // EMERGENCY FIX: Disable console.log to prevent infinite logging
+          // console.log("[WalletSync] Wallet synced successfully");
         }
       } catch (error) {
         console.error("[WalletSync] Error syncing wallet:", error);
@@ -59,7 +62,8 @@ export function WalletSyncProvider({
         event.key === "wallet_updated" ||
         event.key === "wallet_updated_trigger"
       ) {
-        console.log("[WalletSync] Detected wallet update via localStorage");
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log("[WalletSync] Detected wallet update via localStorage");
         syncWallet();
       }
     };
@@ -67,10 +71,11 @@ export function WalletSyncProvider({
     // Xử lý sự kiện từ BroadcastChannel
     const handleBroadcastMessage = (event: MessageEvent) => {
       if (event.data?.type === "refresh") {
-        console.log(
-          "[WalletSync] Received wallet update broadcast",
-          event.data
-        );
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log(
+        //   "[WalletSync] Received wallet update broadcast",
+        //   event.data
+        // );
         syncWallet();
       }
     };
@@ -83,7 +88,8 @@ export function WalletSyncProvider({
       try {
         broadcastChannelRef.current = new BroadcastChannel("wallet_updates");
         broadcastChannelRef.current.onmessage = handleBroadcastMessage;
-        console.log("[WalletSync] BroadcastChannel initialized");
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log("[WalletSync] BroadcastChannel initialized");
       } catch (e) {
         console.error("[WalletSync] Error setting up BroadcastChannel:", e);
       }
@@ -91,18 +97,21 @@ export function WalletSyncProvider({
 
     // Thiết lập polling định kỳ
     syncInterval = setInterval(syncWallet, SYNC_INTERVAL);
-    console.log(
-      "[WalletSync] Polling initialized with interval",
-      SYNC_INTERVAL
-    );
+    // EMERGENCY FIX: Disable console.log to prevent infinite logging
+    // console.log(
+    //   "[WalletSync] Polling initialized with interval",
+    //   SYNC_INTERVAL
+    // );
 
     // Thiết lập listener cho localStorage
     window.addEventListener("storage", handleStorageChange);
-    console.log("[WalletSync] Storage event listener initialized");
+    // EMERGENCY FIX: Disable console.log to prevent infinite logging
+    // console.log("[WalletSync] Storage event listener initialized");
 
     // Xử lý focus vào tab
     const handleFocus = () => {
-      console.log("[WalletSync] Window focused, checking for wallet updates");
+      // EMERGENCY FIX: Disable console.log to prevent infinite logging
+      // console.log("[WalletSync] Window focused, checking for wallet updates");
       syncWallet();
     };
     window.addEventListener("focus", handleFocus);
@@ -121,10 +130,10 @@ export function WalletSyncProvider({
         clearInterval(syncInterval);
       }
 
-      console.log("[WalletSync] Cleaned up all listeners");
+      // EMERGENCY FIX: Disable console.log to prevent infinite logging
+      // console.log("[WalletSync] Cleaned up all listeners");
     };
   }, [isAuthenticated]);
 
-  // Provider chỉ giám sát và không render thêm UI
   return <>{children}</>;
 }

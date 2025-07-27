@@ -12,7 +12,7 @@ export interface User {
   email: string;
   phoneNumber?: string;
   avatar?: string;
-  role: "user" | "admin" | "agent" | "employee";
+  role: "user" | "admin" | "employee";
   status: "active" | "inactive" | "banned";
   isVerified: boolean;
   createdAt: string;

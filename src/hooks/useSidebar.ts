@@ -19,10 +19,6 @@ export function useSidebar() {
   const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated } = useAuth();
 
-  // Debug: Log entire state to check what's available
-  const entireState = useSelector((state: RootState) => state);
-  console.log("🔍 Debug: Entire Redux state:", entireState);
-
   // Selectors - sử dụng typing explicit với safe access
   const menuItems = useSelector(
     (state: RootState) => state.sidebar?.menuItems || []
@@ -71,18 +67,6 @@ export function useSidebar() {
   // Initialize sidebar configuration when user is authenticated
   // Sử dụng một cơ chế đơn giản hơn để tránh re-fetch
   useEffect(() => {
-    // Chỉ log khi debug
-    if (process.env.NODE_ENV === "development") {
-      console.log("🔍 useSidebar useEffect triggered:", {
-        isAuthenticated,
-        hasValidRole,
-        isInitialized,
-        userRole,
-        loading,
-        userId: user?.id,
-      });
-    }
-
     // Chỉ initialize khi tất cả conditions đều true VÀ chưa được initialized
     if (
       isAuthenticated &&
@@ -91,13 +75,6 @@ export function useSidebar() {
       !loading &&
       user?.id
     ) {
-      console.log(
-        "🚀 Initializing sidebar for user:",
-        user.id,
-        "role:",
-        userRole
-      );
-
       // Fetch menu items configuration (groups will be loaded automatically from defaults)
       dispatch(fetchSidebarConfig());
     }
@@ -106,9 +83,9 @@ export function useSidebar() {
     isAuthenticated,
     hasValidRole,
     isInitialized,
-    userRole,
     loading,
     user?.id,
+    userRole,
   ]);
 
   // Initialize group expanded state after groups are loaded

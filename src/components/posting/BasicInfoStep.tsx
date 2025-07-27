@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Location } from "@/types/location";
 import { ProjectService } from "@/services/projectService";
 import { categoryService, Category } from "@/services/categoryService";
@@ -25,9 +25,6 @@ interface CreatePostFormData {
   balconyDirection: string;
   roadWidth: string;
   frontWidth: string;
-  contactName: string;
-  email: string;
-  phone: string;
   title: string;
   description: string;
 }
@@ -49,6 +46,7 @@ interface Project {
     provinceCode: string;
     wardCode?: string;
   };
+  category?: { _id: string; name: string; isProject: boolean };
 }
 
 export default function BasicInfoStep({
@@ -72,6 +70,7 @@ export default function BasicInfoStep({
   );
   const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const isInitialProjectLoad = useRef(true);
 
   // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -180,13 +179,15 @@ export default function BasicInfoStep({
           selectedWard, // Now using ward for project filtering if available
         });
 
-        setProjectsLoading(true);
+        // Only show loading on initial load, not on refetch
+        if (isInitialProjectLoad.current) {
+          setProjectsLoading(true);
+        }
+
         try {
           // Call API with location codes instead of names
-          // Now only use province code since district is removed
           const projects = await ProjectService.getProjectsForSelection(
             selectedProvince,
-            undefined, // No district
             selectedWard || undefined // Only pass wardCode if one is selected
           );
 
@@ -196,6 +197,7 @@ export default function BasicInfoStep({
           );
 
           setAvailableProjects(projects);
+          isInitialProjectLoad.current = false; // Mark as no longer initial load
         } catch (error) {
           console.error("❌ Error loading projects:", error);
           setAvailableProjects([]);
@@ -208,6 +210,7 @@ export default function BasicInfoStep({
     } else {
       // Clear projects if no province selected
       setAvailableProjects([]);
+      isInitialProjectLoad.current = true; // Reset for next province selection
     }
   }, [
     selectedProvince,
@@ -220,18 +223,53 @@ export default function BasicInfoStep({
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
-        // If project is selected, fetch project categories, otherwise fetch property categories
-        const isProjectSelected = Boolean(selectedProject);
-        const result = await categoryService.getByProjectType(
-          isProjectSelected
-        );
 
-        // Filter only active categories and sort by order
-        const activeCategories = result
-          .filter((cat) => cat.isActive !== false)
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-        setCategories(activeCategories);
+        // If project is selected, show project categories; otherwise show property categories
+        if (selectedProject) {
+          // Get the selected project and use its category
+          const project = availableProjects.find(
+            (p) => p._id === selectedProject
+          );
+          if (project && project.category) {
+            // Show only the project's category
+            const projectCategory: Category = {
+              _id: project.category._id,
+              id: project.category._id,
+              name: project.category.name,
+              slug: project.category.name.toLowerCase().replace(/\s+/g, "-"),
+              isProject: project.category.isProject,
+              isActive: true,
+              order: 0,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            setCategories([projectCategory]);
+          } else {
+            // Fallback to all project categories from API
+            const result = await categoryService.getCategories();
+            const projectCategories = result
+              .filter(
+                (cat: Category) =>
+                  cat.isProject === true && cat.isActive !== false
+              )
+              .sort(
+                (a: Category, b: Category) => (a.order || 0) - (b.order || 0)
+              );
+            setCategories(projectCategories);
+          }
+        } else {
+          // Show property categories when no project is selected
+          const result = await categoryService.getCategories();
+          const propertyCategories = result
+            .filter(
+              (cat: Category) =>
+                cat.isProject === false && cat.isActive !== false
+            )
+            .sort(
+              (a: Category, b: Category) => (a.order || 0) - (b.order || 0)
+            );
+          setCategories(propertyCategories);
+        }
       } catch (error) {
         console.error("Error fetching categories:", error);
         setCategories([]);
@@ -241,7 +279,7 @@ export default function BasicInfoStep({
     };
 
     fetchCategories();
-  }, [selectedProject]); // Re-fetch when project selection changes
+  }, [selectedProject, availableProjects]); // Re-fetch when project selection changes
 
   const handleProvinceChange = (provinceCode: string) => {
     // Clear ward when province changes
@@ -265,15 +303,18 @@ export default function BasicInfoStep({
 
   const handleWardChange = (wardCode: string) => {
     setSelectedWard(wardCode);
+    // Reset selected project when ward changes
+    setSelectedProject("");
     updateFormData({
       location: {
         ...formData.location,
         ward: wardCode,
+        project: "", // Clear the project when ward changes
       },
     });
 
     // Additional logging for debugging
-    console.log("Ward changed to:", wardCode);
+    console.log("Ward changed to:", wardCode, "- Project reset to empty");
     // The project list will be automatically updated due to the useEffect dependency on selectedWard
   };
 
@@ -296,13 +337,58 @@ export default function BasicInfoStep({
     // If a project is selected and it has a wardCode, automatically set the ward
     if (project && project.location?.wardCode) {
       setSelectedWard(project.location.wardCode);
+
+      // Auto-select category from project if available
+      let selectedCategory = formData.category;
+      if (project.category) {
+        // Use the project's category
+        selectedCategory = project.category._id;
+        console.log(
+          "Auto-selected category from project:",
+          project.category.name
+        );
+      }
+
       updateFormData({
+        category: selectedCategory,
         location: {
           ...formData.location,
           project: projectId,
           ward: project.location.wardCode,
         },
       });
+      console.log(
+        "Project selected:",
+        project.name,
+        "- Ward auto-selected:",
+        project.location.wardCode,
+        "- Category auto-selected:",
+        selectedCategory
+      );
+    } else if (project) {
+      // Auto-select category from project if available (no ward case)
+      let selectedCategory = formData.category;
+      if (project.category) {
+        selectedCategory = project.category._id;
+        console.log(
+          "Auto-selected category from project:",
+          project.category.name
+        );
+      }
+
+      updateFormData({
+        category: selectedCategory,
+        location: {
+          ...formData.location,
+          project: projectId,
+        },
+      });
+      console.log(
+        "Project selected:",
+        project.name,
+        "- Category auto-selected:",
+        selectedCategory
+      );
     } else {
       updateFormData({
         location: {
@@ -310,9 +396,8 @@ export default function BasicInfoStep({
           project: projectId,
         },
       });
+      console.log("Project cleared");
     }
-
-    console.log("Project changed to:", projectId);
   };
 
   return (
@@ -534,19 +619,32 @@ export default function BasicInfoStep({
               className="block text-sm font-medium text-gray-700 mb-2"
             >
               Loại BĐS
+              {selectedProject && (
+                <span className="text-sm text-blue-600 ml-2">
+                  (Tự chọn từ dự án)
+                </span>
+              )}
             </label>
             <select
               id="category"
               value={formData.category}
               onChange={(e) => updateFormData({ category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              disabled={categoriesLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                selectedProject ? "bg-gray-100 cursor-not-allowed" : ""
+              }`}
+              disabled={categoriesLoading || !!selectedProject}
             >
               <option value="">
-                {categoriesLoading ? "Đang tải danh mục..." : "Chọn loại BĐS"}
+                {categoriesLoading
+                  ? "Đang tải danh mục..."
+                  : selectedProject
+                  ? categories.length > 0
+                    ? categories[0].name
+                    : "Từ dự án"
+                  : "Chọn loại BĐS"}
               </option>
               {categories.map((category) => (
-                <option key={category._id} value={category.name}>
+                <option key={category._id} value={category.id}>
                   {category.name}
                 </option>
               ))}
@@ -664,6 +762,132 @@ export default function BasicInfoStep({
               <option value="Tây Bắc">Tây Bắc</option>
               <option value="Đông Nam">Đông Nam</option>
               <option value="Tây Nam">Tây Nam</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="roadWidth"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Độ rộng đường (m)
+            </label>
+            <input
+              id="roadWidth"
+              type="number"
+              value={formData.roadWidth || ""}
+              onChange={(e) => updateFormData({ roadWidth: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Nhập độ rộng đường trước nhà"
+              min={0}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="frontWidth"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Mặt tiền (m)
+            </label>
+            <input
+              id="frontWidth"
+              type="number"
+              value={formData.frontWidth || ""}
+              onChange={(e) => updateFormData({ frontWidth: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Nhập chiều rộng mặt tiền"
+              min={0}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="bedrooms"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Số phòng ngủ
+            </label>
+            <input
+              id="bedrooms"
+              type="number"
+              value={formData.bedrooms || 0}
+              onChange={(e) =>
+                updateFormData({ bedrooms: parseInt(e.target.value) || 0 })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Số phòng ngủ"
+              min={0}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="bathrooms"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Số phòng tắm
+            </label>
+            <input
+              id="bathrooms"
+              type="number"
+              value={formData.bathrooms || 0}
+              onChange={(e) =>
+                updateFormData({ bathrooms: parseInt(e.target.value) || 0 })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Số phòng tắm"
+              min={0}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="floors"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Số tầng
+            </label>
+            <input
+              id="floors"
+              type="number"
+              value={formData.floors || 0}
+              onChange={(e) =>
+                updateFormData({ floors: parseInt(e.target.value) || 0 })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              placeholder="Số tầng"
+              min={0}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="legalDocs"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Giấy tờ pháp lý
+            </label>
+            <select
+              id="legalDocs"
+              value={formData.legalDocs || "Sổ đỏ/ Sổ hồng"}
+              onChange={(e) => updateFormData({ legalDocs: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="Sổ đỏ/ Sổ hồng">Sổ đỏ/ Sổ hồng</option>
+              <option value="Giấy tờ khác">Giấy tờ khác</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="furniture"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Nội thất
+            </label>
+            <select
+              id="furniture"
+              value={formData.furniture || "Đầy đủ"}
+              onChange={(e) => updateFormData({ furniture: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            >
+              <option value="Đầy đủ">Đầy đủ</option>
+              <option value="Cơ bản">Cơ bản</option>
+              <option value="Không nội thất">Không nội thất</option>
             </select>
           </div>
         </div>

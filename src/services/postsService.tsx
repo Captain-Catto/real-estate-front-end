@@ -30,7 +30,7 @@ export interface Post {
     avatar?: string;
   };
   images: string[];
-  package?: "normal" | "premium" | "vip";
+  package?: "normal" | "premium" | "vip" | "basic" | "free";
   area: number;
   currency: string;
   status:
@@ -39,15 +39,14 @@ export interface Post {
     | "rejected"
     | "expired"
     | "inactive"
-    | "waiting_display"
-    | "waiting_publish"
-    | "near_expiry"
-    | "hidden"
-    | "waiting_payment";
+    | "deleted";
   priority?: "normal" | "premium" | "vip";
   views: number;
   createdAt: string;
   updatedAt: string;
+  project?: string; // Add direct project reference
+
+  // Additional fields
   approvedAt?: string;
   approvedBy?: string;
   rejectedAt?: string;
@@ -64,9 +63,6 @@ export interface Post {
   roadWidth?: string;
   frontWidth?: string;
   // Contact info
-  contactName?: string;
-  email?: string;
-  phone?: string;
   packageId?: string;
   packageDuration?: number;
 }
@@ -99,11 +95,6 @@ export interface CreatePostData {
   roadWidth?: string;
   frontWidth?: string;
 
-  // Contact Info
-  contactName: string;
-  email: string;
-  phone: string;
-
   // Package Info
   packageId: string;
   packageDuration: number;
@@ -117,11 +108,13 @@ export interface PostFilters {
   status: string;
   type: string;
   category: string;
-  priority: string;
+  package: string;
   search: string;
   author?: string;
+  project: string;
   dateFrom: string;
   dateTo: string;
+  searchMode?: string; // Add search mode filter
 }
 
 export interface PostsStats {
@@ -130,6 +123,7 @@ export interface PostsStats {
   pending: number;
   rejected: number;
   expired: number;
+  deleted: number; // Add deleted count
 }
 
 export interface UploadImageResponse {
@@ -319,8 +313,21 @@ class PostService {
         updateData.images = imageUrls;
       }
 
-      console.log("Updating post with ID:", postId);
-      console.log("Update data:", JSON.stringify(updateData, null, 2));
+      console.log("🔄 POSTING UPDATE REQUEST");
+      console.log("📄 Post ID:", postId);
+      console.log("📦 Update data:", JSON.stringify(updateData, null, 2));
+      console.log("🏠 houseDirection in update:", updateData.houseDirection);
+      console.log(
+        "🌅 balconyDirection in update:",
+        updateData.balconyDirection
+      );
+      console.log("🛣️ roadWidth in update:", updateData.roadWidth);
+      console.log("🏠 frontWidth in update:", updateData.frontWidth);
+      console.log("🛏️ bedrooms in update:", updateData.bedrooms);
+      console.log("🚿 bathrooms in update:", updateData.bathrooms);
+      console.log("🏢 floors in update:", updateData.floors);
+      console.log("📄 legalDocs in update:", updateData.legalDocs);
+      console.log("🪑 furniture in update:", updateData.furniture);
 
       // Đảm bảo postId là một chuỗi hợp lệ
       if (!postId || typeof postId !== "string") {
@@ -453,6 +460,34 @@ class PostService {
     }
   }
 
+  // Extend/renew post - change status from expired to active
+  async extendPost(postId: string, packageId: string): Promise<any> {
+    try {
+      console.log("Extending post with ID:", postId, "Package ID:", packageId);
+
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/posts/${postId}/extend`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ packageId }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to extend post");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error extending post:", error);
+      throw error;
+    }
+  }
+
   async getPackages(): Promise<any> {
     try {
       const response = await fetch(`${API_BASE_URL}/packages`);
@@ -505,6 +540,26 @@ class PostService {
       throw error;
     }
   }
+
+  // Increment post views
+  async incrementViews(postId: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.warn("Failed to increment views for post:", postId);
+      }
+    } catch (error) {
+      console.warn("Error incrementing views:", error);
+      // Don't throw error - views increment is not critical
+    }
+  }
+
   // get posts by category (public)
   async getPostByCategory(category: string): Promise<any> {
     try {
@@ -763,11 +818,26 @@ export class AdminPostsService {
       if (filters.category && filters.category !== "all") {
         queryParams.append("category", filters.category);
       }
+      if (filters.package && filters.package !== "all") {
+        queryParams.append("package", filters.package);
+      }
       if (filters.search) {
         queryParams.append("search", filters.search);
       }
       if (filters.author) {
         queryParams.append("author", filters.author);
+      }
+      if (filters.dateFrom) {
+        queryParams.append("dateFrom", filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        queryParams.append("dateTo", filters.dateTo);
+      }
+      if (filters.project && filters.project !== "all") {
+        queryParams.append("project", filters.project);
+      }
+      if (filters.searchMode) {
+        queryParams.append("searchMode", filters.searchMode);
       }
 
       const response = await this.fetchWithAuth(
@@ -813,6 +883,7 @@ export class AdminPostsService {
           pending: posts.filter((p: Post) => p.status === "pending").length,
           rejected: posts.filter((p: Post) => p.status === "rejected").length,
           expired: posts.filter((p: Post) => p.status === "expired").length,
+          deleted: posts.filter((p: Post) => p.status === "deleted").length,
         };
 
         return stats;
@@ -829,6 +900,7 @@ export class AdminPostsService {
         pending: 0,
         rejected: 0,
         expired: 0,
+        deleted: 0,
       };
     }
   }
@@ -923,11 +995,47 @@ export class AdminPostsService {
     }
   }
 
+  // Update post (admin can edit all fields, employee can only change status)
+  async updateAdminPost(
+    postId: string,
+    postData: Partial<CreatePostData & { status: string; reason?: string }>
+  ) {
+    try {
+      console.log("Updating admin post with ID:", postId);
+      console.log("Update data:", JSON.stringify(postData, null, 2));
+
+      const response = await this.fetchWithAuth(
+        `${API_BASE_URL}/admin/posts/${postId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(postData),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update post");
+      }
+
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error("Error parsing success response as JSON:", jsonError);
+        const text = await response.text();
+        console.log("Raw response:", text);
+        return { success: true, message: "Post updated successfully" };
+      }
+    } catch (error) {
+      console.error("Error updating admin post:", error);
+      throw error;
+    }
+  }
+
   // Update post status (admin only)
   async updatePostStatus(postId: string, status: string) {
     try {
       const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/posts/${postId}/status`,
+        `${API_BASE_URL}/admin/posts/${postId}`,
         {
           method: "PUT",
           body: JSON.stringify({ status }),
@@ -935,11 +1043,31 @@ export class AdminPostsService {
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update post status");
+        let errorMessage = "Failed to update post status";
+        try {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const error = await response.json();
+            errorMessage = error.message || errorMessage;
+          } else {
+            // If not JSON, just get text
+            const text = await response.text();
+            console.error("Non-JSON error response:", text);
+          }
+        } catch (parseError) {
+          console.error("Error parsing error response:", parseError);
+        }
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      try {
+        return await response.json();
+      } catch (jsonError) {
+        console.error("Error parsing success response as JSON:", jsonError);
+        const text = await response.text();
+        console.log("Raw response:", text);
+        return { success: true, message: "Post status updated successfully" };
+      }
     } catch (error) {
       console.error("Error updating post status:", error);
       throw error;

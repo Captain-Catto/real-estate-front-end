@@ -6,6 +6,8 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminPostDetail from "@/components/admin/AdminPostDetail";
 import { adminPostsService, Post } from "@/services/postsService";
+import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
+import { useEditPostModal } from "@/hooks/useEditPostModal";
 
 export default function AdminPostDetailPage() {
   const params = useParams();
@@ -13,6 +15,7 @@ export default function AdminPostDetailPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const editPostModal = useEditPostModal();
 
   console.log("AdminPostDetailPage params:", params);
   console.log("AdminPostDetailPage post:", post);
@@ -70,6 +73,81 @@ export default function AdminPostDetailPage() {
     }
   };
 
+  const handleEditPost = () => {
+    if (!post) return;
+
+    // Convert Post to format expected by EditPostModal
+    const editPost = {
+      _id: post._id,
+      title: post.title,
+      description: post.description,
+      type: post.type,
+      status: post.status,
+      category: post.category,
+      location: post.location,
+      area: post.area,
+      price: post.price.toString(),
+      currency: post.currency || "VND",
+      legalDocs: post.legalDocs,
+      furniture: post.furniture,
+      bedrooms: post.bedrooms,
+      bathrooms: post.bathrooms,
+      floors: post.floors,
+      houseDirection: post.houseDirection,
+      balconyDirection: post.balconyDirection,
+      roadWidth: post.roadWidth,
+      frontWidth: post.frontWidth,
+      contactName: post.author?.username || "",
+      email: post.author?.email || "",
+      phone: "", // Post interface doesn't have phone field
+      images: post.images || [],
+      project: post.project || "",
+    };
+
+    editPostModal.open(editPost);
+  };
+
+  const handleStatusChange = async (postId: string, newStatus: string) => {
+    try {
+      await adminPostsService.updatePostStatus(postId, newStatus);
+      await fetchPost(postId);
+
+      // Custom message based on status change
+      let message = `Đã thay đổi trạng thái tin đăng thành công!`;
+      if (newStatus === "pending") {
+        message = `Đã khôi phục tin đăng và chuyển về trạng thái chờ duyệt!`;
+      } else if (newStatus === "deleted") {
+        message = `Đã chuyển tin đăng vào thùng rác!`;
+      } else if (newStatus === "active") {
+        message = `Đã duyệt tin đăng thành công!`;
+      } else if (newStatus === "rejected") {
+        message = `Đã từ chối tin đăng!`;
+      }
+
+      alert(message);
+    } catch (err) {
+      console.error("Error updating post status:", err);
+      alert("Có lỗi xảy ra khi thay đổi trạng thái tin đăng!");
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (
+      confirm(
+        "Bạn có chắc chắn muốn xóa vĩnh viễn tin đăng này? Hành động này không thể hoàn tác!"
+      )
+    ) {
+      try {
+        await adminPostsService.deletePost(postId);
+        alert("Đã xóa vĩnh viễn tin đăng!");
+        router.push("/admin/quan-ly-tin-dang");
+      } catch (err) {
+        console.error("Error deleting post:", err);
+        alert("Có lỗi xảy ra khi xóa tin đăng!");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-100">
@@ -120,10 +198,44 @@ export default function AdminPostDetailPage() {
             post={post}
             onApprove={handleApprovePost}
             onReject={handleRejectPost}
+            onEdit={handleEditPost}
+            onStatusChange={handleStatusChange}
+            onDelete={handleDeletePost}
             onBack={() => router.push("/admin/quan-ly-tin-dang")}
           />
         </main>
       </div>
+
+      {/* Edit Post Modal */}
+      <EditPostModal
+        isOpen={editPostModal.isOpen}
+        onClose={editPostModal.close}
+        currentStep={editPostModal.currentStep}
+        editingPost={editPostModal.editingPost}
+        formData={editPostModal.formData}
+        selectedImages={editPostModal.selectedImages}
+        selectedPackage={editPostModal.selectedPackage}
+        nextStep={editPostModal.nextStep}
+        prevStep={editPostModal.prevStep}
+        updateFormData={
+          editPostModal.updateFormData as (
+            field: string | number | symbol,
+            value: string | number | undefined
+          ) => void
+        }
+        setSelectedImages={editPostModal.setSelectedImages}
+        setSelectedPackage={editPostModal.setSelectedPackage}
+        handleBasicSubmit={editPostModal.handleBasicSubmit}
+        handleImageSubmit={editPostModal.handleImageSubmit}
+        handlePackageSubmit={editPostModal.handlePackageSubmit}
+        existingImages={editPostModal.existingImages}
+        updateExistingImages={editPostModal.updateExistingImages}
+        categories={editPostModal.categories}
+        projects={editPostModal.projects}
+        provinces={editPostModal.provinces}
+        wards={editPostModal.wards}
+        locationLoading={editPostModal.locationLoading}
+      />
     </div>
   );
 }

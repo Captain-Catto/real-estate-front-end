@@ -112,11 +112,13 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       setLoading(true);
       const token = localStorage.getItem("accessToken");
       if (!token) {
-        console.log("No token found");
+        // EMERGENCY FIX: Disable console.log to prevent infinite logging
+        // console.log("No token found");
         return;
       }
 
-      console.log("Fetching notifications...");
+      // EMERGENCY FIX: Disable console.log to prevent infinite logging
+      // console.log("Fetching notifications...");
       const response = await fetch(
         "http://localhost:8080/api/notifications?limit=10",
         {
@@ -126,18 +128,19 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         }
       );
 
-      console.log("Response status:", response.status);
+      // EMERGENCY FIX: Disable console.log to prevent infinite logging
+      // console.log("Response status:", response.status);
       const data = await response.json();
-      console.log("Notifications data:", data);
+      // console.log("Notifications data:", data);
 
       if (data.success) {
         setNotifications(data.data.notifications);
         setUnreadCount(data.data.unreadCount);
-        console.log(
-          "Set notifications:",
-          data.data.notifications.length,
-          "items"
-        );
+        // console.log(
+        //   "Set notifications:",
+        //   data.data.notifications.length,
+        //   "items"
+        // );
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -146,9 +149,13 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     }
   };
 
-  // Fetch on component mount
+  // EMERGENCY FIX: Temporarily disable automatic notification fetching to stop infinite loops
+  // Only fetch when dropdown is manually opened
   useEffect(() => {
-    fetchNotifications();
+    // DISABLED: Causing infinite API loops - do not auto-fetch on mount
+    // fetchNotifications();
+    // EMERGENCY FIX: Disable console.log to prevent infinite logging
+    // console.log("NotificationDropdown: Auto-fetch disabled to prevent infinite loops");
   }, []);
 
   // Mark notification as read

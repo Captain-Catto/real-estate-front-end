@@ -202,4 +202,31 @@ export const packageService = {
       }
     },
   },
+
+  // Get unique package types from active packages (for filter dropdown)
+  getPriorityTypes: async (): Promise<string[]> => {
+    try {
+      const response = await packageService.getActivePackages();
+      if (response.success && response.data.packages) {
+        // Return unique package IDs (free, basic, premium, vip)
+        const packageIds = response.data.packages
+          .map((pkg) => pkg.id) // Use 'id' field instead of 'priority'
+          .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
+          .sort((a, b) => {
+            // Sort package types: vip > premium > basic > free
+            const order = { vip: 4, premium: 3, basic: 2, free: 1 };
+            return (
+              (order[b as keyof typeof order] || 0) -
+              (order[a as keyof typeof order] || 0)
+            );
+          });
+
+        return packageIds;
+      }
+      return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
+    } catch (error) {
+      console.error("Error fetching priority types:", error);
+      return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
+    }
+  },
 };

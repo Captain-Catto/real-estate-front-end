@@ -1,17 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import QuillEditor from "@/components/admin/QuillEditor";
-import { PencilIcon, EyeIcon } from "@heroicons/react/24/outline";
-import { useParams } from "next/navigation";
+import QuillEditor from "@/components/QuillEditor";
+import {
+  PencilIcon,
+  EyeIcon,
+  ArrowLeftIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import Image from "next/image";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
-import { Project, Developer } from "@/types/project";
+import { DeveloperService } from "@/services/developerService";
+import { Project } from "@/types/project";
+import { DeveloperForSelection } from "@/types/developer";
 
 export default function AdminProjectEditPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [project, setProject] = useState<Project | null>(null);
@@ -21,14 +30,176 @@ export default function AdminProjectEditPage() {
   const [previewMode, setPreviewMode] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
 
+  // Developer selection states
+  const [developers, setDevelopers] = useState<DeveloperForSelection[]>([]);
+  const [filteredDevelopers, setFilteredDevelopers] = useState<
+    DeveloperForSelection[]
+  >([]);
+  const [developerSearch, setDeveloperSearch] = useState("");
+  const [showDeveloperDropdown, setShowDeveloperDropdown] = useState(false);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState<string>("");
+  const [developersLoading, setDevelopersLoading] = useState(false);
+
+  // Pagination for dropdown
+  const [dropdownPage, setDropdownPage] = useState(0);
+  const DROPDOWN_PAGE_SIZE = 10; // Show 10 items per "page"
+  const MAX_DROPDOWN_ITEMS = 50; // Maximum items to show initially
+
   useEffect(() => {
     if (id) {
       ProjectService.getProjectById(id).then((data) => {
         setProject(data);
+        // Set selected developer if project has one
+        if (data && data.developer) {
+          if (typeof data.developer === "string") {
+            setSelectedDeveloperId(data.developer);
+          } else if (typeof data.developer === "object") {
+            // Find developer by name or other properties
+            const foundDeveloper = developers.find(
+              (dev) =>
+                dev.name === data.developer.name ||
+                dev.phone === data.developer.phone ||
+                dev.email === data.developer.email
+            );
+            if (foundDeveloper) {
+              setSelectedDeveloperId(foundDeveloper._id);
+            }
+          }
+        }
         setLoading(false);
       });
     }
-  }, [id]);
+  }, [id, developers]);
+
+  // Fetch developers for selection
+  useEffect(() => {
+    const fetchDevelopers = async () => {
+      setDevelopersLoading(true);
+      try {
+        const developersData =
+          await DeveloperService.getDevelopersForSelection();
+        setDevelopers(developersData);
+        setFilteredDevelopers(developersData);
+      } catch (error) {
+        console.error("Error fetching developers:", error);
+      } finally {
+        setDevelopersLoading(false);
+      }
+    };
+    fetchDevelopers();
+  }, []);
+
+  // Filter developers based on search
+  useEffect(() => {
+    const searchTermNormalized = removeVietnameseAccents(developerSearch);
+    const filtered = developers.filter((developer) => {
+      const nameNormalized = removeVietnameseAccents(developer.name);
+      const phoneNormalized = removeVietnameseAccents(developer.phone);
+      const emailNormalized = removeVietnameseAccents(developer.email);
+
+      return (
+        nameNormalized.includes(searchTermNormalized) ||
+        phoneNormalized.includes(searchTermNormalized) ||
+        emailNormalized.includes(searchTermNormalized)
+      );
+    });
+    setFilteredDevelopers(filtered);
+    setDropdownPage(0); // Reset pagination when search changes
+  }, [developerSearch, developers]);
+
+  // Update search field when developer is selected
+  useEffect(() => {
+    if (selectedDeveloperId && developers.length > 0) {
+      const selectedDev = developers.find(
+        (dev) => dev._id === selectedDeveloperId
+      );
+      if (selectedDev && developerSearch !== selectedDev.name) {
+        setDeveloperSearch(selectedDev.name);
+      }
+    }
+  }, [selectedDeveloperId, developers, developerSearch]);
+
+  // Reset developer selection when search term changes (unless it matches selected developer)
+  useEffect(() => {
+    if (selectedDeveloperId && developers.length > 0) {
+      const selectedDev = developers.find(
+        (dev) => dev._id === selectedDeveloperId
+      );
+      // If search term doesn't match selected developer name, reset selection
+      if (
+        selectedDev &&
+        developerSearch !== selectedDev.name &&
+        developerSearch.trim() !== ""
+      ) {
+        setSelectedDeveloperId("");
+        setProject((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            developer: {
+              name: "",
+              logo: "",
+              phone: "",
+              email: "",
+            },
+          };
+        });
+      }
+    }
+  }, [developerSearch, selectedDeveloperId, developers]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".developer-dropdown-container")) {
+        setShowDeveloperDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Utility function to remove Vietnamese accents for search
+  const removeVietnameseAccents = (str: string) => {
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .toLowerCase();
+  };
+
+  // Utility function to highlight search term in text
+  const highlightSearchTerm = (text: string, searchTerm: string) => {
+    if (!searchTerm.trim()) return text;
+
+    const searchTermNormalized = removeVietnameseAccents(searchTerm);
+    const textNormalized = removeVietnameseAccents(text);
+
+    // Find the position where the search term appears
+    const index = textNormalized.indexOf(searchTermNormalized);
+    if (index === -1) return text;
+
+    // Calculate the actual length to highlight based on original search term
+    const highlightLength = searchTermNormalized.length;
+
+    // Get the original text parts
+    const beforeMatch = text.substring(0, index);
+    const match = text.substring(index, index + highlightLength);
+    const afterMatch = text.substring(index + highlightLength);
+
+    return (
+      <>
+        {beforeMatch}
+        <span className="bg-yellow-200 font-medium">{match}</span>
+        {afterMatch}
+      </>
+    );
+  };
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -45,14 +216,22 @@ export default function AdminProjectEditPage() {
     });
   };
 
-  const handleDeveloperChange = (field: keyof Developer, value: string) => {
+  // Handler for developer selection from dropdown
+  const handleDeveloperSelect = (developer: DeveloperForSelection) => {
+    setSelectedDeveloperId(developer._id);
+    setDeveloperSearch(developer.name);
+    setShowDeveloperDropdown(false);
+
+    // Update project with selected developer info
     setProject((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
         developer: {
-          ...(prev.developer || {}),
-          [field]: value,
+          name: developer.name,
+          logo: developer.logo,
+          phone: developer.phone,
+          email: developer.email,
         },
       };
     });
@@ -319,11 +498,18 @@ export default function AdminProjectEditPage() {
     e.preventDefault();
     if (!project || !id) return;
 
+    // Validate that a developer is selected
+    if (!selectedDeveloperId) {
+      alert("Vui lòng chọn chủ đầu tư!");
+      return;
+    }
+
     setSaving(true);
     try {
       await ProjectService.updateProject({
         ...project,
         id,
+        developer: selectedDeveloperId, // Send developer ID instead of object
       });
       alert("Đã lưu thay đổi!");
     } catch (error) {
@@ -375,11 +561,21 @@ export default function AdminProjectEditPage() {
         <main className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <PencilIcon className="w-6 h-6 text-blue-600" />
-              <h1 className="text-2xl font-bold">
-                Quản lý dự án: {project.name}
-              </h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push("/admin/quan-ly-du-an")}
+                className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Quay lại danh sách dự án"
+              >
+                <ArrowLeftIcon className="w-5 h-5" />
+                <span className="hidden sm:inline">Quay lại</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <PencilIcon className="w-6 h-6 text-blue-600" />
+                <h1 className="text-2xl font-bold">
+                  Quản lý dự án: {project.name}
+                </h1>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -771,152 +967,211 @@ export default function AdminProjectEditPage() {
                         <h3 className="text-lg font-semibold mb-4">
                           Thông tin chủ đầu tư
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-6">
+                          {/* Developer Selection Dropdown */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Tên chủ đầu tư
+                              Chọn chủ đầu tư *
                             </label>
-                            <input
-                              value={project.developer.name}
-                              onChange={(e) =>
-                                handleDeveloperChange("name", e.target.value)
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Logo chủ đầu tư
-                            </label>
-
-                            {/* Current logo preview */}
-                            {project.developer.logo && (
-                              <div className="mb-3">
-                                <div className="relative w-32 h-20 border border-gray-300 rounded-lg overflow-hidden">
-                                  <Image
-                                    src={project.developer.logo}
-                                    alt="Logo preview"
-                                    width={128}
-                                    height={80}
-                                    className="w-full h-full object-contain bg-gray-50"
-                                    unoptimized
-                                  />
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Upload button */}
-                            <div className="mb-3">
-                              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                                <div className="flex flex-col items-center justify-center py-1">
-                                  <svg
-                                    className="w-5 h-5 mb-1 text-gray-500"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                                    />
-                                  </svg>
-                                  <p className="text-xs text-gray-500">
-                                    {uploading
-                                      ? "Đang upload..."
-                                      : "Click để upload logo"}
-                                  </p>
+                            <div className="relative developer-dropdown-container">
+                              <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                                 </div>
                                 <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  disabled={uploading}
-                                  onChange={async (e) => {
-                                    const files = e.target.files;
-                                    if (!files || files.length === 0) return;
-
-                                    setUploading(true);
-                                    try {
-                                      const uploadResults =
-                                        await UploadService.uploadImages(files);
-                                      const successfulUpload =
-                                        uploadResults.find(
-                                          (result) => result.success
-                                        );
-
-                                      if (successfulUpload?.data?.url) {
-                                        handleDeveloperChange(
-                                          "logo",
-                                          successfulUpload.data.url
-                                        );
-                                      }
-                                    } catch (error) {
-                                      console.error(
-                                        "Error uploading logo:",
-                                        error
-                                      );
-                                      alert("Có lỗi xảy ra khi upload logo");
-                                    } finally {
-                                      setUploading(false);
-                                    }
+                                  type="text"
+                                  value={developerSearch}
+                                  onChange={(e) => {
+                                    setDeveloperSearch(e.target.value);
+                                    setShowDeveloperDropdown(true);
                                   }}
+                                  onFocus={() => setShowDeveloperDropdown(true)}
+                                  placeholder="Tìm kiếm chủ đầu tư..."
+                                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  required
                                 />
-                              </label>
-                            </div>
+                                {developerSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeveloperSearch("");
+                                      setSelectedDeveloperId("");
+                                      setShowDeveloperDropdown(true); // Show dropdown to select new developer
+                                      setProject((prev) => {
+                                        if (!prev) return prev;
+                                        return {
+                                          ...prev,
+                                          developer: {
+                                            name: "",
+                                            logo: "",
+                                            phone: "",
+                                            email: "",
+                                          },
+                                        };
+                                      });
+                                    }}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    title="Xóa để tìm kiếm chủ đầu tư khác"
+                                  >
+                                    <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                  </button>
+                                )}
+                              </div>
 
-                            {/* Manual URL input */}
-                            <div className="flex gap-2">
-                              <input
-                                value={project.developer.logo}
-                                onChange={(e) =>
-                                  handleDeveloperChange("logo", e.target.value)
-                                }
-                                placeholder="Hoặc nhập URL logo thủ công"
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                              {project.developer.logo && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleDeveloperChange("logo", "")
-                                  }
-                                  className="px-3 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50"
-                                >
-                                  Xóa
-                                </button>
+                              {/* Dropdown */}
+                              {showDeveloperDropdown && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                  {developersLoading ? (
+                                    <div className="p-3 text-center">
+                                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>
+                                      <p className="mt-2 text-sm text-gray-500">
+                                        Đang tải chủ đầu tư...
+                                      </p>
+                                    </div>
+                                  ) : filteredDevelopers.length > 0 ? (
+                                    <>
+                                      {/* Info header */}
+                                      {filteredDevelopers.length >
+                                        DROPDOWN_PAGE_SIZE && (
+                                        <div className="p-2 text-xs text-gray-500 border-b border-gray-100 bg-gray-50">
+                                          Hiển thị{" "}
+                                          {Math.min(
+                                            (dropdownPage + 1) *
+                                              DROPDOWN_PAGE_SIZE,
+                                            filteredDevelopers.length
+                                          )}
+                                          /{filteredDevelopers.length} kết quả
+                                          {filteredDevelopers.length >
+                                            MAX_DROPDOWN_ITEMS && (
+                                            <span className="block">
+                                              Sử dụng tìm kiếm để thu hẹp kết
+                                              quả
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Developer list */}
+                                      {filteredDevelopers
+                                        .slice(
+                                          0,
+                                          (dropdownPage + 1) *
+                                            DROPDOWN_PAGE_SIZE
+                                        )
+                                        .map((developer) => (
+                                          <div
+                                            key={developer._id}
+                                            onClick={() =>
+                                              handleDeveloperSelect(developer)
+                                            }
+                                            className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
+                                              selectedDeveloperId ===
+                                              developer._id
+                                                ? "bg-blue-50"
+                                                : ""
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              {developer.logo && (
+                                                <Image
+                                                  src={developer.logo}
+                                                  alt={developer.name}
+                                                  width={32}
+                                                  height={32}
+                                                  className="w-8 h-8 object-contain rounded"
+                                                  unoptimized
+                                                />
+                                              )}
+                                              <div className="flex-1">
+                                                <div className="font-medium text-gray-900">
+                                                  {highlightSearchTerm(
+                                                    developer.name,
+                                                    developerSearch
+                                                  )}
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                  {highlightSearchTerm(
+                                                    developer.phone,
+                                                    developerSearch
+                                                  )}{" "}
+                                                  •{" "}
+                                                  {highlightSearchTerm(
+                                                    developer.email,
+                                                    developerSearch
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+
+                                      {/* Load more button */}
+                                      {filteredDevelopers.length >
+                                        (dropdownPage + 1) *
+                                          DROPDOWN_PAGE_SIZE && (
+                                        <div className="p-2 border-t border-gray-100">
+                                          <button
+                                            onClick={() =>
+                                              setDropdownPage(
+                                                (prev) => prev + 1
+                                              )
+                                            }
+                                            className="w-full text-center text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-50 py-2 rounded"
+                                          >
+                                            Xem thêm (
+                                            {filteredDevelopers.length -
+                                              (dropdownPage + 1) *
+                                                DROPDOWN_PAGE_SIZE}{" "}
+                                            còn lại)
+                                          </button>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className="p-3 text-gray-500 text-center">
+                                      {developers.length === 0
+                                        ? "Chưa có chủ đầu tư nào"
+                                        : "Không tìm thấy chủ đầu tư nào"}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Số điện thoại
-                            </label>
-                            <input
-                              value={project.developer.phone}
-                              onChange={(e) =>
-                                handleDeveloperChange("phone", e.target.value)
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Email
-                            </label>
-                            <input
-                              type="email"
-                              value={project.developer.email}
-                              onChange={(e) =>
-                                handleDeveloperChange("email", e.target.value)
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
+                          {/* Selected Developer Preview */}
+                          {selectedDeveloperId && project.developer && (
+                            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                                Thông tin chủ đầu tư đã chọn:
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex items-center gap-3">
+                                  {project.developer.logo && (
+                                    <Image
+                                      src={project.developer.logo}
+                                      alt={project.developer.name}
+                                      width={48}
+                                      height={48}
+                                      className="w-12 h-12 object-contain rounded border"
+                                      unoptimized
+                                    />
+                                  )}
+                                  <div>
+                                    <div className="font-medium text-gray-900">
+                                      {project.developer.name}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                      {project.developer.phone}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                      {project.developer.email}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -932,11 +1187,6 @@ export default function AdminProjectEditPage() {
                         <QuillEditor
                           value={project.description}
                           onChange={handleDescriptionChange}
-                          placeholder="Nhập mô tả chi tiết về dự án..."
-                          height="400px"
-                          className="w-full"
-                          imageQuality={0.7}
-                          maxImageWidth={600}
                         />
                       </div>
 

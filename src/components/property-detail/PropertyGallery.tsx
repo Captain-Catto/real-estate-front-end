@@ -88,7 +88,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                     e.stopPropagation();
                     prevImage();
                   }}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm text-white p-3 rounded-full hover:bg-opacity-70 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                   aria-label="Hình trước"
                 >
                   <svg
@@ -111,7 +111,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                     e.stopPropagation();
                     nextImage();
                   }}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-3 rounded-full hover:bg-opacity-70 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 backdrop-blur-sm text-white p-3 rounded-full hover:bg-opacity-70 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                   aria-label="Hình tiếp theo"
                 >
                   <svg

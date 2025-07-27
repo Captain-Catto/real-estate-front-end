@@ -15,11 +15,17 @@ import { locationService, Location } from "@/services/locationService";
 
 export default function DangTinPage() {
   const router = useRouter();
-  // Use the enhanced auth hook
-  const { user, isAuthenticated, loading: userLoading } = useAuth();
+  // Use the enhanced auth hook with isInitialized
+  const {
+    user,
+    isAuthenticated,
+    loading: userLoading,
+    isInitialized,
+  } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   // Sử dụng useRef để tránh vòng lặp vô hạn
-  const hasOpenedRef = useRef(false);
+  const hasRedirectedRef = useRef(false);
+  const hasOpenedModalRef = useRef(false);
   const [provinces, setProvinces] = useState<Location[]>([]);
   const [wards, setWards] = useState<Location[]>([]);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -40,13 +46,13 @@ export default function DangTinPage() {
     handleSubmit,
   } = useCreatePostModal();
 
-  // Redirect nếu chưa đăng nhập - Improved
+  // Redirect nếu chưa đăng nhập - Only after auth is initialized
   useEffect(() => {
-    if (!userLoading && !isAuthenticated && !hasOpenedRef.current) {
+    if (isInitialized && !isAuthenticated && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
       router.push("/dang-nhap");
-      hasOpenedRef.current = true;
     }
-  }, [isAuthenticated, userLoading, router]);
+  }, [isAuthenticated, isInitialized, router]);
 
   // Detect screen size
   useEffect(() => {
@@ -100,32 +106,40 @@ export default function DangTinPage() {
   useEffect(() => {
     if (
       isMobile &&
+      isInitialized &&
       isAuthenticated &&
       !isOpen &&
-      !hasOpenedRef.current &&
+      !hasOpenedModalRef.current &&
       !userLoading
     ) {
-      hasOpenedRef.current = true;
+      hasOpenedModalRef.current = true;
       openModal();
     }
-  }, [isMobile, isAuthenticated, userLoading, isOpen, openModal]);
+  }, [
+    isMobile,
+    isAuthenticated,
+    isInitialized,
+    userLoading,
+    isOpen,
+    openModal,
+  ]);
+
+  // Default avatar URL
+  const DEFAULT_AVATAR_URL =
+    "https://datlqt-real-estate.s3.ap-southeast-2.amazonaws.com/uploads/4b3fd577-logo_placeholder.jpg";
 
   // Format user data từ Redux store
   const userData = user
     ? {
         name: user.username || user.email?.split("@")[0] || "User",
-        avatar:
-          user.avatar ||
-          user.username?.charAt(0).toUpperCase() ||
-          user.email?.charAt(0).toUpperCase() ||
-          "U",
+        avatar: user.avatar || DEFAULT_AVATAR_URL,
         balance: "0 đ", // Có thể lấy từ API wallet
         greeting: getGreeting(),
         email: user.email,
       }
     : {
         name: "Guest",
-        avatar: "G",
+        avatar: DEFAULT_AVATAR_URL,
         greeting: getGreeting(),
         balance: "0 đ",
       };
@@ -159,8 +173,8 @@ export default function DangTinPage() {
     }
   };
 
-  // Loading state - Simplified
-  if (userLoading) {
+  // Loading state - Wait for auth initialization
+  if (!isInitialized || userLoading) {
     return (
       <div className="flex min-h-screen bg-gray-100 items-center justify-center">
         <div className="text-center">
@@ -171,8 +185,8 @@ export default function DangTinPage() {
     );
   }
 
-  // Redirect handled by the useEffect
-  if (!isAuthenticated) {
+  // Redirect handled by the useEffect - only show when initialized
+  if (isInitialized && !isAuthenticated) {
     return null;
   }
 
@@ -256,21 +270,14 @@ export default function DangTinPage() {
     <>
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-24 min-h-screen p-4 hidden lg:block">
+        {/* <div className="w-24 min-h-screen p-4 hidden lg:block">
           <UserSidebar />
-        </div>
+        </div> */}
 
         {/* Main Content */}
         <main className="flex-1 min-h-screen w-full">
           <div className="container mx-auto px-3 sm:px-4 lg:px-6">
             <div className="bg-white rounded-lg shadow">
-              {/* Header Section - Using Component with real user data */}
-              <UserHeader
-                userData={userData}
-                showNotificationButton={true}
-                showWalletButton={true}
-              />
-
               {/* Step Navigation */}
               <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
                 <div className="flex items-center justify-between max-w-2xl mx-auto">

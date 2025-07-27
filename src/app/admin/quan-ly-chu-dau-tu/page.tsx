@@ -1,18 +1,24 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { Pagination } from "@/components/common/Pagination";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { DeveloperService } from "@/services/developerService";
 import {
-  DeveloperService,
   DeveloperListItem,
   CreateDeveloperRequest,
   UpdateDeveloperRequest,
-} from "@/services/developerService";
+} from "@/types/developer";
 import { UploadService } from "@/services/uploadService";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminDeveloperPage() {
+  const router = useRouter();
+  const { hasRole, isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
   const [developers, setDevelopers] = useState<DeveloperListItem[]>([]);
   const [filteredDevelopers, setFilteredDevelopers] = useState<
     DeveloperListItem[]
@@ -23,6 +29,14 @@ export default function AdminDeveloperPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingDeveloper, setEditingDeveloper] =
     useState<DeveloperListItem | null>(null);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [paginatedDevelopers, setPaginatedDevelopers] = useState<
+    DeveloperListItem[]
+  >([]);
 
   const [form, setForm] = useState<Partial<CreateDeveloperRequest>>({
     name: "",
@@ -35,9 +49,18 @@ export default function AdminDeveloperPage() {
     foundedYear: new Date().getFullYear(),
   });
 
+  // Authentication check
   useEffect(() => {
-    fetchDevelopers();
-  }, []);
+    if (user !== undefined) {
+      setAccessChecked(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && accessChecked && isAuthenticated && hasRole("admin")) {
+      fetchDevelopers();
+    }
+  }, [user, accessChecked, isAuthenticated, hasRole]);
 
   useEffect(() => {
     if (developers.length > 0) {
@@ -46,11 +69,7 @@ export default function AdminDeveloperPage() {
         return (
           developer.name.toLowerCase().includes(searchTermLower) ||
           developer.phone.toLowerCase().includes(searchTermLower) ||
-          developer.email.toLowerCase().includes(searchTermLower) ||
-          (developer.website &&
-            developer.website.toLowerCase().includes(searchTermLower)) ||
-          (developer.address &&
-            developer.address.toLowerCase().includes(searchTermLower))
+          developer.email.toLowerCase().includes(searchTermLower)
         );
       });
       setFilteredDevelopers(filtered);
@@ -58,6 +77,19 @@ export default function AdminDeveloperPage() {
       setFilteredDevelopers([]);
     }
   }, [searchTerm, developers]);
+
+  // Calculate pagination
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedDevelopers(filteredDevelopers.slice(startIndex, endIndex));
+    setTotalPages(Math.ceil(filteredDevelopers.length / itemsPerPage));
+  }, [filteredDevelopers, currentPage, itemsPerPage]);
+
+  // Reset to first page when itemsPerPage or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage, searchTerm]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -76,19 +108,50 @@ export default function AdminDeveloperPage() {
     }
   };
 
-  const handleOpenModal = (developer?: DeveloperListItem) => {
+  const handleOpenModal = async (developer?: DeveloperListItem) => {
     if (developer) {
       setEditingDeveloper(developer);
-      setForm({
-        name: developer.name,
-        logo: developer.logo,
-        phone: developer.phone,
-        email: developer.email,
-        website: developer.website || "",
-        address: developer.address || "",
-        description: developer.description || "",
-        foundedYear: developer.foundedYear || new Date().getFullYear(),
-      });
+      try {
+        // Fetch full developer data for editing
+        const fullData = await DeveloperService.getDeveloperById(developer._id);
+        if (fullData) {
+          setForm({
+            name: fullData.name,
+            logo: fullData.logo,
+            phone: fullData.phone,
+            email: fullData.email,
+            website: fullData.website || "",
+            address: fullData.address || "",
+            description: fullData.description || "",
+            foundedYear: fullData.foundedYear || new Date().getFullYear(),
+          });
+        } else {
+          // Fallback to limited data
+          setForm({
+            name: developer.name,
+            logo: developer.logo,
+            phone: developer.phone,
+            email: developer.email,
+            website: "",
+            address: "",
+            description: "",
+            foundedYear: developer.foundedYear || new Date().getFullYear(),
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching full developer data:", error);
+        // Fallback to limited data
+        setForm({
+          name: developer.name,
+          logo: developer.logo,
+          phone: developer.phone,
+          email: developer.email,
+          website: "",
+          address: "",
+          description: "",
+          foundedYear: developer.foundedYear || new Date().getFullYear(),
+        });
+      }
     } else {
       setEditingDeveloper(null);
       setForm({
@@ -202,6 +265,95 @@ export default function AdminDeveloperPage() {
     }
   };
 
+  if (!accessChecked) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Chưa đăng nhập
+              </h2>
+              <p className="text-gray-600">
+                Vui lòng đăng nhập để truy cập trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasRole("admin")) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Không có quyền truy cập
+              </h2>
+              <p className="text-gray-600">
+                Bạn không có quyền truy cập vào trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
@@ -230,29 +382,46 @@ export default function AdminDeveloperPage() {
 
           <div className="mb-4">
             <div className="bg-white rounded-lg shadow p-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    className="h-5 w-5 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                    value={searchTerm}
+                    onChange={handleSearch}
+                  />
                 </div>
-                <input
-                  type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Tìm kiếm theo tên, email, số điện thoại..."
-                  value={searchTerm}
-                  onChange={handleSearch}
-                />
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-700 whitespace-nowrap">
+                    Số lượng/trang:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -263,7 +432,7 @@ export default function AdminDeveloperPage() {
                 <div className="flex justify-center items-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : filteredDevelopers.length === 0 ? (
+              ) : paginatedDevelopers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <p className="text-gray-500 mb-2">
                     Không tìm thấy chủ đầu tư phù hợp
@@ -278,115 +447,136 @@ export default function AdminDeveloperPage() {
                   )}
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Logo & Tên
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Liên hệ
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Năm thành lập
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Trạng thái
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredDevelopers.map((developer) => (
-                      <tr key={developer._id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {developer.logo && (
-                              <div className="relative w-12 h-12 mr-4">
-                                <Image
-                                  src={developer.logo}
-                                  alt={developer.name}
-                                  width={48}
-                                  height={48}
-                                  className="w-12 h-12 object-contain rounded-lg"
-                                  unoptimized
-                                />
-                              </div>
-                            )}
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {developer.name}
-                              </div>
-                              {developer.website && (
-                                <div className="text-sm text-blue-600">
-                                  <a
-                                    href={developer.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="hover:underline"
-                                  >
-                                    {developer.website}
-                                  </a>
+                <div className="animate-fade-in">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Logo & Tên
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Liên hệ
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Năm thành lập
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedDevelopers.map((developer) => (
+                        <tr key={developer._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              {developer.logo && (
+                                <div className="relative w-12 h-12 mr-4">
+                                  <Image
+                                    src={developer.logo}
+                                    alt={developer.name}
+                                    width={48}
+                                    height={48}
+                                    className="w-12 h-12 object-contain rounded-lg"
+                                    unoptimized
+                                  />
                                 </div>
                               )}
+                              <div>
+                                <button
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/quan-ly-chu-dau-tu/${developer._id}`
+                                    )
+                                  }
+                                  className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                >
+                                  {developer.name}
+                                </button>
+                                <div className="text-sm text-gray-500">
+                                  ID: {developer._id}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">
-                            {developer.phone}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {developer.email}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {developer.foundedYear || "N/A"}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              developer.isActive
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {developer.isActive ? "Hoạt động" : "Tạm ngưng"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleOpenModal(developer)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Chỉnh sửa"
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900">
+                              {developer.phone}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {developer.email}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {developer.foundedYear || "N/A"}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                developer.isActive
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
                             >
-                              <PencilIcon className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDelete(developer._id, developer.name)
-                              }
-                              className="text-red-600 hover:text-red-900"
-                              title="Xóa"
-                            >
-                              <TrashIcon className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                              {developer.isActive ? "Hoạt động" : "Tạm ngưng"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenModal(developer)}
+                                className="text-blue-600 hover:text-blue-900"
+                                title="Chỉnh sửa"
+                              >
+                                <PencilIcon className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDelete(developer._id, developer.name)
+                                }
+                                className="text-red-600 hover:text-red-900"
+                                title="Xóa"
+                              >
+                                <TrashIcon className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredDevelopers.length > 0 && (
+              <div className="px-6 py-4 bg-white border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">
+                    Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+                    {Math.min(
+                      currentPage * itemsPerPage,
+                      filteredDevelopers.length
+                    )}{" "}
+                    trong tổng số {filteredDevelopers.length} chủ đầu tư
+                  </span>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Modal */}
           {showModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm">
               <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">

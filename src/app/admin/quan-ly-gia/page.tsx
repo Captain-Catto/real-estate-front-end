@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggablePriceTable from "@/components/admin/DraggablePriceTable";
 import { fetchWithAuth } from "@/services/authService";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Price {
   _id: string;
@@ -19,8 +21,12 @@ interface Price {
 }
 
 export default function PricesManagement() {
+  const router = useRouter();
+  const { hasRole, isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
+
   const [prices, setPrices] = useState<Price[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingPrice, setEditingPrice] = useState<Price | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +44,27 @@ export default function PricesManagement() {
     order: 0,
   });
 
+  // Authentication check
+  useEffect(() => {
+    if (!accessChecked && user) {
+      setAccessChecked(true);
+
+      if (!isAuthenticated) {
+        router.push("/dang-nhap");
+        return;
+      }
+
+      const hasAccess = hasRole("admin") || hasRole("employee");
+      if (!hasAccess) {
+        router.push("/");
+        return;
+      }
+    }
+  }, [hasRole, isAuthenticated, router, user, accessChecked]);
+
   const fetchPrices = useCallback(async () => {
+    if (!user || !accessChecked) return;
+
     try {
       // Chỉ set loading khi load lần đầu hoặc thay đổi filter/page
       if (prices.length === 0) {
@@ -67,7 +93,7 @@ export default function PricesManagement() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filterType, prices.length]);
+  }, [currentPage, filterType, prices.length, user, accessChecked]);
 
   useEffect(() => {
     fetchPrices();
@@ -289,310 +315,390 @@ export default function PricesManagement() {
     return `${formatNumber(min || 0)} - ${formatNumber(max || 0)} ${unit}`;
   };
 
-  if (loading) {
+  if (!user || !accessChecked) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span className="text-gray-700">Đang kiểm tra quyền truy cập...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !(hasRole("admin") || hasRole("employee"))) {
+    return (
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 text-center">
+          <div className="text-red-600 text-lg font-medium mb-2">
+            Không có quyền truy cập
+          </div>
+          <div className="text-gray-600">
+            Bạn không có quyền truy cập trang này.
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col">
-        <AdminHeader />
-        <main className="flex-1 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Header with Stats */}
-            <div className="mb-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
-                    Quản lý Khoảng giá
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    Quản lý khoảng giá cho mua bán, cho thuê và dự án bất động
-                    sản
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm"
-                >
-                  Thêm khoảng giá
-                </button>
-              </div>
-            </div>
+      {/* Show loading while checking authentication and permissions */}
+      {(!user || !accessChecked) && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="text-gray-700">
+              Đang kiểm tra quyền truy cập...
+            </span>
+          </div>
+        </div>
+      )}
 
-            {/* Type Tabs and Stats */}
-            <div className="mb-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Bộ lọc khoảng giá
-                  </h2>
-                </div>
-
-                {/* Type Filter Tabs */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setFilterType("all")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      filterType === "all"
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Tất cả
-                  </button>
-                  <button
-                    onClick={() => setFilterType("ban")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      filterType === "ban"
-                        ? "bg-green-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Mua bán
-                  </button>
-                  <button
-                    onClick={() => setFilterType("cho-thue")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      filterType === "cho-thue"
-                        ? "bg-orange-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Cho thuê
-                  </button>
-                  <button
-                    onClick={() => setFilterType("project")}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      filterType === "project"
-                        ? "bg-purple-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    Dự án
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Form Modal */}
-            {showForm && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">
-                      {editingPrice ? "Sửa khoảng giá" : "Thêm khoảng giá mới"}
-                    </h2>
-                    <button
-                      onClick={resetForm}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      X
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tên khoảng giá
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Slug
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.slug}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            slug: e.target.value,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Loại giao dịch
-                      </label>
-                      <select
-                        value={formData.type}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            type: e.target.value as
-                              | "ban"
-                              | "cho-thue"
-                              | "project",
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="ban">Mua bán</option>
-                        <option value="cho-thue">Cho thuê</option>
-                        <option value="project">Dự án</option>
-                      </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {formData.type === "ban" &&
-                          "Khoảng giá cho việc mua bán bất động sản"}
-                        {formData.type === "cho-thue" &&
-                          "Khoảng giá cho việc cho thuê bất động sản"}
-                        {formData.type === "project" &&
-                          "Khoảng giá cho các dự án bất động sản"}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+      {/* Only render admin interface if user has proper permissions */}
+      {user &&
+        accessChecked &&
+        isAuthenticated &&
+        (hasRole("admin") || hasRole("employee")) && (
+          <>
+            <AdminSidebar />
+            <div className="flex-1 flex flex-col">
+              <AdminHeader />
+              <main className="flex-1 p-6">
+                <div className="max-w-7xl mx-auto">
+                  {/* Header with Stats */}
+                  <div className="mb-6">
+                    <div className="flex justify-between items-start mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Giá tối thiểu
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            value={formData.minValue}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                minValue: parseFloat(e.target.value) || 0,
-                              }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="0"
-                            placeholder="0"
-                          />
-                          <span className="absolute right-3 top-2 text-sm text-gray-500">
-                            {formData.type === "ban"
-                              ? "VNĐ"
-                              : formData.type === "cho-thue"
-                              ? "VNĐ/tháng"
-                              : "VNĐ/m²"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Giá tối đa
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            value={formData.maxValue}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                maxValue: parseFloat(e.target.value) || -1,
-                              }))
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="-1"
-                            placeholder="-1 = không giới hạn"
-                          />
-                          <span className="absolute right-3 top-2 text-sm text-gray-500">
-                            {formData.type === "ban"
-                              ? "VNĐ"
-                              : formData.type === "cho-thue"
-                              ? "VNĐ/tháng"
-                              : "VNĐ/m²"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Nhập -1 hoặc để trống nếu không giới hạn trên
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          Quản lý Khoảng giá
+                        </h1>
+                        <p className="text-gray-600 mt-1">
+                          Quản lý khoảng giá cho mua bán, cho thuê và dự án bất
+                          động sản
                         </p>
                       </div>
+                      <button
+                        onClick={() => setShowForm(true)}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+                      >
+                        Thêm khoảng giá
+                      </button>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Thứ tự hiển thị
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.order}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            order: parseInt(e.target.value) || 0,
-                          }))
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        min="0"
+                  {/* Type Tabs and Stats */}
+                  <div className="mb-6">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          Bộ lọc khoảng giá
+                        </h2>
+                      </div>
+
+                      {/* Type Filter Tabs */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setFilterType("all")}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            filterType === "all"
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Tất cả
+                        </button>
+                        <button
+                          onClick={() => setFilterType("ban")}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            filterType === "ban"
+                              ? "bg-green-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Mua bán
+                        </button>
+                        <button
+                          onClick={() => setFilterType("cho-thue")}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            filterType === "cho-thue"
+                              ? "bg-orange-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Cho thuê
+                        </button>
+                        <button
+                          onClick={() => setFilterType("project")}
+                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                            filterType === "project"
+                              ? "bg-purple-600 text-white shadow-md"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          Dự án
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Form Modal */}
+                  {showForm && (
+                    <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+                      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-xl font-semibold">
+                            {editingPrice
+                              ? "Sửa khoảng giá"
+                              : "Thêm khoảng giá mới"}
+                          </h2>
+                          <button
+                            onClick={resetForm}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            X
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Tên khoảng giá
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.name}
+                              onChange={(e) => handleNameChange(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Slug
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.slug}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  slug: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Loại giao dịch
+                            </label>
+                            <select
+                              value={formData.type}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  type: e.target.value as
+                                    | "ban"
+                                    | "cho-thue"
+                                    | "project",
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="ban">Mua bán</option>
+                              <option value="cho-thue">Cho thuê</option>
+                              <option value="project">Dự án</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {formData.type === "ban" &&
+                                "Khoảng giá cho việc mua bán bất động sản"}
+                              {formData.type === "cho-thue" &&
+                                "Khoảng giá cho việc cho thuê bất động sản"}
+                              {formData.type === "project" &&
+                                "Khoảng giá cho các dự án bất động sản"}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Giá tối thiểu
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  value={formData.minValue}
+                                  onChange={(e) =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      minValue: parseFloat(e.target.value) || 0,
+                                    }))
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  min="0"
+                                  placeholder="0"
+                                />
+                                <span className="absolute right-3 top-2 text-sm text-gray-500">
+                                  {formData.type === "ban"
+                                    ? "VNĐ"
+                                    : formData.type === "cho-thue"
+                                    ? "VNĐ/tháng"
+                                    : "VNĐ/m²"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Giá tối đa
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  value={formData.maxValue}
+                                  onChange={(e) =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      maxValue:
+                                        parseFloat(e.target.value) || -1,
+                                    }))
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  min="-1"
+                                  placeholder="-1 = không giới hạn"
+                                />
+                                <span className="absolute right-3 top-2 text-sm text-gray-500">
+                                  {formData.type === "ban"
+                                    ? "VNĐ"
+                                    : formData.type === "cho-thue"
+                                    ? "VNĐ/tháng"
+                                    : "VNĐ/m²"}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Nhập -1 hoặc để trống nếu không giới hạn trên
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Thứ tự hiển thị
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.order}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  order: parseInt(e.target.value) || 0,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              min="0"
+                            />
+                          </div>
+
+                          <div className="flex gap-3 pt-4">
+                            <button
+                              type="submit"
+                              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                            >
+                              {editingPrice ? "Cập nhật" : "Tạo mới"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={resetForm}
+                              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prices Table */}
+                  {loading ? (
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                      <div className="px-6 py-12 text-center">
+                        <div className="flex items-center justify-center space-x-3">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                          <span className="text-gray-500">
+                            Đang tải khoảng giá...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="animate-fade-in">
+                      <DraggablePriceTable
+                        prices={prices}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onToggleStatus={toggleStatus}
+                        onReorder={handleReorder}
+                        formatPrice={formatPrice}
                       />
                     </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <button
-                        type="submit"
-                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                      >
-                        {editingPrice ? "Cập nhật" : "Tạo mới"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={resetForm}
-                        className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Prices Table */}
-            <DraggablePriceTable
-              prices={prices}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onToggleStatus={toggleStatus}
-              onReorder={handleReorder}
-              formatPrice={formatPrice}
-            />
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex justify-center">
-                <nav className="flex space-x-2">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 text-sm font-medium rounded-md ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    )
                   )}
-                </nav>
-              </div>
-            )}
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="mt-6 flex justify-center">
+                      <nav className="flex space-x-2">
+                        {Array.from(
+                          { length: totalPages },
+                          (_, i) => i + 1
+                        ).map((page) => (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm font-medium rounded-md ${
+                              currentPage === page
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                      </nav>
+                    </div>
+                  )}
+                </div>
+              </main>
+            </div>
+          </>
+        )}
+
+      {/* Show access denied message */}
+      {user &&
+        accessChecked &&
+        isAuthenticated &&
+        !(hasRole("admin") || hasRole("employee")) && (
+          <div className="flex items-center justify-center min-h-screen w-full">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Không có quyền truy cập
+              </h1>
+              <p className="text-gray-600 mb-4">
+                Bạn không có quyền truy cập trang này.
+              </p>
+              <button
+                onClick={() => router.push("/")}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Về trang chủ
+              </button>
+            </div>
           </div>
-        </main>
-      </div>
+        )}
     </div>
   );
 }

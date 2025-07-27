@@ -73,7 +73,7 @@ export function ProjectGallery({
 
               {/* Show remaining count on last image */}
               {index === 3 && remainingCount > 0 && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-br-lg">
+                <div className="absolute inset-0 backdrop-blur-sm flex items-center justify-center rounded-br-lg">
                   <span className="text-white font-semibold">
                     +{remainingCount} ảnh
                   </span>
@@ -151,7 +151,7 @@ export function ProjectGallery({
             </div>
 
             {/* Thumbnail strip */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black bg-opacity-50 p-2 rounded-lg">
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 backdrop-blur-sm p-2 rounded-lg">
               {allMedia.slice(0, 10).map((media, index) => (
                 <button
                   key={index}
@@ -174,7 +174,7 @@ export function ProjectGallery({
                 </button>
               ))}
               {allMedia.length > 10 && (
-                <div className="w-16 h-16 bg-black bg-opacity-50 flex items-center justify-center text-white text-xs rounded">
+                <div className="w-16 h-16 backdrop-blur-sm flex items-center justify-center text-white text-xs rounded">
                   +{allMedia.length - 10}
                 </div>
               )}

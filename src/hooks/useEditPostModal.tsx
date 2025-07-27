@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { postService, CreatePostData } from "@/services/postsService";
+import { useRef } from "react";
+import {
+  postService,
+  adminPostsService,
+  CreatePostData,
+} from "@/services/postsService";
 import { UploadService } from "@/services/uploadService";
 import { useAuth } from "@/store/hooks";
-import { useWallet } from "./useWallet";
 import { paymentService } from "@/services/paymentService";
 import { categoryService, Category } from "@/services/categoryService";
 import { ProjectService } from "@/services/projectService";
 import { Project, ProjectListItem } from "@/types/project";
-import { locationService, Location } from "@/services/locationService";
+import {
+  locationService,
+  Location,
+  AdminProvince,
+} from "@/services/locationService";
 import { toast } from "sonner";
 
 interface FormData {
@@ -33,9 +41,6 @@ interface FormData {
   balconyDirection: string;
   roadWidth: string;
   frontWidth: string;
-  contactName: string;
-  email: string;
-  phone: string;
   title: string;
   description: string;
 }
@@ -55,7 +60,6 @@ interface EditPost {
     | string;
   location: {
     province: string;
-    district: string;
     ward: string;
     street?: string;
   };
@@ -88,7 +92,14 @@ interface Package {
 export function useEditPostModal() {
   const router = useRouter();
   const { user } = useAuth();
-  const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
+
+  // EMERGENCY FIX: Disable useWallet in modals to prevent multiple instances causing infinite loops
+  // const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
+  // For now, we'll handle wallet balance checking differently or skip it in modals
+  const balance = 0; // Placeholder - will get actual balance when needed
+  const formattedBalance = "0₫"; // Placeholder
+  const refreshWallet = () => Promise.resolve(); // No-op function
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -100,12 +111,12 @@ export function useEditPostModal() {
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [editingPost, setEditingPost] = useState<EditPost | null>(null);
 
-  // Location data state
-  const [provinces, setProvinces] = useState<Location[]>([]);
-  const [districts, setDistricts] = useState<Location[]>([]);
+  // Location data state - Cấu trúc 2 tầng mới (Tỉnh/Thành phố → Phường/Xã)
+  const [provinces, setProvinces] = useState<AdminProvince[]>([]);
   const [wards, setWards] = useState<Location[]>([]);
   const [locationLoading, setLocationLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const hasInitialized = useRef(false);
 
   // Form data state với thông tin từ post cần edit
   const [formData, setFormData] = useState<FormData>({
@@ -129,9 +140,6 @@ export function useEditPostModal() {
     balconyDirection: "",
     roadWidth: "",
     frontWidth: "",
-    contactName: user?.username || "",
-    email: user?.email || "",
-    phone: "",
     title: "",
     description: "",
   });
@@ -140,8 +148,10 @@ export function useEditPostModal() {
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const result = await categoryService.getByProjectType(false); // Get property categories
-        const activeCategories = result.filter((cat) => cat.isActive !== false);
+        const result = await categoryService.getCategories();
+        const activeCategories = result.filter(
+          (cat: Category) => cat.isProject === false && cat.isActive !== false
+        );
         setCategories(activeCategories);
       } catch (error) {
         console.error("Error loading categories:", error);
@@ -166,16 +176,44 @@ export function useEditPostModal() {
     loadProjects();
   }, []);
 
-  // Load provinces
+  // Load provinces - Sử dụng API mới đã được chuẩn hóa
   useEffect(() => {
     const loadProvinces = async () => {
       try {
         setLocationLoading(true);
-        const result = await locationService.getProvinces();
-        setProvinces(result || []);
+        // Sử dụng API đã được cập nhật
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        const response = await fetch(`${API_URL}/api/locations/provinces`);
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data)) {
+          // Transform data để phù hợp với Location interface
+          const transformedProvinces = result.data.map(
+            (province: {
+              name: string;
+              code: string;
+              slug: string;
+              type: string;
+              name_with_type: string;
+            }) => ({
+              _id: province.code || "",
+              name: province.name,
+              code: province.code,
+              slug: province.slug,
+              type: province.type,
+              name_with_type: province.name_with_type,
+            })
+          );
+          setProvinces(transformedProvinces);
+        } else {
+          console.error("Invalid provinces data:", result);
+          setProvinces([]);
+        }
       } catch (error) {
         console.error("Error loading provinces:", error);
         toast.error("Không thể tải danh sách tỉnh thành");
+        setProvinces([]);
       } finally {
         setLocationLoading(false);
       }
@@ -184,12 +222,11 @@ export function useEditPostModal() {
     loadProvinces();
   }, []);
 
-  // Load districts when province changes
+  // Load wards when province changes - Cấu trúc 2 tầng mới
   useEffect(() => {
-    const loadDistricts = async () => {
+    const loadWards = async () => {
       // Skip loading if currently initializing or no province
       if (isInitializing || !formData.location.province) {
-        setDistricts([]);
         setWards([]);
         return;
       }
@@ -208,7 +245,7 @@ export function useEditPostModal() {
               p.name.toLowerCase() === provinceCode.toLowerCase()
           );
           if (province) {
-            provinceCode = province.code;
+            provinceCode = String(province.code);
             console.log(
               "Converted province name to code:",
               formData.location.province,
@@ -217,112 +254,14 @@ export function useEditPostModal() {
             );
           } else {
             console.error("Province not found by name:", provinceCode);
-            setDistricts([]);
             setWards([]);
             setLocationLoading(false);
             return;
           }
         }
 
-        const result = await locationService.getDistricts(provinceCode);
-        setDistricts(result || []);
-        setWards([]); // Clear wards when province changes
-      } catch (error) {
-        console.error("Error loading districts:", error);
-        setDistricts([]);
-        setWards([]);
-      } finally {
-        setLocationLoading(false);
-      }
-    };
-
-    loadDistricts();
-  }, [formData.location.province, provinces, isInitializing]);
-
-  // Load wards when district changes
-  useEffect(() => {
-    const loadWards = async () => {
-      // Skip loading if currently initializing or missing province/district
-      if (
-        isInitializing ||
-        !formData.location.province ||
-        !formData.location.district
-      ) {
-        setWards([]);
-        return;
-      }
-
-      try {
-        setLocationLoading(true);
-
-        // Convert province name to code if needed
-        let provinceCode = formData.location.province;
-        if (isNaN(Number(provinceCode)) && provinces.length > 0) {
-          const province = provinces.find(
-            (p) =>
-              p.name === provinceCode ||
-              p.name.toLowerCase() === provinceCode.toLowerCase()
-          );
-          if (province) {
-            provinceCode = province.code;
-          } else {
-            console.error("Province not found by name:", provinceCode);
-            setWards([]);
-            setLocationLoading(false);
-            return;
-          }
-        }
-
-        // Convert district name to code if needed
-        let districtCode = formData.location.district;
-        console.log(
-          "🔍 Converting district:",
-          districtCode,
-          "from districts:",
-          districts.length,
-          "items"
-        );
-
-        if (isNaN(Number(districtCode)) && districts.length > 0) {
-          const district = districts.find(
-            (d) =>
-              d.name === districtCode ||
-              d.name.toLowerCase() === districtCode.toLowerCase()
-          );
-          if (district) {
-            districtCode = district.code;
-            console.log(
-              "✅ Converted district name to code:",
-              formData.location.district,
-              "->",
-              district.code
-            );
-          } else {
-            console.error("❌ District not found by name:", districtCode);
-            console.log(
-              "Available districts:",
-              districts.map((d) => `${d.name} (${d.code})`)
-            );
-            setWards([]);
-            setLocationLoading(false);
-            return;
-          }
-        } else if (isNaN(Number(districtCode))) {
-          console.log(
-            "⚠️ District name provided but districts array is empty. District:",
-            districtCode,
-            "Districts length:",
-            districts.length
-          );
-          setWards([]);
-          setLocationLoading(false);
-          return;
-        }
-
-        const result = await locationService.getWards(
-          provinceCode,
-          districtCode
-        );
+        // Load wards directly from province (no districts in 2-tier structure)
+        const result = await locationService.getWardsFromProvince(provinceCode);
         setWards(result || []);
       } catch (error) {
         console.error("Error loading wards:", error);
@@ -333,18 +272,28 @@ export function useEditPostModal() {
     };
 
     loadWards();
-  }, [
-    formData.location.province,
-    formData.location.district,
-    provinces,
-    districts,
-    isInitializing,
-  ]);
+  }, [formData.location.province, provinces, isInitializing, setWards]);
 
   // Initialize form data when editing post is set
   useEffect(() => {
-    if (editingPost) {
+    if (editingPost && user && !hasInitialized.current) {
+      // Only initialize once per post
+      hasInitialized.current = true;
       setIsInitializing(true); // Start initialization
+
+      console.log("🔍 editingPost data:", editingPost);
+      console.log("🏠 editingPost.houseDirection:", editingPost.houseDirection);
+      console.log(
+        "🌅 editingPost.balconyDirection:",
+        editingPost.balconyDirection
+      );
+      console.log("🛣️ editingPost.roadWidth:", editingPost.roadWidth);
+      console.log("🏠 editingPost.frontWidth:", editingPost.frontWidth);
+      console.log("🛏️ editingPost.bedrooms:", editingPost.bedrooms);
+      console.log("🚿 editingPost.bathrooms:", editingPost.bathrooms);
+      console.log("🏢 editingPost.floors:", editingPost.floors);
+      console.log("📄 editingPost.legalDocs:", editingPost.legalDocs);
+      console.log("🪑 editingPost.furniture:", editingPost.furniture);
 
       const categoryName =
         typeof editingPost.category === "string"
@@ -356,7 +305,6 @@ export function useEditPostModal() {
         category: categoryName,
         location: {
           province: editingPost.location.province,
-          district: editingPost.location.district,
           ward: editingPost.location.ward,
           street: editingPost.location.street || "",
           project:
@@ -376,9 +324,6 @@ export function useEditPostModal() {
         balconyDirection: editingPost.balconyDirection || "",
         roadWidth: editingPost.roadWidth || "",
         frontWidth: editingPost.frontWidth || "",
-        contactName: editingPost.contactName || user?.username || "",
-        email: editingPost.email || user?.email || "",
-        phone: editingPost.phone || "",
         title: editingPost.title,
         description: editingPost.description || "",
       });
@@ -396,6 +341,7 @@ export function useEditPostModal() {
   const open = (post?: EditPost) => {
     if (post) {
       setEditingPost(post);
+      hasInitialized.current = false; // Reset initialization flag for new post
     }
     setIsOpen(true);
     setCurrentStep(1);
@@ -411,13 +357,13 @@ export function useEditPostModal() {
     setPaymentError(null);
     setIsInitializing(false); // Reset initialization flag
     setEditingPost(null);
+    hasInitialized.current = false; // Reset initialization tracking
     // Reset form data
     setFormData({
       type: "ban",
       category: "",
       location: {
         province: "",
-        district: "",
         ward: "",
         street: "",
         project: "",
@@ -434,9 +380,6 @@ export function useEditPostModal() {
       balconyDirection: "",
       roadWidth: "",
       frontWidth: "",
-      contactName: user?.username || "",
-      email: user?.email || "",
-      phone: "",
       title: "",
       description: "",
     });
@@ -458,6 +401,7 @@ export function useEditPostModal() {
     field: keyof FormData,
     value: string | number | undefined
   ) => {
+    console.log(`🔧 Hook updateFormData: ${String(field)} = ${value}`);
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -525,6 +469,9 @@ export function useEditPostModal() {
     try {
       setIsSubmitting(true);
 
+      console.log("🔄 STARTING BASIC SUBMIT");
+      console.log("📋 Current formData:", formData);
+
       // Prepare update data
       const updateData: Partial<CreatePostData> = {
         title: formData.title,
@@ -533,7 +480,7 @@ export function useEditPostModal() {
         category: formData.category,
         location: {
           province: formData.location.province,
-          district: formData.location.district,
+          district: "", // Empty district for 2-tier structure compatibility
           ward: formData.location.ward,
           street: formData.location.street || "",
         },
@@ -549,9 +496,6 @@ export function useEditPostModal() {
         balconyDirection: formData.balconyDirection,
         roadWidth: formData.roadWidth,
         frontWidth: formData.frontWidth,
-        contactName: formData.contactName,
-        email: formData.email,
-        phone: formData.phone,
       };
 
       // Add project if selected
@@ -559,14 +503,24 @@ export function useEditPostModal() {
         updateData.project = formData.location.project;
       }
 
-      console.log("Updating post with data:", updateData);
+      console.log("📦 Prepared updateData:");
+      console.log("🏠 houseDirection:", updateData.houseDirection);
+      console.log("🌅 balconyDirection:", updateData.balconyDirection);
+      console.log("🛣️ roadWidth:", updateData.roadWidth);
+      console.log("🏠 frontWidth:", updateData.frontWidth);
+      console.log("🛏️ bedrooms:", updateData.bedrooms);
+      console.log("🚿 bathrooms:", updateData.bathrooms);
+      console.log("🏢 floors:", updateData.floors);
+      console.log("📄 legalDocs:", updateData.legalDocs);
+      console.log("🪑 furniture:", updateData.furniture);
+      console.log("📦 Full updateData:", JSON.stringify(updateData, null, 2));
 
       // Include current images
       const currentImages =
         existingImages.length > 0 ? existingImages : editingPost.images || [];
       console.log("Including current images:", currentImages.length);
 
-      // Sử dụng resubmitPost cho tin bị từ chối, updatePost cho các trường hợp khác
+      // Sử dụng adminPostsService cho admin, resubmitPost cho tin bị từ chối
       const result =
         editingPost.status === "rejected"
           ? await postService.resubmitPost(
@@ -574,11 +528,10 @@ export function useEditPostModal() {
               updateData,
               currentImages
             )
-          : await postService.updatePost(
-              editingPost._id,
-              updateData,
-              currentImages
-            );
+          : await adminPostsService.updateAdminPost(editingPost._id, {
+              ...updateData,
+              images: currentImages,
+            });
 
       if (result.success) {
         if (editingPost.status === "rejected") {
@@ -654,14 +607,55 @@ export function useEditPostModal() {
         }
       }
 
-      console.log("📋 Final images list:", finalImagesList.length, "images"); // Step 2: Always update post with current images (even if no new images were uploaded)
+      // Step 2: Always update post with current images AND basic info
       // This is important for cases where user only removed or reordered existing images
       try {
-        console.log("📝 Updating post images...");
-        const updateResult = await postService.updatePost(
+        console.log("📝 Updating post with images AND basic info...");
+
+        // Prepare complete update data including basic info
+        const updateData: Partial<CreatePostData> = {
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          category: formData.category,
+          location: {
+            province: formData.location.province,
+            district: "", // Empty district for 2-tier structure compatibility
+            ward: formData.location.ward,
+            street: formData.location.street || "",
+          },
+          area: formData.area,
+          price: formData.price,
+          currency: formData.currency,
+          legalDocs: formData.legalDocs,
+          furniture: formData.furniture,
+          bedrooms: formData.bedrooms,
+          bathrooms: formData.bathrooms,
+          floors: formData.floors,
+          houseDirection: formData.houseDirection,
+          balconyDirection: formData.balconyDirection,
+          roadWidth: formData.roadWidth,
+          frontWidth: formData.frontWidth,
+        };
+
+        // Add project if selected
+        if (formData.location.project) {
+          updateData.project = formData.location.project;
+        }
+
+        console.log("� Complete update data with basic info:");
+        console.log("🏠 houseDirection:", updateData.houseDirection);
+        console.log("🌅 balconyDirection:", updateData.balconyDirection);
+        console.log("🛣️ roadWidth:", updateData.roadWidth);
+        console.log("🏠 frontWidth:", updateData.frontWidth);
+        console.log("🛏️ bedrooms:", updateData.bedrooms);
+
+        const updateResult = await adminPostsService.updateAdminPost(
           editingPost._id,
-          {}, // Empty postData object
-          finalImagesList // Pass images as separate parameter
+          {
+            ...updateData, // Send complete form data
+            images: finalImagesList, // Include images in the update data
+          }
         );
 
         console.log("✅ Post images updated successfully:", updateResult);
@@ -677,9 +671,7 @@ export function useEditPostModal() {
       }
 
       // Step 3: Decide next step based on post status
-      const needsPackageSelection =
-        editingPost.status === "expired" ||
-        editingPost.status === "waiting_payment";
+      const needsPackageSelection = editingPost.status === "expired";
 
       if (needsPackageSelection) {
         console.log("⏭️ Moving to package selection step");
@@ -738,7 +730,7 @@ export function useEditPostModal() {
           ? await postService.resubmitPost(editingPost._id, {
               packageId: selectedPackage._id,
             })
-          : await postService.updatePost(editingPost._id, {
+          : await adminPostsService.updateAdminPost(editingPost._id, {
               packageId: selectedPackage._id,
             });
 
@@ -781,7 +773,6 @@ export function useEditPostModal() {
 
     // Location data
     provinces,
-    districts,
     wards,
     locationLoading,
 

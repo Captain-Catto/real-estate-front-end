@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -9,32 +9,57 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function SidebarConfigPage() {
   const router = useRouter();
-  const { hasRole, isAuthenticated, loading: authLoading } = useAuth();
+  const { hasRole, isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
 
-  // Kiểm tra quyền truy cập - chỉ admin mới được vào
+  // Authentication check
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      if (!hasRole("admin")) {
+    if (!accessChecked && user) {
+      setAccessChecked(true);
+
+      if (!isAuthenticated) {
+        router.push("/dang-nhap");
+        return;
+      }
+
+      const hasAccess = hasRole("admin");
+      if (!hasAccess) {
+        // Nếu không có quyền, chuyển hướng về trang admin
         router.push("/admin");
         return;
       }
     }
-  }, [hasRole, isAuthenticated, authLoading, router]);
+  }, [hasRole, isAuthenticated, router, user, accessChecked]);
 
-  // Show loading while checking auth
-  if (authLoading) {
+  // Show loading while checking authentication and permissions
+  if (!user || !accessChecked) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span className="text-gray-700">Đang kiểm tra quyền truy cập...</span>
+        </div>
       </div>
     );
   }
 
-  // Don't render if not admin
-  if (!hasRole("admin")) {
-    return null;
+  // Access denied screen
+  if (!isAuthenticated || !hasRole("admin")) {
+    return (
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 text-center">
+          <div className="text-red-600 text-lg font-medium mb-2">
+            Không có quyền truy cập
+          </div>
+          <div className="text-gray-600">
+            Chỉ admin mới có thể truy cập trang cấu hình sidebar.
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // Only render admin interface if user has proper permissions
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar />

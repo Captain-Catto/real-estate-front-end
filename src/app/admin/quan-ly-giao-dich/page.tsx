@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Pagination } from "@/components/common/Pagination";
@@ -15,8 +16,11 @@ import {
   AdminPaymentFilters,
 } from "@/services/adminTransactionService";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AdminTransactionsPage() {
+  const { hasRole, isAuthenticated, user } = useAuth();
+  const [accessChecked, setAccessChecked] = useState(false);
   const [transactions, setTransactions] = useState<AdminPayment[]>([]);
   const [stats, setStats] = useState<AdminPaymentStats | null>(null);
   const [filters, setFilters] = useState<AdminPaymentFilters>({
@@ -29,6 +33,13 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Authentication check
+  useEffect(() => {
+    if (user !== undefined) {
+      setAccessChecked(true);
+    }
+  }, [user]);
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
@@ -69,8 +80,10 @@ export default function AdminTransactionsPage() {
   }, [filters, currentPage]);
 
   useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+    if (user && accessChecked && isAuthenticated && hasRole("admin")) {
+      fetchTransactions();
+    }
+  }, [fetchTransactions, user, accessChecked, isAuthenticated, hasRole]);
 
   const handleSearch = (searchTerm: string) => {
     console.log("🔍 Search triggered with term:", searchTerm);
@@ -137,6 +150,95 @@ export default function AdminTransactionsPage() {
     }
     return { type: "other", label: "Khác", color: "text-gray-700" };
   };
+
+  if (!accessChecked) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Chưa đăng nhập
+              </h2>
+              <p className="text-gray-600">
+                Vui lòng đăng nhập để truy cập trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasRole("admin")) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <AdminSidebar />
+        <div className="flex-1">
+          <AdminHeader />
+          <main className="flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mb-4">
+                <svg
+                  className="mx-auto h-12 w-12 text-red-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 715.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Không có quyền truy cập
+              </h2>
+              <p className="text-gray-600">
+                Bạn không có quyền truy cập vào trang này.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -271,118 +373,136 @@ export default function AdminTransactionsPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : transactions.length > 0 ? (
-                <table className="w-full table-fixed">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Mã giao dịch
-                      </th>
-                      <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Người dùng
-                      </th>
-                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Loại
-                      </th>
-                      <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Mô tả
-                      </th>
-                      <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Số tiền
-                      </th>
-                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Trạng thái
-                      </th>
-                      <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Ngày tạo
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {transactions.map((payment) => {
-                      const transactionType = getTransactionType(payment);
-                      return (
-                        <tr key={payment._id} className="hover:bg-gray-50">
-                          <td
-                            className="px-3 py-3 font-mono text-xs text-gray-900 truncate"
-                            title={payment.orderId}
-                          >
-                            {payment.orderId}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div
-                              className="text-xs font-medium truncate"
-                              title={payment.userId?.username || "N/A"}
+                <div className="animate-fade-in">
+                  <table className="w-full table-fixed">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Mã giao dịch
+                        </th>
+                        <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Người dùng
+                        </th>
+                        <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Loại
+                        </th>
+                        <th className="w-48 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Mô tả
+                        </th>
+                        <th className="w-28 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Số tiền
+                        </th>
+                        <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Trạng thái
+                        </th>
+                        <th className="w-24 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Ngày tạo
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {transactions.map((payment) => {
+                        const transactionType = getTransactionType(payment);
+                        return (
+                          <tr key={payment._id} className="hover:bg-gray-50">
+                            <td
+                              className="px-3 py-3 font-mono text-xs text-gray-900 truncate"
+                              title={payment.orderId}
                             >
-                              {payment.userId?.username || "N/A"}
-                            </div>
-                            <div
-                              className="text-xs text-gray-500 truncate"
-                              title={payment.userId?.email || "N/A"}
-                            >
-                              {payment.userId?.email || "N/A"}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-xs">
-                            <span
-                              className={`${transactionType.color} font-medium`}
-                            >
-                              {transactionType.label}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-sm">
-                            <div
-                              className="truncate"
-                              title={payment.description}
-                            >
-                              {payment.description}
-                            </div>
-                            {payment.postId?.title && (
-                              <div
-                                className="text-xs text-blue-600 truncate"
-                                title={`Tin: ${payment.postId.title}`}
+                              {payment.orderId}
+                            </td>
+                            <td className="px-3 py-3">
+                              {payment.userId ? (
+                                <Link
+                                  href={`/admin/quan-ly-nguoi-dung/${payment.userId._id}`}
+                                  className="block hover:bg-blue-50 rounded p-1 -m-1 transition-colors"
+                                >
+                                  <div
+                                    className="text-xs font-medium truncate text-blue-600 hover:text-blue-800"
+                                    title={payment.userId.username || "N/A"}
+                                  >
+                                    {payment.userId.username || "N/A"}
+                                  </div>
+                                  <div
+                                    className="text-xs text-gray-500 truncate"
+                                    title={payment.userId.email || "N/A"}
+                                  >
+                                    {payment.userId.email || "N/A"}
+                                  </div>
+                                </Link>
+                              ) : (
+                                <div>
+                                  <div className="text-xs font-medium truncate text-gray-400">
+                                    N/A
+                                  </div>
+                                  <div className="text-xs text-gray-400 truncate">
+                                    N/A
+                                  </div>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-xs">
+                              <span
+                                className={`${transactionType.color} font-medium`}
                               >
-                                Tin: {payment.postId.title}
+                                {transactionType.label}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-sm">
+                              <div
+                                className="truncate"
+                                title={payment.description}
+                              >
+                                {payment.description}
                               </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-xs font-semibold">
-                            <span className="text-green-700">
-                              {formatCurrency(payment.amount)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
-                                payment.status
-                              )}`}
-                            >
-                              {payment.status === "completed" && "Hoàn thành"}
-                              {payment.status === "pending" && "Đang xử lý"}
-                              {payment.status === "failed" && "Thất bại"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-xs text-gray-500">
-                            <div>
-                              {new Date(payment.createdAt).toLocaleDateString(
-                                "vi-VN"
+                              {payment.postId?.title && (
+                                <div
+                                  className="text-xs text-blue-600 truncate"
+                                  title={`Tin: ${payment.postId.title}`}
+                                >
+                                  Tin: {payment.postId.title}
+                                </div>
                               )}
-                            </div>
-                            <div>
-                              {new Date(payment.createdAt).toLocaleTimeString(
-                                "vi-VN",
-                                {
-                                  hour12: false,
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-3 py-3 text-xs font-semibold">
+                              <span className="text-green-700">
+                                {formatCurrency(payment.amount)}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(
+                                  payment.status
+                                )}`}
+                              >
+                                {payment.status === "completed" && "Hoàn thành"}
+                                {payment.status === "pending" && "Đang xử lý"}
+                                {payment.status === "failed" && "Thất bại"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-xs text-gray-500">
+                              <div>
+                                {new Date(payment.createdAt).toLocaleDateString(
+                                  "vi-VN"
+                                )}
+                              </div>
+                              <div>
+                                {new Date(payment.createdAt).toLocaleTimeString(
+                                  "vi-VN",
+                                  {
+                                    hour12: false,
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <CurrencyDollarIcon className="mx-auto h-12 w-12 text-gray-400" />

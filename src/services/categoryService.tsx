@@ -264,4 +264,52 @@ export const categoryService = {
       }
     },
   },
+
+  /**
+   * Get all active categories for dropdown/filter (non-project categories)
+   * @returns Promise with array of active categories
+   */
+  getAllActiveCategories: async (): Promise<Category[]> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/categories?isProject=false&limit=100`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error fetching active categories: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const categories = result.data?.categories || result.categories || [];
+
+      // Filter only active categories
+      return categories.filter((cat: Category) => cat.isActive !== false);
+    } catch (error) {
+      console.error("Error in categoryService.getAllActiveCategories:", error);
+      return [];
+    }
+  },
+
+  /**
+   * Alias for getAll method to match component expectations
+   * @returns Promise with array of categories
+   */
+  getCategories: async (): Promise<Category[]> => {
+    return categoryService.getAll();
+  },
+
+  /**
+   * Alias for getById method to match component expectations
+   * @param id - Category ID
+   * @returns Promise with category details
+   */
+  getCategoryById: async (id: string): Promise<Category | null> => {
+    return categoryService.getById(id);
+  },
 };

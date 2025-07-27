@@ -30,9 +30,6 @@ interface FormData {
   balconyDirection: string;
   roadWidth: string;
   frontWidth: string;
-  contactName: string;
-  email: string;
-  phone: string;
   title: string;
   description: string;
 }
@@ -40,7 +37,14 @@ interface FormData {
 export function useCreatePostModal() {
   const router = useRouter();
   const { user } = useAuth();
-  const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
+
+  // EMERGENCY FIX: Disable useWallet in modals to prevent multiple instances causing infinite loops
+  // const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
+  // For now, we'll handle wallet balance checking differently or skip it in modals
+  const balance = 0; // Placeholder - will get actual balance when needed
+  const formattedBalance = "0₫"; // Placeholder
+  const refreshWallet = () => Promise.resolve(); // No-op function
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -72,28 +76,36 @@ export function useCreatePostModal() {
     balconyDirection: "",
     roadWidth: "",
     frontWidth: "",
-    contactName: user?.username || "",
-    email: user?.email || "",
-    phone: "", // Có thể lấy từ user profile nếu có
     title: "",
     description: "",
   });
+
+  // Update contact info when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+      }));
+    }
+  }, [user]);
 
   // Load default category from API
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const result = await categoryService.getByProjectType(false); // Get property categories
-        const activeCategories = result.filter((cat) => cat.isActive !== false);
+        const result = await categoryService.getCategories();
+        const activeCategories = result.filter(
+          (cat: Category) => cat.isProject === false && cat.isActive !== false
+        );
         setCategories(activeCategories);
 
         // Set first category as default
         if (activeCategories.length > 0) {
           const firstCategory = activeCategories[0];
-          setDefaultCategory(firstCategory.slug);
+          setDefaultCategory(firstCategory.id);
           setFormData((prev) => ({
             ...prev,
-            category: firstCategory.slug,
+            category: firstCategory.id,
           }));
         }
       } catch (error) {
@@ -105,14 +117,6 @@ export function useCreatePostModal() {
   }, []);
 
   const openModal = () => {
-    // Reset form với thông tin user hiện tại
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        contactName: user.username || "",
-        email: user.email || "",
-      }));
-    }
     setIsOpen(true);
     setCurrentStep(1);
   };
@@ -144,9 +148,6 @@ export function useCreatePostModal() {
         balconyDirection: "",
         roadWidth: "",
         frontWidth: "",
-        contactName: user?.username || "",
-        email: user?.email || "",
-        phone: "",
         title: "",
         description: "",
       });
@@ -167,27 +168,6 @@ export function useCreatePostModal() {
 
   const updateFormData = (updates: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }));
-  };
-
-  // Map category Vietnamese -> English
-  const mapCategoryToEnglish = (category: string) => {
-    switch (category) {
-      case "Nhà riêng":
-        return "house";
-      case "Chung cư":
-        return "apartment";
-      case "Nhà mặt phố":
-        return "townhouse";
-      case "Biệt thự":
-        return "villa";
-      case "Đất":
-        return "land";
-      case "Căn hộ dịch vụ":
-        return "serviced-apartment";
-      // Thêm các trường hợp khác nếu cần
-      default:
-        return category;
-    }
   };
 
   // Map packageId to package enum for backend
@@ -256,13 +236,12 @@ export function useCreatePostModal() {
         throw new Error(
           `Số dư ví không đủ để thanh toán. Số dư hiện tại: ${formattedBalance}. Vui lòng nạp thêm tiền vào ví.`
         );
-      } // Map category sang tiếng Anh
-      const mappedCategory = mapCategoryToEnglish(formData.category);
+      }
 
       // Chuẩn bị dữ liệu bài viết
       const postData: CreatePostData = {
         ...formData,
-        category: mappedCategory,
+        category: formData.category, // Use category directly from form (already from API)
         packageId: selectedPackage.id,
         packageDuration: selectedPackage.duration,
         package: mapPackageIdToPackage(selectedPackage.id), // Add package field

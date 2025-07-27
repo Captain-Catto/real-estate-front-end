@@ -3,15 +3,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import Image from "next/image";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
-import { Breadcrumb } from "../project-detail/Breadcrumb";
+import { Breadcrumb, BreadcrumbItem } from "../project-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
 import SearchSection from "@/components/home/SearchSection";
 import { locationService } from "@/services/locationService";
+import { PropertyData } from "@/types/property";
 
 interface PropertyListingProps {
-  properties: any[];
+  properties: PropertyData[];
   location: {
     city: string;
     district: string;
@@ -38,10 +40,17 @@ export function PropertyListing({
   searchParams = {},
 }: PropertyListingProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  // Sử dụng interface Location từ locationService
+  interface BasicLocation {
+    code: string;
+    name: string;
+    codename?: string;
+  }
+
   const [locationData, setLocationData] = useState<{
-    initialCity: any | null;
-    initialDistricts: any[];
-    initialWard: any | null;
+    initialCity: BasicLocation | null;
+    initialDistricts: BasicLocation[];
+    initialWard: BasicLocation | null;
   }>({
     initialCity: null,
     initialDistricts: [],
@@ -54,16 +63,67 @@ export function PropertyListing({
     const fetchLocationData = async () => {
       try {
         // Convert location names thành proper Location objects với codes
-        let cityData = null;
-        let districtsData: any[] = [];
-        let wardData = null;
+        let cityData: BasicLocation | null = null;
+        let districtsData: BasicLocation[] = [];
+        let wardData: BasicLocation | null = null;
 
         // Fetch city data nếu có
         if (location.city) {
           // Sử dụng locationService để tìm city theo tên
           const provinces = await locationService.getProvinces();
-          cityData = provinces.find(
-            (p) => p.name === location.city || p.codename === searchParams.city
+
+          console.log("DEBUG: Looking for province:", location.city);
+          console.log(
+            "DEBUG: Available provinces:",
+            provinces
+              .map((p) => ({
+                name: p.name,
+                code: p.code,
+                slug: p.slug,
+                codename: p.codename,
+              }))
+              .slice(0, 5)
+          );
+
+          // Tìm kiếm theo nhiều tiêu chí
+          const cityName = location.city; // Tên gốc (ví dụ: "Đồng Tháp")
+          const citySlug = location.city
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "-"); // dong-thap
+
+          // Thử tìm theo tên chính xác
+          const foundCity = provinces.find((p) => p.name === cityName);
+
+          // Nếu không tìm thấy, thử tìm theo các cách khác
+          if (!foundCity) {
+            cityData =
+              provinces.find(
+                (p) =>
+                  p.slug === citySlug ||
+                  p.codename === searchParams.city ||
+                  p.name
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/\s+/g, "-") === citySlug ||
+                  p.codename
+                    ?.replace(/^tinh-/, "")
+                    .replace(/^thanh-pho-/, "") === citySlug ||
+                  // Thêm các trường hợp so sánh thêm
+                  p.slug === "tinh-" + citySlug ||
+                  p.slug === "thanh-pho-" + citySlug
+              ) || null;
+          } else {
+            cityData = foundCity;
+          }
+
+          console.log(
+            "City search: Looking for",
+            location.city,
+            "found:",
+            cityData?.name
           );
         }
 
@@ -80,14 +140,63 @@ export function PropertyListing({
           }
         }
 
-        // Fetch ward data nếu có
-        if (location.ward && districtsData.length > 0) {
-          const wards = await locationService.getWards(
-            cityData?.code || "",
-            districtsData[0].code
+        // Fetch ward data nếu có - sử dụng API mới chỉ cần province code
+        if (location.ward && cityData) {
+          const wards = await locationService.getWardsFromProvince(
+            cityData.code
           );
-          wardData = wards.find(
-            (w) => w.name === location.ward || w.codename === searchParams.ward
+
+          console.log("DEBUG: Looking for ward:", location.ward);
+          console.log(
+            "DEBUG: Available wards:",
+            wards.slice(0, 5).map((w) => ({
+              name: w.name,
+              code: w.code,
+              slug: w.slug,
+              codename: w.codename,
+            }))
+          );
+
+          // Tìm kiếm theo nhiều tiêu chí
+          const wardName = location.ward; // Tên gốc (ví dụ: "Tam Nông")
+          const wardSlug = location.ward
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, "-"); // tam-nong
+
+          // Thử tìm theo tên chính xác
+          const foundWard = wards.find((w) => w.name === wardName);
+
+          if (foundWard) {
+            wardData = foundWard;
+          } else {
+            wardData =
+              wards.find(
+                (w) =>
+                  w.slug === wardSlug ||
+                  w.codename === searchParams.ward ||
+                  w.name
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .replace(/\s+/g, "-") === wardSlug ||
+                  w.codename
+                    ?.replace(/^xa-/, "")
+                    .replace(/^phuong-/, "")
+                    .replace(/^thi-tran-/, "") === wardSlug ||
+                  // Thêm các trường hợp so sánh thêm
+                  w.slug === "xa-" + wardSlug ||
+                  w.slug === "phuong-" + wardSlug ||
+                  w.slug === "thi-tran-" + wardSlug
+              ) || null;
+          }
+
+          console.log(
+            "Ward search: Looking for",
+            location.ward,
+            "found:",
+            wardData?.name
           );
         }
 
@@ -134,7 +243,11 @@ export function PropertyListing({
   // Utility function để tạo slug
   const createSlug = (text: string): string => {
     if (!text) return "";
-    return text
+
+    // Chuyển về chuỗi nếu không phải string
+    const textStr = String(text);
+
+    return textStr
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -145,28 +258,10 @@ export function PropertyListing({
       .trim();
   };
 
-  // Generate URL cho property detail
-  const generatePropertyUrl = (property: any): string => {
-    const titleSlug = createSlug(property.title);
-    const idSlug = `${property._id}-${titleSlug}`;
-
-    if (
-      property.location?.province &&
-      property.location?.district &&
-      property.location?.ward
-    ) {
-      return `/${transactionType}/${createSlug(
-        property.location.province
-      )}/${createSlug(property.location.district)}/${createSlug(
-        property.location.ward
-      )}/${idSlug}`;
-    }
-
-    return `/mua-ban/${property._id}`;
-  };
+  // Helper function để tạo URL - được sử dụng trong PropertyCard
 
   // Generate breadcrumb items
-  const breadcrumbItems = [
+  const breadcrumbItems: BreadcrumbItem[] = [
     { label: "Trang chủ", href: "/" },
     {
       label: transactionType === "mua-ban" ? "Mua bán" : "Cho thuê",
@@ -179,34 +274,64 @@ export function PropertyListing({
       label: location.city,
       href: `/${transactionType}/${createSlug(location.city)}`,
       isActive: level === "city",
+      useQueryParams: true, // Use query params instead of path segments
     });
   }
 
-  if (location.district) {
+  // Only add district if it exists and is not empty
+  if (location.district && location.district.trim() !== "") {
     breadcrumbItems.push({
       label: location.district,
       href: `/${transactionType}/${createSlug(location.city)}/${createSlug(
         location.district
       )}`,
       isActive: level === "district",
+      useQueryParams: true, // Use query params instead of path segments
     });
   }
 
-  if (location.ward) {
+  // Only add ward if it exists and is not empty
+  if (location.ward && location.ward.trim() !== "") {
+    // Determine the correct URL structure based on whether we have a valid district
+    let wardUrl;
+
+    if (location.district && location.district.trim() !== "") {
+      // If we have a valid district, include it in the path
+      wardUrl = `/${transactionType}/${createSlug(location.city)}/${createSlug(
+        location.district
+      )}/${createSlug(location.ward)}`;
+    } else {
+      // If no valid district, go directly from province to ward
+      wardUrl = `/${transactionType}/${createSlug(location.city)}/${createSlug(
+        location.ward
+      )}`;
+    }
+
+    // Log the URL being created for debugging
+    console.log("Creating ward URL:", {
+      city: location.city,
+      district: location.district,
+      ward: location.ward,
+      result: wardUrl,
+    });
+
     breadcrumbItems.push({
       label: location.ward,
-      href: `/${transactionType}/${createSlug(location.city)}/${createSlug(
-        location.district
-      )}/${createSlug(location.ward)}`,
+      href: wardUrl,
       isActive: level === "ward",
+      useQueryParams: true, // Use query params instead of path segments
     });
   }
 
-  // Pagination logic
-  const totalPages = Math.ceil(properties.length / itemsPerPage);
+  // Log breadcrumb items for debugging
+  console.log("Final breadcrumb items:", breadcrumbItems);
+
+  // Pagination logic - đảm bảo properties là một mảng
+  const propertiesArray = Array.isArray(properties) ? properties : [];
+  const totalPages = Math.ceil(propertiesArray.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentProperties = properties.slice(startIndex, endIndex);
+  const currentProperties = propertiesArray.slice(startIndex, endIndex);
 
   // Generate page title
   const getPageTitle = () => {
@@ -222,33 +347,26 @@ export function PropertyListing({
     return `${transactionText} bất động sản`;
   };
 
+  // Tạo JSON schema một lần ở bên ngoài render để tránh hydration mismatch
+  const pageTitle = getPageTitle();
+  const seoData = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListings",
+    name: pageTitle,
+    description: `Danh sách ${properties.length} bất động sản ${
+      transactionType === "mua-ban" ? "bán" : "cho thuê"
+    } tại ${location.ward ? `${location.ward}, ` : ""}${
+      location.district ? `${location.district}, ` : ""
+    }${location.city}`,
+    numberOfItems: properties.length,
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* SEO Structured Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "RealEstateListings",
-            name: getPageTitle(),
-            description: `Danh sách ${properties.length} bất động sản ${
-              transactionType === "mua-ban" ? "bán" : "cho thuê"
-            } tại ${location.ward ? `${location.ward}, ` : ""}${
-              location.district ? `${location.district}, ` : ""
-            }${location.city}`,
-            numberOfItems: properties.length,
-            itemListElement: currentProperties.map((property, index) => ({
-              "@type": "RealEstateListing",
-              position: startIndex + index + 1,
-              name: property.title,
-              url: `${
-                typeof window !== "undefined" ? window.location.origin : ""
-              }${generatePropertyUrl(property)}`,
-            })),
-          }),
-        }}
-      />
+      <Script id="property-listing-schema" type="application/ld+json">
+        {JSON.stringify(seoData)}
+      </Script>
 
       <div className="container mx-auto px-4 py-6">
         {/* Breadcrumb */}
@@ -292,7 +410,7 @@ export function PropertyListing({
           <>
             {/* Properties Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-              {currentProperties.map((property: any) => (
+              {currentProperties.map((property: PropertyData) => (
                 <PropertyCard
                   key={property._id}
                   property={property}
@@ -324,12 +442,12 @@ const PropertyCard = React.memo(
     property,
     transactionType,
   }: {
-    property: any;
+    property: PropertyData;
     transactionType: string;
   }) => {
-    const createSlug = (text: string): string => {
+    const createSlug = (text: string | undefined): string => {
       if (!text) return "";
-      return text
+      return String(text)
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -340,40 +458,51 @@ const PropertyCard = React.memo(
         .trim();
     };
 
-    const generatePropertyUrl = (property: any): string => {
+    const generatePropertyUrl = (property: PropertyData): string => {
       const titleSlug = createSlug(property.title);
       const idSlug = `${property._id}-${titleSlug}`;
 
-      if (
-        property.location?.province &&
-        property.location?.district &&
-        property.location?.ward
-      ) {
+      // Cập nhật đường dẫn URL theo cấu trúc 2 cấp (tỉnh/thành phố + phường/xã)
+      if (property.location?.province && property.location?.ward) {
         return `/${transactionType}/${createSlug(
           property.location.province
-        )}/${createSlug(property.location.district)}/${createSlug(
-          property.location.ward
+        )}/${createSlug(property.location.ward)}/${idSlug}`;
+      }
+
+      // Fallback: Nếu chỉ có province (tỉnh/thành)
+      if (property.location?.province) {
+        return `/${transactionType}/${createSlug(
+          property.location.province
         )}/${idSlug}`;
       }
 
-      return `/mua-ban/${property._id}`;
+      return `/${transactionType}/chi-tiet/${property._id}`;
     };
+
+    // Tạo location string theo yêu cầu của FavoriteItem
+    const locationString = [
+      property.location?.ward,
+      property.location?.district,
+      property.location?.province,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     const favoriteItem = {
       id: property._id,
       type: "property" as const,
-      title: property.title,
-      price: property.price,
-      location: property.location,
+      title: property.title || "",
+      price: property.price ? String(property.price) : "",
+      location: locationString, // Convert location object to string
       image: property.images?.[0] || "/placeholder.jpg",
-      slug: property.slug || property._id, // Added missing slug
-      area: property.area,
-      bedrooms: property.bedrooms,
-      bathrooms: property.bathrooms,
+      slug: property.slug || property._id,
+      area: property.area ? String(property.area) : "",
+      bedrooms: property.bedrooms || 0,
+      bathrooms: property.bathrooms || 0,
       propertyType:
         typeof property.category === "object"
           ? property.category?.name
-          : property.category,
+          : (property.category as string) || "",
     };
 
     return (

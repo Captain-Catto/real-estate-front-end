@@ -23,6 +23,7 @@ export interface WalletInfo {
 
 // Tạo một phiên bản global của broadcastChannel để tái sử dụng
 let globalBroadcastChannel: BroadcastChannel | null = null;
+let globalPollingActive = false; // Flag để tránh multiple polling
 if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
   try {
     globalBroadcastChannel = new BroadcastChannel("wallet_updates");
@@ -80,8 +81,8 @@ export const useWallet = () => {
 
   // References for polling and focus tracking
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // Giảm thời gian tối thiểu giữa các lần refresh xuống 5 giây để cập nhật nhanh hơn
-  const minRefreshInterval = 5000; // Minimum time between refreshes (5 seconds)
+  // Tăng thời gian tối thiểu giữa các lần refresh để giảm tải server
+  const minRefreshInterval = 30000; // Minimum time between refreshes (30 seconds)
 
   // Format shortcuts
   const formattedBalance = formatPrice(walletInfo.balance);
@@ -176,7 +177,7 @@ export const useWallet = () => {
     if (!transactionsLoading && hasMore) {
       fetchTransactions(page + 1);
     }
-  }, [fetchTransactions, page, transactionsLoading, hasMore]);
+  }, [page, transactionsLoading, hasMore]);
 
   // Deposit money to wallet
   const deposit = useCallback(
@@ -261,7 +262,7 @@ export const useWallet = () => {
         return { success: false, error: errorMessage };
       }
     },
-    [isAuthenticated, fetchWalletInfo, formatPrice]
+    [isAuthenticated, formatPrice]
   );
 
   // Get transaction details
@@ -303,131 +304,27 @@ export const useWallet = () => {
       setPage(1);
       setHasMore(true);
     }
-  }, [isAuthenticated, fetchWalletInfo, fetchTransactions]);
+  }, [isAuthenticated]);
 
   // Set up window focus event listener and polling mechanism
   useEffect(() => {
+    // EMERGENCY FIX: Temporarily disable all polling to stop infinite loops
+    // Only allow initial data fetch, no continuous polling
+    console.log("Wallet polling disabled to prevent infinite loops");
+    
     // Skip if not authenticated
     if (!isAuthenticated) return;
 
-    // Function to check if we should refresh (to prevent too frequent refreshes)
-    const shouldRefresh = () => {
-      const now = Date.now();
-      const timeSinceLastRefresh = now - lastRefreshTime;
-      return timeSinceLastRefresh > minRefreshInterval;
-    };
-
-    // Function to handle window focus
-    const handleWindowFocus = () => {
-      if (shouldRefresh()) {
-        console.log("Tab focused - refreshing wallet balance");
-        fetchWalletInfo();
-        setLastRefreshTime(Date.now());
-      }
-    };
-
-    // Function to listen for storage changes (for cross-tab communication)
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "wallet_updated") {
-        console.log("Wallet updated in another tab - refreshing balance");
-        // Thêm kiểm tra timestamp để đảm bảo update mới
-        const updatedTime = parseInt(event.newValue || "0");
-        if (updatedTime > lastRefreshTime) {
-          fetchWalletInfo();
-          setLastRefreshTime(Date.now());
-        }
-      }
-    };
-
-    // Function to handle BroadcastChannel messages (modern browsers)
-    let broadcastChannel: BroadcastChannel | null = null;
-    const handleBroadcastMessage = (event: MessageEvent) => {
-      if (event.data?.type === "refresh") {
-        console.log("Received wallet update broadcast - refreshing balance");
-        // Thêm kiểm tra timestamp để đảm bảo update mới
-        const updatedTime = event.data.timestamp || Date.now();
-        if (updatedTime > lastRefreshTime) {
-          fetchWalletInfo();
-          setLastRefreshTime(Date.now());
-        }
-      }
-    };
-
-    // Setup BroadcastChannel
-    if (typeof BroadcastChannel !== "undefined") {
-      try {
-        // Sử dụng channel toàn cục nếu có, ngược lại tạo mới
-        if (globalBroadcastChannel) {
-          broadcastChannel = globalBroadcastChannel;
-        } else {
-          broadcastChannel = new BroadcastChannel("wallet_updates");
-          globalBroadcastChannel = broadcastChannel;
-        }
-        broadcastChannel.onmessage = handleBroadcastMessage;
-      } catch (e) {
-        console.error("Error setting up BroadcastChannel:", e);
-      }
-    }
-
-    // Function to start polling - giảm thời gian polling xuống 15 giây
-    const startPolling = () => {
-      // Clear any existing interval
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-
-      console.log("Starting polling for wallet balance");
-      // Set up new polling interval (every 15 seconds)
-      pollingIntervalRef.current = setInterval(() => {
-        if (shouldRefresh()) {
-          console.log("Polling - refreshing wallet balance");
-          fetchWalletInfo();
-          setLastRefreshTime(Date.now());
-        }
-      }, 15000); // Poll every 15 seconds
-    };
-
-    // Set up event listeners
-    window.addEventListener("focus", handleWindowFocus);
-    window.addEventListener("storage", handleStorageChange);
-
-    // Kiểm tra tức thời khi component mount để cập nhật số dư ngay lập tức
-    const lastUpdate = localStorage.getItem("wallet_updated");
-    if (lastUpdate && parseInt(lastUpdate) > lastRefreshTime) {
-      console.log(
-        "Detected wallet update from localStorage - refreshing balance"
-      );
-      fetchWalletInfo();
-      setLastRefreshTime(Date.now());
-    }
-
-    // Start polling
-    startPolling();
-
-    // Cleanup function
+    // Simple cleanup function
     return () => {
-      // Remove event listeners
-      window.removeEventListener("focus", handleWindowFocus);
-      window.removeEventListener("storage", handleStorageChange);
-
-      // Đừng đóng broadcast channel global, nhưng remove message handler
-      if (broadcastChannel && broadcastChannel !== globalBroadcastChannel) {
-        broadcastChannel.close();
-      } else if (
-        broadcastChannel &&
-        broadcastChannel === globalBroadcastChannel
-      ) {
-        // Chỉ xóa event handler, không đóng channel
-        broadcastChannel.onmessage = null;
-      }
-
-      // Clear polling interval
+      // Clear any existing polling interval
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
+        globalPollingActive = false;
       }
     };
-  }, [isAuthenticated, fetchWalletInfo, lastRefreshTime, minRefreshInterval]);
+  }, [isAuthenticated]);
 
   return {
     // Wallet data

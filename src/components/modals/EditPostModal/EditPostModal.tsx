@@ -1,6 +1,7 @@
 import React from "react";
 import { Dialog } from "@headlessui/react";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
+import { EditPostForm } from "@/types/editPost";
 import BasicInfoStep from "./steps/BasicInfoStep";
 import ImageUploadStep from "./steps/ImageUploadStep";
 import PackageSelectionStep from "./steps/PackageSelectionStep";
@@ -29,7 +30,6 @@ interface EditPostModalProps {
   categories: any[];
   projects: any[];
   provinces: any[];
-  districts: any[];
   wards: any[];
   locationLoading: boolean;
 }
@@ -54,7 +54,6 @@ export default function EditPostModal({
   categories,
   projects,
   provinces,
-  districts,
   wards,
   locationLoading,
 }: EditPostModalProps) {
@@ -92,7 +91,6 @@ export default function EditPostModal({
           formData.title &&
           formData.location &&
           formData.location.province &&
-          formData.location.district &&
           formData.location.ward &&
           formData.price &&
           formData.area
@@ -158,12 +156,24 @@ export default function EditPostModal({
     return "bg-green-600 hover:bg-green-700";
   };
 
-  // Create a wrapper to convert the hook's image handling to what ImageUploadStep expects
-  const handleUpdateFormData = (updates: { images?: string[] }) => {
+  // Create a wrapper to convert the hook's updates to what BasicInfoStep expects
+  const handleUpdateFormData = (updates: Partial<EditPostForm>) => {
+    console.log("🔄 handleUpdateFormData called with:", updates);
+
     // Handle existing images update
     if (updates.images) {
       updateExistingImages(updates.images);
+      return;
     }
+
+    // Handle other form field updates by calling the hook's updateFormData
+    Object.keys(updates).forEach((key) => {
+      const value = updates[key as keyof EditPostForm];
+      if (key !== "images" && value !== undefined && value !== null) {
+        console.log(`🔧 Updating field: ${key} = ${value}`);
+        updateFormData(key, value as string | number | undefined);
+      }
+    });
   };
 
   return (
@@ -293,7 +303,6 @@ export default function EditPostModal({
                   formData={formData}
                   updateFormData={handleUpdateFormData}
                   provinces={provinces}
-                  districts={districts}
                   wards={wards}
                   locationLoading={locationLoading}
                 />

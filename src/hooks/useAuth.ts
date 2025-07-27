@@ -10,9 +10,8 @@ import {
   updateProfileAsync,
   initializeAuth,
   clearError,
-  LoginRequest,
-  RegisterRequest,
 } from "@/store/slices/authSlice";
+import { LoginRequest, RegisterRequest } from "@/services/authService";
 import { toast } from "sonner";
 
 /**
@@ -30,50 +29,36 @@ export const useAuth = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const loading = useAppSelector((state) => state.auth.loading);
   const error = useAppSelector((state) => state.auth.error);
-  const lastLoginTime = useAppSelector((state) => state.auth.lastLoginTime);
 
-  // Initialize authentication state from localStorage - improved with better loading handling
+  // Initialize authentication state - optimized to prevent flash redirects
   useEffect(() => {
     const initAuth = async () => {
-      setIsInitializing(true);
-
-      // Dispatch the action to initialize auth from localStorage
-      await dispatch(initializeAuth());
-
-      // If we're authenticated according to localStorage token but don't have user data, fetch it
       const token = localStorage.getItem("accessToken");
-      if (token && !user) {
+      
+      if (token) {
         try {
+          // If we have a token, try to get user profile first
           await dispatch(getProfileAsync()).unwrap();
         } catch (error) {
-          console.error(
-            "Failed to fetch user profile during initialization:",
-            error
-          );
-          // We'll handle this error silently - the auth state will be updated accordingly
+          console.error("Failed to fetch user profile during initialization:", error);
+          // If profile fetch fails, clear the invalid token
+          localStorage.removeItem("accessToken");
         }
       }
-
+      
+      // Always dispatch initializeAuth to set the initial state
+      dispatch(initializeAuth());
       setIsInitializing(false);
     };
 
     initAuth();
-  }, [dispatch, user]);
+  }, [dispatch]);
 
-  // Important: Set initialization to false when user data is available
-  useEffect(() => {
-    if (user && isInitializing) {
-      setIsInitializing(false);
-    }
-  }, [user, isInitializing]);
+  // Simplified and more reliable loading state
+  const isLoading = isInitializing || loading;
 
-  // Derive a combined loading state that includes our local initialization
-  // If user exists, we're not loading regardless of initialization state
-  const isLoading = user ? false : loading || isInitializing;
-
-  // Determine if the auth state is fully initialized
-  const isInitialized =
-    user || (!isInitializing && (Boolean(lastLoginTime) || !isAuthenticated));
+  // Authentication is ready when initialization is complete and not loading
+  const isInitialized = !isInitializing;
 
   // Login handler
   const login = useCallback(
@@ -82,8 +67,8 @@ export const useAuth = () => {
         const result = await dispatch(loginAsync(credentials)).unwrap();
         toast.success("Đăng nhập thành công!");
         return { success: true, data: result };
-      } catch (error: any) {
-        toast.error(error || "Đăng nhập thất bại");
+      } catch (error: unknown) {
+        toast.error(typeof error === 'string' ? error : "Đăng nhập thất bại");
         return { success: false, error };
       }
     },
@@ -97,8 +82,8 @@ export const useAuth = () => {
         const result = await dispatch(registerAsync(userData)).unwrap();
         toast.success("Đăng ký thành công!");
         return { success: true, data: result };
-      } catch (error: any) {
-        toast.error(error || "Đăng ký thất bại");
+      } catch (error: unknown) {
+        toast.error(typeof error === 'string' ? error : "Đăng ký thất bại");
         return { success: false, error };
       }
     },
@@ -135,15 +120,15 @@ export const useAuth = () => {
   const updateProfile = useCallback(
     async (profileData: {
       username?: string;
-      email?: string;
       phoneNumber?: string;
+      avatar?: string;
     }) => {
       try {
         const result = await dispatch(updateProfileAsync(profileData)).unwrap();
         toast.success("Cập nhật thông tin thành công");
         return { success: true, data: result };
-      } catch (error: any) {
-        toast.error(error || "Cập nhật thông tin thất bại");
+      } catch (error: unknown) {
+        toast.error(typeof error === 'string' ? error : "Cập nhật thông tin thất bại");
         return { success: false, error };
       }
     },
@@ -206,19 +191,20 @@ export const useProtectedRoute = (
   requireAuthenticated = true
 ) => {
   const router = useRouter();
-  const { isAuthenticated, isInitialized, loading } = useAuth();
+  const { isAuthenticated, isInitialized, loading, user } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
+    // Wait for initialization to complete before making redirect decisions
+    if (!isInitialized) return;
+
     // Only redirect if:
-    // 1. Authentication is fully initialized (not still loading)
-    // 2. User is not authenticated (when we require authentication)
+    // 1. We require authentication
+    // 2. User is not authenticated OR we don't have user data
     // 3. We're not already redirecting
     if (
-      isInitialized &&
-      !loading &&
       requireAuthenticated &&
-      !isAuthenticated &&
+      (!isAuthenticated || !user) &&
       !isRedirecting
     ) {
       setIsRedirecting(true);
@@ -227,17 +213,17 @@ export const useProtectedRoute = (
   }, [
     isAuthenticated,
     isInitialized,
-    loading,
     requireAuthenticated,
     redirectTo,
     router,
     isRedirecting,
+    user,
   ]);
 
   return {
-    isAuthenticated,
+    isAuthenticated: isAuthenticated && !!user,
     isInitialized,
-    loading: loading || !isInitialized || isRedirecting,
+    loading: !isInitialized || isRedirecting,
   };
 };
 

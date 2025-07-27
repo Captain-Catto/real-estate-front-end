@@ -25,9 +25,6 @@ export interface EditPostForm {
   balconyDirection?: string;
   roadWidth?: string;
   frontWidth?: string;
-  contactName: string;
-  email: string;
-  phone: string;
   packageId: string;
   packageDuration: number;
   images: string[];
