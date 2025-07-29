@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "./Breadcrumb";
 import { ProjectGallery } from "./ProjectGallery";
-import ProjectMap from "./ProjectMap";
+import { DisplayMap } from "../property-detail/DisplayMap";
 import ContactBox from "./ContactBox";
 import { RelatedProjects } from "./RelatedProjects";
 import { ProjectListings } from "./ProjectListings";
@@ -47,7 +47,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
   // Get location names for better display
   const { locationNames, loading: locationLoading } = useLocationNames(
     project?.location?.provinceCode,
-    project?.location?.districtCode,
+    undefined, // không có district
     project?.location?.wardCode
   );
 
@@ -70,10 +70,8 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
       locationParts.push(project.address);
     }
 
-    // Thêm các cấp hành chính theo thứ tự ward -> district -> province
+    // Thêm các cấp hành chính theo thứ tự ward -> province (không có district)
     if (locationNames.wardName) locationParts.push(locationNames.wardName);
-    if (locationNames.districtName)
-      locationParts.push(locationNames.districtName);
     if (locationNames.provinceName)
       locationParts.push(locationNames.provinceName);
 
@@ -88,10 +86,10 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
 
     // Final fallback: hiển thị mã vị trí để debug
     if (project?.location) {
-      const { provinceCode, districtCode, wardCode } = project.location;
+      const { provinceCode, wardCode } = project.location;
       return `Mã vị trí: ${wardCode ? `${wardCode}, ` : ""}${
-        districtCode ? `${districtCode}, ` : ""
-      }${provinceCode || "N/A"}`;
+        provinceCode || "N/A"
+      }`;
     }
 
     return "Địa chỉ chưa cập nhật";
@@ -102,14 +100,29 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
       setLoading(true);
       setError(null);
       try {
+        console.log("🔍 Fetching project with slug:", projectSlug);
         const projectData = await ProjectService.getProjectBySlug(projectSlug);
 
-        console.log("Fetched project data:", projectData);
+        console.log("✅ Fetched project data:", projectData);
 
         if (!projectData) {
+          console.warn("❌ No project data returned for slug:", projectSlug);
           notFound();
           return;
         }
+
+        console.log("📊 Project data details:", {
+          id: projectData.id,
+          name: projectData.name,
+          slug: projectData.slug,
+          hasLocation: !!projectData.location,
+          locationCodes: projectData.location
+            ? {
+                provinceCode: projectData.location.provinceCode,
+                wardCode: projectData.location.wardCode,
+              }
+            : null,
+        });
 
         setProject(projectData);
 
@@ -119,7 +132,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
           address: projectData.address,
         });
       } catch (error) {
-        console.error("Error fetching project:", error);
+        console.error("💥 Error fetching project:", error);
         setError("Có lỗi xảy ra khi tải thông tin dự án");
       } finally {
         setLoading(false);
@@ -237,20 +250,12 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
           href: `/du-an?provinceCode=${project.location.provinceCode}`,
         });
 
-        // Add district level if available
-        if (project.location?.districtCode && locationNames.districtName) {
+        // Add ward level if available
+        if (project.location?.wardCode && locationNames.wardName) {
           items.push({
-            label: locationNames.districtName,
-            href: `/du-an?provinceCode=${project.location.provinceCode}&districtCode=${project.location.districtCode}`,
+            label: locationNames.wardName,
+            href: `/du-an?provinceCode=${project.location.provinceCode}&wardCode=${project.location.wardCode}`,
           });
-
-          // Add ward level if available
-          if (project.location?.wardCode && locationNames.wardName) {
-            items.push({
-              label: locationNames.wardName,
-              href: `/du-an?provinceCode=${project.location.provinceCode}&districtCode=${project.location.districtCode}&wardCode=${project.location.wardCode}`,
-            });
-          }
         }
       }
     }
@@ -373,7 +378,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
                 {
                   id: "listings",
                   label: "Tin đăng trong dự án",
-                  subtitle: `${project.totalUnits || 0} căn`,
+                  subtitle: `Xem tất cả tin đăng `,
                 },
                 {
                   id: "info",
@@ -440,10 +445,11 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
                   <h3 className="text-lg font-medium text-gray-900 mb-4">
                     Bản đồ vị trí
                   </h3>
-                  <ProjectMap
+                  <DisplayMap
                     latitude={project.latitude}
                     longitude={project.longitude}
                     title={project.name}
+                    address={project.address}
                   />
                 </div>
               </section>
@@ -467,7 +473,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
 
             {/* Right Sidebar */}
             <div className="lg:col-span-1">
-              <div className="sticky top-35 space-y-6">
+              <div className="sticky top-20 space-y-6">
                 <ContactBox
                   developer={project.developer}
                   projectId={project.id}

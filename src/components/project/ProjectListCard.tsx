@@ -11,11 +11,11 @@ interface ProjectData {
   address: string;
   location: {
     provinceCode: string;
-    districtCode: string;
     wardCode?: string;
   };
   developer: {
     name: string;
+    logo?: string;
   };
   status: string;
   totalUnits: number;
@@ -36,9 +36,11 @@ export function ProjectListCard({
   // Use location names hook to get readable location names
   const { locationNames, loading: locationLoading } = useLocationNames(
     project.location?.provinceCode,
-    project.location?.districtCode,
+    undefined, // No districtCode in simplified structure
     project.location?.wardCode
   );
+
+  console.log("project:", project);
 
   const getStatusColor = (status: string) => {
     switch (status) {

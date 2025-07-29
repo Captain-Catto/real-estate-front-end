@@ -96,21 +96,21 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
   }, [validItems]); // Use validItems as dependency
 
   return (
-    <nav
-      className="flex items-center space-x-2 text-sm"
-      aria-label="Breadcrumb"
-    >
-      <ol className="flex items-center space-x-2">
+    <nav className="flex items-start text-sm" aria-label="Breadcrumb">
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {validItems.map((item, index) => (
           <li key={index} className="flex items-center">
             {index > 0 && (
               <i
-                className="fas fa-chevron-right text-gray-400 text-xs mx-2"
+                className="fas fa-chevron-right text-gray-400 text-xs mx-2 flex-shrink-0"
                 aria-hidden="true"
               ></i>
             )}
             {item.isActive ? (
-              <span className="text-gray-900 font-medium" aria-current="page">
+              <span
+                className="text-gray-900 font-medium leading-tight"
+                aria-current="page"
+              >
                 {item.label}
               </span>
             ) : (
@@ -120,7 +120,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
                     ? createUrlWithQueryParams(item.href, item)
                     : item.href
                 }
-                className="text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+                className="text-blue-600 hover:text-blue-700 hover:underline transition-colors leading-tight"
               >
                 {item.label}
               </Link>

@@ -28,8 +28,9 @@ export interface NewsItem {
   title: string;
   slug: string;
   content: string;
+  excerpt?: string; // Thêm excerpt
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  category: string; // Changed from union type to string for dynamic categories
   author: NewsAuthor;
   status: "draft" | "pending" | "published" | "rejected"; // draft is deprecated but kept for compatibility
   publishedAt?: string;
@@ -83,7 +84,7 @@ export interface CreateNewsData {
   title: string;
   content: string;
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  category: string; // Changed from union type to string for dynamic categories
   status?: "pending" | "published" | "rejected"; // Default is "pending"
   isHot?: boolean;
   isFeatured?: boolean;
@@ -208,7 +209,7 @@ export const newsService = {
   // Get featured news for homepage
   async getFeaturedNews(
     limit: number = 6
-  ): Promise<{ success: boolean; data: NewsItem[] }> {
+  ): Promise<{ success: boolean; data: { news: NewsItem[] } }> {
     try {
       const queryString = buildQueryString({ limit });
       const response = await fetch(
@@ -229,7 +230,7 @@ export const newsService = {
       console.error("Error fetching featured news:", error);
       return {
         success: false,
-        data: [],
+        data: { news: [] },
       };
     }
   },
@@ -237,7 +238,7 @@ export const newsService = {
   // Get hot news
   async getHotNews(
     limit: number = 10
-  ): Promise<{ success: boolean; data: NewsItem[] }> {
+  ): Promise<{ success: boolean; data: { news: NewsItem[] } }> {
     try {
       const queryString = buildQueryString({ limit });
       const response = await fetch(
@@ -258,7 +259,7 @@ export const newsService = {
       console.error("Error fetching hot news:", error);
       return {
         success: false,
-        data: [],
+        data: { news: [] },
       };
     }
   },

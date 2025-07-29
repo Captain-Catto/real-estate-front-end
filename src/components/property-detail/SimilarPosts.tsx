@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { postService } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
+import { formatPriceByType } from "@/utils/format";
 
 interface SimilarPost {
   _id: string;
@@ -85,8 +86,7 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
               try {
                 const locationNames = await locationService.getLocationNames(
                   post.location.province,
-                  post.location.district,
-                  post.location.ward
+                  post.location.ward // Skip district, only use province and ward
                 );
 
                 return {
@@ -100,6 +100,11 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
             }
             return post;
           })
+        );
+
+        console.log(
+          "Similar posts with location names:",
+          postsWithLocationNames
         );
 
         setSimilarPosts(postsWithLocationNames);
@@ -119,10 +124,21 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
     }
   }, [postId, limit]);
 
-  // Loại bỏ hàm getPackageLabel không sử dụng
-  const formatPrice = (price: number, currency: string = "VND") => {
+  // Format price function using utils
+  const formatPrice = (
+    price: number,
+    currency: string = "VND",
+    type: string = "ban"
+  ) => {
     if (!price) return "Thỏa thuận";
 
+    // Chỉ format với VND, currency khác thì hiển thị như cũ
+    if (currency === "VND") {
+      const transactionType = type === "cho-thue" ? "thue" : "ban";
+      return formatPriceByType(price, transactionType);
+    }
+
+    // Fallback for non-VND currencies
     if (price >= 1000000000) {
       return `${(price / 1000000000).toFixed(1)} tỷ ${currency}`;
     } else if (price >= 1000000) {
@@ -235,29 +251,41 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
           const transactionType =
             post.type === "cho-thue" ? "cho-thue" : "mua-ban";
 
+          // Check if we have both province and ward for full SEO URL
           if (
-            post.locationNames &&
-            post.locationNames.provinceName &&
-            post.locationNames.districtName &&
-            post.locationNames.wardName
+            post.locationNames?.provinceName &&
+            post.locationNames?.wardName
           ) {
-            // Full location path with SEO-friendly URL: /mua-ban/province/district/ward/id-title
+            // Full SEO URL: /mua-ban/province/ward/id-title
             href = `/${transactionType}/${createSlug(
               post.locationNames.provinceName
-            )}/${createSlug(post.locationNames.districtName)}/${createSlug(
-              post.locationNames.wardName
-            )}/${post._id}-${createSlug(post.title)}`;
+            )}/${createSlug(post.locationNames.wardName)}/${
+              post._id
+            }-${createSlug(post.title)}`;
+            console.log("Created full SEO URL:", href, "for post:", post._id);
           } else {
-            // Fallback to simplified URL: /mua-ban/chi-tiet/id-title
+            // Fallback to simplified URL when missing location data: /mua-ban/chi-tiet/id-title
             href = `/${transactionType}/chi-tiet/${post._id}-${createSlug(
               post.title
             )}`;
+            console.log(
+              "Created fallback URL:",
+              href,
+              "for post:",
+              post._id,
+              "missing location:",
+              {
+                provinceName: post.locationNames?.provinceName,
+                wardName: post.locationNames?.wardName,
+              }
+            );
           }
 
           return (
             <Link
               key={post._id}
               href={href}
+              scroll={true}
               className="block group hover:shadow-lg transition-shadow duration-200 h-full"
             >
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col h-full shadow-sm">
@@ -318,7 +346,11 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
                   <div className="space-y-2 text-sm text-gray-600 mb-3 flex-grow">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold text-red-600 text-base">
-                        {formatPrice(post.price, post.currency || "VND")}
+                        {formatPrice(
+                          post.price,
+                          post.currency || "VND",
+                          post.type
+                        )}
                       </span>
                       <span>{formatArea(post.area)}</span>
                     </div>
@@ -326,26 +358,26 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
                     <div className="flex items-start mb-2">
                       <i className="fas fa-map-marker-alt mr-2 text-gray-400 mt-1 flex-shrink-0"></i>
                       <span className="text-sm font-medium text-gray-800">
-                        {post.locationNames ? (
-                          <>
-                            {post.location?.street &&
-                              `${post.location.street}, `}
-                            {post.locationNames.wardName &&
-                              `${post.locationNames.wardName}, `}
-                            {post.locationNames.districtName ||
-                              post.location?.district ||
-                              "Chưa rõ vị trí"}
-                          </>
-                        ) : post.location ? (
-                          <>
-                            {post.location.street &&
-                              `${post.location.street}, `}
-                            {post.location.ward && `${post.location.ward}, `}
-                            {post.location.district || "Chưa rõ vị trí"}
-                          </>
-                        ) : (
-                          "Chưa rõ vị trí"
-                        )}
+                        {(() => {
+                          const parts = [];
+
+                          // Thêm street nếu có
+                          if (post.location?.street) {
+                            parts.push(post.location.street);
+                          }
+
+                          // Thêm province từ locationNames nếu có
+                          if (post.locationNames?.provinceName) {
+                            parts.push(post.locationNames.provinceName);
+                          } else if (post.location?.province) {
+                            // Fallback to province code if no name
+                            parts.push(`Tỉnh/TP ${post.location.province}`);
+                          }
+
+                          return parts.length > 0
+                            ? parts.join(", ")
+                            : "Chưa rõ vị trí";
+                        })()}
                       </span>
                     </div>
 

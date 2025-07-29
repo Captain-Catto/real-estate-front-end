@@ -16,10 +16,13 @@ export const ProjectService = {
     options: {
       page?: number;
       limit?: number;
+      search?: string;
       provinceCode?: string;
       wardCode?: string;
+      categoryId?: string;
+      priceRange?: string;
+      areaRange?: string;
       status?: string;
-      search?: string;
       sortBy?: string;
     } = {}
   ): Promise<{
@@ -36,11 +39,14 @@ export const ProjectService = {
 
       if (options.page) params.append("page", options.page.toString());
       if (options.limit) params.append("limit", options.limit.toString());
+      if (options.search) params.append("search", options.search);
       if (options.provinceCode)
         params.append("provinceCode", options.provinceCode);
       if (options.wardCode) params.append("wardCode", options.wardCode);
+      if (options.categoryId) params.append("categoryId", options.categoryId);
+      if (options.priceRange) params.append("priceRange", options.priceRange);
+      if (options.areaRange) params.append("areaRange", options.areaRange);
       if (options.status) params.append("status", options.status);
-      if (options.search) params.append("search", options.search);
       if (options.sortBy) params.append("sortBy", options.sortBy);
 
       const queryString = params.toString();
@@ -60,36 +66,75 @@ export const ProjectService = {
 
       if (result.success && result.data) {
         // Transform projects to match frontend interface
-        const transformedProjects = result.data.projects.map(
-          (project: Project & { _id: string }) => ({
-            ...project,
-            id: project._id,
-            specifications: project.specifications || {},
-            facilities: project.facilities || [],
-            faqs: project.faqs || [],
-            videos: project.videos || [],
-            locationInsights: project.locationInsights || {
-              schools: [],
-              hospitals: [],
-              supermarkets: [],
-              parks: [],
-              restaurants: [],
-            },
-            developer: project.developer || {
-              name: "",
-              logo: "",
-              phone: "",
-              email: "",
-            },
-            contact: project.contact || {
-              hotline: "",
-              email: "",
-            },
-            map: project.map || {
-              lat: project.latitude || 0,
-              lng: project.longitude || 0,
-            },
-          })
+        const transformedProjects = await Promise.all(
+          result.data.projects.map(
+            async (project: Project & { _id: string }) => {
+              // Fetch developer data if developer is an ID string
+              let developerData = {
+                name: "",
+                logo: "",
+                phone: "",
+                email: "",
+              };
+
+              if (project.developer) {
+                if (typeof project.developer === "string") {
+                  // Developer is an ID, fetch the full data
+                  try {
+                    const developerResponse = await fetch(
+                      `${API_BASE_URL}/developers/${project.developer}`
+                    );
+                    if (developerResponse.ok) {
+                      const developerResult = await developerResponse.json();
+                      if (developerResult.success && developerResult.data) {
+                        developerData = {
+                          name: developerResult.data.name || "",
+                          logo: developerResult.data.logo || "",
+                          phone: developerResult.data.phone || "",
+                          email: developerResult.data.email || "",
+                        };
+                      }
+                    }
+                  } catch (error) {
+                    console.error("Error fetching developer data:", error);
+                  }
+                } else if (typeof project.developer === "object") {
+                  // Developer is already an object
+                  developerData = {
+                    name: project.developer.name || "",
+                    logo: project.developer.logo || "",
+                    phone: project.developer.phone || "",
+                    email: project.developer.email || "",
+                  };
+                }
+              }
+
+              return {
+                ...project,
+                id: project._id,
+                specifications: project.specifications || {},
+                facilities: project.facilities || [],
+                faqs: project.faqs || [],
+                videos: project.videos || [],
+                locationInsights: project.locationInsights || {
+                  schools: [],
+                  hospitals: [],
+                  supermarkets: [],
+                  parks: [],
+                  restaurants: [],
+                },
+                developer: developerData,
+                contact: project.contact || {
+                  hotline: "",
+                  email: "",
+                },
+                map: project.map || {
+                  lat: project.latitude || 0,
+                  lng: project.longitude || 0,
+                },
+              };
+            }
+          )
         );
 
         return {
@@ -219,21 +264,38 @@ export const ProjectService = {
   // Get project by slug (full details)
   getProjectBySlug: async (slug: string): Promise<Project | null> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/slug/${slug}`);
+      console.log("🔍 ProjectService.getProjectBySlug called with slug:", slug);
+      const url = `${API_BASE_URL}/projects/slug/${slug}`;
+      console.log("🌐 API URL:", url);
+
+      const response = await fetch(url);
+      console.log("📡 Response status:", response.status);
 
       if (!response.ok) {
         if (response.status === 404) {
+          console.warn("❌ Project not found (404) for slug:", slug);
           return null;
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log("📦 API result:", {
+        success: result.success,
+        hasData: !!result.data,
+        dataKeys: result.data ? Object.keys(result.data) : null,
+      });
 
       if (result.success && result.data) {
         const project = result.data;
+        console.log("🏗️ Project data from API:", {
+          _id: project._id,
+          name: project.name,
+          slug: project.slug,
+        });
+
         // Ensure all required properties are initialized and convert _id to id
-        return {
+        const transformedProject = {
           ...project,
           id: project._id,
           specifications: project.specifications || {},
@@ -262,8 +324,17 @@ export const ProjectService = {
             lng: 0,
           },
         };
+
+        console.log("✅ Transformed project:", {
+          id: transformedProject.id,
+          name: transformedProject.name,
+          slug: transformedProject.slug,
+        });
+
+        return transformedProject;
       }
 
+      console.warn("❌ No project data in response");
       return null;
     } catch (error) {
       console.error("Error fetching project by slug:", error);

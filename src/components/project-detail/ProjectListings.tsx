@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { formatPrice, formatArea } from "@/utils/format";
+import { formatPriceByType, formatArea } from "@/utils/format";
+import { postService } from "@/services/postsService";
 import testImg from "@/assets/images/card-img.jpg";
 
 interface Listing {
@@ -36,67 +37,121 @@ export function ProjectListings({
 }: ProjectListingsProps) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "ban" | "cho-thue">("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchListings = async () => {
       setLoading(true);
       try {
-        // Mock data - replace with real API call
-        const mockListings: Listing[] = [
-          {
-            id: "1",
-            type: "ban",
-            title: "Căn hộ 2PN, view sông, nội thất đầy đủ",
-            price: 3200000000,
-            area: 78,
-            bedrooms: 2,
-            bathrooms: 2,
-            floor: 15,
-            direction: "Đông Nam",
-            images: [testImg.src, testImg.src],
-            postedDate: "2024-01-15",
-            agent: {
-              name: "Nguyễn Văn A",
-              phone: "0901234567",
-              avatar: testImg.src,
-            },
-            slug: "can-ho-2pn-view-song-noi-that-day-du",
-          },
-          {
-            id: "2",
-            type: "cho-thue",
-            title: "Cho thuê căn hộ 3PN, full nội thất cao cấp",
-            price: 25000000,
-            area: 95,
-            bedrooms: 3,
-            bathrooms: 2,
-            floor: 20,
-            direction: "Nam",
-            images: [testImg.src, testImg.src],
-            postedDate: "2024-01-10",
-            agent: {
-              name: "Trần Thị B",
-              phone: "0907654321",
-              avatar: "/images/agent-2.jpg",
-            },
-            slug: "cho-thue-can-ho-3pn-full-noi-that-cao-cap",
-          },
-        ];
+        console.log("Fetching listings for project:", {
+          projectId,
+          projectName,
+          projectIdType: typeof projectId,
+          projectIdLength: projectId?.length,
+        });
 
-        setTimeout(() => {
-          setListings(mockListings);
-          setLoading(false);
-        }, 1000);
+        if (!projectId) {
+          console.warn("No projectId provided");
+          setListings([]);
+          return;
+        }
+
+        const response = await postService.getPostsByProject(
+          projectId,
+          1,
+          itemsPerPage
+        );
+
+        console.log("Project listings API response:", {
+          success: response.success,
+          dataType: typeof response.data,
+          postsCount: response.data?.posts?.length || 0,
+          totalPages: response.data?.pagination?.totalPages || 0,
+          message: response.message,
+        });
+
+        if (response.success) {
+          console.log("Fetched project listings:", response.data.posts);
+          const transformedListings = response.data.posts || [];
+          const totalPagesFromAPI = response.data?.pagination?.totalPages || 1;
+
+          setListings(transformedListings);
+          setCurrentPage(1);
+          setTotalPages(totalPagesFromAPI);
+          setHasMore(totalPagesFromAPI > 1);
+
+          console.log("Pagination info:", {
+            currentPage: 1,
+            totalPages: totalPagesFromAPI,
+            hasMore: totalPagesFromAPI > 1,
+            transformedListings: transformedListings.length,
+          });
+
+          if (transformedListings.length === 0) {
+            console.log("No listings found for project:", projectId);
+          }
+        } else {
+          console.error("Failed to fetch project listings:", response.message);
+          setListings([]);
+          setHasMore(false);
+        }
       } catch (error) {
         console.error("Error fetching listings:", error);
+        setListings([]);
+        setHasMore(false);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchListings();
-  }, [projectId]);
+  }, [projectId, projectName, itemsPerPage]);
+
+  // Function to load more listings
+  const loadMoreListings = async () => {
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      console.log("Loading more listings, page:", nextPage);
+
+      const response = await postService.getPostsByProject(
+        projectId,
+        nextPage,
+        itemsPerPage
+      );
+
+      if (response.success && response.data?.posts) {
+        const newListings = response.data.posts;
+        console.log("Loaded more listings:", newListings.length);
+
+        // Append new listings to existing ones
+        setListings((prevListings) => [...prevListings, ...newListings]);
+        setCurrentPage(nextPage);
+
+        // Check if there are more pages
+        const totalPagesFromAPI = response.data?.pagination?.totalPages || 1;
+        setHasMore(nextPage < totalPagesFromAPI);
+
+        console.log("Updated pagination:", {
+          currentPage: nextPage,
+          totalPages: totalPagesFromAPI,
+          hasMore: nextPage < totalPagesFromAPI,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading more listings:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const filteredListings = listings.filter((listing) => {
     if (activeTab === "all") return true;
@@ -185,7 +240,7 @@ export function ProjectListings({
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => setActiveTab(tab.key as "all" | "ban" | "cho-thue")}
             className={`flex-1 py-2 px-2 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
               activeTab === tab.key
                 ? "bg-white text-blue-600 shadow-sm"
@@ -223,7 +278,7 @@ export function ProjectListings({
                 <div className="w-full sm:w-32 flex-shrink-0">
                   <div className="relative w-full h-48 sm:h-24">
                     <Image
-                      src={listing.images[0] || "/images/default-apartment.jpg"}
+                      src={listing.images[0] || testImg.src}
                       alt={listing.title}
                       fill
                       className="object-cover rounded-lg"
@@ -251,7 +306,11 @@ export function ProjectListings({
                 <div className="flex-1">
                   <div className="flex flex-col h-full">
                     <Link
-                      href={`/tin-rao/${listing.slug}`}
+                      href={`/${
+                        listing.type === "ban" ? "mua-ban" : "cho-thue"
+                      }/chi-tiet/${listing.id}-${encodeURIComponent(
+                        listing.title.toLowerCase().replace(/\s+/g, "-")
+                      )}`}
                       className="text-base sm:text-lg font-semibold text-gray-900 hover:text-blue-600 line-clamp-2 mb-2"
                     >
                       {listing.title}
@@ -332,10 +391,7 @@ export function ProjectListings({
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-auto">
                       <div className="text-lg sm:text-xl font-bold text-red-600">
-                        {formatPrice(listing.price)}
-                        {listing.type === "cho-thue" && (
-                          <span className="text-sm font-normal">/tháng</span>
-                        )}
+                        {formatPriceByType(listing.price, listing.type)}
                       </div>
 
                       <div className="flex items-center justify-between sm:justify-end gap-3">
@@ -378,11 +434,50 @@ export function ProjectListings({
       )}
 
       {/* Load More */}
-      {sortedListings.length > 0 && (
-        <div className="text-center mt-6">
-          <button className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-            Xem thêm tin rao
+      {sortedListings.length > 0 && hasMore && (
+        <div className="text-center mt-6 flex justify-center">
+          <button
+            onClick={loadMoreListings}
+            disabled={loadingMore}
+            className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {loadingMore ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Đang tải...
+              </>
+            ) : (
+              "Xem thêm tin đăng"
+            )}
           </button>
+        </div>
+      )}
+
+      {/* Show message when no more posts */}
+      {sortedListings.length > 0 && !hasMore && currentPage > 1 && (
+        <div className="text-center mt-6">
+          <p className="text-gray-500 text-sm">
+            Đã hiển thị tất cả {listings.length} tin rao.
+          </p>
         </div>
       )}
     </div>

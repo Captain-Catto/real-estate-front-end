@@ -5,7 +5,7 @@ import Link from "next/link";
 import testImg from "@/assets/images/card-img.jpg";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
-import { newsService, NewsItem } from "@/services/newsService";
+import { newsService } from "@/services/newsService";
 
 // Types
 interface Article {
@@ -21,192 +21,29 @@ interface Article {
   views?: number;
 }
 
+interface NewsCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 // Đã loại bỏ interface Location
 
 interface NewsProps {
   initialArticles?: Article[];
 }
 
-// Mock data using testImg
-const mockFeaturedArticle: Article = {
-  id: "1",
-  title: "Thị Trường Bất Động Sản Kho Bãi Hà Nội Đang Đi Ngang Về Giá",
-  slug: "thi-truong-bat-dong-san-kho-bai-ha-noi-dang-di-ngang-ve-gia",
-  excerpt:
-    "Sự phát triển mạnh của bất động sản công nghiệp khiến thị trường bất động sản kho bãi, nhà xưởng Hà Nội vẫn duy trì sức hút. Tuy nhiên, trong khoảng 1 năm qua, thị trường này đang đi ngang về giá do xu hướng chuyển dịch kho bãi nhà xưởng ra các khu vực tỉnh thành giáp ranh thủ đô tăng mạnh.",
-  image: testImg.src,
-  publishedAt: "09/06/2025 11:15",
-  author: "Biên tập viên",
-  category: "Tin tức",
+// Helper function to get category color
+const getCategoryColor = (slug: string) => {
+  const colorMap: Record<string, string> = {
+    "mua-ban": "bg-blue-100 text-blue-800 hover:bg-blue-200",
+    "cho-thue": "bg-green-100 text-green-800 hover:bg-green-200",
+    "tai-chinh": "bg-purple-100 text-purple-800 hover:bg-purple-200",
+    "phong-thuy": "bg-orange-100 text-orange-800 hover:bg-orange-200",
+    "tong-hop": "bg-gray-100 text-gray-800 hover:bg-gray-200",
+  };
+  return colorMap[slug] || "bg-blue-100 text-blue-800 hover:bg-blue-200";
 };
-
-const mockHighlightArticles: Article[] = [
-  {
-    id: "2",
-    title: "Hà Nội Tiếp Tục Có Thêm Dự Án Nhà Ở Xã Hội Mới",
-    slug: "ha-noi-tiep-tuc-co-them-du-an-nha-o-xa-hoi-moi",
-    excerpt: "",
-    image: testImg.src,
-    publishedAt: "09/06/2025 11:05",
-    author: "Biên tập viên",
-    category: "Tin tức",
-  },
-  {
-    id: "3",
-    title:
-      "Vịnh Trung Tâm Cát Bà: Viên Ngọc Xanh Trên Bản Đồ Du Lịch Nghỉ Dưỡng Cao Cấp",
-    slug: "vinh-trung-tam-cat-ba-vien-ngoc-xanh",
-    excerpt: "",
-    image: testImg.src,
-    publishedAt: "07/06/2025 08:05",
-    author: "Biên tập viên",
-    category: "Tin tức",
-  },
-  {
-    id: "4",
-    title: "Thị Trường Bất Động Sản Móng Cái Tiếp Tục Tăng Nhiệt",
-    slug: "thi-truong-bat-dong-san-mong-cai-tiep-tuc-tang-nhiet",
-    excerpt: "",
-    image: testImg.src,
-    publishedAt: "06/06/2025 11:28",
-    author: "Biên tập viên",
-    category: "Tin tức",
-  },
-];
-
-const mockArticles: Article[] = [
-  {
-    id: "5",
-    title:
-      "Batdongsan.com.vn Tài Trợ Lễ Hội Bóng Đá Việt Nam - Vương Quốc Anh 2025",
-    slug: "batdongsan-tai-tro-le-hoi-bong-da-viet-nam-uk-2025",
-    excerpt:
-      "Các danh thủ huyền thoại Manchester Reds như Micheal Owen, Paul Scholes, Ryan Giggs,… sẽ đá giao hữu với các ngôi sao bóng đá Việt Nam trong khuôn khổ Lễ hội bóng đá Việt Nam – Vương quốc Anh 2025 được tổ chức tại Đà Nẵng.",
-    image: testImg.src,
-    publishedAt: "06/06/2025 09:40",
-    author: "Ban nội dung",
-    category: "Tin tức",
-  },
-  {
-    id: "6",
-    title: "Dự Án Hàng Hiệu Noble Palace Tay Thang Long Tăng Tốc Triển Khai",
-    slug: "du-an-noble-palace-tay-thang-long-tang-toc-trien-khai",
-    excerpt:
-      "Noble Palace Tay Thang Long - khu đô thị thấp tầng hàng hiệu hiếm hoi tại phía Tây Hà Nội - đang bước vào giai đoạn nước rút với hàng loạt hạng mục đồng loạt triển khai ba ca liên tục, sẵn sàng bàn giao những căn shophouse đầu tiên từ quý 3/2025.",
-    image: testImg.src,
-    publishedAt: "06/06/2025 07:50",
-    author: "Hải Âu",
-    category: "Tin tức",
-  },
-  {
-    id: "7",
-    title:
-      "DKRA Realty Bắt Tay Đối Tác Chiến Lược Triển Khai Kinh Doanh Khu Đô Thị The 826 EC",
-    slug: "dkra-realty-bat-tay-doi-tac-chien-luoc",
-    excerpt:
-      "Sáng ngày 04/6 Lễ ký kết hợp tác & triển khai kinh doanh dự án The 826 EC giữa Chủ Đầu tư Hai Thành, Tổng Đại lý Tiếp thị & Phân phối DKRA Realty cùng các Đại lý phân phối chiến lược đã diễn ra tại TP. Thủ Đức, TP.HCM.",
-    image: testImg.src,
-    publishedAt: "05/06/2025 17:30",
-    author: "Hải Âu",
-    category: "Tin tức",
-  },
-  {
-    id: "8",
-    title: "Conic Boulevard: Từ Giấc Mơ An Cư Đến Cuộc Sống Lý Tưởng",
-    slug: "conic-boulevard-tu-giac-mo-an-cu-den-cuoc-song-ly-tuong",
-    excerpt:
-      '"Sống giữa phố thị sôi động nhưng vẫn giữ được sự riêng tư, tiện nghi", đó là cách các gia đình trẻ định nghĩa về chốn an cư: Nhà không chỉ dành để ở, mà còn là không gian sống giúp mỗi người được tận hưởng, kết nối và tái tạo năng lượng mỗi ngày.',
-    image: testImg.src,
-    publishedAt: "05/06/2025 16:02",
-    author: "Hải Âu",
-    category: "Tin tức",
-    tags: ["Thị trường bất động sản 2025"],
-  },
-  {
-    id: "9",
-    title: "Bất Động Sản Bình Định: Giá Rao Bán Đang Đi Ngang",
-    slug: "bat-dong-san-binh-dinh-gia-rao-ban-di-ngang",
-    excerpt:
-      "Trong sự sôi nổi chung của thị trường bất động sản cả nước, thị trường bất động sản Bình Định lại khá trầm lặng. Nguồn cung sơ cấp không nhiều và giá chào bán trên thị trường thứ cấp vẫn duy trì mức đi ngang so với năm ngoái.",
-    image: testImg.src,
-    publishedAt: "05/06/2025 13:55",
-    author: "Nguyễn Nam",
-    category: "Tin tức",
-    tags: ["Thị trường bất động sản 2025"],
-  },
-  {
-    id: "10",
-    title:
-      'Khám Phá Căn Hộ The Nelson Được "Đo Ni Đóng Giày" Cho Giới Thượng Lưu Hà Nội',
-    slug: "kham-pha-can-ho-the-nelson-duoc-do-ni-dong-giay-cho-gioi-thuong-luu-ha-noi",
-    excerpt:
-      'Giữa trung tâm Ba Đình, The Nelson kiến tạo không gian sống mang dấu ấn cá nhân với triết lý "private & luxury", nơi mỗi căn hộ phản ánh rõ nét gu thẩm mỹ tinh tế, kín đáo và vị thế, đẳng cấp của chủ nhân.',
-    image: testImg.src,
-    publishedAt: "05/06/2025 09:00",
-    author: "Hải Âu",
-    category: "Tin tức",
-  },
-];
-
-const mockPopularArticles: Article[] = [
-  {
-    id: "p1",
-    title: "Trọn Bộ Lãi Suất Vay Mua Nhà Mới Nhất Tháng 5/2025",
-    slug: "lai-suat-vay-mua-nha-moi-nhat-thang-5-2025",
-    excerpt: "",
-    image: "",
-    publishedAt: "",
-    author: "",
-    category: "",
-    views: 15420,
-  },
-  {
-    id: "p2",
-    title: "3 Phân Khúc Dẫn Dắt Thị Trường Bất Động Sản Quý 1/2025",
-    slug: "3-phan-khuc-dan-dat-thi-truong-quy-1-2025",
-    excerpt: "",
-    image: "",
-    publishedAt: "",
-    author: "",
-    category: "",
-    views: 12380,
-  },
-  {
-    id: "p3",
-    title: "Diễn Biến Trái Chiều Giá Chung Cư Hà Nội",
-    slug: "dien-bien-trai-chieu-gia-chung-cu-ha-noi",
-    excerpt: "",
-    image: "",
-    publishedAt: "",
-    author: "",
-    category: "",
-    views: 9870,
-  },
-  {
-    id: "p4",
-    title: "Thị Trường Bất Động Sản Tháng 4/2025: Giảm Nhẹ Một Số Phân Khúc",
-    slug: "thi-truong-bat-dong-san-thang-4-2025",
-    excerpt: "",
-    image: "",
-    publishedAt: "",
-    author: "",
-    category: "",
-    views: 8650,
-  },
-  {
-    id: "p5",
-    title: "Môi Giới Đất Nền Đồng Loạt Quay Lại Với Nghề",
-    slug: "moi-gioi-dat-nen-dong-loat-quay-lai",
-    excerpt: "",
-    image: "",
-    publishedAt: "",
-    author: "",
-    category: "",
-    views: 7230,
-  },
-];
-
-// Đã loại bỏ mockHotLocations và mockBigLocations theo yêu cầu
 
 export function News({ initialArticles = [] }: NewsProps) {
   const [articles, setArticles] = useState<Article[]>(
@@ -214,8 +51,8 @@ export function News({ initialArticles = [] }: NewsProps) {
   );
   const [featuredArticles, setFeaturedArticles] = useState<Article[]>([]);
   const [hotArticles, setHotArticles] = useState<Article[]>([]);
-  const [popularArticles, setPopularArticles] =
-    useState<Article[]>(mockPopularArticles);
+  const [popularArticles, setPopularArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<NewsCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -225,6 +62,12 @@ export function News({ initialArticles = [] }: NewsProps) {
     const fetchAllArticles = async () => {
       setLoading(true);
       try {
+        // Fetch categories first
+        const categoriesResponse = await newsService.getNewsCategories();
+        if (categoriesResponse.success) {
+          setCategories(categoriesResponse.data);
+        }
+
         // Fetch regular articles
         const articlesResponse = await newsService.getPublishedNews({
           page: 1,
@@ -362,11 +205,7 @@ export function News({ initialArticles = [] }: NewsProps) {
         }
       } catch (error) {
         console.error("Error fetching articles:", error);
-
-        // Fallback to mock data if API calls fail
-        setArticles(mockArticles);
-        setFeaturedArticles([mockFeaturedArticle, ...mockHighlightArticles]);
-        setHotArticles(mockHighlightArticles);
+        // No fallback to mock data - just keep empty arrays
       } finally {
         setLoading(false);
       }
@@ -433,8 +272,61 @@ export function News({ initialArticles = [] }: NewsProps) {
                 Thông tin mới, đầy đủ, hấp dẫn về thị trường bất động sản Việt
                 Nam thông qua dữ liệu lớn về giá, giao dịch, nguồn cung - cầu và
                 khảo sát thực tế của đội ngũ phóng viên, biên tập của
-                Batdongsan.com.vn.
+                realestate.com.
               </p>
+            </div>
+          </div>
+
+          {/* News Categories Section */}
+          <div className="flex justify-center mb-8">
+            <div className="flex flex-wrap justify-center gap-3">
+              {categories.length > 0 ? (
+                categories.map((category) => (
+                  <Link
+                    key={category.slug}
+                    href={`/tin-tuc/${category.slug}`}
+                    className={`px-4 py-2 rounded-full text-sm transition-colors font-medium ${getCategoryColor(
+                      category.slug
+                    )}`}
+                  >
+                    {category.name}
+                  </Link>
+                ))
+              ) : (
+                // Fallback to default categories while loading
+                <>
+                  <Link
+                    href="/tin-tuc/mua-ban"
+                    className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition-colors font-medium"
+                  >
+                    Mua bán
+                  </Link>
+                  <Link
+                    href="/tin-tuc/cho-thue"
+                    className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors font-medium"
+                  >
+                    Cho thuê
+                  </Link>
+                  <Link
+                    href="/tin-tuc/tai-chinh"
+                    className="px-4 py-2 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200 transition-colors font-medium"
+                  >
+                    Tài chính
+                  </Link>
+                  <Link
+                    href="/tin-tuc/phong-thuy"
+                    className="px-4 py-2 bg-orange-100 text-orange-800 rounded-full text-sm hover:bg-orange-200 transition-colors font-medium"
+                  >
+                    Phong thủy
+                  </Link>
+                  <Link
+                    href="/tin-tuc/tong-hop"
+                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition-colors font-medium"
+                  >
+                    Tổng hợp
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
@@ -476,90 +368,45 @@ export function News({ initialArticles = [] }: NewsProps) {
                   </div>
                 </Link>
               ) : (
-                <Link
-                  href={`/tin-tuc/${mockFeaturedArticle.slug}`}
-                  className="block group"
-                >
-                  <div className="relative h-64 lg:h-80 rounded-lg overflow-hidden">
-                    <Image
-                      src={mockFeaturedArticle.image}
-                      alt={mockFeaturedArticle.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                    <div className="absolute top-4 left-4 z-10">
-                      <span className="bg-red-600 text-white text-xs font-medium px-2 py-1 rounded-sm">
-                        TIN NỔI BẬT
-                      </span>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                      <div className="text-sm mb-2 opacity-90">
-                        {mockFeaturedArticle.publishedAt} •{" "}
-                        {mockFeaturedArticle.category}
-                      </div>
-                      <h3 className="text-xl lg:text-2xl font-bold mb-3 line-clamp-2">
-                        {mockFeaturedArticle.title}
-                      </h3>
-                      <p className="text-sm lg:text-base opacity-90 line-clamp-3">
-                        {mockFeaturedArticle.excerpt}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
+                <div className="relative h-64 lg:h-80 rounded-lg bg-gray-200 flex items-center justify-center">
+                  <p className="text-gray-500">Đang tải tin nổi bật...</p>
+                </div>
               )}
             </div>
 
             {/* Side Articles (Hot News) */}
             <div className="space-y-4">
-              {hotArticles.length > 0
-                ? hotArticles.slice(0, 3).map((article) => (
-                    <div
-                      key={article.id}
-                      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-gray-500">
-                          {article.publishedAt}
-                        </span>
-                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-sm">
-                          TIN NÓNG
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                        <Link
-                          href={`/tin-tuc/${article.category}/${article.slug}`}
-                          className="line-clamp-3"
-                        >
-                          {article.title}
-                        </Link>
-                      </h3>
+              {hotArticles.length > 0 ? (
+                hotArticles.slice(0, 3).map((article) => (
+                  <div
+                    key={article.id}
+                    className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-gray-500">
+                        {article.publishedAt}
+                      </span>
+                      <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-sm">
+                        TIN NÓNG
+                      </span>
                     </div>
-                  ))
-                : mockHighlightArticles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-gray-500">
-                          {article.publishedAt}
-                        </span>
-                        <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-sm">
-                          TIN NÓNG
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                        <Link
-                          href={`/tin-tuc/${article.slug}`}
-                          className="line-clamp-3"
-                        >
-                          {article.title}
-                        </Link>
-                      </h3>
-                    </div>
-                  ))}
+                    <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+                      <Link
+                        href={`/tin-tuc/${article.category}/${article.slug}`}
+                        className="line-clamp-3"
+                      >
+                        {article.title}
+                      </Link>
+                    </h3>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-gray-500 text-center">
+                    Đang tải tin nóng...
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -692,45 +539,7 @@ export function News({ initialArticles = [] }: NewsProps) {
               <PopularArticles articles={popularArticles} />
 
               {/* Tag Cloud - Added instead of location sections */}
-              <div className="sticky top-6 space-y-8">
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">
-                    Danh mục tin tức
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href="/tin-tuc/mua-ban"
-                      className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-sm hover:bg-blue-200 transition-colors"
-                    >
-                      Mua bán
-                    </Link>
-                    <Link
-                      href="/tin-tuc/cho-thue"
-                      className="px-3 py-2 bg-green-100 text-green-800 rounded-full text-sm hover:bg-green-200 transition-colors"
-                    >
-                      Cho thuê
-                    </Link>
-                    <Link
-                      href="/tin-tuc/tai-chinh"
-                      className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full text-sm hover:bg-purple-200 transition-colors"
-                    >
-                      Tài chính
-                    </Link>
-                    <Link
-                      href="/tin-tuc/phong-thuy"
-                      className="px-3 py-2 bg-orange-100 text-orange-800 rounded-full text-sm hover:bg-orange-200 transition-colors"
-                    >
-                      Phong thủy
-                    </Link>
-                    <Link
-                      href="/tin-tuc/tong-hop"
-                      className="px-3 py-2 bg-gray-100 text-gray-800 rounded-full text-sm hover:bg-gray-200 transition-colors"
-                    >
-                      Tổng hợp
-                    </Link>
-                  </div>
-                </div>
-              </div>
+              <div className="sticky top-6 space-y-8"></div>
             </div>
           </div>
         </div>

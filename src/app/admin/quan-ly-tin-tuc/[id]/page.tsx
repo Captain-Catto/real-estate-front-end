@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
-import { newsService } from "@/services/newsService";
+import { newsService, NewsCategory } from "@/services/newsService";
 import { UploadService } from "@/services/uploadService";
 import dynamic from "next/dynamic";
 import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
@@ -31,7 +31,7 @@ interface NewsData {
   title: string;
   content: string;
   featuredImage?: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  category: string; // Thay đổi từ union types thành string
   status: "draft" | "pending" | "published" | "rejected"; // Keep draft for now for compatibility
   isHot: boolean;
   isFeatured: boolean;
@@ -44,14 +44,6 @@ interface NewsData {
   updatedAt: string;
 }
 
-const categoryLabels = {
-  "mua-ban": "Mua bán",
-  "cho-thue": "Cho thuê",
-  "tai-chinh": "Tài chính",
-  "phong-thuy": "Phong thủy",
-  "tong-hop": "Tổng hợp",
-};
-
 export default function EditNewsPage() {
   const router = useRouter();
   const params = useParams();
@@ -60,22 +52,41 @@ export default function EditNewsPage() {
   const [saving, setSaving] = useState(false);
   const [news, setNews] = useState<NewsData | null>(null);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+
+  // State cho categories dynamic
+  const [categories, setCategories] = useState<NewsCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     featuredImage: "",
-    category: "tong-hop" as
-      | "mua-ban"
-      | "cho-thue"
-      | "tai-chinh"
-      | "phong-thuy"
-      | "tong-hop",
+    category: "" as string, // Thay đổi từ union types
     status: "pending" as "draft" | "pending" | "published" | "rejected", // Default to pending now
     isHot: false,
     isFeatured: false,
   });
 
   const newsId = params.id as string;
+
+  // Fetch categories từ API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await newsService.getNewsCategories();
+        if (response.success && response.data) {
+          setCategories(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const fetchNews = useCallback(async () => {
     try {
@@ -381,28 +392,30 @@ export default function EditNewsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Danh mục *
                   </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        category: e.target.value as
-                          | "mua-ban"
-                          | "cho-thue"
-                          | "tai-chinh"
-                          | "phong-thuy"
-                          | "tong-hop",
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {Object.entries(categoryLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                  {categoriesLoading ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                      Đang tải danh mục...
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          category: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Chọn danh mục</option>
+                      {categories.map((cat) => (
+                        <option key={cat.slug} value={cat.slug}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Featured Image */}

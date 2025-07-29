@@ -54,7 +54,6 @@ export default function SearchSection({
   initialCategory = "",
   initialPrice = "",
   initialArea = "",
-  initialStatus = "",
 }: SearchSectionProps) {
   const router = useRouter();
 
@@ -67,7 +66,6 @@ export default function SearchSection({
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
   const [selectedPrice, setSelectedPrice] = useState("");
   const [selectedArea, setSelectedArea] = useState("");
-  const [selectedProjectStatus, setSelectedProjectStatus] = useState("");
 
   // Data states
   const [provinces, setProvinces] = useState<Location[]>([]);
@@ -82,8 +80,6 @@ export default function SearchSection({
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [showPriceDropdown, setShowPriceDropdown] = useState(false);
   const [showAreaDropdown, setShowAreaDropdown] = useState(false);
-  const [showProjectStatusDropdown, setShowProjectStatusDropdown] =
-    useState(false);
 
   const [citySearch, setCitySearch] = useState("");
   const [wardSearch, setWardSearch] = useState("");
@@ -94,14 +90,6 @@ export default function SearchSection({
   const propertyDropdownRef = useRef<HTMLDivElement>(null);
   const priceDropdownRef = useRef<HTMLDivElement>(null);
   const areaDropdownRef = useRef<HTMLDivElement>(null);
-  const projectStatusDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Project statuses (static data)
-  const [projectStatuses] = useState([
-    { id: "sap-mo-ban", name: "Sắp mở bán" },
-    { id: "dang-mo-ban", name: "Đang mở bán" },
-    { id: "da-ban-giao", name: "Đã bàn giao" },
-  ]);
 
   // Helper function to get search type from URL
   const getSearchTypeFromPath = (): "buy" | "rent" | "project" => {
@@ -412,34 +400,39 @@ export default function SearchSection({
         setPriceRanges([]);
       }
 
-      // Fetch area ranges (only for non-project types)
-      if (searchType !== "project") {
-        try {
-          const areaResponse = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_BASE_URL ||
-              "http://localhost:8080/api"
-            }/areas`
+      // Fetch area ranges based on search type
+      try {
+        const areaType = searchType === "project" ? "project" : "property";
+        const areaResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+          }/areas/type/${areaType}`
+        );
+
+        if (areaResponse.ok) {
+          const areaResult = await areaResponse.json();
+          // API returns data directly, not nested under data.areas
+          const areaRanges = areaResult.data || [];
+
+          // Sort by minValue
+          const sortedAreaRanges = [...areaRanges].sort((a, b) => {
+            if (a.minValue === 0 && b.minValue !== 0) return -1;
+            if (b.minValue === 0 && a.minValue !== 0) return 1;
+            return a.minValue - b.minValue;
+          });
+
+          console.log(
+            `Loaded ${areaType} area ranges:`,
+            sortedAreaRanges.length
           );
-
-          if (areaResponse.ok) {
-            const areaResult = await areaResponse.json();
-            const areaRanges = areaResult.data?.areas || [];
-
-            // Sort by minValue
-            const sortedAreaRanges = [...areaRanges].sort((a, b) => {
-              if (a.minValue === 0 && b.minValue !== 0) return -1;
-              if (b.minValue === 0 && a.minValue !== 0) return 1;
-              return a.minValue - b.minValue;
-            });
-
-            console.log("Loaded area ranges:", sortedAreaRanges.length);
-            setAreaRanges(sortedAreaRanges);
-          }
-        } catch (error) {
-          console.error("Error fetching area ranges:", error);
+          setAreaRanges(sortedAreaRanges);
+        } else {
+          console.error("Failed to fetch area ranges:", areaResponse.status);
           setAreaRanges([]);
         }
+      } catch (error) {
+        console.error("Error fetching area ranges:", error);
+        setAreaRanges([]);
       }
     };
 
@@ -490,7 +483,6 @@ export default function SearchSection({
   }, [priceRanges, initialPrice]);
 
   useEffect(() => {
-    if (searchType === "project") return;
     if (areaRanges.length === 0) return;
 
     const urlParams = getUrlParams();
@@ -509,28 +501,7 @@ export default function SearchSection({
       console.log("Using initial area from props");
       setSelectedArea(initialArea);
     }
-  }, [areaRanges, initialArea, searchType]);
-
-  useEffect(() => {
-    if (searchType !== "project") return;
-
-    const urlParams = getUrlParams();
-
-    if (urlParams.status) {
-      const matchingStatus = projectStatuses.find(
-        (s) => s.id === urlParams.status
-      );
-      if (matchingStatus) {
-        console.log("Found status from URL:", matchingStatus.name);
-        setSelectedProjectStatus(urlParams.status);
-      } else {
-        console.log("Status slug not found:", urlParams.status);
-      }
-    } else if (initialStatus) {
-      console.log("Using initial status from props");
-      setSelectedProjectStatus(initialStatus);
-    }
-  }, [projectStatuses, initialStatus, searchType]);
+  }, [areaRanges, initialArea]);
 
   // Click outside handler
   useEffect(() => {
@@ -565,12 +536,6 @@ export default function SearchSection({
       ) {
         setShowAreaDropdown(false);
       }
-      if (
-        projectStatusDropdownRef.current &&
-        !projectStatusDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowProjectStatusDropdown(false);
-      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -586,13 +551,11 @@ export default function SearchSection({
     setSelectedPropertyType("");
     setSelectedPrice("");
     setSelectedArea("");
-    setSelectedProjectStatus("");
 
     // Close all dropdowns
     setShowPropertyDropdown(false);
     setShowPriceDropdown(false);
     setShowAreaDropdown(false);
-    setShowProjectStatusDropdown(false);
   };
 
   const handleCitySelect = (province: Location) => {
@@ -648,24 +611,18 @@ export default function SearchSection({
     }
 
     // Add category
-    if (selectedPropertyType) {
+    if (selectedPropertyType && selectedPropertyType.trim() !== "") {
       queryParams.append("category", selectedPropertyType);
     }
 
     // Add price
-    if (selectedPrice) {
+    if (selectedPrice && selectedPrice.trim() !== "") {
       queryParams.append("price", selectedPrice);
     }
 
-    // Add area or status
-    if (searchType === "project") {
-      if (selectedProjectStatus) {
-        queryParams.append("status", selectedProjectStatus);
-      }
-    } else {
-      if (selectedArea) {
-        queryParams.append("area", selectedArea);
-      }
+    // Add area for all search types
+    if (selectedArea && selectedArea.trim() !== "") {
+      queryParams.append("area", selectedArea);
     }
 
     // Navigate to search results
@@ -874,6 +831,16 @@ export default function SearchSection({
               {showPropertyDropdown && (
                 <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
                   <div className="max-h-60 overflow-y-auto">
+                    {/* Add "Tất cả" option */}
+                    <button
+                      onClick={() => {
+                        setSelectedPropertyType("");
+                        setShowPropertyDropdown(false);
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
+                    >
+                      Tất cả loại BĐS
+                    </button>
                     {categories.map((category) => (
                       <button
                         key={category.slug}
@@ -927,18 +894,30 @@ export default function SearchSection({
                         Đang tải...
                       </div>
                     ) : (
-                      priceRanges.map((price) => (
+                      <>
+                        {/* Add "Tất cả" option */}
                         <button
-                          key={price.slug || price.id}
                           onClick={() => {
-                            setSelectedPrice(price.slug || price.id || "");
+                            setSelectedPrice("");
                             setShowPriceDropdown(false);
                           }}
-                          className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
                         >
-                          {price.name}
+                          Tất cả mức giá
                         </button>
-                      ))
+                        {priceRanges.map((price) => (
+                          <button
+                            key={price.slug || price.id}
+                            onClick={() => {
+                              setSelectedPrice(price.slug || price.id || "");
+                              setShowPriceDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                          >
+                            {price.name}
+                          </button>
+                        ))}
+                      </>
                     )}
                   </div>
                 </div>
@@ -950,55 +929,72 @@ export default function SearchSection({
               className="relative"
               ref={
                 searchType === "project"
-                  ? projectStatusDropdownRef
+                  ? areaDropdownRef // Use area dropdown for project too
                   : areaDropdownRef
               }
             >
               {searchType === "project" ? (
-                // Project Status
+                // Project Area (instead of status)
                 <>
                   <button
-                    onClick={() =>
-                      setShowProjectStatusDropdown(!showProjectStatusDropdown)
-                    }
+                    onClick={() => setShowAreaDropdown(!showAreaDropdown)}
                     className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
                   >
-                    <i className="fas fa-calendar-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
+                    <i className="fas fa-vector-square text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
                     <span
                       className={`${
-                        selectedProjectStatus
+                        selectedArea
                           ? "text-gray-900 font-medium"
                           : "text-gray-500"
                       } flex-1 text-left`}
                     >
-                      {selectedProjectStatus
-                        ? projectStatuses.find(
-                            (s) => s.id === selectedProjectStatus
-                          )?.name || "Trạng thái"
-                        : "Trạng thái"}
+                      {selectedArea
+                        ? areaRanges.find(
+                            (a) =>
+                              a.slug === selectedArea || a.id === selectedArea
+                          )?.name || "Diện tích"
+                        : "Diện tích"}
                     </span>
                     <i
                       className={`fas fa-chevron-${
-                        showProjectStatusDropdown ? "up" : "down"
+                        showAreaDropdown ? "up" : "down"
                       } text-gray-400 group-hover:text-blue-500`}
                     ></i>
                   </button>
 
-                  {showProjectStatusDropdown && (
+                  {showAreaDropdown && (
                     <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
                       <div className="max-h-60 overflow-y-auto">
-                        {projectStatuses.map((status) => (
-                          <button
-                            key={status.id}
-                            onClick={() => {
-                              setSelectedProjectStatus(status.id);
-                              setShowProjectStatusDropdown(false);
-                            }}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                          >
-                            {status.name}
-                          </button>
-                        ))}
+                        {areaRanges.length === 0 ? (
+                          <div className="px-4 py-2 text-gray-500 text-center">
+                            Đang tải...
+                          </div>
+                        ) : (
+                          <>
+                            {/* Add "Tất cả" option */}
+                            <button
+                              onClick={() => {
+                                setSelectedArea("");
+                                setShowAreaDropdown(false);
+                              }}
+                              className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
+                            >
+                              Tất cả diện tích
+                            </button>
+                            {areaRanges.map((area) => (
+                              <button
+                                key={area.slug || area.id}
+                                onClick={() => {
+                                  setSelectedArea(area.slug || area.id || "");
+                                  setShowAreaDropdown(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                              >
+                                {area.name}
+                              </button>
+                            ))}
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1040,18 +1036,30 @@ export default function SearchSection({
                             Đang tải...
                           </div>
                         ) : (
-                          areaRanges.map((area) => (
+                          <>
+                            {/* Add "Tất cả" option */}
                             <button
-                              key={area.slug || area.id}
                               onClick={() => {
-                                setSelectedArea(area.slug || area.id || "");
+                                setSelectedArea("");
                                 setShowAreaDropdown(false);
                               }}
-                              className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                              className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
                             >
-                              {area.name}
+                              Tất cả diện tích
                             </button>
-                          ))
+                            {areaRanges.map((area) => (
+                              <button
+                                key={area.slug || area.id}
+                                onClick={() => {
+                                  setSelectedArea(area.slug || area.id || "");
+                                  setShowAreaDropdown(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                              >
+                                {area.name}
+                              </button>
+                            ))}
+                          </>
                         )}
                       </div>
                     </div>

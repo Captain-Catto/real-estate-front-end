@@ -16,6 +16,12 @@ interface TransformedNewsItem {
   isHot?: boolean;
   isFeatured?: boolean;
   category?: string; // Thêm category cho URL chuẩn
+  description?: string; // Thêm description để hiển thị
+  author?: {
+    username: string;
+    email?: string;
+    avatar?: string;
+  }; // Thêm author information
 }
 
 // Định nghĩa kiểu dữ liệu NewsItem từ API
@@ -29,6 +35,11 @@ interface NewsItem {
   isFeatured?: boolean;
   content?: string;
   category: string; // Thêm trường category để dùng trong URL
+  author: {
+    username: string;
+    email?: string;
+    avatar?: string;
+  }; // Thêm author từ API
 }
 
 interface NewsDataState {
@@ -67,6 +78,16 @@ const tabs = [
 
 // Hàm chuyển đổi từ NewsItem sang TransformedNewsItem
 const transformNewsItem = (item: NewsItem): TransformedNewsItem => {
+  // Tạo description từ content (lấy 150 ký tự đầu)
+  const getDescription = (content: string): string => {
+    if (!content) return "";
+    // Remove HTML tags và lấy text thuần
+    const textOnly = content.replace(/<[^>]*>/g, "");
+    return textOnly.length > 150
+      ? textOnly.substring(0, 150) + "..."
+      : textOnly;
+  };
+
   return {
     id: item._id,
     title: item.title,
@@ -79,6 +100,8 @@ const transformNewsItem = (item: NewsItem): TransformedNewsItem => {
     isHot: item.isHot,
     isFeatured: item.isFeatured,
     category: item.category, // Thêm category cho URL chuẩn
+    description: getDescription(item.content || ""), // Thêm description
+    author: item.author, // Thêm author data
   };
 };
 
@@ -95,51 +118,35 @@ const FixedNewsSection = () => {
     const fetchNews = async () => {
       setIsLoading(true);
       try {
-        // Sử dụng API thông thường để lấy tất cả tin tức thay vì gọi nhiều API
-        const response = await newsService.getPublishedNews({
-          limit: 20,
-          page: 1,
+        // Gọi các API riêng biệt để lấy tin nổi bật và tin nóng
+        const [featuredResponse, hotResponse] = await Promise.all([
+          newsService.getFeaturedNews(10),
+          newsService.getHotNews(10),
+        ]);
+
+        console.log("Featured news response:", featuredResponse);
+        console.log("Hot news response:", hotResponse);
+
+        // Xử lý tin nổi bật
+        const featuredNews =
+          featuredResponse.success && featuredResponse.data.news
+            ? featuredResponse.data.news.map((item) => transformNewsItem(item))
+            : [];
+
+        // Xử lý tin nóng
+        const hotNews =
+          hotResponse.success && hotResponse.data.news
+            ? hotResponse.data.news.map((item) => transformNewsItem(item))
+            : [];
+
+        // Update state with real data
+        setNewsData({
+          "tin-noi-bat":
+            featuredNews.length > 0
+              ? featuredNews
+              : placeholderData["tin-noi-bat"],
+          "tin-tuc": hotNews.length > 0 ? hotNews : placeholderData["tin-tuc"],
         });
-
-        console.log("News API response:", response);
-
-        if (response.success && response.data && response.data.news) {
-          // Lọc dữ liệu từ một API duy nhất
-          const allNews = response.data.news;
-          console.log("All news:", allNews);
-
-          // Lọc ra tin nổi bật (isFeatured = true)
-          const featuredNews = allNews
-            .filter((item) => item.isFeatured)
-            .map((item) => transformNewsItem(item));
-
-          // Lọc ra tin nóng (isHot = true)
-          const hotNews = allNews
-            .filter((item) => item.isHot)
-            .map((item) => transformNewsItem(item));
-
-          // Các tin thông thường (không nổi bật, không nóng)
-          const regularNews = allNews
-            .filter((item) => !item.isFeatured && !item.isHot)
-            .map((item) => transformNewsItem(item));
-
-          // Update state with real data
-          setNewsData({
-            "tin-noi-bat":
-              featuredNews.length > 0
-                ? featuredNews
-                : placeholderData["tin-noi-bat"],
-            "tin-tuc":
-              hotNews.length > 0
-                ? [...hotNews, ...regularNews].slice(0, 10)
-                : placeholderData["tin-tuc"],
-          });
-        } else {
-          console.error(
-            "Failed to fetch news or invalid data format:",
-            response
-          );
-        }
       } catch (error) {
         console.error("Error fetching news data:", error);
         // Keep placeholder data in case of error
@@ -259,13 +266,14 @@ const FixedNewsSection = () => {
           {/* Featured News - Desktop Only */}
           <div className="hidden lg:block space-y-4">
             {featuredNews && (
-              <div className="group">
+              <div className="group h-full flex flex-col">
                 <Link
                   href={`/tin-tuc/${featuredNews.category || "tong-hop"}/${
                     featuredNews.slug
                   }`}
+                  className="flex-1 flex flex-col"
                 >
-                  <div className="relative h-64 mb-4 overflow-hidden rounded-lg">
+                  <div className="relative h-80 mb-4 overflow-hidden rounded-lg flex-shrink-0">
                     <Image
                       src={featuredNews.image}
                       alt={featuredNews.title}
@@ -274,11 +282,16 @@ const FixedNewsSection = () => {
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-gray-600 transition-colors line-clamp-2">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-red-600 transition-colors line-clamp-2">
                     {featuredNews.title}
                   </h3>
+                  {featuredNews.description && (
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-3 flex-1">
+                      {featuredNews.description}
+                    </p>
+                  )}
                 </Link>
-                <div className="flex items-center text-sm text-gray-500">
+                <div className="flex items-center text-sm text-gray-500 mt-auto">
                   <svg
                     className="w-4 h-4 mr-1"
                     fill="none"
@@ -293,6 +306,12 @@ const FixedNewsSection = () => {
                     />
                   </svg>
                   <span>{featuredNews.time}</span>
+                  {featuredNews.author && (
+                    <>
+                      <span className="mx-1">|</span>
+                      <span>{featuredNews.author.username}</span>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -358,7 +377,12 @@ const FixedNewsSection = () => {
 
                   {/* Desktop Layout - Preview + Click to Select */}
                   <div className="hidden lg:block">
-                    <Link href={`/tin-tuc/${news.slug}`} className="block">
+                    <Link
+                      href={`/tin-tuc/${news.category || "tong-hop"}/${
+                        news.slug
+                      }`}
+                      className="block"
+                    >
                       <h4 className="font-medium text-gray-900 hover:text-red-600 transition-colors line-clamp-2 mb-2">
                         {news.title}
                       </h4>

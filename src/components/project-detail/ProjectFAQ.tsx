@@ -163,27 +163,6 @@ export function ProjectFAQ({ faqs, projectName }: ProjectFAQProps) {
           </div>
         </div>
       </div>
-
-      {/* Popular Questions */}
-      <div className="mt-6">
-        <h3 className="font-medium mb-3">Câu hỏi phổ biến khác</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            "Có chính sách ưu đãi cho khách hàng mua sớm?",
-            "Dự án có gần trường học không?",
-            "Có hỗ trợ vay ngân hàng không?",
-            "Phí quản lý dự án là bao nhiêu?",
-          ].map((question, index) => (
-            <button
-              key={index}
-              className="text-left p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-sm"
-            >
-              <i className="fas fa-arrow-right text-blue-500 mr-2 text-xs"></i>
-              {question}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

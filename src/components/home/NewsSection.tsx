@@ -94,13 +94,13 @@ export default function NewsSection() {
 
         // Transform data
         const featuredNews =
-          featuredResponse.success && featuredResponse.data
-            ? featuredResponse.data.map(transformNewsItem)
+          featuredResponse.success && featuredResponse.data.news
+            ? featuredResponse.data.news.map(transformNewsItem)
             : [];
 
         const hotNews =
-          hotResponse.success && hotResponse.data
-            ? hotResponse.data.map(transformNewsItem)
+          hotResponse.success && hotResponse.data.news
+            ? hotResponse.data.news.map(transformNewsItem)
             : [];
 
         const regularNews =

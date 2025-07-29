@@ -117,6 +117,20 @@ export interface PostFilters {
   searchMode?: string; // Add search mode filter
 }
 
+// Interface for search filters in post queries
+export interface PostSearchFilters {
+  project?: string;
+  status?: string;
+  type?: string;
+  category?: string;
+  price?: string;
+  area?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sortBy?: string;
+  [key: string]: string | number | undefined;
+}
+
 export interface PostsStats {
   total: number;
   active: number;
@@ -755,6 +769,205 @@ class PostService {
         acc[id] = "Không xác định";
         return acc;
       }, {} as { [key: string]: string });
+    }
+  }
+
+  // Get posts by project ID
+  async getPostsByProject(projectId: string, page = 1, limit = 20) {
+    try {
+      console.log("🔍 getPostsByProject called with:", {
+        projectId,
+        projectIdType: typeof projectId,
+        projectIdLength: projectId?.length,
+        page,
+        limit,
+      });
+
+      const filters = {
+        project: projectId, // Backend will map this to location.project
+        status: "active", // Only get active posts
+      };
+
+      console.log("🔍 Calling searchPosts with filters:", filters);
+
+      const response = await this.searchPosts(filters, page, limit);
+
+      console.log("🔍 searchPosts response:", {
+        success: response.success,
+        hasData: !!response.data,
+        postsCount: response.data?.posts?.length || 0,
+        totalItems: response.data?.pagination?.totalItems || 0,
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to fetch posts");
+      }
+
+      // Transform data to match expected format for ProjectListings component
+      const posts = response.data?.posts || [];
+      const transformedPosts = posts.map((post: Post) => ({
+        id: post._id,
+        type: post.type,
+        title: post.title,
+        price: post.price,
+        area: post.area,
+        bedrooms: post.bedrooms || 0,
+        bathrooms: post.bathrooms || 0,
+        floor: post.floors || undefined,
+        direction: post.houseDirection || post.balconyDirection,
+        images: post.images || [],
+        postedDate: post.createdAt,
+        agent: {
+          name: post.author?.username || "N/A",
+          phone: "N/A", // Phone not available in Post interface, would need contact endpoint
+          avatar: post.author?.avatar,
+        },
+        slug: `${post._id}-${post.title.toLowerCase().replace(/\s+/g, "-")}`,
+      }));
+
+      return {
+        success: true,
+        data: {
+          posts: transformedPosts,
+          pagination: response.data?.pagination,
+          total: response.data?.pagination?.totalItems || 0,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching posts by project:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+        data: { posts: [], total: 0 },
+      };
+    }
+  }
+
+  // Get posts by project ID with advanced filters
+  async getPostsByProjectWithFilters(
+    projectId: string,
+    filters: {
+      type?: "ban" | "cho-thue"; // Transaction type filter
+      category?: string; // Category filter
+      priceRange?: string; // Price range filter
+      areaRange?: string; // Area range filter
+      bedrooms?: number; // Number of bedrooms
+      bathrooms?: number; // Number of bathrooms
+      sortBy?: string; // Sort option
+      status?: string; // Post status
+    } = {},
+    page = 1,
+    limit = 20
+  ) {
+    try {
+      console.log("🔍 getPostsByProjectWithFilters called with:", {
+        projectId,
+        filters,
+        page,
+        limit,
+      });
+
+      // Build search filters object
+      const searchFilters: PostSearchFilters = {
+        project: projectId, // Backend will map this to location.project
+        status: filters.status || "active", // Only get active posts by default
+      };
+
+      // Add transaction type filter
+      if (filters.type) {
+        searchFilters.type = filters.type;
+      }
+
+      // Add category filter
+      if (filters.category && filters.category !== "") {
+        searchFilters.category = filters.category;
+      }
+
+      // Add price range filter
+      if (filters.priceRange && filters.priceRange !== "") {
+        searchFilters.price = filters.priceRange;
+      }
+
+      // Add area range filter
+      if (filters.areaRange && filters.areaRange !== "") {
+        searchFilters.area = filters.areaRange;
+      }
+
+      // Add bedrooms filter
+      if (filters.bedrooms && filters.bedrooms > 0) {
+        searchFilters.bedrooms = filters.bedrooms;
+      }
+
+      // Add bathrooms filter
+      if (filters.bathrooms && filters.bathrooms > 0) {
+        searchFilters.bathrooms = filters.bathrooms;
+      }
+
+      // Add sort parameter
+      if (filters.sortBy) {
+        searchFilters.sortBy = filters.sortBy;
+      }
+
+      console.log(
+        "🔍 Calling searchPosts with advanced filters:",
+        searchFilters
+      );
+
+      const response = await this.searchPosts(searchFilters, page, limit);
+
+      console.log("🔍 searchPosts response:", {
+        success: response.success,
+        hasData: !!response.data,
+        postsCount: response.data?.posts?.length || 0,
+        totalItems: response.data?.pagination?.totalItems || 0,
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to fetch posts");
+      }
+
+      // Transform data to match expected format for ProjectListings component
+      const posts = response.data?.posts || [];
+      const transformedPosts = posts.map((post: Post) => ({
+        id: post._id,
+        type: post.type,
+        title: post.title,
+        price: post.price,
+        area: post.area,
+        bedrooms: post.bedrooms || 0,
+        bathrooms: post.bathrooms || 0,
+        floor: post.floors || undefined,
+        direction: post.houseDirection || post.balconyDirection,
+        images: post.images || [],
+        postedDate: post.createdAt,
+        agent: {
+          name: post.author?.username || "N/A",
+          phone: "N/A", // Phone not available in Post interface, would need contact endpoint
+          avatar: post.author?.avatar,
+        },
+        slug: `${post._id}-${post.title.toLowerCase().replace(/\s+/g, "-")}`,
+        category: post.category,
+        furniture: post.furniture,
+        legalDocs: post.legalDocs,
+        priority: post.priority,
+        views: post.views,
+      }));
+
+      return {
+        success: true,
+        data: {
+          posts: transformedPosts,
+          pagination: response.data?.pagination,
+          total: response.data?.pagination?.totalItems || 0,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching posts by project with filters:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+        data: { posts: [], total: 0 },
+      };
     }
   }
 }

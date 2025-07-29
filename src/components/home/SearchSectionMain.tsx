@@ -148,19 +148,45 @@ export default function SearchSectionMain() {
           }
         }
 
-        // 3. Tải khoảng diện tích sử dụng areaService
+        // 3. Tải khoảng diện tích sử dụng areaService với type filtering
         try {
-          const areaRanges = await areaService.getAll();
+          console.log("Fetching area ranges for search type:", searchType);
 
-          // Sắp xếp khoảng diện tích theo name
-          const sortedAreaRanges = [...areaRanges].sort((a, b) =>
-            a.name.localeCompare(b.name)
+          // Xác định type cho area API
+          const areaType = searchType === "project" ? "project" : "property";
+          const areaRanges = await areaService.getByType(areaType);
+
+          // Sắp xếp khoảng diện tích theo minValue
+          const sortedAreaRanges = [...areaRanges].sort((a, b) => {
+            if (a.minValue === 0 && b.minValue !== 0) return -1;
+            if (b.minValue === 0 && a.minValue !== 0) return 1;
+            return a.minValue - b.minValue;
+          });
+
+          console.log(
+            `Loaded ${areaType} area ranges:`,
+            sortedAreaRanges.length
           );
-
           setAreaRanges(sortedAreaRanges);
         } catch (error) {
           console.error("Error fetching area ranges:", error);
-          setAreaRanges([]);
+          // Fallback: sử dụng getAll nếu getByType thất bại
+          try {
+            const allAreaRanges = await areaService.getAll();
+            const areaType = searchType === "project" ? "project" : "property";
+            const filteredByType = allAreaRanges.filter(
+              (range) => range.type === areaType || !range.type // Support areas without type for backward compatibility
+            );
+            const sortedAreaRanges = [...filteredByType].sort((a, b) => {
+              if (a.minValue === 0 && b.minValue !== 0) return -1;
+              if (b.minValue === 0 && a.minValue !== 0) return 1;
+              return a.minValue - b.minValue;
+            });
+            setAreaRanges(sortedAreaRanges);
+          } catch (fallbackError) {
+            console.error("Error fetching all area ranges:", fallbackError);
+            setAreaRanges([]);
+          }
         }
       } catch (error) {
         console.error("Error fetching search options:", error);
@@ -376,17 +402,17 @@ export default function SearchSectionMain() {
     }
 
     // Thêm loại bất động sản
-    if (selectedPropertyType) {
+    if (selectedPropertyType && selectedPropertyType.trim() !== "") {
       queryParams.append("category", selectedPropertyType);
     }
 
     // Thêm khoảng giá
-    if (selectedPrice) {
+    if (selectedPrice && selectedPrice.trim() !== "") {
       queryParams.append("price", selectedPrice);
     }
 
     // Thêm khoảng diện tích
-    if (selectedArea) {
+    if (selectedArea && selectedArea.trim() !== "") {
       queryParams.append("area", selectedArea);
     }
 

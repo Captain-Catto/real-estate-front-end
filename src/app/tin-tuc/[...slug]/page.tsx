@@ -28,14 +28,31 @@ interface NewsArticle {
   tags: string[]; // Đảm bảo luôn có mảng tags
 }
 
-// Valid categories
-const validCategories = [
+// Valid categories - sẽ được load dynamic từ API
+const staticValidCategories = [
   "mua-ban",
   "cho-thue",
   "tai-chinh",
   "phong-thuy",
   "tong-hop",
 ];
+
+// Function để kiểm tra category có hợp lệ không (từ API)
+async function isValidCategory(category: string): Promise<boolean> {
+  try {
+    const response = await newsService.getNewsCategories();
+    if (response.success && response.data) {
+      const validSlugs = response.data.map((cat) => cat.slug);
+      return validSlugs.includes(category);
+    }
+    // Fallback về static categories nếu API lỗi
+    return staticValidCategories.includes(category);
+  } catch (error) {
+    console.error("Error checking category validity:", error);
+    // Fallback về static categories nếu API lỗi
+    return staticValidCategories.includes(category);
+  }
+}
 
 // Import type từ newsService
 import { NewsItem } from "@/services/newsService";
@@ -162,6 +179,8 @@ async function getArticlesByCategory(category: string) {
         category: news.category || "tong-hop",
         tags: [],
         views: news.views || 0,
+        isHot: news.isHot || false,
+        isFeatured: news.isFeatured || false,
       }));
     }
 
@@ -190,8 +209,9 @@ export default async function NewsSlugPage(props: PageProps) {
   if (slug.length === 1) {
     const singleSlug = slug[0];
 
-    // Check if it's a category
-    if (validCategories.includes(singleSlug)) {
+    // Check if it's a category (dynamic check)
+    const isCategory = await isValidCategory(singleSlug);
+    if (isCategory) {
       const categoryArticles = await getArticlesByCategory(singleSlug);
       return (
         <NewsCategoryPage category={singleSlug} articles={categoryArticles} />
@@ -210,7 +230,9 @@ export default async function NewsSlugPage(props: PageProps) {
   if (slug.length === 2) {
     const [category, articleSlug] = slug;
 
-    if (validCategories.includes(category)) {
+    // Check if category is valid (dynamic check)
+    const isCategory = await isValidCategory(category);
+    if (isCategory) {
       // Lấy bài viết theo slug
       const article = await getArticleBySlug(articleSlug);
 
@@ -295,8 +317,26 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   if (slug.length === 1) {
     const singleSlug = slug[0];
 
-    // Check category first
-    if (validCategories.includes(singleSlug)) {
+    // Check category first (dynamic check)
+    const isCategory = await isValidCategory(singleSlug);
+    if (isCategory) {
+      // Lấy thông tin category từ API để có tên chính xác
+      try {
+        const response = await newsService.getNewsCategories();
+        if (response.success && response.data) {
+          const category = response.data.find((cat) => cat.slug === singleSlug);
+          const categoryName = category?.name || "Tin tức bất động sản";
+
+          return {
+            title: `Tin tức ${categoryName}`,
+            description: `${categoryName} mới nhất và cập nhật`,
+          };
+        }
+      } catch (error) {
+        console.error("Error getting category info for metadata:", error);
+      }
+
+      // Fallback nếu không lấy được từ API
       const categoryNames: Record<string, string> = {
         "mua-ban": "Tin tức mua bán bất động sản",
         "cho-thue": "Tin tức cho thuê bất động sản",
@@ -326,7 +366,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
   if (slug.length === 2) {
     const [category, articleSlug] = slug;
 
-    if (validCategories.includes(category)) {
+    // Check if category is valid (dynamic check)
+    const isCategory = await isValidCategory(category);
+    if (isCategory) {
       const article = await getArticleBySlug(articleSlug);
       // Chuẩn hóa danh mục trước khi so sánh
       const normalizedArticleCategory = String(article?.category || "")

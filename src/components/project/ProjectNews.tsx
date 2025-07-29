@@ -1,83 +1,153 @@
-import React from "react";
+"use client";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import Image from "next/image";
-import testCardImg from "@/assets/images/card-img.jpg";
-
-const newsData = [
-  {
-    id: 1,
-    title:
-      "Khu Công Nghiệp Tràng Duệ: Vị Trí, Hiện Trạng Và Bảng Giá Thuê Mới Nhất 2025",
-    image: testCardImg,
-    time: "Hôm nay",
-    slug: "khu-cong-nghiep-trang-due-824818",
-  },
-  {
-    id: 2,
-    title: "Bảng Giá Đất Bà Rịa Vũng Tàu Cập Nhật Mới Nhất Theo Từng Khu Vực",
-    image: testCardImg,
-    time: "Hôm nay",
-    slug: "bang-gia-dat-ba-ria-vung-tau-825081",
-  },
-  {
-    id: 3,
-    title: "Thị Trường Bất Động Sản Kho Bãi Hà Nội Đang Đi Ngang Về Giá",
-    image: testCardImg,
-    time: "Hôm nay",
-    slug: "thi-truong-bat-dong-san-kho-bai-ha-noi-836601",
-  },
-];
+import {
+  newsService,
+  NewsItem as ServiceNewsItem,
+} from "@/services/newsService";
 
 export function ProjectNews() {
+  const [news, setNews] = useState<ServiceNewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFeaturedNews = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await newsService.getFeaturedNews(5);
+
+        if (response.success && response.data?.news) {
+          setNews(response.data.news);
+        }
+      } catch (error) {
+        console.error("Error fetching featured news:", error);
+        setError("Không thể tải tin tức");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedNews();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date);
+  };
+
+  console.log("ProjectNews news:", news);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Tin tức nổi bật
+        </h3>
+        <div className="space-y-4">
+          {[...Array(3)].map((_, index) => (
+            <div key={index} className="animate-pulse">
+              <div className="flex gap-3">
+                <div className="w-20 h-16 bg-gray-200 rounded-lg flex-shrink-0"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Tin tức nổi bật
+        </h3>
+        <div className="text-center py-8">
+          <div className="text-red-500 mb-2">
+            <i className="fas fa-exclamation-triangle text-2xl"></i>
+          </div>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Tin tức</h2>
-        <a
+        <h3 className="text-lg font-semibold text-gray-900">Tin tức nổi bật</h3>
+        <Link
           href="/tin-tuc"
-          className="flex items-center text-sm text-blue-600 hover:text-blue-700"
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
-          <span>Xem tất cả</span>
-          <svg
-            className="w-4 h-4 ml-1"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </a>
+          Xem tất cả
+        </Link>
       </div>
 
-      <div className="space-y-4">
-        {newsData.map((news) => (
-          <a
-            key={news.id}
-            href={`/wiki/${news.slug}`}
-            className="flex space-x-3 group"
-          >
-            <div className="w-20 h-16 flex-shrink-0 bg-gray-200 rounded overflow-hidden">
-              <Image
-                src={news.image}
-                alt={news.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                width={80}
-                height={64}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-gray-900 line-clamp-3 group-hover:text-blue-600 transition-colors">
-                {news.title}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">{news.time}</p>
-            </div>
-          </a>
-        ))}
-      </div>
+      {news.length === 0 ? (
+        <div className="text-center py-8">
+          <div className="text-gray-400 mb-2">
+            <i className="fas fa-newspaper text-2xl"></i>
+          </div>
+          <p className="text-gray-600">Chưa có tin tức nào</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {news.map((article) => (
+            <Link
+              key={article._id}
+              href={`/tin-tuc/${article.slug}`}
+              className="block group hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
+            >
+              <div className="flex gap-3">
+                {/* Article Image */}
+                <div className="relative w-20 h-16 flex-shrink-0 rounded-lg overflow-hidden">
+                  <Image
+                    src={article.featuredImage || "/images/default-news.jpg"}
+                    alt={article.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                </div>
+
+                {/* Article Info */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2 text-sm leading-tight mb-1">
+                    {article.title}
+                  </h4>
+
+                  {article.excerpt && (
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                      {article.excerpt}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>
+                      {formatDate(article.publishedAt || article.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
+export default ProjectNews;

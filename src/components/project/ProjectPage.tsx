@@ -1,49 +1,56 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/property-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
-import { ProjectSearchBar } from "./ProjectSearchBar";
+import ProjectSearchFilter from "./ProjectSearchFilter";
 import { ProjectNews } from "./ProjectNews";
 import { LocationNavigationBar } from "./LocationNavigationBar";
-import { LocationSearch } from "./LocationSearch";
 import { ProjectListCard } from "./ProjectListCard";
+import { DeveloperInfo } from "./DeveloperInfo";
 import { useProjects } from "@/hooks/useProjects";
 import { useLocationNames } from "@/hooks/useLocationNames";
-import { Menu, Transition } from "@headlessui/react";
+import { DeveloperService } from "@/services/developerService";
+import { Developer } from "@/types/developer";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
 
 interface ProjectPageProps {
   title: string;
+  search?: string;
   provinceCode?: string;
-  districtCode?: string;
   wardCode?: string;
-}
-
-const sortOptions = [
-  { value: "1", label: "Mới nhất" },
-  { value: "2", label: "Mới cập nhật" },
-  { value: "3", label: "Giá cao nhất" },
-  { value: "4", label: "Giá thấp nhất" },
-];
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
+  categoryId?: string;
+  priceRange?: string;
+  areaRange?: string;
+  status?: string;
+  sortBy?: string;
+  developerId?: string;
 }
 
 export function ProjectPage({
   title,
+  search,
   provinceCode,
-  districtCode,
   wardCode,
+  categoryId,
+  priceRange,
+  areaRange,
+  status,
+  sortBy: initialSortBy,
+  developerId,
 }: ProjectPageProps) {
-  const [sortBy, setSortBy] = useState("1");
+  const [currentSortBy] = useState(initialSortBy || "newest");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // State for developer information
+  const [developer, setDeveloper] = useState<Developer | null>(null);
+  const [loadingDeveloper, setLoadingDeveloper] = useState(false);
+  const [developerError, setDeveloperError] = useState<string | null>(null);
 
   const itemsPerPage = 10;
 
-  // Use hook to fetch projects based on location
+  // Use hook to fetch projects based on all filters
   const {
     projects,
     loading,
@@ -51,20 +58,50 @@ export function ProjectPage({
     totalCount: actualTotalCount,
     totalPages: apiTotalPages,
   } = useProjects({
+    search,
     provinceCode,
-    districtCode,
     wardCode,
+    categoryId,
+    priceRange,
+    areaRange,
+    status,
     page: currentPage,
     limit: itemsPerPage,
-    sortBy,
+    sortBy: currentSortBy,
   });
 
+  console.log("Projects fetched:", projects);
+
+  // Fetch developer information when developerId is provided
+  useEffect(() => {
+    const fetchDeveloper = async () => {
+      if (!developerId) {
+        setDeveloper(null);
+        return;
+      }
+
+      setLoadingDeveloper(true);
+      setDeveloperError(null);
+
+      try {
+        const developerData = await DeveloperService.getDeveloperById(
+          developerId
+        );
+        console.log("Fetched developer data:", developerData);
+        setDeveloper(developerData);
+      } catch (error) {
+        console.error("Error fetching developer:", error);
+        setDeveloperError("Không thể tải thông tin chủ đầu tư");
+      } finally {
+        setLoadingDeveloper(false);
+      }
+    };
+
+    fetchDeveloper();
+  }, [developerId]);
+
   // Get location names for breadcrumb
-  const { locationNames } = useLocationNames(
-    provinceCode,
-    districtCode,
-    wardCode
-  );
+  const { locationNames } = useLocationNames(provinceCode, undefined, wardCode);
 
   // Format numbers consistently
   const formatNumber = (num: number) => {
@@ -85,24 +122,13 @@ export function ProjectPage({
         href: `/du-an?provinceCode=${provinceCode}`,
       });
 
-      // Add district level
-      if (districtCode && locationNames.districtName) {
+      // Add ward level
+      if (wardCode && locationNames.wardName) {
         items.push({
-          label: locationNames.districtName,
-          href: `/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}`,
+          label: locationNames.wardName,
+          href: `/du-an?provinceCode=${provinceCode}&wardCode=${wardCode}`,
+          isActive: true,
         });
-
-        // Add ward level
-        if (wardCode && locationNames.wardName) {
-          items.push({
-            label: locationNames.wardName,
-            href: `/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}&wardCode=${wardCode}`,
-            isActive: true,
-          });
-        } else {
-          // District is the most specific level
-          items[items.length - 1].isActive = true;
-        }
       } else {
         // Province is the most specific level
         items[items.length - 1].isActive = true;
@@ -118,9 +144,7 @@ export function ProjectPage({
   // Build dynamic title based on location
   const getPageTitle = () => {
     if (wardCode && locationNames.wardName) {
-      return `Dự án tại ${locationNames.wardName}, ${locationNames.districtName}, ${locationNames.provinceName}`;
-    } else if (districtCode && locationNames.districtName) {
-      return `Dự án tại ${locationNames.districtName}, ${locationNames.provinceName}`;
+      return `Dự án tại ${locationNames.wardName}, ${locationNames.provinceName}`;
     } else if (provinceCode && locationNames.provinceName) {
       return `Dự án tại ${locationNames.provinceName}`;
     }
@@ -132,8 +156,6 @@ export function ProjectPage({
     const count = actualTotalCount; // Always use actual count from API
     if (wardCode && locationNames.wardName) {
       return `${formatNumber(count)} dự án tại ${locationNames.wardName}`;
-    } else if (districtCode && locationNames.districtName) {
-      return `${formatNumber(count)} dự án tại ${locationNames.districtName}`;
     } else if (provinceCode && locationNames.provinceName) {
       return `${formatNumber(count)} dự án tại ${locationNames.provinceName}`;
     }
@@ -144,16 +166,6 @@ export function ProjectPage({
   const breadcrumbItems = buildBreadcrumb();
   const pageTitle = getPageTitle();
   const countText = getCountText();
-
-  const handleSortChange = (value: string) => {
-    setSortBy(value);
-  };
-
-  const getCurrentSortLabel = () => {
-    return (
-      sortOptions.find((option) => option.value === sortBy)?.label || "Mới nhất"
-    );
-  };
 
   // Pagination logic
   const totalPages =
@@ -169,14 +181,16 @@ export function ProjectPage({
       <Header />
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-6 max-w-6xl">
-          {/* Search Bar */}
-          <ProjectSearchBar />
-
-          {/* Location Search */}
-          <LocationSearch
+          {/* Integrated Search Filter */}
+          <ProjectSearchFilter
             currentProvinceCode={provinceCode}
-            currentDistrictCode={districtCode}
             currentWardCode={wardCode}
+            currentCategory={categoryId}
+            currentPrice={priceRange}
+            currentArea={areaRange}
+            currentStatus={status}
+            currentSort={currentSortBy}
+            currentSearch={search}
           />
 
           {/* Main Content */}
@@ -191,7 +205,6 @@ export function ProjectPage({
               {/* Location Navigation Bar */}
               <LocationNavigationBar
                 provinceCode={provinceCode}
-                districtCode={districtCode}
                 wardCode={wardCode}
                 currentCount={actualTotalCount}
               />
@@ -200,6 +213,17 @@ export function ProjectPage({
               <h1 className="text-2xl font-bold text-gray-900 mb-6">
                 {pageTitle}
               </h1>
+
+              {/* Developer Information */}
+              {developerId && developer && (
+                <div className="mb-6">
+                  <DeveloperInfo
+                    developer={developer}
+                    loading={loadingDeveloper}
+                    error={developerError || undefined}
+                  />
+                </div>
+              )}
 
               {/* Summary Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -211,64 +235,6 @@ export function ProjectPage({
                       {countText}
                     </span>
                   </span>
-                </div>
-
-                {/* Sort Dropdown */}
-                <div className="w-full sm:w-auto">
-                  <Menu as="div" className="relative">
-                    <div>
-                      <Menu.Button className="flex items-center justify-between w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <span>{getCurrentSortLabel()}</span>
-                        <svg
-                          className="w-4 h-4 ml-2 text-gray-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </Menu.Button>
-                    </div>
-
-                    <Transition
-                      enter="transition ease-out duration-100"
-                      enterFrom="transform opacity-0 scale-95"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <Menu.Items className="absolute left-0 sm:right-0 z-50 mt-2 w-full sm:w-48 origin-top-left sm:origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                        <div className="py-1">
-                          {sortOptions.map((option) => (
-                            <Menu.Item key={option.value}>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => handleSortChange(option.value)}
-                                  className={classNames(
-                                    active
-                                      ? "bg-gray-100 text-gray-900"
-                                      : "text-gray-700",
-                                    sortBy === option.value
-                                      ? "bg-blue-50 text-blue-600"
-                                      : "",
-                                    "block w-full text-left px-4 py-2 text-sm"
-                                  )}
-                                >
-                                  {option.label}
-                                </button>
-                              )}
-                            </Menu.Item>
-                          ))}
-                        </div>
-                      </Menu.Items>
-                    </Transition>
-                  </Menu>
                 </div>
               </div>
 
@@ -325,14 +291,12 @@ export function ProjectPage({
                   <p className="text-gray-600 mb-4">
                     {wardCode && locationNames.wardName
                       ? `Hiện tại chưa có dự án nào tại ${locationNames.wardName}`
-                      : districtCode && locationNames.districtName
-                      ? `Hiện tại chưa có dự án nào tại ${locationNames.districtName}`
                       : provinceCode && locationNames.provinceName
                       ? `Hiện tại chưa có dự án nào tại ${locationNames.provinceName}`
                       : "Hiện tại chưa có dự án nào phù hợp với tiêu chí tìm kiếm"}
                   </p>
                   <div className="flex justify-center gap-4">
-                    {(districtCode || wardCode) && (
+                    {wardCode && (
                       <Link
                         href={`/du-an?provinceCode=${provinceCode}`}
                         className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"

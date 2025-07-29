@@ -8,6 +8,7 @@ export default function DuAnPage() {
   const provinceCode = searchParams.get("provinceCode") || undefined;
   const districtCode = searchParams.get("districtCode") || undefined;
   const wardCode = searchParams.get("wardCode") || undefined;
+  const developerId = searchParams.get("developerId") || undefined;
 
   return (
     <ProjectPage
@@ -15,6 +16,7 @@ export default function DuAnPage() {
       provinceCode={provinceCode}
       districtCode={districtCode}
       wardCode={wardCode}
+      developerId={developerId}
     />
   );
 }

@@ -11,6 +11,7 @@ import { Project } from "@/types/project";
 import { Developer } from "@/types/developer";
 import { DisplayMap } from "./DisplayMap";
 import SimilarPosts from "./SimilarPosts";
+import { formatPriceByType } from "@/utils/format";
 
 interface PropertyDetailProps {
   property: {
@@ -44,6 +45,7 @@ interface PropertyDetailProps {
     latitude?: number;
     longitude?: number;
     author?: {
+      id?: string;
       username: string;
       email: string;
       phone: string;
@@ -208,6 +210,38 @@ export function PropertyDetail({
 
   console.log("Populated developer:", populatedDeveloper);
 
+  // Format price function
+  const formatPropertyPrice = (
+    priceString: string | number | undefined | null
+  ) => {
+    // Convert to string and handle null/undefined
+    const priceStr = String(priceString || "");
+
+    // Handle special cases like "Thỏa thuận", "Liên hệ"
+    if (
+      !priceStr ||
+      priceStr.toLowerCase().includes("thỏa thuận") ||
+      priceStr.toLowerCase().includes("liên hệ") ||
+      priceStr.toLowerCase().includes("thoả thuận")
+    ) {
+      return priceStr;
+    }
+
+    // Extract numeric value from price string
+    const numericValue = priceStr.replace(/[^\d]/g, "");
+    const price = parseFloat(numericValue);
+
+    if (isNaN(price) || price === 0) {
+      return priceStr; // Return original if can't parse
+    }
+
+    // Determine transaction type from URL or default to 'ban'
+    const currentTransactionType = transactionType || "mua-ban";
+    const type = currentTransactionType.includes("thue") ? "thue" : "ban";
+
+    return formatPriceByType(price, type);
+  };
+
   // Check if we should show project section (when project ID exists or populated project is available)
   const shouldShowProject =
     Boolean(property.project) && (populatedProject || projectLoading);
@@ -371,15 +405,15 @@ export function PropertyDetail({
 
             {/* Property Title and Price */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+              <div className="flex flex-col mb-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-0">
                   {property.title}
                 </h1>
-                <div className="text-right">
+                <div className="">
                   <div className="text-2xl md:text-3xl font-bold text-red-600">
-                    {property.price}
+                    {formatPropertyPrice(property.price)}
                   </div>
-                  {property.currency && (
+                  {property.currency && property.currency !== "VND" && (
                     <div className="text-sm text-gray-500">
                       {property.currency}
                     </div>
@@ -397,36 +431,36 @@ export function PropertyDetail({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
                 {property.area && (
                   <div className="text-center">
+                    <div className="text-sm text-gray-500">Diện tích</div>
                     <div className="text-lg font-semibold text-gray-900">
                       {property.area}
                     </div>
-                    <div className="text-sm text-gray-500">Diện tích</div>
                   </div>
                 )}
                 {property.bedrooms !== undefined &&
                   property.bedrooms !== null && (
                     <div className="text-center">
+                      <div className="text-sm text-gray-500">Phòng ngủ</div>
                       <div className="text-lg font-semibold text-gray-900">
                         {property.bedrooms}
                       </div>
-                      <div className="text-sm text-gray-500">Phòng ngủ</div>
                     </div>
                   )}
                 {property.bathrooms !== undefined &&
                   property.bathrooms !== null && (
                     <div className="text-center">
+                      <div className="text-sm text-gray-500">Phòng tắm</div>
                       <div className="text-lg font-semibold text-gray-900">
                         {property.bathrooms}
                       </div>
-                      <div className="text-sm text-gray-500">Phòng tắm</div>
                     </div>
                   )}
                 {property.floors !== undefined && property.floors !== null && (
                   <div className="text-center">
+                    <div className="text-sm text-gray-500">Số tầng</div>
                     <div className="text-lg font-semibold text-gray-900">
                       {property.floors}
                     </div>
-                    <div className="text-sm text-gray-500">Số tầng</div>
                   </div>
                 )}
               </div>
@@ -613,7 +647,9 @@ export function PropertyDetail({
                                   Giá từ:{" "}
                                 </span>
                                 <span className="font-semibold text-red-600">
-                                  {populatedProject.priceRange}
+                                  {formatPropertyPrice(
+                                    populatedProject.priceRange
+                                  )}
                                 </span>
                               </div>
                             </div>
@@ -699,31 +735,44 @@ export function PropertyDetail({
           <div className="lg:col-span-1">
             {/* Contact Info */}
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6 sticky top-18">
-              <h3 className="text-lg font-bold mb-4">Thông tin liên hệ</h3>
+              <h3 className="text-lg font-bold mb-4">
+                <i className="fas fa-user-circle mr-2 text-blue-600"></i>
+                Thông tin liên hệ
+              </h3>
 
               {/* Author Info */}
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mr-3">
-                  {property.author?.avatar ? (
-                    <Image
-                      src={property.author.avatar}
-                      alt={property.author.username}
-                      width={48}
-                      height={48}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <span className="text-gray-600 font-medium">
-                      {property.author?.username?.charAt(0)?.toUpperCase() ||
-                        "U"}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <div className="font-medium text-gray-900">
-                    {property.author?.username || "Không rõ"}
+                <Link 
+                  href={`/nguoi-dung/${property.author?.id || '#'}`}
+                  className="flex items-center hover:bg-gray-50 p-2 rounded-lg transition-colors flex-1"
+                >
+                  <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mr-3">
+                    {property.author?.avatar ? (
+                      <Image
+                        src={property.author.avatar}
+                        alt={property.author.username}
+                        width={48}
+                        height={48}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <span className="text-gray-600 font-medium">
+                        {property.author?.username?.charAt(0)?.toUpperCase() ||
+                          "U"}
+                      </span>
+                    )}
                   </div>
-                </div>
+                  <div>
+                    <div className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                      <i className="fas fa-user mr-2 text-gray-500"></i>
+                      {property.author?.username || "Không rõ"}
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      <i className="fas fa-badge-check mr-1"></i>
+                      Người đăng tin
+                    </div>
+                  </div>
+                </Link>
               </div>
 
               {/* Contact Details */}
@@ -754,14 +803,13 @@ export function PropertyDetail({
 
               {/* Action Buttons */}
               <div className="mt-6 space-y-3">
-                <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                <a
+                  href={`tel:${property.author?.phone || ""}`}
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors block text-center"
+                >
                   <i className="fas fa-phone mr-2"></i>
                   Gọi điện tư vấn
-                </button>
-                <button className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors">
-                  <i className="fab fa-whatsapp mr-2"></i>
-                  Chat Zalo
-                </button>
+                </a>
                 <button className="w-full bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors">
                   <i className="fas fa-share mr-2"></i>
                   Chia sẻ
@@ -773,16 +821,38 @@ export function PropertyDetail({
       </div>
 
       {/* Mobile Fixed Contact Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-        <div className="flex space-x-3">
-          <button className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 sm:p-4 z-50 w-full mx-auto">
+        <div className="flex items-center space-x-3">
+          {/* Author Avatar */}
+          <Link 
+            href={`/nguoi-dung/${property.author?.id || '#'}`}
+            className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-gray-200 transition-colors"
+          >
+            {property.author?.avatar ? (
+              <Image
+                src={property.author.avatar}
+                alt={property.author.username}
+                width={40}
+                height={40}
+                className="rounded-full"
+              />
+            ) : (
+              <span className="text-gray-600 font-medium text-sm">
+                {property.author?.username?.charAt(0)?.toUpperCase() || "U"}
+              </span>
+            )}
+          </Link>
+
+          {/* Call Button */}
+          <a
+            href={`tel:${property.author?.phone || ""}`}
+            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium text-center"
+          >
             <i className="fas fa-phone mr-2"></i>
             Gọi ngay
-          </button>
-          <button className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg font-medium">
-            <i className="fab fa-whatsapp mr-2"></i>
-            Chat
-          </button>
+          </a>
+
+          {/* Favorite Button */}
           <div className="flex items-center">
             <FavoriteButton item={favoriteItem} />
           </div>

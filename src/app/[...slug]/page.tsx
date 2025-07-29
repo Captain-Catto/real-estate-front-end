@@ -251,6 +251,7 @@ export default async function DynamicPage({
         frontWidth: post.frontWidth || "",
         description: post.description || "",
         author: {
+          id: post.author?._id || post.author?.id || undefined,
           username: post.contactName || post.author?.username || "Không rõ",
           phone: post.phone || post.author?.phoneNumber || "Không rõ",
           email: post.email || post.author?.email || "Không rõ",
@@ -336,6 +337,7 @@ export default async function DynamicPage({
         <>
           <Header />
           <PropertyDetail
+            key={propertyData.id} // Force re-render when property ID changes
             property={propertyData}
             breadcrumbData={breadcrumbData}
             transactionType={urlData.transactionType}

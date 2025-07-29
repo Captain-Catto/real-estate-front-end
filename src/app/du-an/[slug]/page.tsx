@@ -1,19 +1,23 @@
 import ProjectDetail from "@/components/project-detail/ProjectDetail";
 
-export default function ProjectDetailPage({
+export default async function ProjectDetailPage({
   params,
 }: {
-  params: { slug: string }; // Change từ projectSlug về slug
+  params: Promise<{ slug: string }>; // Next.js 15 requires Promise<params>
 }) {
-  return <ProjectDetail projectSlug={params.slug} />;
+  const resolvedParams = await params;
+  console.log("🚀 ProjectDetailPage params:", resolvedParams);
+  console.log("🚀 Slug from params:", resolvedParams.slug);
+  return <ProjectDetail projectSlug={resolvedParams.slug} />;
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string }; // Change từ projectSlug về slug
+  params: Promise<{ slug: string }>; // Next.js 15 requires Promise<params>
 }) {
-  const { slug } = params;
+  const resolvedParams = await params;
+  const { slug } = resolvedParams;
 
   const metadataMap = {
     "masteri-an-phu": {

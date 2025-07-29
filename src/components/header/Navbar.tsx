@@ -1,22 +1,55 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   headerSettingsService,
   HeaderMenu,
 } from "@/services/headerSettingsService";
+import { newsService, NewsCategory } from "@/services/newsService";
 
 export function Navbar() {
   const [headerMenus, setHeaderMenus] = useState<HeaderMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
 
-  // Load header menus on component mount
-  useEffect(() => {
-    loadHeaderMenus();
-  }, []);
+  const updateNewsMenuInHeaderMenus = useCallback(
+    (categories: NewsCategory[]) => {
+      setHeaderMenus((prevMenus) => {
+        return prevMenus.map((menu) => {
+          if (menu.id === "5" || menu.label === "Tin tức") {
+            return {
+              ...menu,
+              hasDropdown: categories.length > 0,
+              dropdownItems: categories.map((category) => ({
+                id: `news-${category.slug}`,
+                label: category.name,
+                href: `/tin-tuc/${category.slug}`,
+                order: 1,
+                isActive: true,
+              })),
+            };
+          }
+          return menu;
+        });
+      });
+    },
+    []
+  );
 
-  const loadHeaderMenus = async () => {
+  const loadNewsCategories = useCallback(async () => {
+    try {
+      const response = await newsService.getNewsCategories();
+      if (response.success && response.data) {
+        // Cập nhật menu tin tức trong headerMenus
+        updateNewsMenuInHeaderMenus(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load news categories:", error);
+      // Fallback to empty array - navbar will work without categories
+    }
+  }, [updateNewsMenuInHeaderMenus]);
+
+  const loadHeaderMenus = useCallback(async () => {
     try {
       setLoading(true);
       const response = await headerSettingsService.getHeaderMenus();
@@ -26,16 +59,16 @@ export function Navbar() {
         const activeMenus = response.data
           .filter((menu) => menu.isActive)
           .sort((a, b) => a.order - b.order)
-          .map((menu: any, index) => ({
+          .map((menu: HeaderMenu, index) => ({
             ...menu,
-            id: menu.id || menu._id?.toString() || `menu-${index}`,
+            id: menu.id || `menu-${index}`,
           }));
         console.log("Processed activeMenus:", activeMenus);
         setHeaderMenus(activeMenus);
       }
     } catch (error) {
       console.error("Failed to load header menus:", error);
-      // Fallback to default menus
+      // Fallback to default menus - categories will be updated separately
       const fallbackMenus = [
         {
           id: "1",
@@ -94,8 +127,8 @@ export function Navbar() {
           href: "/tin-tuc",
           order: 5,
           isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
+          hasDropdown: false, // Will be updated when categories load
+          dropdownItems: [], // Will be updated when categories load
         },
         {
           id: "6",
@@ -112,7 +145,19 @@ export function Navbar() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Remove newsCategories dependency to avoid cycle
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      // Load header menus first
+      await loadHeaderMenus();
+      // Then load news categories to update the news menu
+      await loadNewsCategories();
+    };
+
+    loadData();
+  }, [loadHeaderMenus, loadNewsCategories]);
 
   // Store timeout references
   const timeoutRefs = React.useRef<{ [key: string]: NodeJS.Timeout }>({});

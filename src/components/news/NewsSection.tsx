@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import NewsService, { NewsItem } from "@/services/newsService";
+import { newsService, NewsItem } from "@/services/newsService";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -50,15 +50,7 @@ export default function NewsSection({
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    fetchNews();
-    if (showCategories) {
-      fetchFeaturedNews();
-      fetchHotNews();
-    }
-  }, [selectedCategory, currentPage]);
-
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -67,7 +59,7 @@ export default function NewsSection({
         category: selectedCategory !== "all" ? selectedCategory : undefined,
       };
 
-      const response = await NewsService.getPublishedNews(params);
+      const response = await newsService.getPublishedNews(params);
 
       if (response.success) {
         setNewsList(response.data.news);
@@ -78,29 +70,44 @@ export default function NewsSection({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, limit, selectedCategory]);
 
-  const fetchFeaturedNews = async () => {
+  const fetchFeaturedNews = useCallback(async () => {
     try {
-      const response = await NewsService.getFeaturedNews(6);
+      const response = await newsService.getFeaturedNews(6);
       if (response.success) {
         setFeaturedNews(response.data.news || []);
       }
     } catch (error) {
       console.error("Error fetching featured news:", error);
     }
-  };
+  }, []);
 
-  const fetchHotNews = async () => {
+  const fetchHotNews = useCallback(async () => {
     try {
-      const response = await NewsService.getHotNews(10);
+      const response = await newsService.getHotNews(10);
       if (response.success) {
         setHotNews(response.data.news || []);
       }
     } catch (error) {
       console.error("Error fetching hot news:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchNews();
+    if (showCategories) {
+      fetchFeaturedNews();
+      fetchHotNews();
+    }
+  }, [
+    selectedCategory,
+    currentPage,
+    showCategories,
+    fetchNews,
+    fetchFeaturedNews,
+    fetchHotNews,
+  ]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {

@@ -2,9 +2,13 @@ import { useState, useEffect } from "react";
 import { ProjectService } from "@/services/projectService";
 
 interface UseProjectsOptions {
+  search?: string;
   provinceCode?: string;
-  districtCode?: string;
   wardCode?: string;
+  categoryId?: string;
+  priceRange?: string;
+  areaRange?: string;
+  status?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -17,7 +21,6 @@ interface ProjectListItem {
   address: string;
   location: {
     provinceCode: string;
-    districtCode: string;
     wardCode?: string;
   };
   developer: {
@@ -51,9 +54,13 @@ export function useProjects(
   const [currentPage, setCurrentPage] = useState(options.page || 1);
 
   const {
+    search,
     provinceCode,
-    districtCode,
     wardCode,
+    categoryId,
+    priceRange,
+    areaRange,
+    status,
     page = 1,
     limit = 12,
     sortBy = "newest",
@@ -68,9 +75,13 @@ export function useProjects(
       const response = await ProjectService.getProjectsWithFilters({
         page,
         limit,
+        search,
         provinceCode,
-        districtCode,
         wardCode,
+        categoryId,
+        priceRange,
+        areaRange,
+        status,
         sortBy,
       });
 
@@ -81,10 +92,9 @@ export function useProjects(
           name: project.name,
           slug: project.slug,
           address: project.address,
-          location: project.location || {
-            provinceCode: "",
-            districtCode: "",
-            wardCode: "",
+          location: {
+            provinceCode: project.location?.provinceCode || "",
+            wardCode: project.location?.wardCode || "",
           },
           developer: project.developer || { name: "" },
           status: project.status,
@@ -113,7 +123,18 @@ export function useProjects(
   useEffect(() => {
     fetchProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provinceCode, districtCode, wardCode, page, limit, sortBy]);
+  }, [
+    search,
+    provinceCode,
+    wardCode,
+    categoryId,
+    priceRange,
+    areaRange,
+    status,
+    page,
+    limit,
+    sortBy,
+  ]);
 
   const refetch = () => {
     fetchProjects();
