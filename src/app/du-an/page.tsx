@@ -5,17 +5,29 @@ import { ProjectPage } from "@/components/project/ProjectPage";
 
 export default function DuAnPage() {
   const searchParams = useSearchParams();
-  const provinceCode = searchParams.get("provinceCode") || undefined;
-  const districtCode = searchParams.get("districtCode") || undefined;
-  const wardCode = searchParams.get("wardCode") || undefined;
+
+  // Sử dụng slug thay vì code
+  const province = searchParams.get("province") || undefined;
+  const ward = searchParams.get("ward") || undefined;
+  const category = searchParams.get("category") || undefined;
+  const priceRange = searchParams.get("priceRange") || undefined;
+  const areaRange = searchParams.get("areaRange") || undefined;
+  const status = searchParams.get("status") || undefined;
+  const sortBy = searchParams.get("sortBy") || undefined;
+  const search = searchParams.get("search") || undefined;
   const developerId = searchParams.get("developerId") || undefined;
 
   return (
     <ProjectPage
       title="Dự án toàn quốc"
-      provinceCode={provinceCode}
-      districtCode={districtCode}
-      wardCode={wardCode}
+      search={search}
+      province={province}
+      ward={ward}
+      category={category}
+      priceRange={priceRange}
+      areaRange={areaRange}
+      status={status}
+      sortBy={sortBy}
       developerId={developerId}
     />
   );

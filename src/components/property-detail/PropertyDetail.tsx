@@ -742,8 +742,8 @@ export function PropertyDetail({
 
               {/* Author Info */}
               <div className="flex items-center mb-4">
-                <Link 
-                  href={`/nguoi-dung/${property.author?.id || '#'}`}
+                <Link
+                  href={`/thanh-vien/${property.author?.id || "#"}`}
                   className="flex items-center hover:bg-gray-50 p-2 rounded-lg transition-colors flex-1"
                 >
                   <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mr-3">
@@ -824,8 +824,8 @@ export function PropertyDetail({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 sm:p-4 z-50 w-full mx-auto">
         <div className="flex items-center space-x-3">
           {/* Author Avatar */}
-          <Link 
-            href={`/nguoi-dung/${property.author?.id || '#'}`}
+          <Link
+            href={`/thanh-vien/${property.author?.id || "#"}`}
             className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 hover:bg-gray-200 transition-colors"
           >
             {property.author?.avatar ? (

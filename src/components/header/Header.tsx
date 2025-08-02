@@ -53,7 +53,7 @@ export default function Header() {
         </div>
       </header>
 
-      {/* Spacer để tránh content bị che bởi fixed header */}
+      {/* thêm divider để ngăn việc bị che bới header */}
       <div className="h-16"></div>
 
       {/* Mobile Sidebar - ẩn từ xl trở lên */}

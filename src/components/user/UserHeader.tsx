@@ -73,11 +73,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({
               <h2 className="text-lg font-semibold text-gray-900">
                 {userData.greeting || `Chào ${userData.name}`}
               </h2>
-              {userData.verified && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  ✓ Đã xác thực
-                </span>
-              )}
             </div>
           </div>
 

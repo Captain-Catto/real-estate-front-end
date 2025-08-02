@@ -13,8 +13,8 @@ import { areaService, AreaRange } from "@/services/areaService";
 import { Location } from "@/types/location";
 
 interface ProjectSearchFilterProps {
-  currentProvinceCode?: string;
-  currentWardCode?: string;
+  currentProvince?: string;
+  currentWard?: string;
   currentCategory?: string;
   currentPrice?: string;
   currentArea?: string;
@@ -26,9 +26,9 @@ interface ProjectSearchFilterProps {
 
 interface ProjectFilters {
   search?: string;
-  provinceCode?: string;
-  wardCode?: string;
-  categoryId?: string;
+  province?: string;
+  ward?: string;
+  category?: string;
   priceRange?: string;
   areaRange?: string;
   status?: string;
@@ -55,8 +55,8 @@ const sortOptions = [
 ];
 
 export default function ProjectSearchFilter({
-  currentProvinceCode,
-  currentWardCode,
+  currentProvince,
+  currentWard,
   currentCategory,
   currentPrice,
   currentArea,
@@ -80,15 +80,11 @@ export default function ProjectSearchFilter({
     { value: string; label: string }[]
   >([{ value: "", label: "Tất cả diện tích" }]);
 
-  // Filter states
+  // Filter states - Convert slugs to codes for internal state
   const [searchValue, setSearchValue] = useState(currentSearch || "");
-  const [selectedProvince, setSelectedProvince] = useState(
-    currentProvinceCode || ""
-  );
-  const [selectedWard, setSelectedWard] = useState(currentWardCode || "");
-  const [selectedCategory, setSelectedCategory] = useState(
-    currentCategory || ""
-  );
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedPrice, setSelectedPrice] = useState(currentPrice || "");
   const [selectedArea, setSelectedArea] = useState(currentArea || "");
   const [selectedStatus, setSelectedStatus] = useState(currentStatus || "");
@@ -113,40 +109,6 @@ export default function ProjectSearchFilter({
         );
         setCategories(projectCategories);
 
-        // Load project price ranges
-        try {
-          const projectPriceRanges = await priceRangeService.getByType(
-            "project"
-          );
-          const priceOptionsList = [
-            { value: "", label: "Tất cả mức giá" },
-            ...projectPriceRanges.map((range: PriceRange) => ({
-              value: range.slug || range.id,
-              label: range.name,
-            })),
-          ];
-          setPriceOptions(priceOptionsList);
-        } catch (error) {
-          console.error("Error loading price ranges:", error);
-          // Keep default price options if API fails
-        }
-
-        // Load project area ranges
-        try {
-          const projectAreaRanges = await areaService.getByType("project");
-          const areaOptionsList = [
-            { value: "", label: "Tất cả diện tích" },
-            ...projectAreaRanges.map((range: AreaRange) => ({
-              value: range.slug || range.id,
-              label: range.name,
-            })),
-          ];
-          setAreaOptions(areaOptionsList);
-        } catch (error) {
-          console.error("Error loading area ranges:", error);
-          // Keep default area options if API fails
-        }
-
         console.log("Loaded provinces:", provincesData.length);
         console.log("Loaded project categories:", projectCategories.length);
       } catch (error) {
@@ -156,7 +118,39 @@ export default function ProjectSearchFilter({
     loadInitialData();
   }, []);
 
-  // Load wards when province changes
+  // Convert current slug props to codes when data is loaded
+  useEffect(() => {
+    if (provinces.length === 0 || categories.length === 0) return;
+
+    // Convert province slug to code
+    if (currentProvince) {
+      const provinceObj = provinces.find(
+        (p) =>
+          p.slug === currentProvince ||
+          p.slug === `tinh-${currentProvince}` ||
+          p.slug === `thanh-pho-${currentProvince}`
+      );
+      if (provinceObj) {
+        setSelectedProvince(provinceObj.code);
+        console.log(
+          `Province slug "${currentProvince}" -> code "${provinceObj.code}"`
+        );
+      }
+    }
+
+    // Convert category slug to ID
+    if (currentCategory) {
+      const categoryObj = categories.find((c) => c.slug === currentCategory);
+      if (categoryObj) {
+        setSelectedCategory(categoryObj._id);
+        console.log(
+          `Category slug "${currentCategory}" -> ID "${categoryObj._id}"`
+        );
+      }
+    }
+  }, [provinces, categories, currentProvince, currentCategory]);
+
+  // Load wards and convert ward slug when province is selected
   useEffect(() => {
     if (selectedProvince) {
       const loadWards = async () => {
@@ -167,6 +161,21 @@ export default function ProjectSearchFilter({
           );
           setWards(wardsData);
           console.log("Loaded wards for province:", wardsData.length);
+
+          // Convert ward slug to code if provided
+          if (currentWard) {
+            const wardObj = wardsData.find(
+              (w) =>
+                w.slug === currentWard ||
+                w.slug === currentWard.replace(/-/g, "_")
+            );
+            if (wardObj) {
+              setSelectedWard(wardObj.code);
+              console.log(
+                `Ward slug "${currentWard}" -> code "${wardObj.code}"`
+              );
+            }
+          }
         } catch (error) {
           console.error("Error loading wards:", error);
           setWards([]);
@@ -177,24 +186,52 @@ export default function ProjectSearchFilter({
       setWards([]);
       setSelectedWard("");
     }
-  }, [selectedProvince]);
+  }, [selectedProvince, currentWard]);
+
+  // Load price and area options
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        // Load project price ranges
+        const projectPriceRanges = await priceRangeService.getByType("project");
+        const priceOptionsList = [
+          { value: "", label: "Tất cả mức giá" },
+          ...projectPriceRanges.map((range: PriceRange) => ({
+            value: range.slug || range.id,
+            label: range.name,
+          })),
+        ];
+        setPriceOptions(priceOptionsList);
+      } catch (error) {
+        console.error("Error loading price ranges:", error);
+        // Keep default price options if API fails
+      }
+
+      try {
+        // Load project area ranges
+        const projectAreaRanges = await areaService.getByType("project");
+        const areaOptionsList = [
+          { value: "", label: "Tất cả diện tích" },
+          ...projectAreaRanges.map((range: AreaRange) => ({
+            value: range.slug || range.id,
+            label: range.name,
+          })),
+        ];
+        setAreaOptions(areaOptionsList);
+      } catch (error) {
+        console.error("Error loading area ranges:", error);
+        // Keep default area options if API fails
+      }
+    };
+
+    loadOptions();
+  }, []);
 
   // Handle search
   const handleSearch = () => {
     setLoading(true);
 
-    const filters: ProjectFilters = {
-      search: searchValue || undefined,
-      provinceCode: selectedProvince || undefined,
-      wardCode: selectedWard || undefined,
-      categoryId: selectedCategory || undefined,
-      priceRange: selectedPrice || undefined,
-      areaRange: selectedArea || undefined,
-      status: selectedStatus || undefined,
-      sortBy: selectedSort,
-    };
-
-    // Build URL params - ĐÂY LÀ PHẦN QUAN TRỌNG
+    // Build URL params - SỬ DỤNG SLUG THAY VÌ CODE/ID
     const params = new URLSearchParams();
 
     // Thêm search vào URL params
@@ -202,9 +239,30 @@ export default function ProjectSearchFilter({
       params.append("search", searchValue.trim());
     }
 
-    if (selectedProvince) params.append("provinceCode", selectedProvince);
-    if (selectedWard) params.append("wardCode", selectedWard);
-    if (selectedCategory) params.append("categoryId", selectedCategory);
+    // Sử dụng province slug thay vì provinceCode
+    if (selectedProvince) {
+      const provinceObj = provinces.find((p) => p.code === selectedProvince);
+      if (provinceObj?.slug) {
+        params.append("province", provinceObj.slug);
+      }
+    }
+
+    // Sử dụng ward slug thay vì wardCode
+    if (selectedWard) {
+      const wardObj = wards.find((w) => w.code === selectedWard);
+      if (wardObj?.slug) {
+        params.append("ward", wardObj.slug);
+      }
+    }
+
+    // Sử dụng category slug thay vì categoryId
+    if (selectedCategory) {
+      const categoryObj = categories.find((c) => c._id === selectedCategory);
+      if (categoryObj?.slug) {
+        params.append("category", categoryObj.slug);
+      }
+    }
+
     if (selectedPrice) params.append("priceRange", selectedPrice);
     if (selectedArea) params.append("areaRange", selectedArea);
     if (selectedStatus) params.append("status", selectedStatus);
@@ -214,17 +272,29 @@ export default function ProjectSearchFilter({
     const queryString = params.toString();
     const url = queryString ? `/du-an?${queryString}` : "/du-an";
 
-    console.log("Search params:", {
+    console.log("Search params (using slugs):", {
       searchValue,
-      selectedProvince,
-      selectedWard,
-      selectedCategory,
+      provinceSlug: provinces.find((p) => p.code === selectedProvince)?.slug,
+      wardSlug: wards.find((w) => w.code === selectedWard)?.slug,
+      categorySlug: categories.find((c) => c._id === selectedCategory)?.slug,
       selectedPrice,
       selectedArea,
       selectedStatus,
       selectedSort,
       url,
     });
+
+    // Prepare filters for callback with slugs
+    const filters: ProjectFilters = {
+      search: searchValue || undefined,
+      province: provinces.find((p) => p.code === selectedProvince)?.slug,
+      ward: wards.find((w) => w.code === selectedWard)?.slug,
+      category: categories.find((c) => c._id === selectedCategory)?.slug,
+      priceRange: selectedPrice || undefined,
+      areaRange: selectedArea || undefined,
+      status: selectedStatus || undefined,
+      sortBy: selectedSort,
+    };
 
     // Call onFilterChange if provided
     if (onFilterChange) {

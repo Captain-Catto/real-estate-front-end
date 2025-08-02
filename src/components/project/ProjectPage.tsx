@@ -18,9 +18,9 @@ import Footer from "../footer/Footer";
 interface ProjectPageProps {
   title: string;
   search?: string;
-  provinceCode?: string;
-  wardCode?: string;
-  categoryId?: string;
+  province?: string; // Đổi từ provinceCode thành province (slug)
+  ward?: string; // Đổi từ wardCode thành ward (slug)
+  category?: string; // Đổi từ categoryId thành category (slug)
   priceRange?: string;
   areaRange?: string;
   status?: string;
@@ -31,9 +31,9 @@ interface ProjectPageProps {
 export function ProjectPage({
   title,
   search,
-  provinceCode,
-  wardCode,
-  categoryId,
+  province,
+  ward,
+  category,
   priceRange,
   areaRange,
   status,
@@ -47,6 +47,72 @@ export function ProjectPage({
   const [developer, setDeveloper] = useState<Developer | null>(null);
   const [loadingDeveloper, setLoadingDeveloper] = useState(false);
   const [developerError, setDeveloperError] = useState<string | null>(null);
+
+  // State for converted codes from slugs
+  const [provinceCode, setProvinceCode] = useState<string | undefined>(
+    undefined
+  );
+  const [wardCode, setWardCode] = useState<string | undefined>(undefined);
+  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
+
+  // Convert slug to codes
+  useEffect(() => {
+    const convertSlugsToCodes = async () => {
+      try {
+        // Convert province slug to code
+        if (province) {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_BASE_URL ||
+              "http://localhost:8080/api"
+            }/locations/province/${province}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setProvinceCode(data.data.code);
+
+              // Convert ward slug to code if ward is provided
+              if (ward) {
+                const wardResponse = await fetch(
+                  `${
+                    process.env.NEXT_PUBLIC_API_BASE_URL ||
+                    "http://localhost:8080/api"
+                  }/locations/location-by-slug/${province}/${ward}`
+                );
+                if (wardResponse.ok) {
+                  const wardData = await wardResponse.json();
+                  if (wardData.success) {
+                    setWardCode(wardData.data.wardCode);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Convert category slug to ID
+        if (category) {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_BASE_URL ||
+              "http://localhost:8080/api"
+            }/categories/${category}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              setCategoryId(data.data._id);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error converting slugs to codes:", error);
+      }
+    };
+
+    convertSlugsToCodes();
+  }, [province, ward, category]);
 
   const itemsPerPage = 10;
 
@@ -116,17 +182,17 @@ export function ProjectPage({
     ];
 
     // Add province level
-    if (provinceCode && locationNames.provinceName) {
+    if (province && locationNames.provinceName) {
       items.push({
         label: locationNames.provinceName,
-        href: `/du-an?provinceCode=${provinceCode}`,
+        href: `/du-an?province=${province}`,
       });
 
       // Add ward level
-      if (wardCode && locationNames.wardName) {
+      if (ward && locationNames.wardName) {
         items.push({
           label: locationNames.wardName,
-          href: `/du-an?provinceCode=${provinceCode}&wardCode=${wardCode}`,
+          href: `/du-an?province=${province}&ward=${ward}`,
           isActive: true,
         });
       } else {
@@ -143,9 +209,9 @@ export function ProjectPage({
 
   // Build dynamic title based on location
   const getPageTitle = () => {
-    if (wardCode && locationNames.wardName) {
+    if (ward && locationNames.wardName) {
       return `Dự án tại ${locationNames.wardName}, ${locationNames.provinceName}`;
-    } else if (provinceCode && locationNames.provinceName) {
+    } else if (province && locationNames.provinceName) {
       return `Dự án tại ${locationNames.provinceName}`;
     }
     return title;
@@ -154,9 +220,9 @@ export function ProjectPage({
   // Get appropriate count text based on location level
   const getCountText = () => {
     const count = actualTotalCount; // Always use actual count from API
-    if (wardCode && locationNames.wardName) {
+    if (ward && locationNames.wardName) {
       return `${formatNumber(count)} dự án tại ${locationNames.wardName}`;
-    } else if (provinceCode && locationNames.provinceName) {
+    } else if (province && locationNames.provinceName) {
       return `${formatNumber(count)} dự án tại ${locationNames.provinceName}`;
     }
     return `${formatNumber(count)} dự án toàn quốc`;
@@ -183,9 +249,9 @@ export function ProjectPage({
         <div className="container mx-auto px-4 py-6 max-w-6xl">
           {/* Integrated Search Filter */}
           <ProjectSearchFilter
-            currentProvinceCode={provinceCode}
-            currentWardCode={wardCode}
-            currentCategory={categoryId}
+            currentProvince={province}
+            currentWard={ward}
+            currentCategory={category}
             currentPrice={priceRange}
             currentArea={areaRange}
             currentStatus={status}
