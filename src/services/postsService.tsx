@@ -117,6 +117,16 @@ export interface PostFilters {
   searchMode?: string; // Add search mode filter
 }
 
+// Interface for featured properties response
+export interface FeaturedPropertiesResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    posts: Post[];
+    pagination?: any;
+  };
+}
+
 // Interface for search filters in post queries
 export interface PostSearchFilters {
   project?: string;
@@ -967,6 +977,146 @@ class PostService {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
         data: { posts: [], total: 0 },
+      };
+    }
+  }
+
+  // Method to get VIP/Premium featured properties
+  async getFeaturedProperties(limit = 8): Promise<FeaturedPropertiesResponse> {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/posts/featured?limit=${limit}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data && result.data.posts) {
+        return {
+          success: true,
+          data: {
+            posts: result.data.posts,
+            pagination: result.data.pagination,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        message: "No posts found",
+        data: { posts: [] },
+      };
+    } catch (error) {
+      console.error("Error fetching featured properties:", error);
+
+      // Fallback to search API if featured endpoint fails
+      try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("page", "1");
+        queryParams.append("limit", String(limit * 2));
+        queryParams.append("status", "active");
+
+        const fallbackResponse = await fetch(
+          `${API_BASE_URL}/posts/search?${queryParams.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!fallbackResponse.ok) {
+          throw new Error(
+            `Fallback API error! Status: ${fallbackResponse.status}`
+          );
+        }
+
+        const fallbackResult = await fallbackResponse.json();
+
+        if (
+          fallbackResult.success &&
+          fallbackResult.data &&
+          fallbackResult.data.posts
+        ) {
+          // Filter and sort posts by priority and package for VIP features
+          const vipPosts = fallbackResult.data.posts.filter((post: Post) => {
+            return (
+              post.priority === "vip" ||
+              post.priority === "premium" ||
+              post.package === "vip" ||
+              post.package === "premium"
+            );
+          });
+
+          const normalPosts = fallbackResult.data.posts.filter((post: Post) => {
+            return (
+              post.priority === "normal" &&
+              post.package !== "vip" &&
+              post.package !== "premium"
+            );
+          });
+
+          const combinedPosts = [...vipPosts, ...normalPosts].slice(0, limit);
+
+          // Sort posts by priority
+          const sortedPosts = combinedPosts.sort((a: Post, b: Post) => {
+            const priorityOrder = {
+              vip: 4,
+              premium: 3,
+              basic: 2,
+              normal: 1,
+              free: 1,
+            };
+
+            const aPriority =
+              priorityOrder[a.priority as keyof typeof priorityOrder] || 1;
+            const bPriority =
+              priorityOrder[b.priority as keyof typeof priorityOrder] || 1;
+
+            if (aPriority !== bPriority) {
+              return bPriority - aPriority;
+            }
+
+            const aPackage =
+              priorityOrder[a.package as keyof typeof priorityOrder] || 1;
+            const bPackage =
+              priorityOrder[b.package as keyof typeof priorityOrder] || 1;
+
+            if (aPackage !== bPackage) {
+              return bPackage - aPackage;
+            }
+
+            return (
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          });
+
+          return {
+            success: true,
+            data: {
+              posts: sortedPosts,
+              pagination: fallbackResult.data.pagination,
+            },
+          };
+        }
+      } catch (fallbackError) {
+        console.error("Fallback API also failed:", fallbackError);
+      }
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error",
+        data: { posts: [] },
       };
     }
   }

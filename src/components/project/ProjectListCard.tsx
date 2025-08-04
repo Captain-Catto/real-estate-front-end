@@ -101,9 +101,9 @@ export function ProjectListCard({
   if (variant === "grid") {
     return (
       <Link href={`/du-an/${project.slug}`} className="group block">
-        <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 group-hover:scale-105 border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 group-hover:scale-105 border border-gray-200 overflow-hidden mb-4">
           {/* Project Image */}
-          <div className="relative h-48">
+          <div className="relative h-40 sm:h-48">
             <Image
               src={imageUrl}
               alt={project.name}
@@ -123,36 +123,36 @@ export function ProjectListCard({
           </div>
 
           {/* Project Info */}
-          <div className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+          <div className="p-3 sm:p-4">
+            <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2 text-sm sm:text-base">
               {project.name}
             </h3>
 
-            <p className="text-sm text-gray-600 mb-3 flex items-center">
-              <i className="fas fa-map-marker-alt mr-1 text-gray-400"></i>
-              <span className="line-clamp-1">{displayLocation}</span>
+            <p className="text-xs sm:text-sm text-gray-600 mb-3 flex items-start">
+              <i className="fas fa-map-marker-alt mr-1 text-gray-400 mt-0.5 flex-shrink-0"></i>
+              <span className="line-clamp-2">{displayLocation}</span>
             </p>
 
             <div className="flex items-center justify-between mb-3">
-              <div className="text-lg font-bold text-red-600">
+              <div className="text-base sm:text-lg font-bold text-red-600">
                 {project.priceRange || "Liên hệ"}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 border-t pt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 border-t pt-3">
               <div className="flex items-center">
-                <i className="fas fa-building mr-1 text-gray-400"></i>
+                <i className="fas fa-building mr-1 text-gray-400 w-3 sm:w-4"></i>
                 <span>{project.totalUnits?.toLocaleString() || "N/A"} căn</span>
               </div>
               <div className="flex items-center">
-                <i className="fas fa-expand-arrows-alt mr-1 text-gray-400"></i>
+                <i className="fas fa-expand-arrows-alt mr-1 text-gray-400 w-3 sm:w-4"></i>
                 <span>{project.area || "N/A"}</span>
               </div>
             </div>
 
             <div className="mt-3 pt-3 border-t">
-              <div className="flex items-center text-sm text-gray-600">
-                <i className="fas fa-user-tie mr-2 text-gray-400"></i>
+              <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                <i className="fas fa-user-tie mr-2 text-gray-400 w-3 sm:w-4"></i>
                 <span className="font-medium text-blue-600 truncate">
                   {project.developer?.name || "N/A"}
                 </span>
@@ -167,10 +167,10 @@ export function ProjectListCard({
   // List variant (default)
   return (
     <Link href={`/du-an/${project.slug}`}>
-      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-200">
-        <div className="flex gap-6">
+      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6 border border-gray-200 mb-4">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           {/* Project Image */}
-          <div className="relative w-48 h-32 flex-shrink-0">
+          <div className="relative w-full sm:w-48 h-48 sm:h-32 flex-shrink-0">
             <Image
               src={imageUrl}
               alt={project.name}
@@ -190,31 +190,33 @@ export function ProjectListCard({
 
           {/* Project Info */}
           <div className="flex-1">
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="text-xl font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-2 sm:gap-0">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2">
                 {project.name}
               </h3>
-              <div className="text-lg font-bold text-red-600">
+              <div className="text-lg font-bold text-red-600 flex-shrink-0">
                 {project.priceRange || "Liên hệ"}
               </div>
             </div>
 
-            <p className="text-gray-600 mb-3 flex items-center">
-              <i className="fas fa-map-marker-alt mr-2 text-gray-400"></i>
-              {displayLocation}
+            <p className="text-gray-600 mb-3 flex items-start sm:items-center text-sm sm:text-base">
+              <i className="fas fa-map-marker-alt mr-2 text-gray-400 mt-0.5 sm:mt-0 flex-shrink-0"></i>
+              <span className="line-clamp-2 sm:line-clamp-1">
+                {displayLocation}
+              </span>
             </p>
 
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-sm">
               <div className="flex items-center">
-                <i className="fas fa-building mr-2 text-gray-400"></i>
+                <i className="fas fa-building mr-2 text-gray-400 w-4"></i>
                 <span>{project.totalUnits?.toLocaleString() || "N/A"} căn</span>
               </div>
               <div className="flex items-center">
-                <i className="fas fa-expand-arrows-alt mr-2 text-gray-400"></i>
+                <i className="fas fa-expand-arrows-alt mr-2 text-gray-400 w-4"></i>
                 <span>{project.area || "N/A"}</span>
               </div>
               <div className="flex items-center">
-                <i className="fas fa-user-tie mr-2 text-gray-400"></i>
+                <i className="fas fa-user-tie mr-2 text-gray-400 w-4"></i>
                 <span className="truncate">
                   {project.developer?.name || "N/A"}
                 </span>
@@ -226,5 +228,3 @@ export function ProjectListCard({
     </Link>
   );
 }
-
-export default ProjectListCard;

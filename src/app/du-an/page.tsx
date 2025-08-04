@@ -10,8 +10,8 @@ export default function DuAnPage() {
   const province = searchParams.get("province") || undefined;
   const ward = searchParams.get("ward") || undefined;
   const category = searchParams.get("category") || undefined;
-  const priceRange = searchParams.get("priceRange") || undefined;
-  const areaRange = searchParams.get("areaRange") || undefined;
+  const priceRange = searchParams.get("price") || undefined;
+  const areaRange = searchParams.get("area") || undefined;
   const status = searchParams.get("status") || undefined;
   const sortBy = searchParams.get("sortBy") || undefined;
   const search = searchParams.get("search") || undefined;

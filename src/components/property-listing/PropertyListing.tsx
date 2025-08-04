@@ -362,29 +362,29 @@ export function PropertyListing({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-w-7xl mx-auto">
       {/* SEO Structured Data */}
       <Script id="property-listing-schema" type="application/ld+json">
         {JSON.stringify(seoData)}
       </Script>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Breadcrumb */}
-        <div className="bg-white rounded-lg p-4 mb-6 shadow-sm">
-          <Breadcrumb items={breadcrumbItems} />
-        </div>
-
         {/* Search Section */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
           <SearchSection
-            initialSearchType={transactionType === "mua-ban" ? "buy" : "rent"}
-            initialCity={locationData.initialCity}
-            initialDistricts={locationData.initialDistricts}
-            initialWard={locationData.initialWard}
+            searchType={transactionType === "mua-ban" ? "buy" : "rent"}
+            initialProvince={searchParams.province as string}
+            initialWard={searchParams.ward as string}
             initialCategory={searchParams.category as string}
             initialPrice={searchParams.price as string}
             initialArea={searchParams.area as string}
+            showSearchTypeToggle={true}
           />
+        </div>
+
+        {/* Breadcrumb */}
+        <div className="bg-white rounded-lg p-4 mb-6 shadow-sm">
+          <Breadcrumb items={breadcrumbItems} />
         </div>
 
         {properties.length === 0 ? (

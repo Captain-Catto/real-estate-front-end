@@ -22,6 +22,37 @@ export function LocationNavigationBar({
     wardCode
   );
 
+  // Get slugs from locationNames or create them from names
+  const getProvinceSlug = () => {
+    if (!locationNames.provinceName) return null;
+    return locationNames.provinceName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]/g, "");
+  };
+
+  const getDistrictSlug = () => {
+    if (!locationNames.districtName) return null;
+    return locationNames.districtName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]/g, "");
+  };
+
+  const getWardSlug = () => {
+    if (!locationNames.wardName) return null;
+    return locationNames.wardName
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]/g, "");
+  };
+
   if (!provinceCode) {
     return null;
   }
@@ -39,7 +70,7 @@ export function LocationNavigationBar({
           {provinceCode && locationNames.provinceName && (
             <div className="flex items-center">
               <Link
-                href={`/du-an?provinceCode=${provinceCode}`}
+                href={`/du-an?province=${getProvinceSlug()}`}
                 className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   !districtCode
                     ? "bg-blue-600 text-white"
@@ -59,7 +90,7 @@ export function LocationNavigationBar({
           {districtCode && locationNames.districtName && (
             <div className="flex items-center">
               <Link
-                href={`/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}`}
+                href={`/du-an?province=${getProvinceSlug()}&district=${getDistrictSlug()}`}
                 className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   !wardCode
                     ? "bg-blue-600 text-white"
@@ -79,7 +110,7 @@ export function LocationNavigationBar({
           {wardCode && locationNames.wardName && (
             <div className="flex items-center">
               <Link
-                href={`/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}&wardCode=${wardCode}`}
+                href={`/du-an?province=${getProvinceSlug()}&district=${getDistrictSlug()}&ward=${getWardSlug()}`}
                 className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-600 text-white"
               >
                 <i className="fas fa-home mr-1.5 text-xs"></i>
@@ -126,7 +157,7 @@ export function LocationNavigationBar({
           {/* View All in Province */}
           {(districtCode || wardCode) && (
             <Link
-              href={`/du-an?provinceCode=${provinceCode}`}
+              href={`/du-an?province=${getProvinceSlug()}`}
               className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors"
             >
               <i className="fas fa-expand-alt mr-1"></i>
@@ -137,7 +168,7 @@ export function LocationNavigationBar({
           {/* View All in District */}
           {wardCode && districtCode && (
             <Link
-              href={`/du-an?provinceCode=${provinceCode}&districtCode=${districtCode}`}
+              href={`/du-an?province=${getProvinceSlug()}&district=${getDistrictSlug()}`}
               className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-100 rounded transition-colors"
             >
               <i className="fas fa-expand-alt mr-1"></i>

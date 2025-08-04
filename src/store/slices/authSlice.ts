@@ -6,13 +6,16 @@ import {
 } from "@/services/authService";
 
 // Types
+export type UserRole = "admin" | "employee";
+
 export interface User {
   id: string;
   username: string;
   email: string;
   phoneNumber?: string;
   avatar?: string;
-  role?: string;
+  role: UserRole;
+  status?: "active" | "inactive" | "banned";
   createdAt: string;
   updatedAt?: string;
 }
@@ -46,14 +49,16 @@ export const loginAsync = createAsyncThunk(
       const response = await authService.login(credentials);
       if (response.success) {
         return {
-          user: response.data?.user,
+          user: response.data?.user as User,
           accessToken: response.data?.accessToken,
         };
       } else {
         return rejectWithValue(response.message);
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Đăng nhập thất bại");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Đăng nhập thất bại";
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -65,45 +70,41 @@ export const registerAsync = createAsyncThunk(
       const response = await authService.register(userData);
       if (response.success) {
         return {
-          user: response.data?.user,
+          user: response.data?.user as User,
           accessToken: response.data?.accessToken,
         };
       } else {
         return rejectWithValue(response.message);
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Đăng ký thất bại");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Đăng ký thất bại";
+      return rejectWithValue(errorMessage);
     }
   }
 );
 
-export const logoutAsync = createAsyncThunk(
-  "auth/logout",
-  async (_, { rejectWithValue }) => {
-    try {
-      await authService.logout();
-      return null;
-    } catch (error: any) {
-      // Vẫn logout local nếu có lỗi từ server
-      console.error("Logout error:", error);
-      return null;
-    }
+export const logoutAsync = createAsyncThunk("auth/logout", async () => {
+  try {
+    await authService.logout();
+    return null;
+  } catch (error: unknown) {
+    // Vẫn logout local nếu có lỗi từ server
+    console.error("Logout error:", error);
+    return null;
   }
-);
+});
 
-export const logoutAllAsync = createAsyncThunk(
-  "auth/logoutAll",
-  async (_, { rejectWithValue }) => {
-    try {
-      await authService.logoutAll();
-      return null;
-    } catch (error: any) {
-      // Vẫn logout local nếu có lỗi từ server
-      console.error("Logout all error:", error);
-      return null;
-    }
+export const logoutAllAsync = createAsyncThunk("auth/logoutAll", async () => {
+  try {
+    await authService.logoutAll();
+    return null;
+  } catch (error: unknown) {
+    // Vẫn logout local nếu có lỗi từ server
+    console.error("Logout all error:", error);
+    return null;
   }
-);
+});
 
 export const getProfileAsync = createAsyncThunk(
   "auth/getProfile",
@@ -111,12 +112,16 @@ export const getProfileAsync = createAsyncThunk(
     try {
       const response = await authService.getProfile();
       if (response.success) {
-        return response.data.user;
+        return response.data.user as User;
       } else {
         return rejectWithValue("Không thể lấy thông tin profile");
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Lỗi khi lấy thông tin profile");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Lỗi khi lấy thông tin profile";
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -134,12 +139,14 @@ export const updateProfileAsync = createAsyncThunk(
     try {
       const response = await authService.updateProfile(profileData);
       if (response.success) {
-        return response.data.user;
+        return response.data.user as User;
       } else {
         return rejectWithValue(response.message);
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || "Cập nhật profile thất bại");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Cập nhật profile thất bại";
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -184,6 +191,19 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
       }
+    },
+
+    // Set user role
+    setUserRole: (state, action: PayloadAction<UserRole>) => {
+      if (state.user) {
+        state.user.role = action.payload;
+      }
+    },
+
+    // Update user data
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
     },
 
     // Initialize auth from storage (for app startup)
@@ -350,6 +370,8 @@ export const {
   updateProfile,
   setLoading,
   setSessionExpired,
+  setUserRole,
+  setUser,
   initializeAuth,
 } = authSlice.actions;
 

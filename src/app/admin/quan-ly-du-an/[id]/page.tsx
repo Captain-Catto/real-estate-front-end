@@ -606,6 +606,16 @@ export default function AdminProjectEditPage() {
                   {project.address}, {project.fullLocation}
                 </p>
 
+                {/* Featured badge */}
+                {project.isFeatured && (
+                  <div className="mb-4">
+                    <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">
+                      <i className="fas fa-star mr-2"></i>
+                      Dự án nổi bật
+                    </span>
+                  </div>
+                )}
+
                 {/* Quick Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-gray-50 rounded-lg">
@@ -841,15 +851,49 @@ export default function AdminProjectEditPage() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Vị trí đầy đủ
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Dự án nổi bật
                           </label>
-                          <input
-                            name="fullLocation"
-                            value={project.fullLocation}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          <div className="flex items-center gap-6">
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="isFeatured"
+                                checked={project.isFeatured === true}
+                                onChange={() =>
+                                  setProject((prev) => {
+                                    if (!prev) return prev;
+                                    return { ...prev, isFeatured: true };
+                                  })
+                                }
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">
+                                Có
+                              </span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="isFeatured"
+                                checked={project.isFeatured === false}
+                                onChange={() =>
+                                  setProject((prev) => {
+                                    if (!prev) return prev;
+                                    return { ...prev, isFeatured: false };
+                                  })
+                                }
+                                className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">
+                                Không
+                              </span>
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Dự án nổi bật sẽ được hiển thị trong danh sách nổi
+                            bật trên trang chủ
+                          </p>
                         </div>
 
                         <div>

@@ -3,7 +3,7 @@ import ProjectDetail from "@/components/project-detail/ProjectDetail";
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: Promise<{ slug: string }>; // Next.js 15 requires Promise<params>
+  params: Promise<{ slug: string }>;
 }) {
   const resolvedParams = await params;
   console.log("🚀 ProjectDetailPage params:", resolvedParams);
@@ -14,7 +14,7 @@ export default async function ProjectDetailPage({
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>; // Next.js 15 requires Promise<params>
+  params: Promise<{ slug: string }>;
 }) {
   const resolvedParams = await params;
   const { slug } = resolvedParams;

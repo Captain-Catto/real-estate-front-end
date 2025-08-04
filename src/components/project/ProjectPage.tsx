@@ -3,9 +3,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/property-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
-import ProjectSearchFilter from "./ProjectSearchFilter";
+import SearchSection from "@/components/home/SearchSection";
 import { ProjectNews } from "./ProjectNews";
-import { LocationNavigationBar } from "./LocationNavigationBar";
 import { ProjectListCard } from "./ProjectListCard";
 import { DeveloperInfo } from "./DeveloperInfo";
 import { useProjects } from "@/hooks/useProjects";
@@ -13,6 +12,7 @@ import { useLocationNames } from "@/hooks/useLocationNames";
 import { DeveloperService } from "@/services/developerService";
 import { Developer } from "@/types/developer";
 import Header from "../header/Header";
+import { ActiveFilters } from "./ActiveFilters";
 import Footer from "../footer/Footer";
 
 interface ProjectPageProps {
@@ -40,7 +40,7 @@ export function ProjectPage({
   sortBy: initialSortBy,
   developerId,
 }: ProjectPageProps) {
-  const [currentSortBy] = useState(initialSortBy || "newest");
+  const [currentSortBy, setCurrentSortBy] = useState(initialSortBy || "newest");
   const [currentPage, setCurrentPage] = useState(1);
 
   // State for developer information
@@ -59,6 +59,11 @@ export function ProjectPage({
   useEffect(() => {
     const convertSlugsToCodes = async () => {
       try {
+        // Reset states first
+        setProvinceCode(undefined);
+        setWardCode(undefined);
+        setCategoryId(undefined);
+
         // Convert province slug to code
         if (province) {
           const response = await fetch(
@@ -113,6 +118,13 @@ export function ProjectPage({
 
     convertSlugsToCodes();
   }, [province, ward, category]);
+
+  // Sync sortBy when URL param changes
+  useEffect(() => {
+    setCurrentSortBy(initialSortBy || "newest");
+    setCurrentPage(1); // Reset to first page when sort changes
+    console.log("SortBy synced from URL:", initialSortBy);
+  }, [initialSortBy]);
 
   const itemsPerPage = 10;
 
@@ -246,18 +258,36 @@ export function ProjectPage({
     <>
       <Header />
       <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
           {/* Integrated Search Filter */}
-          <ProjectSearchFilter
-            currentProvince={province}
-            currentWard={ward}
-            currentCategory={category}
-            currentPrice={priceRange}
-            currentArea={areaRange}
-            currentStatus={status}
-            currentSort={currentSortBy}
-            currentSearch={search}
-          />
+          <div className="mb-6">
+            <SearchSection
+              searchType="project"
+              initialProvince={province}
+              initialWard={ward}
+              initialCategory={category}
+              initialPrice={priceRange}
+              initialArea={areaRange}
+              initialStatus={status}
+              initialSort={currentSortBy}
+              initialSearch={search}
+              showSearchTypeToggle={true}
+            />
+          </div>
+
+          {/* Active Filters */}
+          <div className="mb-6">
+            <ActiveFilters
+              province={province}
+              ward={ward}
+              category={category}
+              price={priceRange}
+              area={areaRange}
+              status={status}
+              search={search}
+              sortBy={currentSortBy}
+            />
+          </div>
 
           {/* Main Content */}
           <div className="flex flex-col lg:flex-row gap-6">
@@ -267,13 +297,6 @@ export function ProjectPage({
               <div className="mb-4">
                 <Breadcrumb items={breadcrumbItems} />
               </div>
-
-              {/* Location Navigation Bar */}
-              <LocationNavigationBar
-                provinceCode={provinceCode}
-                wardCode={wardCode}
-                currentCount={actualTotalCount}
-              />
 
               {/* Page Title */}
               <h1 className="text-2xl font-bold text-gray-900 mb-6">

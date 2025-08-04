@@ -36,13 +36,21 @@ export function ProjectGallery({
           {/* Main image */}
           <div className="col-span-2 row-span-2 relative group cursor-pointer">
             <Image
-              src={visibleMedia[0]?.src || "/images/default-project.jpg"}
+              src={
+                visibleMedia[0]?.src ||
+                "https://via.placeholder.com/800x600/f3f4f6/9ca3af?text=No+Image"
+              }
               alt={title}
               fill
               className="object-cover rounded-l-lg"
               onClick={() => openModal(0)}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src =
+                  "https://via.placeholder.com/800x600/f3f4f6/9ca3af?text=No+Image";
+              }}
             />
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-l-lg" />
+            {/* Loại bỏ overlay đen khi hover */}
           </div>
 
           {/* Side images */}
@@ -63,13 +71,18 @@ export function ProjectGallery({
                     ? "rounded-br-lg"
                     : ""
                 }`}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src =
+                    "https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=No+Image";
+                }}
               />
               {media.type === "video" && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <i className="fas fa-play-circle text-white text-2xl"></i>
                 </div>
               )}
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all" />
+              {/* Loại bỏ overlay đen khi hover */}
 
               {/* Show remaining count on last image */}
               {index === 3 && remainingCount > 0 && (

@@ -120,8 +120,8 @@ const FixedNewsSection = () => {
       try {
         // Gọi các API riêng biệt để lấy tin nổi bật và tin nóng
         const [featuredResponse, hotResponse] = await Promise.all([
-          newsService.getFeaturedNews(10),
-          newsService.getHotNews(10),
+          newsService.getFeaturedNews(5),
+          newsService.getHotNews(5),
         ]);
 
         console.log("Featured news response:", featuredResponse);

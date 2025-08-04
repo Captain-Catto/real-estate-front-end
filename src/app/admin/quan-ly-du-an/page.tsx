@@ -121,6 +121,7 @@ export default function AdminProjectPage() {
       lat: 0,
       lng: 0,
     },
+    isFeatured: false, // Thêm field isFeatured
   });
 
   // Authentication check
@@ -861,6 +862,45 @@ export default function AdminProjectPage() {
                   <option value="Sắp mở bán">Sắp mở bán</option>
                   <option value="Đang cập nhật">Đang cập nhật</option>
                 </select>
+              </div>
+
+              {/* Thêm radio button cho Dự án nổi bật */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Dự án nổi bật
+                </label>
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="isFeatured"
+                      value="true"
+                      checked={form.isFeatured === true}
+                      onChange={() =>
+                        setForm((prev) => ({ ...prev, isFeatured: true }))
+                      }
+                      className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Có</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="isFeatured"
+                      value="false"
+                      checked={form.isFeatured === false}
+                      onChange={() =>
+                        setForm((prev) => ({ ...prev, isFeatured: false }))
+                      }
+                      className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Không</span>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Dự án nổi bật sẽ được hiển thị trong danh sách nổi bật trên
+                  trang chủ
+                </p>
               </div>
             </div>
           </div>
@@ -1745,6 +1785,9 @@ export default function AdminProjectPage() {
                           Trạng thái
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Nổi bật
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                           Tổng căn
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -1811,6 +1854,17 @@ export default function AdminProjectPage() {
                                 {project.status}
                               </span>
                             </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                                  project.isFeatured
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {project.isFeatured ? "Có" : "Không"}
+                              </span>
+                            </td>
                             <td className="px-6 py-4">{project.totalUnits}</td>
                             <td className="px-6 py-4">{project.area}</td>
                             <td className="px-6 py-4 text-right">
@@ -1847,7 +1901,7 @@ export default function AdminProjectPage() {
                       ) : (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={8}
                             className="px-6 py-8 text-center text-gray-500"
                           >
                             <div className="flex flex-col items-center">

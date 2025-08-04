@@ -17,7 +17,6 @@ export function ImageModal({
   currentIndex,
   isOpen,
   onClose,
-  title,
 }: ImageModalProps) {
   const [activeIndex, setActiveIndex] = useState(currentIndex);
 
@@ -107,7 +106,7 @@ export function ImageModal({
         <div className="relative max-w-7xl max-h-full">
           <Image
             src={images[activeIndex]}
-            alt={`${title} - Hình ${activeIndex + 1}`}
+            alt={`Hình ${activeIndex + 1}`}
             width={1200}
             height={800}
             className="object-contain max-w-full max-h-full"
@@ -164,33 +163,44 @@ export function ImageModal({
         )}
       </div>
 
-      {/* Image info bar */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium">{title}</h3>
-            <p className="text-sm text-gray-300">
-              Hình {activeIndex + 1} / {images.length}
-            </p>
-          </div>
+      {/* Image info bar with thumbnail gallery */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-90 text-white">
+        {/* Image counter */}
+        <div className="px-4 py-2 border-b border-gray-600">
+          <p className="text-sm text-gray-300 text-center">
+            Hình {activeIndex + 1} / {images.length}
+          </p>
+        </div>
 
-          {images.length > 1 && (
-            <div className="flex space-x-2">
-              {images.map((_, index) => (
+        {/* Thumbnail gallery */}
+        {images.length > 1 && (
+          <div className="p-3">
+            <div className="flex gap-2 overflow-x-auto max-w-full scrollbar-hide">
+              {images.map((image, index) => (
                 <button
                   key={index}
-                  onClick={() => {
-                    setActiveIndex(index);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === activeIndex ? "bg-white" : "bg-gray-500"
+                  onClick={() => setActiveIndex(index)}
+                  className={`relative h-12 w-16 md:h-16 md:w-20 flex-shrink-0 rounded overflow-hidden border-2 transition-all ${
+                    index === activeIndex
+                      ? "border-white scale-110"
+                      : "border-gray-500 hover:border-gray-300"
                   }`}
-                  aria-label={`Đi đến hình ${index + 1}`}
-                />
+                >
+                  <Image
+                    src={image}
+                    alt={`Thumbnail ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.jpg";
+                    }}
+                  />
+                </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Click outside to close */}

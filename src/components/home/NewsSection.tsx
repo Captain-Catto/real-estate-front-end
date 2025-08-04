@@ -1,370 +1,264 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { NewsItem } from "@/services/newsService";
-import { newsService } from "@/services/newsService";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  MagnifyingGlassIcon,
+  AdjustmentsHorizontalIcon,
+} from "@heroicons/react/24/outline";
+import {
+  newsCategoryService,
+  NewsCategory,
+} from "@/services/newsCategoryService";
 
-// Định nghĩa kiểu dữ liệu cho news
-interface TransformedNewsItem {
-  id: string;
-  title: string;
-  image: string;
-  time: string;
-  slug: string;
-  isHot?: boolean;
-  isFeatured?: boolean;
-  category?: string; // Thêm category để định dạng URL chuẩn
-}
+export default function NewsSectionOptimized() {
+  const router = useRouter();
 
-interface NewsDataState {
-  "tin-noi-bat": TransformedNewsItem[];
-  "tin-tuc": TransformedNewsItem[];
-}
+  // States
+  const [searchValue, setSearchValue] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSortBy, setSelectedSortBy] = useState("newest");
 
-// Placeholder data khi đang tải
-const placeholderData: NewsDataState = {
-  "tin-noi-bat": [
-    {
-      id: "loading1",
-      title: "Đang tải tin nổi bật...",
-      image: "/assets/placeholder-image.jpg",
-      time: "",
-      slug: "",
-    },
-  ],
-  "tin-tuc": [
-    {
-      id: "loading2",
-      title: "Đang tải tin tức...",
-      image: "/assets/placeholder-image.jpg",
-      time: "",
-      slug: "",
-    },
-  ],
-};
+  // UI states
+  const [loading, setLoading] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-const tabs = [
-  { key: "tin-noi-bat", label: "Tin nổi bật" },
-  { key: "tin-tuc", label: "Tin tức" },
-];
+  // Data states
+  const [categories, setCategories] = useState<NewsCategory[]>([]);
 
-// Hàm chuyển đổi từ NewsItem sang TransformedNewsItem
-const transformNewsItem = (item: NewsItem): TransformedNewsItem => {
-  return {
-    id: item._id,
-    title: item.title,
-    image: item.featuredImage || "/assets/placeholder-image.jpg",
-    time: formatDistanceToNow(new Date(item.createdAt), {
-      locale: vi,
-      addSuffix: true,
-    }),
-    slug: item.slug,
-    isHot: item.isHot,
-    isFeatured: item.isFeatured,
-    category: item.category, // Thêm category cho URL chuẩn
-  };
-};
+  // Sort options
+  const sortOptions = [
+    { value: "newest", label: "Mới nhất" },
+    { value: "oldest", label: "Cũ nhất" },
+    { value: "most-viewed", label: "Xem nhiều" },
+    { value: "featured", label: "Nổi bật" },
+  ];
 
-export default function NewsSection() {
-  const [activeTab, setActiveTab] = useState("tin-noi-bat");
-  const [selectedNews, setSelectedNews] = useState(0);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [newsData, setNewsData] = useState<NewsDataState>(placeholderData);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch news data from API
+  // Load initial data
   useEffect(() => {
-    const fetchNews = async () => {
-      setIsLoading(true);
+    const loadInitialData = async () => {
       try {
-        // Fetch featured news
-        const featuredResponse = await newsService.getFeaturedNews(6);
-        // Fetch hot news
-        const hotResponse = await newsService.getHotNews(6);
-        // Fetch regular news
-        const regularResponse = await newsService.getPublishedNews({
-          limit: 10,
-          featured: false,
-          hot: false,
-        });
+        // Load news categories
+        const response = await newsCategoryService.getPublicNewsCategories();
+        setCategories(response.data);
 
-        // Transform data
-        const featuredNews =
-          featuredResponse.success && featuredResponse.data.news
-            ? featuredResponse.data.news.map(transformNewsItem)
-            : [];
-
-        const hotNews =
-          hotResponse.success && hotResponse.data.news
-            ? hotResponse.data.news.map(transformNewsItem)
-            : [];
-
-        const regularNews =
-          regularResponse.success && regularResponse.data.news
-            ? regularResponse.data.news.map(transformNewsItem)
-            : [];
-
-        // Update state with real data
-        setNewsData({
-          "tin-noi-bat":
-            featuredNews.length > 0
-              ? featuredNews
-              : placeholderData["tin-noi-bat"],
-          "tin-tuc":
-            hotNews.length > 0
-              ? [...hotNews, ...regularNews].slice(0, 10)
-              : placeholderData["tin-tuc"],
-        });
+        console.log("Loaded news categories:", response.data.length);
       } catch (error) {
-        console.error("Error fetching news data:", error);
-        // Keep placeholder data in case of error
-      } finally {
-        setIsLoading(false);
+        console.error("Error loading news categories:", error);
       }
     };
-
-    fetchNews();
+    loadInitialData();
   }, []);
 
-  // Handle client-side mounting and screen size
-  useEffect(() => {
-    setIsMounted(true);
+  // Handle search with slug-based URL building
+  const handleSearch = useCallback(() => {
+    setLoading(true);
 
-    const checkScreenSize = () => {
-      setIsDesktop(window.innerWidth >= 1024);
-    };
+    // Build URL params using SLUGS
+    const params = new URLSearchParams();
 
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
+    // Add search term
+    if (searchValue && searchValue.trim()) {
+      params.append("search", searchValue.trim());
+    }
 
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
+    // Category is already slug-based
+    if (selectedCategory) {
+      params.append("category", selectedCategory);
+    }
 
-  const currentNews = newsData[activeTab as keyof typeof newsData] || [];
-  const featuredNews = currentNews[selectedNews];
+    // Sort by
+    if (selectedSortBy && selectedSortBy !== "newest") {
+      params.append("sort", selectedSortBy);
+    }
 
-  const handleNewsHover = (index: number) => {
-    if (isMounted && isDesktop) {
-      setSelectedNews(index);
+    // Build final URL
+    const baseUrl = "/tin-tuc";
+    const queryString = params.toString();
+    const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+
+    console.log("News search params (using slugs):", {
+      searchValue,
+      selectedCategory,
+      selectedSortBy,
+      finalUrl,
+    });
+
+    router.push(finalUrl);
+    setLoading(false);
+  }, [searchValue, selectedCategory, selectedSortBy, router]);
+
+  // Handle enter key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
-  const handleNewsClick = (
-    index: number,
-    slug: string,
-    category: string = "tong-hop"
-  ) => {
-    if (!isMounted) return;
-
-    // Đặt tin được chọn để hiển thị trên giao diện
-    setSelectedNews(index);
-
-    // Chỉ chuyển hướng trên mobile/tablet
-    if (!isDesktop) {
-      window.location.href = `/tin-tuc/${category}/${slug}`;
-    }
-  };
-  const handleTabChange = (tabKey: string) => {
-    setActiveTab(tabKey);
-    setSelectedNews(0);
-  };
-
-  const getNewsItemClassName = (index: number) => {
-    const baseClass =
-      "p-4 rounded-lg cursor-pointer transition-all duration-200";
-
-    if (!isMounted) {
-      return `${baseClass} hover:bg-gray-50 bg-white`;
-    }
-
-    if (selectedNews === index && isDesktop) {
-      return `${baseClass} bg-red-50 border-l-4 border-red-600`;
-    }
-
-    return `${baseClass} hover:bg-gray-50 bg-white`;
+  // Check if any filters are active
+  const hasActiveFilters = () => {
+    return !!(
+      searchValue ||
+      selectedCategory ||
+      (selectedSortBy && selectedSortBy !== "newest")
+    );
   };
 
   return (
-    <section className="py-16 bg-gray-50">
-      <div className="container mx-auto px-4">
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-2 md:gap-8 border-b border-gray-200 overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleTabChange(tab.key)}
-                className={`pb-3 px-3 md:px-2 text-base md:text-lg font-medium transition-colors relative whitespace-nowrap ${
-                  activeTab === tab.key
-                    ? "text-gray-600 border-b-2 border-red-600"
-                    : "text-gray-600 hover:text-gray-600"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white rounded-2xl shadow-lg">
+      <div className="py-8">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Tin tức bất động sản
+          </h2>
+          <p className="text-gray-600">
+            Cập nhật tin tức mới nhất về thị trường bất động sản
+          </p>
+        </div>
 
-          {/* View More Link */}
-          <div className="flex justify-end mt-4">
-            <Link
-              href="/tin-tuc"
-              className="text-red-500 hover:text-red-700 flex items-center gap-2 text-sm font-medium"
-            >
-              <span>Xem thêm</span>
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
+        {/* Main Search Bar */}
+        <div className="mb-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Input */}
+            <div className="flex-1 min-w-0">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm tin tức theo tiêu đề, nội dung..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
-              </svg>
-            </Link>
+              </div>
+            </div>
+
+            {/* Category Select */}
+            <div className="w-full lg:w-60">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+              >
+                <option value="">Tất cả danh mục</option>
+                {categories.map((category) => (
+                  <option key={category._id} value={category.slug}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Advanced Filters Toggle */}
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`flex items-center px-4 py-3 border rounded-lg text-sm font-medium ${
+                hasActiveFilters() || showAdvancedFilters
+                  ? "border-blue-500 text-blue-600 bg-blue-50"
+                  : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+              }`}
+            >
+              <AdjustmentsHorizontalIcon className="w-5 h-5 mr-2" />
+              Bộ lọc
+              {hasActiveFilters() && (
+                <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs">
+                  {
+                    [
+                      searchValue,
+                      selectedCategory,
+                      selectedSortBy !== "newest" ? selectedSortBy : null,
+                    ].filter(Boolean).length
+                  }
+                </span>
+              )}
+            </button>
+
+            {/* Search Button */}
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              className={`px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              {loading ? "Đang tìm..." : "Tìm kiếm"}
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Featured News - Desktop Only */}
-          <div className="hidden lg:block space-y-4">
-            {featuredNews && (
-              <div className="group">
-                <Link
-                  href={`/tin-tuc/${featuredNews.category || "tong-hop"}/${
-                    featuredNews.slug
-                  }`}
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="px-4 pb-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              {/* Sort By Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Sắp xếp theo
+                </label>
+                <select
+                  value={selectedSortBy}
+                  onChange={(e) => setSelectedSortBy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
                 >
-                  <div className="relative h-64 mb-4 overflow-hidden rounded-lg">
-                    <Image
-                      src={featuredNews.image}
-                      alt={featuredNews.title}
-                      fill
-                      sizes="50vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-gray-600 transition-colors line-clamp-2">
-                    {featuredNews.title}
-                  </h3>
-                </Link>
-                <div className="flex items-center text-sm text-gray-500">
-                  <svg
-                    className="w-4 h-4 mr-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>{featuredNews.time}</span>
-                </div>
+                  {sortOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
-          </div>
 
-          {/* News List */}
-          <div className="space-y-2">
-            {isLoading ? (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
-                <p className="mt-2 text-gray-600">Đang tải tin tức...</p>
-              </div>
-            ) : (
-              currentNews.map((news, index) => (
-                <div
-                  key={news.id}
-                  onClick={() =>
-                    handleNewsClick(index, news.slug, news.category)
-                  }
-                  onMouseEnter={() => handleNewsHover(index)}
-                  className={getNewsItemClassName(index)}
+              {/* Additional filters can be added here */}
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={() => {
+                    setSearchValue("");
+                    setSelectedCategory("");
+                    setSelectedSortBy("newest");
+                  }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
-                  {/* Mobile/Tablet Layout - Direct Navigation */}
-                  <div className="lg:hidden">
-                    <Link
-                      href={`/tin-tuc/${news.category || "tong-hop"}/${
-                        news.slug
-                      }`}
-                      className="flex gap-4"
-                    >
-                      <div className="relative w-20 h-16 flex-shrink-0 overflow-hidden rounded">
-                        <Image
-                          src={news.image}
-                          alt={news.title}
-                          fill
-                          sizes="80px"
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 hover:text-gray-600 transition-colors line-clamp-2 text-sm mb-1">
-                          {news.title}
-                        </h4>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>{news.time}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-
-                  {/* Desktop Layout - Preview + Click to Select */}
-                  <div className="hidden lg:block">
-                    <Link href={`/tin-tuc/${news.slug}`} className="block">
-                      <h4 className="font-medium text-gray-900 hover:text-red-600 transition-colors line-clamp-2 mb-2">
-                        {news.title}
-                      </h4>
-                    </Link>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <svg
-                        className="w-3 h-3 mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{news.time}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+                  Xóa bộ lọc
+                </button>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Quick Category Pills */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          <button
+            onClick={() => {
+              setSelectedCategory("");
+              handleSearch();
+            }}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              !selectedCategory
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Tất cả
+          </button>
+          {categories.slice(0, 6).map((category) => (
+            <button
+              key={category._id}
+              onClick={() => {
+                setSelectedCategory(category.slug);
+                handleSearch();
+              }}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedCategory === category.slug
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {category.name}
+            </button>
+          ))}
         </div>
       </div>
-    </section>
+    </div>
   );
 }

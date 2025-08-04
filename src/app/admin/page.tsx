@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import AdminHeader from "@/components/admin/AdminHeader";
+import AdminLayout from "@/components/admin/AdminLayout";
 import StatsCard from "@/components/admin/StatsCard";
 import {
   HomeIcon,
@@ -126,206 +125,189 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <AdminLayout title="Tổng quan hệ thống">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="mt-4 text-gray-600">Đang tải dữ liệu...</div>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
-
-      <div className="flex-1">
-        <AdminHeader />
-
-        <main className="p-6">
-          {/* Page Title */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Tổng quan hệ thống
-            </h1>
-            <p className="text-gray-600">
-              Xem tổng quan hoạt động của hệ thống bất động sản
-            </p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Tổng tin đăng"
-              value={stats.totalPosts}
-              icon={<DocumentTextIcon className="w-6 h-6" />}
-              change={calculateChangePercentage(
-                stats.postsThisMonth,
-                stats.postsLastMonth
-              )}
-              changeType={
-                stats.postsThisMonth >= stats.postsLastMonth
-                  ? "increase"
-                  : "decrease"
-              }
-              href="/admin/posts"
-              color="blue"
-            />
-            <StatsCard
-              title="Tin tháng này"
-              value={stats.postsThisMonth}
-              icon={<HomeIcon className="w-6 h-6" />}
-              change={calculateChangePercentage(
-                stats.postsThisMonth,
-                stats.postsLastMonth
-              )}
-              changeType={
-                stats.postsThisMonth >= stats.postsLastMonth
-                  ? "increase"
-                  : "decrease"
-              }
-              href="/admin/posts"
-              color="yellow"
-            />{" "}
-            <StatsCard
-              title="Doanh thu tháng"
-              value={formatCurrency(stats.monthlyRevenue)}
-              icon={<CurrencyDollarIcon className="w-6 h-6" />}
-              change="Tháng này"
-              changeType="increase"
-              href="/admin/transactions"
-              color="purple"
-            />
-            <StatsCard
-              title="Người dùng"
-              value={stats.totalUsers}
-              icon={<UserGroupIcon className="w-6 h-6" />}
-              change={`+${stats.newUsersThisMonth}`}
-              changeType="increase"
-              href="/admin/quan-ly-nguoi-dung"
-              color="green"
-            />
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatsCard
-              title="Chờ duyệt"
-              value={stats.pendingPosts}
-              icon={<ClockIcon className="w-6 h-6" />}
-              href="/admin/posts?status=pending"
-              color="yellow"
-            />
-            <StatsCard
-              title="Đã duyệt"
-              value={stats.approvedPosts}
-              icon={<CheckCircleIcon className="w-6 h-6" />}
-              color="green"
-            />
-            <StatsCard
-              title="Lượt xem hôm nay"
-              value={stats.todayPostViews.toLocaleString()}
-              icon={<EyeIcon className="w-6 h-6" />}
-              color="blue"
-            />
-
-            <StatsCard
-              title="User mới tháng này"
-              value={stats.newUsersThisMonth}
-              icon={<UserGroupIcon className="w-6 h-6" />}
-              color="blue"
-            />
-          </div>
-
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Activities */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Hoạt động gần đây
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {recentActivities.map((activity: ActivityItem) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-start space-x-3"
-                    >
-                      <div
-                        className={`p-2 rounded-full ${getActivityColor(
-                          activity.status
-                        )}`}
-                      >
-                        {getActivityIcon(activity.type)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">
-                          {activity.message}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatTimeAgo(activity.time)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Top Posts */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Tin đăng hot nhất
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {topPosts.map((post: TopPost, index) => (
-                    <div key={post.id} className="flex items-center space-x-4">
-                      <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-600">
-                          {index + 1}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
-                          {post.title}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          {post.views.toLocaleString()} lượt xem • {post.author}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            post.status === "approved"
-                              ? "bg-green-100 text-green-800"
-                              : post.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {post.status === "approved"
-                            ? "Đang hiển thị"
-                            : post.status === "pending"
-                            ? "Chờ duyệt"
-                            : "Khác"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
+    <AdminLayout title="Tổng quan hệ thống">
+      {/* Page Description */}
+      <div className="mb-8">
+        <p className="text-gray-600">
+          Xem tổng quan hoạt động của hệ thống bất động sản
+        </p>
       </div>
-    </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatsCard
+          title="Tổng tin đăng"
+          value={stats.totalPosts}
+          icon={<DocumentTextIcon className="w-6 h-6" />}
+          change={calculateChangePercentage(
+            stats.postsThisMonth,
+            stats.postsLastMonth
+          )}
+          changeType={
+            stats.postsThisMonth >= stats.postsLastMonth
+              ? "increase"
+              : "decrease"
+          }
+          href="/admin/posts"
+          color="blue"
+        />
+        <StatsCard
+          title="Tin tháng này"
+          value={stats.postsThisMonth}
+          icon={<HomeIcon className="w-6 h-6" />}
+          change={calculateChangePercentage(
+            stats.postsThisMonth,
+            stats.postsLastMonth
+          )}
+          changeType={
+            stats.postsThisMonth >= stats.postsLastMonth
+              ? "increase"
+              : "decrease"
+          }
+          href="/admin/posts"
+          color="yellow"
+        />{" "}
+        <StatsCard
+          title="Doanh thu tháng"
+          value={formatCurrency(stats.monthlyRevenue)}
+          icon={<CurrencyDollarIcon className="w-6 h-6" />}
+          change="Tháng này"
+          changeType="increase"
+          href="/admin/transactions"
+          color="purple"
+        />
+        <StatsCard
+          title="Người dùng"
+          value={stats.totalUsers}
+          icon={<UserGroupIcon className="w-6 h-6" />}
+          change={`+${stats.newUsersThisMonth}`}
+          changeType="increase"
+          href="/admin/quan-ly-nguoi-dung"
+          color="green"
+        />
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatsCard
+          title="Chờ duyệt"
+          value={stats.pendingPosts}
+          icon={<ClockIcon className="w-6 h-6" />}
+          href="/admin/posts?status=pending"
+          color="yellow"
+        />
+        <StatsCard
+          title="Đã duyệt"
+          value={stats.approvedPosts}
+          icon={<CheckCircleIcon className="w-6 h-6" />}
+          color="green"
+        />
+        <StatsCard
+          title="Lượt xem hôm nay"
+          value={stats.todayPostViews.toLocaleString()}
+          icon={<EyeIcon className="w-6 h-6" />}
+          color="blue"
+        />
+
+        <StatsCard
+          title="User mới tháng này"
+          value={stats.newUsersThisMonth}
+          icon={<UserGroupIcon className="w-6 h-6" />}
+          color="blue"
+        />
+      </div>
+
+      {/* Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activities */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Hoạt động gần đây
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {recentActivities.map((activity: ActivityItem) => (
+                <div key={activity.id} className="flex items-start space-x-3">
+                  <div
+                    className={`p-2 rounded-full ${getActivityColor(
+                      activity.status
+                    )}`}
+                  >
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-900">{activity.message}</p>
+                    <p className="text-xs text-gray-500">
+                      {formatTimeAgo(activity.time)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Posts */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Tin đăng hot nhất
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {topPosts.map((post: TopPost, index) => (
+                <div key={post.id} className="flex items-center space-x-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-600">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
+                      {post.title}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {post.views.toLocaleString()} lượt xem • {post.author}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        post.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : post.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {post.status === "approved"
+                        ? "Đang hiển thị"
+                        : post.status === "pending"
+                        ? "Chờ duyệt"
+                        : "Khác"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AdminLayout>
   );
 }

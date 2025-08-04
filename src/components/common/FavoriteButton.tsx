@@ -121,7 +121,13 @@ export function FavoriteButton({
     };
   }, [item.id]);
 
-  const handleToggle = async () => {
+  const handleToggle = async (e?: React.MouseEvent) => {
+    // Ngăn chặn event bubbling để không trigger parent click
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     if (!isAuthenticated) {
       toast.error("Vui lòng đăng nhập để lưu tin", {
         action: {
@@ -227,8 +233,8 @@ export function FavoriteButton({
         sizeClasses[size]
       } rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 ${
         isFavorited
-          ? "bg-red-500 text-white hover:bg-red-600"
-          : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-300"
+          ? "bg-red-500 text-white hover:bg-red-600 shadow-lg"
+          : "bg-white/90 text-gray-600 hover:bg-white hover:text-red-500 border border-gray-200 shadow-sm"
       } ${isLoading ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
       title={isFavorited ? "Bỏ lưu tin" : "Lưu tin"}
       data-item-id={item.id}

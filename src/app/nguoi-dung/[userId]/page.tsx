@@ -299,7 +299,7 @@ export default function UserDetailPage() {
     <>
       <Header />
       <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto max-w-6xl">
+        <div className="container mx-auto max-w-7xl">
           {/* User Info Card */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">

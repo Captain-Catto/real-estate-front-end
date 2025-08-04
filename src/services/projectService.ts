@@ -188,6 +188,7 @@ export const ProjectService = {
             totalUnits: number;
             area: string;
             priceRange: string;
+            isFeatured: boolean;
           }) => ({
             id: project._id,
             name: project.name,
@@ -203,6 +204,7 @@ export const ProjectService = {
             totalUnits: project.totalUnits,
             area: project.area,
             priceRange: project.priceRange,
+            isFeatured: project.isFeatured,
           })
         );
       }

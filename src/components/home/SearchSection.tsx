@@ -1,1084 +1,516 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { locationService } from "@/services/locationService";
+import { locationService, Location } from "@/services/locationService";
+import { categoryService, Category } from "@/services/categoryService";
+import { priceRangeService, PriceRange } from "@/services/priceService";
+import { areaService, AreaRange } from "@/services/areaService";
+import { normalizeForSearch } from "@/utils/textUtils";
 
-interface Location {
-  code: string;
-  name: string;
-  codename?: string;
-  division_type?: string;
-  phone_code?: string;
-  districts?: Location[];
-  wards?: Location[];
-  slug?: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  isProject?: boolean;
-}
-
-interface PriceRange {
-  id: string;
-  name: string;
-  slug?: string;
-  minValue: number;
-  maxValue: number;
-}
-
-interface AreaRange {
-  id: string;
-  name: string;
-  slug?: string;
-  minValue: number;
-  maxValue: number;
-}
-
-interface SearchSectionProps {
-  initialSearchType?: "buy" | "rent" | "project";
-  initialCity?: Location | null;
-  initialDistricts?: Location[];
-  initialWard?: Location | null;
+interface SearchSectionOptimizedProps {
+  searchType?: "buy" | "rent" | "project";
+  initialProvince?: string;
+  initialWard?: string;
   initialCategory?: string;
   initialPrice?: string;
   initialArea?: string;
   initialStatus?: string;
+  initialSearch?: string;
+  initialSort?: string;
+  showSearchTypeToggle?: boolean;
 }
 
+// Search type configuration
+const SEARCH_TYPES = [
+  { id: "buy", name: "Mua bán", baseUrl: "/mua-ban" },
+  { id: "rent", name: "Cho thuê", baseUrl: "/cho-thue" },
+  { id: "project", name: "Dự án", baseUrl: "/du-an" },
+] as const;
+
+// Status options for projects
+const STATUS_OPTIONS = [
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "Sắp mở bán", label: "Sắp mở bán" },
+  { value: "Đang bán", label: "Đang mở bán" },
+  { value: "Đã bàn giao", label: "Đã bàn giao" },
+  { value: "Đang cập nhật", label: "Đang cập nhật" },
+];
+
+// Sort options for projects
+const SORT_OPTIONS = [
+  { value: "newest", label: "Mới nhất" },
+  { value: "updated", label: "Mới cập nhật" },
+  { value: "price-high", label: "Giá cao nhất" },
+  { value: "price-low", label: "Giá thấp nhất" },
+  { value: "area-large", label: "Diện tích lớn nhất" },
+  { value: "area-small", label: "Diện tích nhỏ nhất" },
+  { value: "name-asc", label: "Tên A-Z" },
+  { value: "name-desc", label: "Tên Z-A" },
+];
+
 export default function SearchSection({
-  initialCity = null,
-  initialWard = null,
+  searchType = "buy",
+  initialProvince = "",
+  initialWard = "",
   initialCategory = "",
   initialPrice = "",
   initialArea = "",
-}: SearchSectionProps) {
+  initialStatus = "",
+  initialSearch = "",
+  initialSort = "newest",
+  showSearchTypeToggle = true,
+}: SearchSectionOptimizedProps) {
   const router = useRouter();
 
   // States
-  const [searchType, setSearchType] = useState<"buy" | "rent" | "project">(
-    "buy"
-  );
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [selectedWard, setSelectedWard] = useState<string | null>(null);
-  const [selectedPropertyType, setSelectedPropertyType] = useState("");
-  const [selectedPrice, setSelectedPrice] = useState("");
-  const [selectedArea, setSelectedArea] = useState("");
+  const [currentSearchType, setCurrentSearchType] = useState<
+    "buy" | "rent" | "project"
+  >(searchType);
+
+  // Search state
+  const [searchValue, setSearchValue] = useState(initialSearch);
+
+  // Location states - convert slugs to codes for internal state
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+
+  // Filter states - use slugs directly
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  const [selectedPrice, setSelectedPrice] = useState(initialPrice);
+  const [selectedArea, setSelectedArea] = useState(initialArea);
+  const [selectedStatus, setSelectedStatus] = useState(initialStatus);
+  const [selectedSort, setSelectedSort] = useState(initialSort);
+
+  // UI states
+  const [loading, setLoading] = useState(false);
 
   // Data states
   const [provinces, setProvinces] = useState<Location[]>([]);
-  const [wardsList, setWardsList] = useState<Location[]>([]);
+  const [wards, setWards] = useState<Location[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [priceRanges, setPriceRanges] = useState<PriceRange[]>([]);
-  const [areaRanges, setAreaRanges] = useState<AreaRange[]>([]);
 
-  // UI states
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [showWardDropdown, setShowWardDropdown] = useState(false);
-  const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
-  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
-  const [showAreaDropdown, setShowAreaDropdown] = useState(false);
+  // Dynamic options from API
+  const [priceOptions, setPriceOptions] = useState<
+    { value: string; label: string }[]
+  >([{ value: "", label: "Tất cả mức giá" }]);
+  const [areaOptions, setAreaOptions] = useState<
+    { value: string; label: string }[]
+  >([{ value: "", label: "Tất cả diện tích" }]);
 
-  const [citySearch, setCitySearch] = useState("");
-  const [wardSearch, setWardSearch] = useState("");
-
-  // Refs for clickaway
-  const cityDropdownRef = useRef<HTMLDivElement>(null);
-  const wardDropdownRef = useRef<HTMLDivElement>(null);
-  const propertyDropdownRef = useRef<HTMLDivElement>(null);
-  const priceDropdownRef = useRef<HTMLDivElement>(null);
-  const areaDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Helper function to get search type from URL
-  const getSearchTypeFromPath = (): "buy" | "rent" | "project" => {
-    const path = window.location.pathname;
-    if (path.includes("cho-thue")) return "rent";
-    if (path.includes("du-an")) return "project";
-    return "buy"; // default to buy
-  };
-
-  // Helper function to get URL params
-  const getUrlParams = () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    return {
-      province: searchParams.get("province"),
-      ward: searchParams.get("ward"),
-      category: searchParams.get("category"),
-      price: searchParams.get("price"),
-      area: searchParams.get("area"),
-      status: searchParams.get("status"),
-    };
-  };
-
-  // Step 1: Initialize search type from URL
+  // Load initial data
   useEffect(() => {
-    const urlSearchType = getSearchTypeFromPath();
-    console.log("Setting search type from URL:", urlSearchType);
-    setSearchType(urlSearchType);
-  }, []);
-
-  // Step 2: Fetch provinces
-  useEffect(() => {
-    const fetchProvinces = async () => {
+    const loadInitialData = async () => {
       try {
-        const data = await locationService.getProvinces();
-        console.log("Fetched provinces:", data.length);
-        setProvinces(data);
-      } catch (error) {
-        console.error("Error fetching provinces:", error);
-      }
-    };
-    fetchProvinces();
-  }, []);
+        // Load provinces
+        const provincesData = await locationService.getProvinces();
+        setProvinces(provincesData);
 
-  // Step 3: Check URL for province and set it if found
-  useEffect(() => {
-    if (provinces.length === 0) return;
-
-    const urlParams = getUrlParams();
-
-    if (urlParams.province) {
-      // Tìm kiếm theo nhiều tiêu chí: slug, codename hoặc tên không dấu được chuyển thành slug
-      const provinceSlug = urlParams.province.toLowerCase();
-      console.log(
-        "DEBUG SearchSection: Looking for province slug:",
-        provinceSlug
-      );
-      console.log(
-        "DEBUG SearchSection: Available provinces:",
-        provinces
-          .slice(0, 3)
-          .map((p) => ({ name: p.name, slug: p.slug, codename: p.codename }))
-      );
-
-      // Tìm theo tất cả các cách có thể
-      const matchingProvince = provinces.find(
-        (p) =>
-          p.slug === provinceSlug ||
-          p.codename === provinceSlug ||
-          p.codename?.replace(/^tinh-/, "").replace(/^thanh-pho-/, "") ===
-            provinceSlug ||
-          p.slug === "tinh-" + provinceSlug ||
-          p.slug === "thanh-pho-" + provinceSlug ||
-          p.name.toLowerCase() === provinceSlug.replace(/-/g, " ")
-      );
-
-      if (matchingProvince) {
-        console.log("Found province from URL:", matchingProvince.name);
-        setSelectedCity(matchingProvince.code);
-      } else {
-        console.log(
-          "Province slug not found, trying name match:",
-          provinceSlug
-        );
-        // Thử tìm theo tên không dấu
-        const nameMatch = provinces.find(
-          (p) =>
-            p.name
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/\s+/g, "-") === provinceSlug
-        );
-        if (nameMatch) {
-          console.log("Found province by name match:", nameMatch.name);
-          setSelectedCity(nameMatch.code);
-        } else {
-          // Thử lần cuối với tên đầy đủ từ location
-          const cityFromBreadcrumb = provinces.find(
-            (p) => p.name.toLowerCase() === provinceSlug.replace(/-/g, " ")
+        // If initial province is provided, convert slug to code
+        if (initialProvince) {
+          const provinceObj = provincesData.find(
+            (p) => p.slug === initialProvince
           );
-          if (cityFromBreadcrumb) {
-            console.log(
-              "Found province by breadcrumb name:",
-              cityFromBreadcrumb.name
-            );
-            setSelectedCity(cityFromBreadcrumb.code);
-          } else {
-            console.log("Province not found by any method:", provinceSlug);
+          if (provinceObj) {
+            setSelectedProvince(provinceObj.code);
           }
         }
-      }
-    } else if (initialCity) {
-      console.log("Using initial city from props:", initialCity.name);
-      // Verify if the initialCity exists in provinces list
-      const matchingInitialProvince = provinces.find(
-        (p) => p.code === initialCity.code || p.name === initialCity.name
-      );
-      if (matchingInitialProvince) {
-        console.log(
-          "Found matching province for initialCity:",
-          matchingInitialProvince.name
-        );
-        setSelectedCity(matchingInitialProvince.code);
-      } else {
-        console.log(
-          "Initial city not found in provinces list:",
-          initialCity.name
-        );
-        setSelectedCity(initialCity.code);
-      }
-    }
-  }, [provinces, initialCity]);
 
-  // Step 4: Fetch wards when province is selected
-  useEffect(() => {
-    if (!selectedCity) {
-      setWardsList([]);
-      setSelectedWard(null);
-      return;
-    }
-
-    const fetchWards = async () => {
-      try {
-        const data = await locationService.getDistricts(selectedCity);
-        console.log("Fetched wards for province:", data.length);
-        setWardsList(data as unknown as Location[]);
+        console.log("Loaded provinces:", provincesData.length);
       } catch (error) {
-        console.error("Error fetching wards:", error);
-        setWardsList([]);
+        console.error("Error loading initial data:", error);
       }
     };
+    loadInitialData();
+  }, [initialProvince]);
 
-    fetchWards();
-  }, [selectedCity]);
-
-  // Step 5: Check URL for ward and set it if found
+  // Load data when search type changes
   useEffect(() => {
-    if (wardsList.length === 0) return;
-
-    const urlParams = getUrlParams();
-
-    if (urlParams.ward) {
-      // Tìm kiếm theo nhiều tiêu chí: slug, codename hoặc tên không dấu được chuyển thành slug
-      const wardSlug = urlParams.ward.toLowerCase();
-      console.log("DEBUG SearchSection: Looking for ward slug:", wardSlug);
-      console.log(
-        "DEBUG SearchSection: Available wards:",
-        wardsList
-          .slice(0, 3)
-          .map((w) => ({ name: w.name, slug: w.slug, codename: w.codename }))
-      );
-
-      // Tìm theo tất cả các cách có thể
-      const matchingWard = wardsList.find(
-        (w) =>
-          w.slug === wardSlug ||
-          w.codename === wardSlug ||
-          w.codename
-            ?.replace(/^xa-/, "")
-            .replace(/^phuong-/, "")
-            .replace(/^thi-tran-/, "") === wardSlug ||
-          w.slug === "xa-" + wardSlug ||
-          w.slug === "phuong-" + wardSlug ||
-          w.slug === "thi-tran-" + wardSlug ||
-          w.name.toLowerCase() === wardSlug.replace(/-/g, " ")
-      );
-
-      if (matchingWard) {
-        console.log("Found ward from URL:", matchingWard.name);
-        setSelectedWard(matchingWard.code);
-      } else {
-        console.log("Ward slug not found, trying name match:", wardSlug);
-        // Thử tìm theo tên không dấu
-        const nameMatch = wardsList.find(
-          (w) =>
-            w.name
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/\s+/g, "-") === wardSlug
-        );
-        if (nameMatch) {
-          console.log("Found ward by name match:", nameMatch.name);
-          setSelectedWard(nameMatch.code);
-        } else {
-          // Thử lần cuối với tên đầy đủ từ location
-          const wardFromBreadcrumb = wardsList.find(
-            (w) => w.name.toLowerCase() === wardSlug.replace(/-/g, " ")
-          );
-          if (wardFromBreadcrumb) {
-            console.log(
-              "Found ward by breadcrumb name:",
-              wardFromBreadcrumb.name
-            );
-            setSelectedWard(wardFromBreadcrumb.code);
-          } else {
-            console.log("Ward not found by any method:", wardSlug);
-          }
-        }
-      }
-    } else if (initialWard) {
-      console.log("Using initial ward from props:", initialWard.name);
-      // Verify if the initialWard exists in wardsList
-      const matchingInitialWard = wardsList.find(
-        (w) => w.code === initialWard.code || w.name === initialWard.name
-      );
-      if (matchingInitialWard) {
-        console.log(
-          "Found matching ward for initialWard:",
-          matchingInitialWard.name
-        );
-        setSelectedWard(matchingInitialWard.code);
-      } else {
-        console.log("Initial ward not found in wards list:", initialWard.name);
-        setSelectedWard(initialWard.code);
-      }
-    }
-  }, [wardsList, initialWard]);
-
-  // Step 6: Fetch categories and prices based on search type
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log("Fetching data for search type:", searchType);
-
-      // Fetch categories
+    const loadSearchTypeData = async () => {
       try {
-        const categoriesResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/categories`
+        // Load categories based on search type
+        const isProject = currentSearchType === "project";
+        const categoriesData = await categoryService.getByProjectType(
+          isProject
         );
+        setCategories(categoriesData);
 
-        if (categoriesResponse.ok) {
-          const categoriesResult = await categoriesResponse.json();
-          let filteredCategories = [];
-
-          if (searchType === "project") {
-            filteredCategories =
-              categoriesResult.data?.categories?.filter(
-                (cat: { isProject: boolean }) => cat.isProject
-              ) || [];
-          } else {
-            filteredCategories =
-              categoriesResult.data?.categories?.filter(
-                (cat: { isProject: boolean }) => !cat.isProject
-              ) || [];
-          }
-
-          console.log("Loaded categories:", filteredCategories.length);
-          setCategories(filteredCategories);
-        }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        setCategories([]);
-      }
-
-      // Fetch price ranges
-      try {
-        const priceTypeParam =
-          searchType === "buy"
+        // Load price ranges
+        const priceType =
+          currentSearchType === "buy"
             ? "ban"
-            : searchType === "rent"
+            : currentSearchType === "rent"
             ? "cho-thue"
             : "project";
+        const priceRanges = await priceRangeService.getByType(priceType);
+        const priceOptionsList = [
+          { value: "", label: "Tất cả mức giá" },
+          ...priceRanges.map((range: PriceRange) => ({
+            value: range.slug || range.id,
+            label: range.name,
+          })),
+        ];
+        setPriceOptions(priceOptionsList);
 
-        const priceResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/price-ranges/type/${priceTypeParam}`
-        );
+        // Load area ranges
+        const areaType =
+          currentSearchType === "project" ? "project" : "property";
+        const areaRanges = await areaService.getByType(areaType);
+        const areaOptionsList = [
+          { value: "", label: "Tất cả diện tích" },
+          ...areaRanges.map((range: AreaRange) => ({
+            value: range.slug || range.id,
+            label: range.name,
+          })),
+        ];
+        setAreaOptions(areaOptionsList);
 
-        if (priceResponse.ok) {
-          const priceResult = await priceResponse.json();
-          const priceRanges = priceResult.data?.priceRanges || [];
-
-          // Sort by minValue
-          const sortedPriceRanges = [...priceRanges].sort((a, b) => {
-            if (a.minValue === 0 && b.minValue !== 0) return -1;
-            if (b.minValue === 0 && a.minValue !== 0) return 1;
-            return a.minValue - b.minValue;
-          });
-
-          console.log("Loaded price ranges:", sortedPriceRanges.length);
-          setPriceRanges(sortedPriceRanges);
-        }
+        console.log(`Loaded data for ${currentSearchType}:`, {
+          categories: categoriesData.length,
+          priceRanges: priceRanges.length,
+          areaRanges: areaRanges.length,
+        });
       } catch (error) {
-        console.error("Error fetching price ranges:", error);
-        setPriceRanges([]);
+        console.error("Error loading search type data:", error);
       }
+    };
 
-      // Fetch area ranges based on search type
-      try {
-        const areaType = searchType === "project" ? "project" : "property";
-        const areaResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
-          }/areas/type/${areaType}`
-        );
+    loadSearchTypeData();
+  }, [currentSearchType]);
 
-        if (areaResponse.ok) {
-          const areaResult = await areaResponse.json();
-          // API returns data directly, not nested under data.areas
-          const areaRanges = areaResult.data || [];
-
-          // Sort by minValue
-          const sortedAreaRanges = [...areaRanges].sort((a, b) => {
-            if (a.minValue === 0 && b.minValue !== 0) return -1;
-            if (b.minValue === 0 && a.minValue !== 0) return 1;
-            return a.minValue - b.minValue;
-          });
-
-          console.log(
-            `Loaded ${areaType} area ranges:`,
-            sortedAreaRanges.length
+  // Load wards when province is selected
+  useEffect(() => {
+    if (selectedProvince) {
+      const loadWards = async () => {
+        try {
+          const wardsData = await locationService.getWardsFromProvince(
+            selectedProvince
           );
-          setAreaRanges(sortedAreaRanges);
-        } else {
-          console.error("Failed to fetch area ranges:", areaResponse.status);
-          setAreaRanges([]);
+          setWards(wardsData);
+
+          // If initial ward is provided, convert slug to code
+          if (initialWard && !selectedWard) {
+            console.log("Looking for ward with slug:", initialWard);
+            console.log(
+              "Available wards:",
+              wardsData.map((w) => ({
+                name: w.name,
+                code: w.code,
+                slug: w.slug,
+              }))
+            );
+
+            const wardObj = wardsData.find((w) => w.slug === initialWard);
+            if (wardObj) {
+              console.log("Found ward:", wardObj);
+              setSelectedWard(wardObj.code);
+            } else {
+              console.log("Ward not found with slug:", initialWard);
+            }
+          }
+
+          console.log("Loaded wards for province:", wardsData.length);
+        } catch (error) {
+          console.error("Error loading wards:", error);
+          setWards([]);
         }
-      } catch (error) {
-        console.error("Error fetching area ranges:", error);
-        setAreaRanges([]);
-      }
-    };
-
-    fetchData();
-  }, [searchType]);
-
-  // Step 7: Set selections from URL after data is loaded
-  useEffect(() => {
-    if (categories.length === 0) return;
-
-    const urlParams = getUrlParams();
-
-    if (urlParams.category) {
-      const matchingCategory = categories.find(
-        (c) => c.slug === urlParams.category
-      );
-      if (matchingCategory) {
-        console.log("Found category from URL:", matchingCategory.name);
-        setSelectedPropertyType(urlParams.category);
-      } else {
-        console.log("Category slug not found:", urlParams.category);
-      }
-    } else if (initialCategory) {
-      console.log("Using initial category from props");
-      setSelectedPropertyType(initialCategory);
+      };
+      loadWards();
+    } else {
+      setWards([]);
+      setSelectedWard("");
     }
-  }, [categories, initialCategory]);
+  }, [selectedProvince, initialWard, selectedWard]);
 
-  useEffect(() => {
-    if (priceRanges.length === 0) return;
+  // Handle tab switching - just change UI, don't navigate
+  const handleTabSwitch = useCallback(
+    (newSearchType: "buy" | "rent" | "project") => {
+      setCurrentSearchType(newSearchType);
+      // Don't navigate here, only change the UI state
+    },
+    []
+  );
 
-    const urlParams = getUrlParams();
+  // Handle search with slug-based URL building
+  const handleSearch = useCallback(() => {
+    setLoading(true);
 
-    if (urlParams.price) {
-      const matchingPrice = priceRanges.find(
-        (p) => p.slug === urlParams.price || p.id === urlParams.price
-      );
-      if (matchingPrice) {
-        console.log("Found price from URL:", matchingPrice.name);
-        setSelectedPrice(urlParams.price);
-      } else {
-        console.log("Price slug not found:", urlParams.price);
-      }
-    } else if (initialPrice) {
-      console.log("Using initial price from props");
-      setSelectedPrice(initialPrice);
-    }
-  }, [priceRanges, initialPrice]);
+    // Build URL params using SLUGS instead of codes/IDs
+    const params = new URLSearchParams();
 
-  useEffect(() => {
-    if (areaRanges.length === 0) return;
-
-    const urlParams = getUrlParams();
-
-    if (urlParams.area) {
-      const matchingArea = areaRanges.find(
-        (a) => a.slug === urlParams.area || a.id === urlParams.area
-      );
-      if (matchingArea) {
-        console.log("Found area from URL:", matchingArea.name);
-        setSelectedArea(urlParams.area);
-      } else {
-        console.log("Area slug not found:", urlParams.area);
-      }
-    } else if (initialArea) {
-      console.log("Using initial area from props");
-      setSelectedArea(initialArea);
-    }
-  }, [areaRanges, initialArea]);
-
-  // Click outside handler
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        cityDropdownRef.current &&
-        !cityDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowCityDropdown(false);
-      }
-      if (
-        wardDropdownRef.current &&
-        !wardDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowWardDropdown(false);
-      }
-      if (
-        propertyDropdownRef.current &&
-        !propertyDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowPropertyDropdown(false);
-      }
-      if (
-        priceDropdownRef.current &&
-        !priceDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowPriceDropdown(false);
-      }
-      if (
-        areaDropdownRef.current &&
-        !areaDropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowAreaDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Handlers
-  const handleTabChange = (newType: "buy" | "rent" | "project") => {
-    console.log("Tab changed to:", newType);
-    setSearchType(newType);
-
-    // Reset selections when changing tabs
-    setSelectedPropertyType("");
-    setSelectedPrice("");
-    setSelectedArea("");
-
-    // Close all dropdowns
-    setShowPropertyDropdown(false);
-    setShowPriceDropdown(false);
-    setShowAreaDropdown(false);
-  };
-
-  const handleCitySelect = (province: Location) => {
-    console.log("Selected city:", province.name);
-    setSelectedCity(province.code);
-    setSelectedWard(null); // Reset ward when city changes
-    setShowCityDropdown(false);
-    setCitySearch("");
-    setWardSearch("");
-  };
-
-  const handleWardSelect = (ward: Location) => {
-    console.log("Selected ward:", ward.name);
-    setSelectedWard(ward.code);
-    setShowWardDropdown(false);
-    setWardSearch("");
-  };
-
-  const handleSearch = () => {
-    // Build URL based on search type
-    let baseUrl;
-    switch (searchType) {
-      case "buy":
-        baseUrl = "/mua-ban";
-        break;
-      case "rent":
-        baseUrl = "/cho-thue";
-        break;
-      case "project":
-        baseUrl = "/du-an";
-        break;
-      default:
-        baseUrl = "/mua-ban";
+    // Add search term if provided (normalized for diacritic-insensitive search)
+    if (searchValue && searchValue.trim()) {
+      params.append("search", searchValue.trim());
     }
 
-    // Build query params
-    const queryParams = new URLSearchParams();
-
-    // Add province
-    if (selectedCity) {
-      const selectedProvince = provinces.find((p) => p.code === selectedCity);
-      if (selectedProvince?.slug) {
-        queryParams.append("province", selectedProvince.slug);
+    // Convert province code to slug (only if province is selected)
+    if (selectedProvince) {
+      const provinceObj = provinces.find((p) => p.code === selectedProvince);
+      if (provinceObj?.slug) {
+        params.append("province", provinceObj.slug);
       }
     }
 
-    // Add ward
+    // Convert ward code to slug (only if ward is selected)
     if (selectedWard) {
-      const selectedWardObj = wardsList.find((w) => w.code === selectedWard);
-      if (selectedWardObj?.slug) {
-        queryParams.append("ward", selectedWardObj.slug);
+      const wardObj = wards.find((w) => w.code === selectedWard);
+      if (wardObj?.slug) {
+        params.append("ward", wardObj.slug);
       }
     }
 
-    // Add category
-    if (selectedPropertyType && selectedPropertyType.trim() !== "") {
-      queryParams.append("category", selectedPropertyType);
+    // Category is already slug-based
+    if (selectedCategory) {
+      params.append("category", selectedCategory);
     }
 
-    // Add price
-    if (selectedPrice && selectedPrice.trim() !== "") {
-      queryParams.append("price", selectedPrice);
+    // Price and area are already slug-based
+    if (selectedPrice) params.append("price", selectedPrice);
+    if (selectedArea) params.append("area", selectedArea);
+
+    // Status for projects
+    if (currentSearchType === "project" && selectedStatus) {
+      params.append("status", selectedStatus);
     }
 
-    // Add area for all search types
-    if (selectedArea && selectedArea.trim() !== "") {
-      queryParams.append("area", selectedArea);
+    // Sort for projects (only if not default)
+    if (
+      currentSearchType === "project" &&
+      selectedSort &&
+      selectedSort !== "newest"
+    ) {
+      params.append("sortBy", selectedSort);
     }
 
-    // Navigate to search results
-    const searchUrl = `${baseUrl}${
-      queryParams.toString() ? `?${queryParams.toString()}` : ""
-    }`;
-    console.log("Navigating to:", searchUrl);
-    router.push(searchUrl);
-  };
+    // Build final URL
+    const currentTab = SEARCH_TYPES.find((tab) => tab.id === currentSearchType);
+    const baseUrl = currentTab?.baseUrl || "/mua-ban";
+    const queryString = params.toString();
+    const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
-  // Filtered data for search
-  const filteredProvinces = citySearch
-    ? provinces.filter((province) =>
-        province.name.toLowerCase().includes(citySearch.toLowerCase())
-      )
-    : provinces;
+    console.log("Search params (using slugs):", {
+      currentSearchType,
+      selectedProvince: selectedProvince || "all",
+      selectedWard: selectedWard || "all",
+      selectedCategory: selectedCategory || "all",
+      finalUrl,
+    });
 
-  const filteredWards = wardSearch
-    ? wardsList.filter((ward) =>
-        ward.name.toLowerCase().includes(wardSearch.toLowerCase())
-      )
-    : wardsList;
+    router.push(finalUrl);
+    setLoading(false);
+  }, [
+    currentSearchType,
+    searchValue,
+    selectedProvince,
+    selectedWard,
+    selectedCategory,
+    selectedPrice,
+    selectedArea,
+    selectedStatus,
+    selectedSort,
+    provinces,
+    wards,
+    router,
+  ]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 bg-white rounded-2xl shadow-lg">
+    <div className="mx-auto px-4 sm:px-6 lg:px-8 bg-white rounded-2xl shadow-lg w-full">
       <div className="py-8">
-        {/* Search Tabs */}
-        <div className="mb-6">
-          <div className="flex rounded-lg border-b border-gray-200 overflow-hidden">
+        {/* Search Type Toggle */}
+        {showSearchTypeToggle && (
+          <div className="flex mb-6">
+            <div className="inline-flex rounded-lg bg-gray-100 p-1 w-full">
+              {SEARCH_TYPES.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() =>
+                    handleTabSwitch(type.id as "buy" | "rent" | "project")
+                  }
+                  className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentSearchType === type.id
+                      ? "bg-white text-gray-900 shadow"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {type.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main Search Bar - With search input */}
+        <div className="mb-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search Input */}
+            <div className="w-full flex-1">
+              <input
+                type="text"
+                placeholder={
+                  currentSearchType === "project"
+                    ? "Tìm kiếm dự án theo tên, địa điểm..."
+                    : "Tìm kiếm bất động sản theo tên, địa điểm..."
+                }
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+              />
+            </div>
+
+            {/* Province Input */}
+            <div className="w-full flex-1">
+              <select
+                value={selectedProvince}
+                onChange={(e) => setSelectedProvince(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+              >
+                <option value="">Tất cả tỉnh/thành phố</option>
+                {provinces.map((province) => (
+                  <option key={province.code} value={province.code}>
+                    {province.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Ward Input */}
+            <div className="w-full flex-1">
+              <select
+                value={selectedWard}
+                onChange={(e) => setSelectedWard(e.target.value)}
+                disabled={!selectedProvince}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900"
+              >
+                <option value="">
+                  {selectedProvince ? "Tất cả phường/xã" : "Chọn tỉnh trước"}
+                </option>
+                {wards.map((ward) => (
+                  <option key={ward.code} value={ward.code}>
+                    {ward.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Button */}
             <button
-              onClick={() => handleTabChange("buy")}
-              className={`flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ${
-                searchType === "buy"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
+              onClick={handleSearch}
+              disabled={loading}
+              className={`px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors ${
+                loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              Mua bán
-            </button>
-            <button
-              onClick={() => handleTabChange("rent")}
-              className={`flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ${
-                searchType === "rent"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
-              }`}
-            >
-              Cho thuê
-            </button>
-            <button
-              onClick={() => handleTabChange("project")}
-              className={`flex-1 py-4 text-center font-medium text-lg transition-all duration-200 ${
-                searchType === "project"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50/50"
-                  : "text-gray-600 hover:text-blue-500 hover:bg-gray-50"
-              }`}
-            >
-              Dự án
+              {loading ? "Đang tìm..." : "Tìm kiếm"}
             </button>
           </div>
         </div>
 
-        {/* Search Form */}
-        <div className="space-y-4">
-          {/* Location Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* City Dropdown */}
-            <div className="relative" ref={cityDropdownRef}>
-              <button
-                onClick={() => setShowCityDropdown(!showCityDropdown)}
-                className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-              >
-                <i className="fas fa-map-marker-alt text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span
-                  className={`${
-                    selectedCity ? "text-gray-900 font-medium" : "text-gray-500"
-                  } flex-1 text-left`}
-                >
-                  {selectedCity
-                    ? provinces.find((p) => p.code === selectedCity)?.name
-                    : "Toàn quốc"}
-                </span>
-                <i
-                  className={`fas fa-chevron-${
-                    showCityDropdown ? "up" : "down"
-                  } text-gray-400 group-hover:text-blue-500`}
-                ></i>
-              </button>
-
-              {showCityDropdown && (
-                <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                  <div className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm tỉnh thành..."
-                      value={citySearch}
-                      onChange={(e) => setCitySearch(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    {filteredProvinces.map((province) => (
-                      <button
-                        key={province.code}
-                        onClick={() => handleCitySelect(province)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                      >
-                        {province.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Ward Dropdown */}
-            <div className="relative" ref={wardDropdownRef}>
-              <button
-                onClick={() => {
-                  if (selectedCity) {
-                    setShowWardDropdown(!showWardDropdown);
-                  }
-                }}
-                className={`w-full p-3.5 border border-gray-300 rounded-xl flex items-center ${
-                  selectedCity
-                    ? "bg-white hover:border-blue-400"
-                    : "bg-gray-50 cursor-not-allowed"
-                } transition-all duration-200 group`}
-              >
-                <i
-                  className={`fas fa-map-marker-alt ${
-                    selectedCity ? "text-blue-500" : "text-gray-400"
-                  } mr-3 text-lg`}
-                ></i>
-                <span
-                  className={`${
-                    selectedWard ? "text-gray-900 font-medium" : "text-gray-500"
-                  } flex-1 text-left`}
-                >
-                  {selectedWard
-                    ? wardsList.find((w) => w.code === selectedWard)?.name
-                    : "Phường/Xã"}
-                </span>
-                <i
-                  className={`fas fa-chevron-${
-                    showWardDropdown ? "up" : "down"
-                  } ${selectedCity ? "text-gray-400" : "text-gray-300"}`}
-                ></i>
-              </button>
-
-              {showWardDropdown && selectedCity && (
-                <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                  <div className="p-2">
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm phường xã..."
-                      value={wardSearch}
-                      onChange={(e) => setWardSearch(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    {filteredWards.map((ward) => (
-                      <button
-                        key={ward.code}
-                        onClick={() => handleWardSelect(ward)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                      >
-                        {ward.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Filter Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            {/* Property Type */}
-            <div className="relative" ref={propertyDropdownRef}>
-              <button
-                onClick={() => setShowPropertyDropdown(!showPropertyDropdown)}
-                className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-              >
-                <i className="fas fa-home text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span
-                  className={`${
-                    selectedPropertyType
-                      ? "text-gray-900 font-medium"
-                      : "text-gray-500"
-                  } flex-1 text-left`}
-                >
-                  {selectedPropertyType
-                    ? categories.find((c) => c.slug === selectedPropertyType)
-                        ?.name || "Loại BĐS"
-                    : "Loại BĐS"}
-                </span>
-                <i
-                  className={`fas fa-chevron-${
-                    showPropertyDropdown ? "up" : "down"
-                  } text-gray-400 group-hover:text-blue-500`}
-                ></i>
-              </button>
-
-              {showPropertyDropdown && (
-                <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                  <div className="max-h-60 overflow-y-auto">
-                    {/* Add "Tất cả" option */}
-                    <button
-                      onClick={() => {
-                        setSelectedPropertyType("");
-                        setShowPropertyDropdown(false);
-                      }}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
-                    >
-                      Tất cả loại BĐS
-                    </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category.slug}
-                        onClick={() => {
-                          setSelectedPropertyType(category.slug);
-                          setShowPropertyDropdown(false);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                      >
-                        {category.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Price Range */}
-            <div className="relative" ref={priceDropdownRef}>
-              <button
-                onClick={() => setShowPriceDropdown(!showPriceDropdown)}
-                className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-              >
-                <i className="fas fa-tag text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                <span
-                  className={`${
-                    selectedPrice
-                      ? "text-gray-900 font-medium"
-                      : "text-gray-500"
-                  } flex-1 text-left`}
-                >
-                  {selectedPrice
-                    ? priceRanges.find(
-                        (p) =>
-                          p.slug === selectedPrice || p.id === selectedPrice
-                      )?.name || "Mức giá"
-                    : "Mức giá"}
-                </span>
-                <i
-                  className={`fas fa-chevron-${
-                    showPriceDropdown ? "up" : "down"
-                  } text-gray-400 group-hover:text-blue-500`}
-                ></i>
-              </button>
-
-              {showPriceDropdown && (
-                <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                  <div className="max-h-60 overflow-y-auto">
-                    {priceRanges.length === 0 ? (
-                      <div className="px-4 py-2 text-gray-500 text-center">
-                        Đang tải...
-                      </div>
-                    ) : (
-                      <>
-                        {/* Add "Tất cả" option */}
-                        <button
-                          onClick={() => {
-                            setSelectedPrice("");
-                            setShowPriceDropdown(false);
-                          }}
-                          className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
-                        >
-                          Tất cả mức giá
-                        </button>
-                        {priceRanges.map((price) => (
-                          <button
-                            key={price.slug || price.id}
-                            onClick={() => {
-                              setSelectedPrice(price.slug || price.id || "");
-                              setShowPriceDropdown(false);
-                            }}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                          >
-                            {price.name}
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Area or Project Status */}
-            <div
-              className="relative"
-              ref={
-                searchType === "project"
-                  ? areaDropdownRef // Use area dropdown for project too
-                  : areaDropdownRef
-              }
-            >
-              {searchType === "project" ? (
-                // Project Area (instead of status)
-                <>
-                  <button
-                    onClick={() => setShowAreaDropdown(!showAreaDropdown)}
-                    className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-                  >
-                    <i className="fas fa-vector-square text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                    <span
-                      className={`${
-                        selectedArea
-                          ? "text-gray-900 font-medium"
-                          : "text-gray-500"
-                      } flex-1 text-left`}
-                    >
-                      {selectedArea
-                        ? areaRanges.find(
-                            (a) =>
-                              a.slug === selectedArea || a.id === selectedArea
-                          )?.name || "Diện tích"
-                        : "Diện tích"}
-                    </span>
-                    <i
-                      className={`fas fa-chevron-${
-                        showAreaDropdown ? "up" : "down"
-                      } text-gray-400 group-hover:text-blue-500`}
-                    ></i>
-                  </button>
-
-                  {showAreaDropdown && (
-                    <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                      <div className="max-h-60 overflow-y-auto">
-                        {areaRanges.length === 0 ? (
-                          <div className="px-4 py-2 text-gray-500 text-center">
-                            Đang tải...
-                          </div>
-                        ) : (
-                          <>
-                            {/* Add "Tất cả" option */}
-                            <button
-                              onClick={() => {
-                                setSelectedArea("");
-                                setShowAreaDropdown(false);
-                              }}
-                              className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
-                            >
-                              Tất cả diện tích
-                            </button>
-                            {areaRanges.map((area) => (
-                              <button
-                                key={area.slug || area.id}
-                                onClick={() => {
-                                  setSelectedArea(area.slug || area.id || "");
-                                  setShowAreaDropdown(false);
-                                }}
-                                className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                              >
-                                {area.name}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                // Area Range
-                <>
-                  <button
-                    onClick={() => setShowAreaDropdown(!showAreaDropdown)}
-                    className="w-full p-3.5 border border-gray-300 rounded-xl flex items-center bg-white hover:border-blue-400 transition-all duration-200 group"
-                  >
-                    <i className="fas fa-vector-square text-blue-500 mr-3 text-lg group-hover:text-blue-600"></i>
-                    <span
-                      className={`${
-                        selectedArea
-                          ? "text-gray-900 font-medium"
-                          : "text-gray-500"
-                      } flex-1 text-left`}
-                    >
-                      {selectedArea
-                        ? areaRanges.find(
-                            (a) =>
-                              a.slug === selectedArea || a.id === selectedArea
-                          )?.name || "Diện tích"
-                        : "Diện tích"}
-                    </span>
-                    <i
-                      className={`fas fa-chevron-${
-                        showAreaDropdown ? "up" : "down"
-                      } text-gray-400 group-hover:text-blue-500`}
-                    ></i>
-                  </button>
-
-                  {showAreaDropdown && (
-                    <div className="absolute z-30 mt-2 w-full bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
-                      <div className="max-h-60 overflow-y-auto">
-                        {areaRanges.length === 0 ? (
-                          <div className="px-4 py-2 text-gray-500 text-center">
-                            Đang tải...
-                          </div>
-                        ) : (
-                          <>
-                            {/* Add "Tất cả" option */}
-                            <button
-                              onClick={() => {
-                                setSelectedArea("");
-                                setShowAreaDropdown(false);
-                              }}
-                              className="w-full px-4 py-2 text-left hover:bg-gray-100 font-medium text-blue-600"
-                            >
-                              Tất cả diện tích
-                            </button>
-                            {areaRanges.map((area) => (
-                              <button
-                                key={area.slug || area.id}
-                                onClick={() => {
-                                  setSelectedArea(area.slug || area.id || "");
-                                  setShowAreaDropdown(false);
-                                }}
-                                className="w-full px-4 py-2 text-left hover:bg-gray-100"
-                              >
-                                {area.name}
-                              </button>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Search Button */}
+        {/* Filters - Always visible */}
+        <div className="px-4 pb-4 border-t border-gray-200">
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${
+              currentSearchType === "project" ? "4" : "3"
+            } gap-4 mt-4`}
+          >
+            {/* Category Filter */}
             <div>
-              <button
-                onClick={handleSearch}
-                className="w-full h-full min-h-[56px] px-6 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all duration-300 flex items-center justify-center text-lg group"
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                {currentSearchType === "project"
+                  ? "Loại hình dự án"
+                  : "Loại bất động sản"}
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
               >
-                <i className="fas fa-search mr-2 group-hover:animate-pulse"></i>
-                Tìm kiếm
-              </button>
+                <option value="">Tất cả loại hình</option>
+                {categories.map((category) => (
+                  <option key={category._id} value={category.slug}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            {/* Price Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Mức giá
+              </label>
+              <select
+                value={selectedPrice}
+                onChange={(e) => setSelectedPrice(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+              >
+                {priceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Area Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Diện tích
+              </label>
+              <select
+                value={selectedArea}
+                onChange={(e) => setSelectedArea(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+              >
+                {areaOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter - Only for projects */}
+            {currentSearchType === "project" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Trạng thái
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+                >
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
+
+          {/* Sort Row - Only for projects */}
+          {currentSearchType === "project" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Sắp xếp theo
+                </label>
+                <select
+                  value={selectedSort}
+                  onChange={(e) => setSelectedSort(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

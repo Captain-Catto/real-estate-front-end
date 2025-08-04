@@ -11,13 +11,10 @@ export default function Home() {
   return (
     <>
       <Header />
-      <main className="min-h-screen container mx-auto">
+      <main className="min-h-screen container mx-auto max-w-7xl">
         {/* Hero Section */}
-        <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <div className="absolute inset-0 bg-black/30"></div>
-          <div className="relative container mx-auto px-4 py-20">
-            <SearchSectionMain />
-          </div>
+        <section className="relative text-white py-4">
+          <SearchSectionMain />
         </section>
 
         {/* News Section */}

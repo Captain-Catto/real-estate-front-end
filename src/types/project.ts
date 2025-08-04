@@ -68,6 +68,7 @@ export interface Project {
   faqs: ProjectFAQ[];
   contact: ProjectContact;
   map: ProjectMap;
+  isFeatured: boolean; // Dự án nổi bật
 }
 
 export interface CreateProjectRequest {
@@ -93,6 +94,7 @@ export interface CreateProjectRequest {
   faqs: ProjectFAQ[];
   contact: ProjectContact;
   map: ProjectMap;
+  isFeatured: boolean; // Dự án nổi bật
 }
 
 export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
@@ -110,4 +112,5 @@ export interface ProjectListItem {
   totalUnits: number;
   area: string;
   priceRange?: string;
+  isFeatured: boolean; // Thêm trường nổi bật
 }

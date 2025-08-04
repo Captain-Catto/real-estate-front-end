@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import parse from "html-react-parser";
@@ -46,8 +46,6 @@ export function NewsArticleDetail({
   popularArticles,
   category,
 }: Props) {
-  const [copiedLink, setCopiedLink] = useState(false);
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
@@ -57,39 +55,6 @@ export function NewsArticleDetail({
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-    }
-  };
-
-  const handleShare = (platform: string) => {
-    const url = encodeURIComponent(window.location.href);
-    const title = encodeURIComponent(article.title);
-
-    let shareUrl = "";
-
-    switch (platform) {
-      case "facebook":
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-        break;
-      case "linkedin":
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-        break;
-      case "zalo":
-        shareUrl = `https://zalo.me/share/v2?url=${url}&title=${title}`;
-        break;
-    }
-
-    if (shareUrl) {
-      window.open(shareUrl, "_blank", "width=600,height=400");
-    }
   };
 
   return (
@@ -193,105 +158,6 @@ export function NewsArticleDetail({
                       kiện và hoàn cảnh cá nhân của bạn, và chúng tôi không chịu
                       bất kỳ trách nhiệm nào nếu bạn sử dụng những thông tin này
                       để đưa ra quyết định.
-                    </div>
-                  </div>
-                </div>
-
-                {/* Share Buttons */}
-                <div className="p-6 pt-8">
-                  <div className="border-t border-gray-200 pt-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                      Chia sẻ bài viết này
-                    </h2>
-                    <div className="flex items-center gap-3">
-                      {/* Facebook */}
-                      <button
-                        onClick={() => handleShare("facebook")}
-                        className="group relative p-2 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                        title="Chia sẻ trên Facebook"
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <path
-                            d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
-                            fill="#1877F2"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          Chia sẻ trên Facebook
-                        </div>
-                      </button>
-
-                      {/* LinkedIn */}
-                      <button
-                        onClick={() => handleShare("linkedin")}
-                        className="group relative p-2 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                        title="Chia sẻ trên LinkedIn"
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <path
-                            d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
-                            fill="#0077B5"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          Chia sẻ trên LinkedIn
-                        </div>
-                      </button>
-
-                      {/* Zalo */}
-                      <button
-                        onClick={() => handleShare("zalo")}
-                        className="group relative p-2 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                        title="Chia sẻ trên Zalo"
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle cx="12" cy="12" r="12" fill="#0180C7" />
-                          <path
-                            d="M18.5 8.5c0-3.038-2.462-5.5-5.5-5.5s-5.5 2.462-5.5 5.5c0 2.706 1.956 4.95 4.518 5.4v2.6l2.482-1.35c.334.045.677.05 1-.05 3.038 0 5.5-2.462 5.5-5.5zm-2.75 2.75h-1.375v1.375h-1.375v-1.375h-1.375v-1.375h1.375v-1.375h1.375v1.375h1.375v1.375z"
-                            fill="white"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          Chia sẻ trên Zalo
-                        </div>
-                      </button>
-
-                      {/* Copy Link */}
-                      <button
-                        onClick={handleCopyLink}
-                        className="group relative p-2 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                        title="Sao chép đường dẫn"
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <path
-                            d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
-                            fill="#666"
-                          />
-                        </svg>
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          {copiedLink ? "Đã sao chép!" : "Sao chép đường dẫn"}
-                        </div>
-                      </button>
                     </div>
                   </div>
                 </div>

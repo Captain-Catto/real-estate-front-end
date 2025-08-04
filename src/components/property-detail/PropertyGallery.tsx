@@ -145,27 +145,13 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
           {/* Thumbnail Gallery - Only show if more than 1 image */}
           {images.length > 1 && (
             <div className="p-4 bg-gray-50">
-              {/* Navigation dots for mobile */}
-              <div className="flex justify-center gap-2 mb-4 md:hidden">
-                {images.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => goToImage(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      index === currentImage ? "bg-blue-500" : "bg-gray-300"
-                    }`}
-                    aria-label={`Đi đến hình ${index + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Thumbnail grid for desktop */}
-              <div className="hidden md:flex gap-3 overflow-x-auto pb-2">
+              {/* Thumbnail grid for all screen sizes */}
+              <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 {images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => goToImage(index)}
-                    className={`relative h-20 w-28 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all transform ${
+                    className={`relative h-16 w-20 md:h-20 md:w-28 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all transform ${
                       index === currentImage
                         ? "border-blue-500 shadow-lg"
                         : "border-gray-200 hover:border-gray-300"
@@ -190,7 +176,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
 
               {/* Show all thumbnails button if more than 8 images */}
               {images.length > 8 && (
-                <div className="hidden md:flex justify-center mt-3">
+                <div className="flex justify-center mt-3">
                   <button
                     onClick={openModal}
                     className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -207,8 +193,8 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
             <div className="px-4 pb-3 bg-gray-50">
               <p className="text-xs text-gray-500 text-center">
                 <span className="hidden md:inline">Sử dụng phím ← → hoặc </span>
-                Click vào hình nhỏ để chuyển ảnh • Click vào hình chính để phóng
-                to
+                Kéo ngang hoặc click vào hình nhỏ để chuyển ảnh • Click vào hình
+                chính để phóng to
               </p>
             </div>
           )}

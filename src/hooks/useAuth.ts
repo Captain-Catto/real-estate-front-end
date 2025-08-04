@@ -10,6 +10,9 @@ import {
   updateProfileAsync,
   initializeAuth,
   clearError,
+  setUserRole,
+  setUser,
+  type UserRole,
 } from "@/store/slices/authSlice";
 import { LoginRequest, RegisterRequest } from "@/services/authService";
 import { toast } from "sonner";
@@ -34,18 +37,21 @@ export const useAuth = () => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem("accessToken");
-      
+
       if (token) {
         try {
           // If we have a token, try to get user profile first
           await dispatch(getProfileAsync()).unwrap();
         } catch (error) {
-          console.error("Failed to fetch user profile during initialization:", error);
+          console.error(
+            "Failed to fetch user profile during initialization:",
+            error
+          );
           // If profile fetch fails, clear the invalid token
           localStorage.removeItem("accessToken");
         }
       }
-      
+
       // Always dispatch initializeAuth to set the initial state
       dispatch(initializeAuth());
       setIsInitializing(false);
@@ -68,7 +74,7 @@ export const useAuth = () => {
         toast.success("Đăng nhập thành công!");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(typeof error === 'string' ? error : "Đăng nhập thất bại");
+        toast.error(typeof error === "string" ? error : "Đăng nhập thất bại");
         return { success: false, error };
       }
     },
@@ -83,7 +89,7 @@ export const useAuth = () => {
         toast.success("Đăng ký thành công!");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(typeof error === 'string' ? error : "Đăng ký thất bại");
+        toast.error(typeof error === "string" ? error : "Đăng ký thất bại");
         return { success: false, error };
       }
     },
@@ -128,7 +134,9 @@ export const useAuth = () => {
         toast.success("Cập nhật thông tin thành công");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(typeof error === 'string' ? error : "Cập nhật thông tin thất bại");
+        toast.error(
+          typeof error === "string" ? error : "Cập nhật thông tin thất bại"
+        );
         return { success: false, error };
       }
     },
@@ -142,7 +150,7 @@ export const useAuth = () => {
 
   // Check if user has specific role
   const hasRole = useCallback(
-    (role: string | string[]) => {
+    (role: UserRole | UserRole[]) => {
       if (!user || !user.role) return false;
 
       if (Array.isArray(role)) {
@@ -153,6 +161,36 @@ export const useAuth = () => {
     },
     [user]
   );
+
+  // Check if user is admin
+  const isAdmin = useCallback(() => {
+    return hasRole("admin");
+  }, [hasRole]);
+
+  // Check if user is employee
+  const isEmployee = useCallback(() => {
+    return hasRole("employee");
+  }, [hasRole]);
+
+  // Check if user has admin or employee role
+  const hasAdminAccess = useCallback(() => {
+    return hasRole(["admin", "employee"]);
+  }, [hasRole]);
+
+  // Get user role
+  const getUserRole = useCallback(() => {
+    return user?.role || null;
+  }, [user]);
+
+  // Check if user can access admin features
+  const canAccessAdmin = useCallback(() => {
+    return user?.role === "admin";
+  }, [user]);
+
+  // Check if user can access employee features
+  const canAccessEmployee = useCallback(() => {
+    return user?.role === "admin" || user?.role === "employee";
+  }, [user]);
 
   // Redirect to login if authentication is required
   const requireAuth = useCallback(
@@ -179,6 +217,12 @@ export const useAuth = () => {
     updateProfile,
     clearError: handleClearError,
     hasRole,
+    isAdmin,
+    isEmployee,
+    hasAdminAccess,
+    getUserRole,
+    canAccessAdmin,
+    canAccessEmployee,
     requireAuth,
   };
 };
@@ -191,7 +235,7 @@ export const useProtectedRoute = (
   requireAuthenticated = true
 ) => {
   const router = useRouter();
-  const { isAuthenticated, isInitialized, loading, user } = useAuth();
+  const { isAuthenticated, isInitialized, user } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
@@ -202,11 +246,7 @@ export const useProtectedRoute = (
     // 1. We require authentication
     // 2. User is not authenticated OR we don't have user data
     // 3. We're not already redirecting
-    if (
-      requireAuthenticated &&
-      (!isAuthenticated || !user) &&
-      !isRedirecting
-    ) {
+    if (requireAuthenticated && (!isAuthenticated || !user) && !isRedirecting) {
       setIsRedirecting(true);
       router.push(redirectTo);
     }

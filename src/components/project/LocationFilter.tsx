@@ -6,9 +6,9 @@ import { Location } from "@/types/location";
 
 interface LocationFilterProps {
   onLocationChange?: (
-    provinceCode?: string,
-    districtCode?: string,
-    wardCode?: string
+    province?: string,
+    district?: string,
+    ward?: string
   ) => void;
 }
 
@@ -21,13 +21,13 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
   const [wards, setWards] = useState<Location[]>([]);
 
   const [selectedProvince, setSelectedProvince] = useState(
-    searchParams.get("provinceCode") || ""
+    searchParams.get("province") || ""
   );
   const [selectedDistrict, setSelectedDistrict] = useState(
-    searchParams.get("districtCode") || ""
+    searchParams.get("district") || ""
   );
   const [selectedWard, setSelectedWard] = useState(
-    searchParams.get("wardCode") || ""
+    searchParams.get("ward") || ""
   );
 
   const [loading, setLoading] = useState(false);
@@ -54,8 +54,12 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
       const fetchDistricts = async () => {
         setLoading(true);
         try {
-          const data = await locationService.getDistricts(selectedProvince);
-          setDistricts(data);
+          // Find province by slug to get code
+          const province = provinces.find((p) => p.slug === selectedProvince);
+          if (province) {
+            const data = await locationService.getDistricts(province.code);
+            setDistricts(data);
+          }
         } catch (error) {
           console.error("Error fetching districts:", error);
         } finally {
@@ -67,7 +71,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
       setDistricts([]);
       setWards([]);
     }
-  }, [selectedProvince]);
+  }, [selectedProvince, provinces]);
 
   // Load wards when district changes
   useEffect(() => {
@@ -75,11 +79,16 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
       const fetchWards = async () => {
         setLoading(true);
         try {
-          const data = await locationService.getWards(
-            selectedProvince,
-            selectedDistrict
-          );
-          setWards(data);
+          // Find province and district by slug to get codes
+          const province = provinces.find((p) => p.slug === selectedProvince);
+          const district = districts.find((d) => d.slug === selectedDistrict);
+          if (province && district) {
+            const data = await locationService.getWards(
+              province.code,
+              district.code
+            );
+            setWards(data);
+          }
         } catch (error) {
           console.error("Error fetching wards:", error);
         } finally {
@@ -90,18 +99,14 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
     } else {
       setWards([]);
     }
-  }, [selectedProvince, selectedDistrict]);
+  }, [selectedProvince, selectedDistrict, provinces, districts]);
 
-  const updateURL = (
-    provinceCode?: string,
-    districtCode?: string,
-    wardCode?: string
-  ) => {
+  const updateURL = (province?: string, district?: string, ward?: string) => {
     const params = new URLSearchParams();
 
-    if (provinceCode) params.set("provinceCode", provinceCode);
-    if (districtCode) params.set("districtCode", districtCode);
-    if (wardCode) params.set("wardCode", wardCode);
+    if (province) params.set("province", province);
+    if (district) params.set("district", district);
+    if (ward) params.set("ward", ward);
 
     const queryString = params.toString();
     const newURL = queryString ? `/du-an?${queryString}` : "/du-an";
@@ -110,32 +115,32 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
 
     // Call callback if provided
     if (onLocationChange) {
-      onLocationChange(provinceCode, districtCode, wardCode);
+      onLocationChange(province, district, ward);
     }
   };
 
-  const handleProvinceChange = (provinceCode: string) => {
-    setSelectedProvince(provinceCode);
+  const handleProvinceChange = (provinceSlug: string) => {
+    setSelectedProvince(provinceSlug);
     setSelectedDistrict("");
     setSelectedWard("");
 
-    updateURL(provinceCode || undefined);
+    updateURL(provinceSlug || undefined);
   };
 
-  const handleDistrictChange = (districtCode: string) => {
-    setSelectedDistrict(districtCode);
+  const handleDistrictChange = (districtSlug: string) => {
+    setSelectedDistrict(districtSlug);
     setSelectedWard("");
 
-    updateURL(selectedProvince || undefined, districtCode || undefined);
+    updateURL(selectedProvince || undefined, districtSlug || undefined);
   };
 
-  const handleWardChange = (wardCode: string) => {
-    setSelectedWard(wardCode);
+  const handleWardChange = (wardSlug: string) => {
+    setSelectedWard(wardSlug);
 
     updateURL(
       selectedProvince || undefined,
       selectedDistrict || undefined,
-      wardCode || undefined
+      wardSlug || undefined
     );
   };
 
@@ -178,7 +183,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
           >
             <option value="">Tất cả tỉnh/thành phố</option>
             {provinces.map((province) => (
-              <option key={province.code} value={province.code}>
+              <option key={province.code} value={province.slug}>
                 {province.name}
               </option>
             ))}
@@ -198,7 +203,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
           >
             <option value="">Tất cả quận/huyện</option>
             {districts.map((district) => (
-              <option key={district.code} value={district.code}>
+              <option key={district.code} value={district.slug}>
                 {district.name}
               </option>
             ))}
@@ -218,7 +223,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
           >
             <option value="">Tất cả phường/xã</option>
             {wards.map((ward) => (
-              <option key={ward.code} value={ward.code}>
+              <option key={ward.code} value={ward.slug}>
                 {ward.name}
               </option>
             ))}

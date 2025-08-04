@@ -260,7 +260,7 @@ export function News({ initialArticles = [] }: NewsProps) {
     <>
       <Header />
 
-      <main className="min-h-screen bg-gray-50 max-w-6xl mx-auto">
+      <main className="min-h-screen bg-gray-50 max-w-7xl mx-auto">
         <div className="container mx-auto px-4 py-6">
           {/* Header Section */}
           <div className="flex justify-center mb-8">

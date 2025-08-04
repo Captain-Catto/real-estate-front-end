@@ -103,7 +103,7 @@ const StatItem: React.FC<StatItemProps> = ({ stat, index, isVisible }) => {
     <div
       className={`transform transition-all duration-700 p-4 rounded-lg ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-      } hover:bg-blue-700/50 hover:shadow-lg hover:scale-105`}
+      } hover:scale-105`}
     >
       <div className="text-4xl md:text-5xl mb-3 text-white/90">
         <i className={stat.icon}></i>
@@ -127,7 +127,7 @@ export function StatsSection() {
   return (
     <section
       ref={sectionRef}
-      className="py-16 bg-gradient-to-r from-blue-600 to-blue-800 text-white"
+      className="py-16 bg-gradient-to-r from-red-400 to-red-500 text-white"
       style={{ minHeight: "300px" }}
     >
       <div className="container mx-auto px-4">

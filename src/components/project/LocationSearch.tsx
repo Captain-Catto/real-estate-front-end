@@ -5,27 +5,27 @@ import { locationService } from "@/services/locationService";
 import { Location } from "@/types/location";
 
 interface LocationSearchProps {
-  currentProvinceCode?: string;
-  currentDistrictCode?: string;
-  currentWardCode?: string;
+  currentProvince?: string;
+  currentDistrict?: string;
+  currentWard?: string;
 }
 
 export function LocationSearch({
-  currentProvinceCode,
-  currentDistrictCode,
-  currentWardCode,
+  currentProvince,
+  currentDistrict,
+  currentWard,
 }: LocationSearchProps) {
   const router = useRouter();
   const [provinces, setProvinces] = React.useState<Location[]>([]);
   const [districts, setDistricts] = React.useState<Location[]>([]);
   const [wards, setWards] = React.useState<Location[]>([]);
   const [selectedProvince, setSelectedProvince] = useState(
-    currentProvinceCode || ""
+    currentProvince || ""
   );
   const [selectedDistrict, setSelectedDistrict] = useState(
-    currentDistrictCode || ""
+    currentDistrict || ""
   );
-  const [selectedWard, setSelectedWard] = useState(currentWardCode || "");
+  const [selectedWard, setSelectedWard] = useState(currentWard || "");
   const [loading, setLoading] = useState(false);
 
   // Load provinces on mount

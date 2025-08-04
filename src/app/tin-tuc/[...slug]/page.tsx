@@ -5,6 +5,8 @@ import { NewsCategoryPage } from "@/components/news/NewsCategoryPage";
 import { newsService } from "@/services/newsService";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import Header from "@/components/header/Header";
+import Footer from "@/components/footer/Footer";
 
 // Types
 // Đảm bảo định nghĩa này khớp với interface Article trong NewsArticleDetail.tsx
@@ -214,7 +216,11 @@ export default async function NewsSlugPage(props: PageProps) {
     if (isCategory) {
       const categoryArticles = await getArticlesByCategory(singleSlug);
       return (
-        <NewsCategoryPage category={singleSlug} articles={categoryArticles} />
+        <>
+          <Header />
+          <NewsCategoryPage category={singleSlug} articles={categoryArticles} />
+          <Footer />
+        </>
       );
     }
 
@@ -295,11 +301,15 @@ export default async function NewsSlugPage(props: PageProps) {
         }
 
         return (
-          <NewsArticleDetail
-            article={article}
-            popularArticles={popularArticles}
-            category={category}
-          />
+          <>
+            <Header />
+            <NewsArticleDetail
+              article={article}
+              popularArticles={popularArticles}
+              category={category}
+            />
+            <Footer />
+          </>
         );
       }
     }

@@ -301,7 +301,7 @@ export function CategoryPage({
       <main className="bg-gray-100 min-h-screen pb-8">
         {/* Breadcrumb */}
         <div className="container mx-auto px-4 py-3">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             <Breadcrumb items={breadcrumbItems} />
           </div>
         </div>
@@ -309,7 +309,7 @@ export function CategoryPage({
         {/* Title Section */}
         <div className="py-4 mb-4">
           <div className="container mx-auto px-4">
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
               <div className="flex gap-1 text-sm text-gray-600 mt-1">
                 <span>{formattedCount} bất động sản</span>
@@ -322,7 +322,7 @@ export function CategoryPage({
 
         {/* Content Area */}
         <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl mx-auto">
             {/* Filter and Sort Bar */}
             <div className="bg-white rounded-lg shadow-sm p-3 mb-4 flex flex-wrap items-center justify-end">
               <div className="flex items-center gap-2">
