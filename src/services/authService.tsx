@@ -1,4 +1,4 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 export interface LoginRequest {
@@ -82,8 +82,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     // Handle 401 Unauthorized error
     if (response.status === 401) {
-      console.log("Received 401 - Attempting token refresh");
-
       try {
         const refreshed = await refreshToken();
 
@@ -97,7 +95,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
               Authorization: `Bearer ${newToken}`,
             };
 
-            console.log("Retrying with new token");
             return fetch(url, {
               ...requestConfig,
               headers: newHeaders,
@@ -107,9 +104,8 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
           // Clear token on failed refresh
           localStorage.removeItem("accessToken");
 
-          // Only redirect from browser context
-          if (typeof window !== "undefined") {
-            console.log("Token refresh failed - redirecting to login");
+          // Only redirect from browser context and for non-admin API calls
+          if (typeof window !== "undefined" && !url.includes("/admin/")) {
             setTimeout(() => {
               window.location.href = "/dang-nhap?session=expired";
             }, 1000);
@@ -142,8 +138,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 // Refresh token function
 export const refreshToken = async (): Promise<boolean> => {
   try {
-    console.log("Attempting to refresh token");
-
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
@@ -151,7 +145,10 @@ export const refreshToken = async (): Promise<boolean> => {
     });
 
     if (!response.ok) {
-      console.error(`Refresh token failed with status: ${response.status}`);
+      // Only log error if it's not a 401 (which is expected when refresh token expires)
+      if (response.status !== 401) {
+        console.error(`Refresh token failed with status: ${response.status}`);
+      }
       localStorage.removeItem("accessToken");
       return false;
     }
@@ -159,15 +156,14 @@ export const refreshToken = async (): Promise<boolean> => {
     const data = await response.json();
 
     if (data.success && data.data?.accessToken) {
-      console.log("Token refreshed successfully");
       localStorage.setItem("accessToken", data.data.accessToken);
       return true;
     }
 
-    console.error("Refresh response missing token:", data);
     localStorage.removeItem("accessToken");
     return false;
   } catch (error) {
+    // Only log unexpected errors (not 401s)
     console.error("Refresh token error:", error);
     localStorage.removeItem("accessToken");
     return false;

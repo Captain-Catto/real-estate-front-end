@@ -1,0 +1,220 @@
+"use client";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
+// Helper function to get auth token
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return (
+      localStorage.getItem("accessToken") ||
+      sessionStorage.getItem("accessToken")
+    );
+  }
+  return null;
+};
+
+export interface UserPermission {
+  userId: string;
+  username: string;
+  permissions: string[];
+}
+
+export interface Employee {
+  _id: string;
+  username: string;
+  email: string;
+  status: string;
+  createdAt: string;
+  permissions: string[];
+  defaultPermissions: string[];
+  enabledPermissions: string[];
+  manageablePermissions: string[];
+}
+
+export interface PermissionGroup {
+  [key: string]: string[];
+}
+
+export interface PermissionResponse {
+  success: boolean;
+  data: {
+    permissions?: string[];
+    permissionGroups?: PermissionGroup;
+    manageableEmployeePermissions?: string[];
+    users?: Array<{
+      _id: string;
+      username: string;
+      email: string;
+      role: string;
+      status: string;
+      createdAt: string;
+      permissions: string[];
+    }>;
+    employees?: Employee[];
+    manageablePermissions?: string[];
+    defaultPermissions?: string[];
+    userId?: string;
+    addedPermissions?: string[];
+  };
+  message: string;
+}
+
+export const permissionService = {
+  // Lấy danh sách quyền có sẵn
+  async getAvailablePermissions(): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/permissions/available`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error fetching available permissions:", error);
+      throw error;
+    }
+  },
+
+  // Lấy danh sách người dùng và quyền
+  async getUsersAndPermissions(): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/permissions/users`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error fetching users and permissions:", error);
+      throw error;
+    }
+  },
+
+  // Lấy quyền của người dùng
+  async getUserPermissions(userId: string): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(
+        `${API_BASE_URL}/permissions/user/${userId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error fetching user permissions:", error);
+      throw error;
+    }
+  },
+
+  // Cập nhật quyền cho người dùng
+  async updateUserPermissions(
+    userId: string,
+    permissions: string[]
+  ): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(
+        `${API_BASE_URL}/permissions/user/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ permissions }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error updating user permissions:", error);
+      throw error;
+    }
+  },
+
+  // Tạo quyền cho người dùng
+  async createUserPermissions(
+    userId: string,
+    permissions: string[]
+  ): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE_URL}/permissions/user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, permissions }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error creating user permissions:", error);
+      throw error;
+    }
+  },
+
+  // Xóa quyền của người dùng
+  async deleteUserPermissions(userId: string): Promise<PermissionResponse> {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(
+        `${API_BASE_URL}/permissions/user/${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error("Error deleting user permissions:", error);
+      throw error;
+    }
+  },
+};
+
+export default permissionService;

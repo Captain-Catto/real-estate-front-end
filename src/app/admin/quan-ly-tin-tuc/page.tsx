@@ -6,6 +6,9 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { newsService, NewsCategory } from "@/services/newsService";
 import { PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   PencilIcon,
   TrashIcon,
@@ -14,11 +17,11 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { Pagination } from "@/components/common/Pagination";
-
 interface NewsItem {
   _id: string;
   title: string;
-  category: "mua-ban" | "cho-thue" | "tai-chinh" | "phong-thuy" | "tong-hop";
+  slug: string;
+  category: string;
   status: "draft" | "pending" | "published" | "rejected";
   author: { _id: string; username: string; email: string };
   views: number;
@@ -39,9 +42,9 @@ const statusColors = {
   published: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
 };
-export default function NewsManagementPage() {
+function NewsManagementPage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [accessChecked, setAccessChecked] = useState(false);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,12 +212,16 @@ export default function NewsManagementPage() {
                 <h1 className="text-2xl font-bold text-gray-900">
                   Quản lý tin tức
                 </h1>
-                <button
-                  onClick={() => router.push("/admin/quan-ly-tin-tuc/tao-moi")}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <PlusIcon className="w-5 h-5" /> Tạo tin tức mới
-                </button>
+                <PermissionGuard permission={PERMISSIONS.NEWS.CREATE}>
+                  <button
+                    onClick={() =>
+                      router.push("/admin/quan-ly-tin-tuc/tao-moi")
+                    }
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PlusIcon className="w-5 h-5" /> Tạo tin tức mới
+                  </button>
+                </PermissionGuard>
               </div>
             </div>
             {/* Filters */}
@@ -407,27 +414,42 @@ export default function NewsManagementPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() =>
-                                  window.open(`/tin-tuc/${item._id}`, "_blank")
-                                }
-                                className="text-blue-600 hover:text-blue-800 transition-colors"
-                                title="Xem tin tức"
+                              {/* Nút xem - chỉ hiển thị cho bài đã published */}
+                              {item.status === "published" && (
+                                <button
+                                  onClick={() =>
+                                    window.open(
+                                      `/tin-tuc/${item.category}/${item.slug}`,
+                                      "_blank"
+                                    )
+                                  }
+                                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                                  title="Xem tin tức"
+                                >
+                                  <EyeIcon className="w-5 h-5" />
+                                </button>
+                              )}
+
+                              {/* Nút edit - hiển thị cho tất cả trạng thái khi có quyền */}
+                              <PermissionGuard
+                                permission={PERMISSIONS.NEWS.EDIT}
                               >
-                                <EyeIcon className="w-5 h-5" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  router.push(
-                                    `/admin/quan-ly-tin-tuc/${item._id}`
-                                  )
-                                }
-                                className="text-green-600 hover:text-green-900 transition-colors"
-                                title="Chỉnh sửa"
+                                <button
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/quan-ly-tin-tuc/${item._id}`
+                                    )
+                                  }
+                                  className="text-green-600 hover:text-green-900 transition-colors"
+                                  title="Chỉnh sửa"
+                                >
+                                  <PencilIcon className="w-5 h-5" />
+                                </button>
+                              </PermissionGuard>
+
+                              <PermissionGuard
+                                permission={PERMISSIONS.NEWS.DELETE}
                               >
-                                <PencilIcon className="w-5 h-5" />
-                              </button>
-                              {user?.role === "admin" && (
                                 <button
                                   onClick={() =>
                                     handleDelete(item._id, item.title)
@@ -437,9 +459,13 @@ export default function NewsManagementPage() {
                                 >
                                   <TrashIcon className="w-5 h-5" />
                                 </button>
-                              )}
-                              {user?.role === "admin" &&
-                                item.status === "pending" && (
+                              </PermissionGuard>
+
+                              {/* Nút duyệt/từ chối - chỉ cho admin hoặc employee có quyền publish */}
+                              {item.status === "pending" && (
+                                <PermissionGuard
+                                  permission={PERMISSIONS.NEWS.PUBLISH}
+                                >
                                   <div className="flex gap-1">
                                     <button
                                       onClick={() =>
@@ -463,7 +489,8 @@ export default function NewsManagementPage() {
                                       <XMarkIcon className="w-5 h-5" />
                                     </button>
                                   </div>
-                                )}
+                                </PermissionGuard>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -489,5 +516,14 @@ export default function NewsManagementPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedNewsManagement() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.NEWS.VIEW]}>
+      <NewsManagementPage />
+    </AdminGuard>
   );
 }

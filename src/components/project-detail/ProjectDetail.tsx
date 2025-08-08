@@ -468,7 +468,11 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
               </section>
 
               {/* Related Projects */}
-              <RelatedProjects currentProjectId={project.id} />
+              <RelatedProjects
+                currentProjectId={project.id}
+                currentProjectLocation={project.location}
+                currentProjectDeveloper={project.developer?.name}
+              />
             </div>
 
             {/* Right Sidebar */}

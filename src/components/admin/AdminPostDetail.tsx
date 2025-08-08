@@ -25,6 +25,8 @@ import {
 import { locationService } from "@/services/locationService";
 import { postService } from "@/services/postsService";
 import { useAuth } from "@/hooks/useAuth";
+import { PermissionGuard } from "@/components/auth/ProtectionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 interface AdminPostDetailProps {
   post: {
@@ -106,7 +108,6 @@ export default function AdminPostDetail({
   const { hasRole } = useAuth();
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -379,10 +380,9 @@ export default function AdminPostDetail({
           {/* Action Buttons */}
           <div className="flex items-center gap-3">
             {/* Special buttons for deleted posts */}
-            {post.status === "deleted" &&
-              hasRole("admin") &&
-              onStatusChange && (
-                <>
+            {post.status === "deleted" && onStatusChange && (
+              <>
+                <PermissionGuard permission={PERMISSIONS.POST.EDIT}>
                   <button
                     onClick={() => {
                       const postId = post._id || post.id;
@@ -403,6 +403,8 @@ export default function AdminPostDetail({
                     <CheckIcon className="w-4 h-4" />
                     Khôi phục tin
                   </button>
+                </PermissionGuard>
+                <PermissionGuard permission={PERMISSIONS.POST.EDIT}>
                   <button
                     onClick={() => setShowStatusModal(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -410,7 +412,9 @@ export default function AdminPostDetail({
                     <Cog6ToothIcon className="w-4 h-4" />
                     Đổi trạng thái
                   </button>
-                  {/* Permanent delete button for deleted posts */}
+                </PermissionGuard>
+                {/* Permanent delete button for deleted posts */}
+                <PermissionGuard permission={PERMISSIONS.POST.DELETE}>
                   {onDelete && (
                     <button
                       onClick={() => {
@@ -427,68 +431,16 @@ export default function AdminPostDetail({
                       Xóa vĩnh viễn
                     </button>
                   )}
-                </>
-              )}
+                </PermissionGuard>
+              </>
+            )}
 
             {/* Normal buttons for non-deleted posts */}
             {post.status !== "deleted" && (
               <>
-                {/* Edit button - Only for admin */}
-                {hasRole("admin") && onEdit && (
-                  <button
-                    onClick={() => {
-                      const postId = post._id || post.id;
-                      if (!postId) {
-                        alert("ID bài viết không hợp lệ!");
-                        return;
-                      }
-                      onEdit();
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <PencilIcon className="w-4 h-4" />
-                    Chỉnh sửa
-                  </button>
-                )}
-
-                {/* Status change button - Only for admin */}
-                {hasRole("admin") && onStatusChange && (
-                  <button
-                    onClick={() => setShowStatusModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-                  >
-                    <Cog6ToothIcon className="w-4 h-4" />
-                    Đổi trạng thái
-                  </button>
-                )}
-
-                {/* Delete button - Only for admin */}
-                {hasRole("admin") && onStatusChange && (
-                  <button
-                    onClick={() => {
-                      const postId = post._id || post.id;
-                      if (!postId) {
-                        alert("ID bài viết không hợp lệ!");
-                        return;
-                      }
-                      if (
-                        confirm(
-                          "Bạn có chắc muốn chuyển tin đăng này vào thùng rác?"
-                        )
-                      ) {
-                        onStatusChange(postId, "deleted");
-                      }
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                    Xóa tin
-                  </button>
-                )}
-
-                {/* Status change buttons - For both admin and employee, only show for pending posts */}
-                {post.status === "pending" && (
-                  <>
+                {/* Edit button - For users with edit permission */}
+                <PermissionGuard permission={PERMISSIONS.POST.EDIT}>
+                  {onEdit && (
                     <button
                       onClick={() => {
                         const postId = post._id || post.id;
@@ -496,20 +448,83 @@ export default function AdminPostDetail({
                           alert("ID bài viết không hợp lệ!");
                           return;
                         }
-                        onApprove(postId);
+                        onEdit();
                       }}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      <CheckIcon className="w-4 h-4" />
-                      Duyệt tin
+                      <PencilIcon className="w-4 h-4" />
+                      Chỉnh sửa
                     </button>
+                  )}
+                </PermissionGuard>
+
+                {/* Status change button - For users with permissions */}
+                <PermissionGuard permission={PERMISSIONS.POST.EDIT}>
+                  {onStatusChange && (
                     <button
-                      onClick={() => setShowRejectModal(true)}
+                      onClick={() => setShowStatusModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                    >
+                      <Cog6ToothIcon className="w-4 h-4" />
+                      Đổi trạng thái
+                    </button>
+                  )}
+                </PermissionGuard>
+
+                {/* Delete button - For users with delete permission */}
+                <PermissionGuard permission={PERMISSIONS.POST.DELETE}>
+                  {onStatusChange && (
+                    <button
+                      onClick={() => {
+                        const postId = post._id || post.id;
+                        if (!postId) {
+                          alert("ID bài viết không hợp lệ!");
+                          return;
+                        }
+                        if (
+                          confirm(
+                            "Bạn có chắc muốn chuyển tin đăng này vào thùng rác?"
+                          )
+                        ) {
+                          onStatusChange(postId, "deleted");
+                        }
+                      }}
                       className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                     >
-                      <XMarkIcon className="w-4 h-4" />
-                      Từ chối
+                      <TrashIcon className="w-4 h-4" />
+                      Xóa tin
                     </button>
+                  )}
+                </PermissionGuard>
+
+                {/* Status change buttons - For both admin and employee, only show for pending posts */}
+                {post.status === "pending" && (
+                  <>
+                    <PermissionGuard permission={PERMISSIONS.POST.APPROVE}>
+                      <button
+                        onClick={() => {
+                          const postId = post._id || post.id;
+                          if (!postId) {
+                            alert("ID bài viết không hợp lệ!");
+                            return;
+                          }
+                          onApprove(postId);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <CheckIcon className="w-4 h-4" />
+                        Duyệt tin
+                      </button>
+                    </PermissionGuard>
+                    <PermissionGuard permission={PERMISSIONS.POST.REJECT}>
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                        Từ chối
+                      </button>
+                    </PermissionGuard>
                   </>
                 )}
               </>

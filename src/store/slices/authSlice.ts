@@ -6,7 +6,7 @@ import {
 } from "@/services/authService";
 
 // Types
-export type UserRole = "admin" | "employee";
+export type UserRole = "admin" | "employee" | "user";
 
 export interface User {
   id: string;

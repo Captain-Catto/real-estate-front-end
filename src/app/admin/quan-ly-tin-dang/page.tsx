@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import PostsTable from "@/components/admin/PostsTable";
 import PostsFilter from "@/components/admin/PostsFilter";
 import PostsStats from "@/components/admin/PostsStats";
 import { Pagination } from "@/components/common/Pagination";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   adminPostsService,
   Post,
@@ -15,43 +16,8 @@ import {
   PostsStats as StatsType,
 } from "@/services/postsService";
 
-export default function AdminPostsPage() {
-  const router = useRouter();
+function AdminPostsPageInternal() {
   const searchParams = useSearchParams();
-  const { hasRole, isAuthenticated, loading: authLoading, user } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
-
-  // Debug: Log user info
-  console.log("Admin page - Auth state:", {
-    isAuthenticated,
-    authLoading,
-    user: user,
-    userRole: user?.role,
-    hasAdminRole: hasRole(["admin", "employee"]),
-    accessChecked,
-  });
-
-  // Kiểm tra quyền truy cập - chỉ admin và employee mới được vào
-  useEffect(() => {
-    if (!accessChecked && user) {
-      setAccessChecked(true);
-
-      if (!isAuthenticated) {
-        console.log("Not authenticated, redirecting to login");
-        router.push("/dang-nhap");
-        return;
-      }
-
-      const hasAccess = hasRole(["admin", "employee"]);
-      console.log("Has access:", hasAccess, "User role:", user?.role);
-      if (!hasAccess) {
-        // Nếu không có quyền, chuyển hướng về trang chủ
-        console.log("No access, redirecting to home");
-        router.push("/");
-        return;
-      }
-    }
-  }, [hasRole, isAuthenticated, router, user, accessChecked]);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<StatsType>({
@@ -173,95 +139,58 @@ export default function AdminPostsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Show loading while checking authentication and permissions */}
-      {(!user || !accessChecked) && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-gray-700">
-              Đang kiểm tra quyền truy cập...
-            </span>
+      <AdminSidebar />
+
+      <div className="flex-1">
+        <AdminHeader />
+
+        <main className="p-6">
+          {/* Page Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Quản lý tin đăng
+            </h1>
+            <p className="text-gray-600">
+              Quản lý tất cả tin đăng bất động sản
+            </p>
           </div>
-        </div>
-      )}
 
-      {/* Only render admin interface if user has proper permissions */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        hasRole(["admin", "employee"]) && (
-          <>
-            <AdminSidebar />
+          {/* Stats */}
+          <PostsStats stats={stats} onFilterChange={handleFilterChange} />
 
-            <div className="flex-1">
-              <AdminHeader />
+          {/* Filters */}
+          <PostsFilter filters={filters} onFilterChange={handleFilterChange} />
 
-              <main className="p-6">
-                {/* Page Header */}
-                <div className="mb-6">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Quản lý tin đăng
-                  </h1>
-                  <p className="text-gray-600">
-                    Quản lý tất cả tin đăng bất động sản
-                  </p>
-                </div>
+          {/* Posts Table */}
+          <PostsTable
+            posts={posts}
+            loading={loading}
+            onApprove={handleApprovePost}
+            onReject={handleRejectPost}
+            onDelete={handleDeletePost}
+          />
 
-                {/* Stats */}
-                <PostsStats stats={stats} onFilterChange={handleFilterChange} />
-
-                {/* Filters */}
-                <PostsFilter
-                  filters={filters}
-                  onFilterChange={handleFilterChange}
-                />
-
-                {/* Posts Table */}
-                <PostsTable
-                  posts={posts}
-                  loading={loading}
-                  onApprove={handleApprovePost}
-                  onReject={handleRejectPost}
-                  onDelete={handleDeletePost}
-                />
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-6">
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={setCurrentPage}
-                    />
-                  </div>
-                )}
-              </main>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
-          </>
-        )}
-
-      {/* Show access denied message */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        !hasRole(["admin", "employee"]) && (
-          <div className="flex items-center justify-center min-h-screen w-full">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Không có quyền truy cập
-              </h1>
-              <p className="text-gray-600 mb-4">
-                Bạn không có quyền truy cập vào trang này.
-              </p>
-              <button
-                onClick={() => router.push("/")}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Về trang chủ
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </main>
+      </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedAdminPosts() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.POST.VIEW]}>
+      <AdminPostsPageInternal />
+    </AdminGuard>
   );
 }

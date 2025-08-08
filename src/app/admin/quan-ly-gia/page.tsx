@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggablePriceTable from "@/components/admin/DraggablePriceTable";
 import { fetchWithAuth } from "@/services/authService";
-import { useAuth } from "@/hooks/useAuth";
+
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 interface Price {
   _id: string;
@@ -20,11 +21,7 @@ interface Price {
   isActive: boolean;
 }
 
-export default function PricesManagement() {
-  const router = useRouter();
-  const { hasRole, isAuthenticated, user } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
-
+function PricesManagementInternalContent() {
   const [prices, setPrices] = useState<Price[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -44,29 +41,8 @@ export default function PricesManagement() {
     order: 0,
   });
 
-  // Authentication check
-  useEffect(() => {
-    if (!accessChecked && user) {
-      setAccessChecked(true);
-
-      if (!isAuthenticated) {
-        router.push("/dang-nhap");
-        return;
-      }
-
-      const hasAccess = hasRole("admin") || hasRole("employee");
-      if (!hasAccess) {
-        router.push("/");
-        return;
-      }
-    }
-  }, [hasRole, isAuthenticated, router, user, accessChecked]);
-
   const fetchPrices = useCallback(async () => {
-    if (!user || !accessChecked) return;
-
     try {
-      // Chỉ set loading khi load lần đầu hoặc thay đổi filter/page
       if (prices.length === 0) {
         setLoading(true);
       }
@@ -85,58 +61,151 @@ export default function PricesManagement() {
         setPrices(data.data);
         setTotalPages(data.pagination?.totalPages || 1);
       } else {
-        alert(data.message || "Lỗi khi tải dữ liệu");
+        console.error("Error fetching prices:", data.message);
+        alert("Lỗi khi tải dữ liệu: " + data.message);
       }
     } catch (error) {
       console.error("Error fetching prices:", error);
-      alert("Lỗi kết nối server");
+      alert("Lỗi khi tải dữ liệu");
     } finally {
       setLoading(false);
     }
-  }, [currentPage, filterType, prices.length, user, accessChecked]);
+  }, [currentPage, filterType, prices.length]);
 
   useEffect(() => {
     fetchPrices();
   }, [fetchPrices]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCreatePrice = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      const url = editingPrice
-        ? `http://localhost:8080/api/admin/prices/${editingPrice._id}`
-        : "http://localhost:8080/api/admin/prices";
-
-      const method = editingPrice ? "PUT" : "POST";
-
-      const response = await fetchWithAuth(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetchWithAuth(
+        "http://localhost:8080/api/admin/prices",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       const data = await response.json();
-      if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        window.location.href = "/dang-nhap";
-        return;
-      }
       if (data.success) {
+        alert("Tạo khoảng giá thành công!");
+        setShowForm(false);
+        setFormData({
+          name: "",
+          slug: "",
+          type: "ban",
+          minValue: 0,
+          maxValue: -1,
+          order: 0,
+        });
         fetchPrices();
-        resetForm();
-        alert(editingPrice ? "Cập nhật thành công!" : "Tạo mới thành công!");
       } else {
-        alert(data.message || "Có lỗi xảy ra");
+        alert("Lỗi: " + data.message);
       }
     } catch (error) {
-      console.error("Error saving price:", error);
-      alert("Có lỗi xảy ra");
+      console.error("Error creating price:", error);
+      alert("Lỗi khi tạo khoảng giá");
     }
   };
 
-  const handleEdit = (price: Price) => {
+  const handleUpdatePrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPrice) return;
+
+    try {
+      const response = await fetchWithAuth(
+        `http://localhost:8080/api/admin/prices/${editingPrice._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Cập nhật khoảng giá thành công!");
+        setShowForm(false);
+        setEditingPrice(null);
+        setFormData({
+          name: "",
+          slug: "",
+          type: "ban",
+          minValue: 0,
+          maxValue: -1,
+          order: 0,
+        });
+        fetchPrices();
+      } else {
+        alert("Lỗi: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error updating price:", error);
+      alert("Lỗi khi cập nhật khoảng giá");
+    }
+  };
+
+  const handleDeletePrice = async (price: Price) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa khoảng giá này?")) return;
+
+    try {
+      const response = await fetchWithAuth(
+        `http://localhost:8080/api/admin/prices/${price._id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Xóa khoảng giá thành công!");
+        fetchPrices();
+      } else {
+        alert("Lỗi: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error deleting price:", error);
+      alert("Lỗi khi xóa khoảng giá");
+    }
+  };
+
+  const handleToggleStatus = async (price: Price) => {
+    try {
+      const response = await fetchWithAuth(
+        `http://localhost:8080/api/admin/prices/${price._id}/toggle-active`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isActive: !price.isActive }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        alert(
+          `${
+            !price.isActive ? "Kích hoạt" : "Vô hiệu hóa"
+          } khoảng giá thành công!`
+        );
+        fetchPrices();
+      } else {
+        alert("Lỗi: " + data.message);
+      }
+    } catch (error) {
+      console.error("Error toggling price status:", error);
+      alert("Lỗi khi thay đổi trạng thái khoảng giá");
+    }
+  };
+
+  const handleEditPrice = (price: Price) => {
     setEditingPrice(price);
     setFormData({
       name: price.name,
@@ -149,104 +218,48 @@ export default function PricesManagement() {
     setShowForm(true);
   };
 
-  const handleDelete = async (price: Price) => {
-    if (!confirm(`Bạn có chắc muốn xóa "${price.name}"?`)) return;
-
+  const handleReorder = async (updatedPrices: Price[]) => {
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices/${price._id}`,
+        "http://localhost:8080/api/admin/prices/reorder",
         {
-          method: "DELETE",
-        }
-      );
-
-      const data = await response.json();
-      if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        window.location.href = "/dang-nhap";
-        return;
-      }
-      if (data.success) {
-        fetchPrices();
-        alert("Xóa thành công!");
-      } else {
-        alert(data.message || "Có lỗi xảy ra");
-      }
-    } catch (error) {
-      console.error("Error deleting price:", error);
-      alert("Có lỗi xảy ra");
-    }
-  };
-
-  const toggleStatus = async (price: Price) => {
-    try {
-      const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices/${price._id}/toggle-status`,
-        {
-          method: "PATCH",
-        }
-      );
-
-      const data = await response.json();
-      if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        window.location.href = "/dang-nhap";
-        return;
-      }
-      if (data.success) {
-        fetchPrices();
-        alert(`${price.isActive ? "Đã ẩn" : "Đã kích hoạt"} khoảng giá`);
-      } else {
-        alert(data.message || "Có lỗi xảy ra");
-      }
-    } catch (error) {
-      console.error("Error toggling status:", error);
-      alert("Có lỗi xảy ra");
-    }
-  };
-
-  const handleReorder = async (newOrder: Price[]) => {
-    // Cập nhật UI ngay lập tức
-    setPrices(newOrder);
-
-    try {
-      // Chuẩn bị data với order mới
-      const orderData = newOrder.map((price, index) => ({
-        id: price._id,
-        order: index + 1,
-      }));
-
-      const response = await fetchWithAuth(
-        "http://localhost:8080/api/admin/prices/order",
-        {
-          method: "PUT",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ prices: orderData }),
+          body: JSON.stringify({ prices: updatedPrices }),
         }
       );
 
       const data = await response.json();
-      if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
-        window.location.href = "/dang-nhap";
-        return;
-      }
       if (data.success) {
-        // Thành công - fetch lại để đảm bảo dữ liệu đúng
-        fetchPrices();
+        setPrices(updatedPrices);
       } else {
-        // Nếu có lỗi, load lại data từ server
+        alert("Lỗi khi cập nhật thứ tự: " + data.message);
         fetchPrices();
-        alert(data.message || "Có lỗi xảy ra khi cập nhật thứ tự");
       }
     } catch (error) {
       console.error("Error updating order:", error);
-      // Nếu có lỗi, load lại data từ server
+      alert("Lỗi khi cập nhật thứ tự");
       fetchPrices();
-      alert("Có lỗi xảy ra khi cập nhật thứ tự");
     }
+  };
+
+  const formatPrice = (min?: number, max?: number) => {
+    const formatValue = (value: number | undefined) => {
+      if (value === undefined || value === null) return "Không giới hạn";
+      if (value === -1) return "Không giới hạn";
+      if (value >= 1000000000) return `${value / 1000000000} tỷ`;
+      if (value >= 1000000) return `${value / 1000000} triệu`;
+      if (value >= 1000) return `${value / 1000}k`;
+      return value.toString();
+    };
+
+    if (min === undefined || min === null) return "Không giới hạn";
+    if (max === -1) return `Từ ${formatValue(min)}`;
+    if (min === 0 && max) return `Dưới ${formatValue(max)}`;
+    if (min && max) return `${formatValue(min)} - ${formatValue(max)}`;
+    return formatValue(min);
   };
 
   const resetForm = () => {
@@ -262,443 +275,251 @@ export default function PricesManagement() {
     setShowForm(false);
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
-  const handleNameChange = (name: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      name,
-      slug: generateSlug(name),
-    }));
-  };
-
-  const formatPrice = (
-    min?: number,
-    max?: number,
-    type?: "ban" | "cho-thue" | "project"
-  ) => {
-    if (!min && !max) return "Thỏa thuận";
-    if (min === 0 && max === -1) return "Thỏa thuận";
-
-    const formatNumber = (num: number) => {
-      if (num >= 1000000000) return `${(num / 1000000000).toFixed(1)}B`;
-      if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-      if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-      return num.toString();
-    };
-
-    const getUnit = (type?: string) => {
-      switch (type) {
-        case "ban":
-          return "VNĐ";
-        case "cho-thue":
-          return "VNĐ/tháng";
-        case "project":
-          return "VNĐ/m²";
-        default:
-          return "VNĐ";
-      }
-    };
-
-    const unit = getUnit(type);
-
-    if (max === -1) return `Từ ${formatNumber(min || 0)} ${unit}`;
-    return `${formatNumber(min || 0)} - ${formatNumber(max || 0)} ${unit}`;
-  };
-
-  if (!user || !accessChecked) {
-    return (
-      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <span className="text-gray-700">Đang kiểm tra quyền truy cập...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !(hasRole("admin") || hasRole("employee"))) {
-    return (
-      <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 text-center">
-          <div className="text-red-600 text-lg font-medium mb-2">
-            Không có quyền truy cập
-          </div>
-          <div className="text-gray-600">
-            Bạn không có quyền truy cập trang này.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Show loading while checking authentication and permissions */}
-      {(!user || !accessChecked) && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-gray-700">
-              Đang kiểm tra quyền truy cập...
-            </span>
+    <div className="min-h-screen bg-gray-50 flex">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Quản lý khoảng giá
+                </h1>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Thêm khoảng giá
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex gap-2">
+                  <select
+                    value={filterType}
+                    onChange={(e) => {
+                      setFilterType(
+                        e.target.value as "all" | "ban" | "cho-thue" | "project"
+                      );
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">Tất cả loại</option>
+                    <option value="ban">Bán</option>
+                    <option value="cho-thue">Cho thuê</option>
+                    <option value="project">Dự án</option>
+                  </select>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <>
+                  <DraggablePriceTable
+                    prices={prices}
+                    onEdit={handleEditPrice}
+                    onDelete={handleDeletePrice}
+                    onToggleStatus={handleToggleStatus}
+                    onReorder={handleReorder}
+                    formatPrice={formatPrice}
+                  />
+
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center mt-6 gap-2">
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(1, prev - 1))
+                        }
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Trước
+                      </button>
+                      <span className="px-3 py-1">
+                        Trang {currentPage} / {totalPages}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(totalPages, prev + 1)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Sau
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {showForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">
+              {editingPrice ? "Sửa khoảng giá" : "Thêm khoảng giá mới"}
+            </h2>
+            <form
+              onSubmit={editingPrice ? handleUpdatePrice : handleCreatePrice}
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Slug
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug}
+                    onChange={(e) =>
+                      setFormData({ ...formData, slug: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        type: e.target.value as "ban" | "cho-thue" | "project",
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ban">Bán</option>
+                    <option value="cho-thue">Cho thuê</option>
+                    <option value="project">Dự án</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Giá trị tối thiểu
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.minValue}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        minValue: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Giá trị tối đa (-1 = không giới hạn)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.maxValue}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxValue: parseInt(e.target.value) || -1,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thứ tự
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.order}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        order: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  {editingPrice ? "Cập nhật" : "Tạo mới"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-
-      {/* Only render admin interface if user has proper permissions */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        (hasRole("admin") || hasRole("employee")) && (
-          <>
-            <AdminSidebar />
-            <div className="flex-1 flex flex-col">
-              <AdminHeader />
-              <main className="flex-1 p-6">
-                <div className="max-w-7xl mx-auto">
-                  {/* Header with Stats */}
-                  <div className="mb-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h1 className="text-3xl font-bold text-gray-900">
-                          Quản lý Khoảng giá
-                        </h1>
-                        <p className="text-gray-600 mt-1">
-                          Quản lý khoảng giá cho mua bán, cho thuê và dự án bất
-                          động sản
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setShowForm(true)}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm"
-                      >
-                        Thêm khoảng giá
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Type Tabs and Stats */}
-                  <div className="mb-6">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">
-                          Bộ lọc khoảng giá
-                        </h2>
-                      </div>
-
-                      {/* Type Filter Tabs */}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setFilterType("all")}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            filterType === "all"
-                              ? "bg-blue-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          Tất cả
-                        </button>
-                        <button
-                          onClick={() => setFilterType("ban")}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            filterType === "ban"
-                              ? "bg-green-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          Mua bán
-                        </button>
-                        <button
-                          onClick={() => setFilterType("cho-thue")}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            filterType === "cho-thue"
-                              ? "bg-orange-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          Cho thuê
-                        </button>
-                        <button
-                          onClick={() => setFilterType("project")}
-                          className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                            filterType === "project"
-                              ? "bg-purple-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          Dự án
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Form Modal */}
-                  {showForm && (
-                    <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-                      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <div className="flex justify-between items-center mb-4">
-                          <h2 className="text-xl font-semibold">
-                            {editingPrice
-                              ? "Sửa khoảng giá"
-                              : "Thêm khoảng giá mới"}
-                          </h2>
-                          <button
-                            onClick={resetForm}
-                            className="text-gray-500 hover:text-gray-700"
-                          >
-                            X
-                          </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Tên khoảng giá
-                            </label>
-                            <input
-                              type="text"
-                              value={formData.name}
-                              onChange={(e) => handleNameChange(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Slug
-                            </label>
-                            <input
-                              type="text"
-                              value={formData.slug}
-                              onChange={(e) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  slug: e.target.value,
-                                }))
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Loại giao dịch
-                            </label>
-                            <select
-                              value={formData.type}
-                              onChange={(e) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  type: e.target.value as
-                                    | "ban"
-                                    | "cho-thue"
-                                    | "project",
-                                }))
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="ban">Mua bán</option>
-                              <option value="cho-thue">Cho thuê</option>
-                              <option value="project">Dự án</option>
-                            </select>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {formData.type === "ban" &&
-                                "Khoảng giá cho việc mua bán bất động sản"}
-                              {formData.type === "cho-thue" &&
-                                "Khoảng giá cho việc cho thuê bất động sản"}
-                              {formData.type === "project" &&
-                                "Khoảng giá cho các dự án bất động sản"}
-                            </p>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Giá tối thiểu
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  value={formData.minValue}
-                                  onChange={(e) =>
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      minValue: parseFloat(e.target.value) || 0,
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  min="0"
-                                  placeholder="0"
-                                />
-                                <span className="absolute right-3 top-2 text-sm text-gray-500">
-                                  {formData.type === "ban"
-                                    ? "VNĐ"
-                                    : formData.type === "cho-thue"
-                                    ? "VNĐ/tháng"
-                                    : "VNĐ/m²"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Giá tối đa
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  value={formData.maxValue}
-                                  onChange={(e) =>
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      maxValue:
-                                        parseFloat(e.target.value) || -1,
-                                    }))
-                                  }
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  min="-1"
-                                  placeholder="-1 = không giới hạn"
-                                />
-                                <span className="absolute right-3 top-2 text-sm text-gray-500">
-                                  {formData.type === "ban"
-                                    ? "VNĐ"
-                                    : formData.type === "cho-thue"
-                                    ? "VNĐ/tháng"
-                                    : "VNĐ/m²"}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Nhập -1 hoặc để trống nếu không giới hạn trên
-                              </p>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Thứ tự hiển thị
-                            </label>
-                            <input
-                              type="number"
-                              value={formData.order}
-                              onChange={(e) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  order: parseInt(e.target.value) || 0,
-                                }))
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              min="0"
-                            />
-                          </div>
-
-                          <div className="flex gap-3 pt-4">
-                            <button
-                              type="submit"
-                              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
-                            >
-                              {editingPrice ? "Cập nhật" : "Tạo mới"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={resetForm}
-                              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400"
-                            >
-                              Hủy
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Prices Table */}
-                  {loading ? (
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                      <div className="px-6 py-12 text-center">
-                        <div className="flex items-center justify-center space-x-3">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                          <span className="text-gray-500">
-                            Đang tải khoảng giá...
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="animate-fade-in">
-                      <DraggablePriceTable
-                        prices={prices}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onToggleStatus={toggleStatus}
-                        onReorder={handleReorder}
-                        formatPrice={formatPrice}
-                      />
-                    </div>
-                  )}
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="mt-6 flex justify-center">
-                      <nav className="flex space-x-2">
-                        {Array.from(
-                          { length: totalPages },
-                          (_, i) => i + 1
-                        ).map((page) => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-2 text-sm font-medium rounded-md ${
-                              currentPage === page
-                                ? "bg-blue-600 text-white"
-                                : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
-                      </nav>
-                    </div>
-                  )}
-                </div>
-              </main>
-            </div>
-          </>
-        )}
-
-      {/* Show access denied message */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        !(hasRole("admin") || hasRole("employee")) && (
-          <div className="flex items-center justify-center min-h-screen w-full">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Không có quyền truy cập
-              </h1>
-              <p className="text-gray-600 mb-4">
-                Bạn không có quyền truy cập trang này.
-              </p>
-              <button
-                onClick={() => router.push("/")}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Về trang chủ
-              </button>
-            </div>
-          </div>
-        )}
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedPricesManagement() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.LOCATION.MANAGE_PRICES]}>
+      <PricesManagementInternalContent />
+    </AdminGuard>
   );
 }

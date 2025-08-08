@@ -40,7 +40,30 @@ export interface UpdateHeaderMenuRequest extends CreateHeaderMenuRequest {
 
 class HeaderSettingsService {
   private baseUrl = "http://localhost:8080/api/admin/header-settings";
+  private publicUrl = "http://localhost:8080/api/header";
 
+  // Public method - no authentication required
+  async getPublicHeaderMenus(): Promise<HeaderSettingsResponse> {
+    try {
+      const response = await fetch(`${this.publicUrl}/menus`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching public header menus:", error);
+      throw error;
+    }
+  }
+
+  // Admin method - requires authentication and permissions
   async getHeaderMenus(): Promise<HeaderSettingsResponse> {
     try {
       const response = await fetchWithAuth(this.baseUrl, {

@@ -1,6 +1,10 @@
 "use client";
 import React, { useState } from "react";
 import Image from "next/image";
+import {
+  contactService,
+  CreateContactMessage,
+} from "@/services/contactService";
 
 interface Developer {
   name: string;
@@ -21,28 +25,56 @@ export default function ContactBox({
   projectName,
 }: ContactBoxProps) {
   const [formData, setFormData] = useState({
-    fullName: "",
+    name: "",
     phone: "",
+    email: "",
+    message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setIsSubmitted(true);
+      const contactData: CreateContactMessage = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: `Tư vấn dự án ${projectName}`,
+        message:
+          formData.message ||
+          `Tôi quan tâm đến dự án ${projectName}. Vui lòng liên hệ tư vấn cho tôi.`,
+      };
+
+      const result = await contactService.sendContactMessage(contactData);
+
+      if (result.success) {
+        setIsSubmitted(true);
+        // Reset form
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          message: "",
+        });
+      } else {
+        setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
+      }
     } catch (error) {
-      alert("Có lỗi xảy ra, vui lòng thử lại!");
+      console.error("Error sending contact message:", error);
+      setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -99,17 +131,24 @@ export default function ContactBox({
         </div>
       )}
 
-      {/* Contact Form - Simplified */}
+      {/* Contact Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
+        {errorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {errorMessage}
+          </div>
+        )}
+
         <input
           type="text"
-          name="fullName"
+          name="name"
           placeholder="Họ tên *"
-          value={formData.fullName}
+          value={formData.name}
           onChange={handleInputChange}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+
         <input
           type="tel"
           name="phone"
@@ -118,6 +157,25 @@ export default function ContactBox({
           onChange={handleInputChange}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="email"
+          name="email"
+          placeholder="Email *"
+          value={formData.email}
+          onChange={handleInputChange}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <textarea
+          name="message"
+          placeholder="Nội dung (tùy chọn)"
+          value={formData.message}
+          onChange={handleInputChange}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         />
 
         <div className="text-xs text-gray-500">

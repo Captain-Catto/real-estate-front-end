@@ -15,10 +15,12 @@ import Image from "next/image";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { DeveloperService } from "@/services/developerService";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import { Project } from "@/types/project";
 import { DeveloperForSelection } from "@/types/developer";
 
-export default function AdminProjectEditPage() {
+function AdminProjectEditPageInternalInternal() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -586,14 +588,16 @@ export default function AdminProjectEditPage() {
                 <EyeIcon className="w-4 h-4" />
                 {previewMode ? "Chỉnh sửa" : "Xem trước"}
               </button>
-              <button
-                type="submit"
-                form="project-form"
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
+              <PermissionGuard permission={PERMISSIONS.PROJECT.EDIT}>
+                <button
+                  type="submit"
+                  form="project-form"
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+              </PermissionGuard>
             </div>
           </div>
 
@@ -1873,5 +1877,16 @@ export default function AdminProjectEditPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function AdminProjectEditPage() {
+  return (
+    <AdminGuard 
+      permissions={[PERMISSIONS.PROJECT.VIEW]}
+    >
+      <AdminProjectEditPageInternal />
+    </AdminGuard>
   );
 }

@@ -75,11 +75,19 @@ const apiCall = async (url: string, options: RequestInit = {}) => {
   let response = await makeRequest(getAuthHeaders());
 
   if (response.status === 401) {
-    // Try to refresh token
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      // Retry with new token
-      response = await makeRequest(getAuthHeaders());
+    // Try to refresh token only once
+    try {
+      const refreshed = await refreshToken();
+      if (refreshed) {
+        // Retry with new token
+        response = await makeRequest(getAuthHeaders());
+      } else {
+        // If refresh fails, silently return the 401 response
+        return response;
+      }
+    } catch {
+      // If refresh fails, silently return the 401 response
+      return response;
     }
   }
 
@@ -92,6 +100,25 @@ export const AdminService = {
     try {
       const response = await apiCall(`${API_BASE_URL}/admin/stats`);
 
+      if (response.status === 401) {
+        // Return a default response for unauthorized access
+        return {
+          success: false,
+          data: {
+            totalPosts: 0,
+            totalUsers: 0,
+            newUsersThisMonth: 0,
+            postsThisMonth: 0,
+            postsLastMonth: 0,
+            monthlyRevenue: 0,
+            pendingPosts: 0,
+            todayPostViews: 0,
+            approvedPosts: 0,
+          },
+          message: "Unauthorized access",
+        };
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -99,7 +126,22 @@ export const AdminService = {
       return await response.json();
     } catch (error) {
       console.error("Error fetching admin stats:", error);
-      throw error;
+      // Return default response instead of throwing
+      return {
+        success: false,
+        data: {
+          totalPosts: 0,
+          totalUsers: 0,
+          newUsersThisMonth: 0,
+          postsThisMonth: 0,
+          postsLastMonth: 0,
+          monthlyRevenue: 0,
+          pendingPosts: 0,
+          todayPostViews: 0,
+          approvedPosts: 0,
+        },
+        message: "Error fetching stats",
+      };
     }
   },
 
@@ -112,6 +154,15 @@ export const AdminService = {
         `${API_BASE_URL}/admin/recent-activities?limit=${limit}`
       );
 
+      if (response.status === 401) {
+        // Return a default response for unauthorized access
+        return {
+          success: false,
+          data: [],
+          message: "Unauthorized access",
+        };
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -119,7 +170,12 @@ export const AdminService = {
       return await response.json();
     } catch (error) {
       console.error("Error fetching recent activities:", error);
-      throw error;
+      // Return default response instead of throwing
+      return {
+        success: false,
+        data: [],
+        message: "Error fetching activities",
+      };
     }
   },
 
@@ -130,6 +186,15 @@ export const AdminService = {
         `${API_BASE_URL}/admin/top-posts?limit=${limit}`
       );
 
+      if (response.status === 401) {
+        // Return a default response for unauthorized access
+        return {
+          success: false,
+          data: [],
+          message: "Unauthorized access",
+        };
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -137,7 +202,12 @@ export const AdminService = {
       return await response.json();
     } catch (error) {
       console.error("Error fetching top posts:", error);
-      throw error;
+      // Return default response instead of throwing
+      return {
+        success: false,
+        data: [],
+        message: "Error fetching posts",
+      };
     }
   },
 };

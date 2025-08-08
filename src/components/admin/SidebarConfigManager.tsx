@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -18,39 +18,44 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  useSidebarManagement,
-  useSidebarPermissions,
-  SidebarConfig,
-  SidebarMenuItem,
-} from "@/hooks/useSidebarConfig";
-import { AdminGuard } from "./RoleGuard";
+import { useSidebar, useSidebarManagement } from "@/hooks/useSidebar";
+import { type SidebarMenuItem } from "@/store/slices/sidebarSlice";
+import { AdminGuard } from "@/components/auth/ProtectionGuard";
 
 interface EditingItem extends SidebarMenuItem {
   isEditing?: boolean;
 }
 
 const SidebarConfigManager: React.FC = () => {
+  const { config, loading: configLoading, error: configError } = useSidebar();
   const {
-    isAdmin,
     loading: managementLoading,
     error: managementError,
-    getCurrentConfig,
-    updateMenuItem,
-    addMenuItem,
-    removeMenuItem,
+    updateItem,
+    addItem,
+    removeItem,
     reorderItems,
   } = useSidebarManagement();
-  const { permissions } = useSidebarPermissions();
 
-  const [config, setConfig] = useState<SidebarConfig | null>(null);
   const [items, setItems] = useState<EditingItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set()
   );
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    itemId: string;
+    itemName: string;
+    isGroup: boolean;
+  }>({
+    isOpen: false,
+    itemId: "",
+    itemName: "",
+    isGroup: false,
+  });
+
+  // Combine loading states
+  const isLoading = configLoading || managementLoading;
 
   // DnD sensors
   const sensors = useSensors(
@@ -60,29 +65,17 @@ const SidebarConfigManager: React.FC = () => {
     })
   );
 
-  // Load the single sidebar config
-  const loadConfig = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const currentConfig = await getCurrentConfig();
-      setConfig(currentConfig);
-      setItems(
-        currentConfig.items.map((item) => ({ ...item, isEditing: false }))
-      );
-    } catch (error) {
-      console.error("Error loading config:", error);
-      setError(error instanceof Error ? error.message : "Lỗi không xác định");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getCurrentConfig]);
-
+  // Update items when config changes from Redux
   useEffect(() => {
-    if (isAdmin) {
-      loadConfig();
+    if (config) {
+      setItems(
+        config.items.map((item: SidebarMenuItem) => ({
+          ...item,
+          isEditing: false,
+        }))
+      );
     }
-  }, [isAdmin, loadConfig]);
+  }, [config]);
 
   // Start editing an item
   const startEdit = (itemId: string) => {
@@ -119,17 +112,16 @@ const SidebarConfigManager: React.FC = () => {
     try {
       const itemData = { ...item };
       delete itemData.isEditing;
-      await updateMenuItem(itemId, itemData);
+      await updateItem(itemId, itemData);
 
       setItems((prev) =>
         prev.map((i) => (i.id === itemId ? { ...i, isEditing: false } : i))
       );
 
       setHasChanges(false);
-      await loadConfig(); // Reload to get latest data
     } catch (error) {
       console.error("Error saving item:", error);
-      setError(error instanceof Error ? error.message : "Lỗi khi lưu");
+      // Error will be shown via managementError from Redux
     }
   };
 
@@ -137,7 +129,7 @@ const SidebarConfigManager: React.FC = () => {
   const updateItemField = (
     itemId: string,
     field: keyof SidebarMenuItem,
-    value: string | number | boolean | string[]
+    value: string | number | boolean | string[] | Record<string, unknown>
   ) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -148,26 +140,43 @@ const SidebarConfigManager: React.FC = () => {
   };
 
   // Delete item
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteItem = (itemId: string) => {
     const item = items.find((i) => i.id === itemId);
     const itemName = item?.title || "mục này";
+    const isGroup = item?.metadata?.isGroup || false;
 
-    if (
-      !confirm(
-        `Bạn có chắc chắn muốn xóa "${itemName}"?${
-          item?.metadata?.isGroup ? " (Tất cả mục con cũng sẽ bị xóa)" : ""
-        }`
-      )
-    )
-      return;
+    setDeleteModal({
+      isOpen: true,
+      itemId,
+      itemName,
+      isGroup,
+    });
+  };
 
+  // Confirm delete
+  const confirmDelete = async () => {
     try {
-      await removeMenuItem(itemId);
-      await loadConfig();
+      await removeItem(deleteModal.itemId);
+      setDeleteModal({
+        isOpen: false,
+        itemId: "",
+        itemName: "",
+        isGroup: false,
+      });
     } catch (error) {
       console.error("Error deleting item:", error);
-      setError(error instanceof Error ? error.message : "Lỗi khi xóa");
+      // Error will be shown via managementError from Redux
     }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setDeleteModal({
+      isOpen: false,
+      itemId: "",
+      itemName: "",
+      isGroup: false,
+    });
   };
 
   // Add new item
@@ -182,16 +191,17 @@ const SidebarConfigManager: React.FC = () => {
           isGroup ? i.metadata?.isGroup : i.parentId === parentId
         ).length + 1,
       isVisible: true,
-      allowedRoles: ["admin"],
-      metadata: isGroup ? { isGroup: true } : {},
+      allowedRoles: ["admin"], // 🔐 Only admin by default - need explicit permission for employees
+      metadata: isGroup
+        ? { isGroup: true, permissions: [] }
+        : { permissions: [] },
     };
 
     try {
-      await addMenuItem(newItem);
-      await loadConfig();
+      await addItem(newItem);
     } catch (error) {
       console.error("Error adding item:", error);
-      setError(error instanceof Error ? error.message : "Lỗi khi thêm");
+      // Error will be shown via managementError from Redux
     }
   };
 
@@ -279,28 +289,30 @@ const SidebarConfigManager: React.FC = () => {
 
     try {
       await reorderItems(reorderData);
-      await loadConfig();
     } catch (error) {
       console.error("Error reordering items:", error);
-      setError(error instanceof Error ? error.message : "Lỗi khi sắp xếp");
+      // Error will be shown via managementError from Redux
     }
   };
 
   // Categorize items
   const groups = items
     .filter((item) => item.metadata?.isGroup)
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => {
+      // If item is being edited, use original order from config to maintain position
+      const aOrder =
+        a.isEditing && config
+          ? config.items.find((orig) => orig.id === a.id)?.order || a.order
+          : a.order;
+      const bOrder =
+        b.isEditing && config
+          ? config.items.find((orig) => orig.id === b.id)?.order || b.order
+          : b.order;
+      return aOrder - bOrder;
+    });
   const children = items.filter((item) => item.parentId);
 
-  if (!permissions.canViewSidebar) {
-    return (
-      <div className="p-6 text-center text-red-600">
-        Bạn không có quyền truy cập trang này.
-      </div>
-    );
-  }
-
-  if (isLoading || managementLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-64">
         <div className="text-center">
@@ -311,13 +323,13 @@ const SidebarConfigManager: React.FC = () => {
     );
   }
 
-  if (error || managementError) {
+  if (configError || managementError) {
     return (
       <div className="p-6 text-center text-red-600">
         <div className="text-lg font-medium">Có lỗi xảy ra</div>
-        <div className="mt-2">{error || managementError}</div>
+        <div className="mt-2">{configError || managementError}</div>
         <button
-          onClick={loadConfig}
+          onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Thử lại
@@ -349,12 +361,6 @@ const SidebarConfigManager: React.FC = () => {
               {collapsedGroups.size === groups.length
                 ? "📂 Mở rộng"
                 : "📁 Thu gọn"}
-            </button>
-            <button
-              onClick={loadConfig}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Làm mới
             </button>
           </div>
         </div>
@@ -397,7 +403,7 @@ const SidebarConfigManager: React.FC = () => {
                   {!collapsedGroups.has(group.id) && (
                     <>
                       {/* Add Item Button */}
-                      <div className="px-4 pb-2">
+                      <div className="px-4 py-2">
                         <button
                           onClick={() => handleAddItem(group.id)}
                           className="text-sm px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
@@ -416,7 +422,22 @@ const SidebarConfigManager: React.FC = () => {
                         >
                           {children
                             .filter((child) => child.parentId === group.id)
-                            .sort((a, b) => a.order - b.order)
+                            .sort((a, b) => {
+                              // If item is being edited, use original order from config to maintain position
+                              const aOrder =
+                                a.isEditing && config
+                                  ? config.items.find(
+                                      (orig) => orig.id === a.id
+                                    )?.order || a.order
+                                  : a.order;
+                              const bOrder =
+                                b.isEditing && config
+                                  ? config.items.find(
+                                      (orig) => orig.id === b.id
+                                    )?.order || b.order
+                                  : b.order;
+                              return aOrder - bOrder;
+                            })
                             .map((child) => (
                               <div key={child.id} className="ml-4">
                                 <SortableItem
@@ -458,6 +479,41 @@ const SidebarConfigManager: React.FC = () => {
             )}
           </div>
         </DndContext>
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.isOpen && (
+          <div className="fixed inset-0 bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Xác nhận xóa
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Bạn có chắc chắn muốn xóa &quot;{deleteModal.itemName}&quot;?
+                {deleteModal.isGroup && (
+                  <span className="text-red-600 font-medium">
+                    {" "}
+                    (Tất cả mục con cũng sẽ bị xóa)
+                  </span>
+                )}
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelDelete}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={managementLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  {managementLoading ? "Đang xóa..." : "Xóa"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AdminGuard>
   );
@@ -472,7 +528,7 @@ interface SortableItemProps {
   onDelete: () => void;
   onUpdateField: (
     field: keyof SidebarMenuItem,
-    value: string | number | boolean | string[]
+    value: string | number | boolean | string[] | Record<string, unknown>
   ) => void;
   isGroup: boolean;
   isCollapsed?: boolean;
@@ -549,7 +605,7 @@ interface ItemEditorProps {
   onDelete: () => void;
   onUpdateField: (
     field: keyof SidebarMenuItem,
-    value: string | number | boolean | string[]
+    value: string | number | boolean | string[] | Record<string, unknown>
   ) => void;
   isGroup: boolean;
   isCollapsed?: boolean;
@@ -641,10 +697,49 @@ const ItemEditor: React.FC<ItemEditorProps> = ({
                 onUpdateField("allowedRoles", values);
               }}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              title="Ctrl+Click để chọn nhiều roles"
             >
               <option value="admin">Admin</option>
               <option value="employee">Employee</option>
             </select>
+            <div className="text-xs text-gray-500 mt-1">
+              💡 Tip: Ctrl+Click để chọn nhiều roles
+            </div>
+          </div>
+        </div>
+
+        {/* Permissions Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Permissions yêu cầu (để employee xem được menu này)
+          </label>
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={(item.metadata?.permissions || []).join(", ")}
+              onChange={(e) => {
+                const permissions = e.target.value
+                  .split(",")
+                  .map((p) => p.trim())
+                  .filter((p) => p.length > 0);
+
+                const newMetadata = {
+                  ...item.metadata,
+                  permissions: permissions,
+                };
+
+                onUpdateField("metadata", newMetadata);
+              }}
+              placeholder="vd: view_posts, view_users, manage_prices"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+            <div className="text-xs text-gray-500">
+              🔐 Nhập các permission cách nhau bởi dấu phẩy. Employee cần có ít
+              nhất 1 permission này để thấy menu.
+            </div>
+            <div className="text-xs text-blue-600">
+              📝 Ví dụ: view_posts, view_users, manage_prices, view_statistics
+            </div>
           </div>
         </div>
 
@@ -700,6 +795,12 @@ const ItemEditor: React.FC<ItemEditorProps> = ({
             Thứ tự: {item.order} | Hiển thị: {item.isVisible ? "Có" : "Không"} |
             Quyền: {item.allowedRoles.join(", ")}
           </div>
+          {item.metadata?.permissions &&
+            item.metadata.permissions.length > 0 && (
+              <div className="text-xs text-blue-600 mt-1">
+                🔐 Permissions: {item.metadata.permissions.join(", ")}
+              </div>
+            )}
         </div>
       </div>
 

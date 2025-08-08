@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import NewsEditor from "@/components/admin/NewsEditor";
 import { UploadService } from "@/services/uploadService";
 import { toast } from "sonner";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 interface NewsFormData {
   title: string;
@@ -14,7 +16,7 @@ interface NewsFormData {
   image: string;
 }
 
-export default function CreateNewsPage() {
+function CreateNewsPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<NewsFormData>({
     title: "",
@@ -269,5 +271,16 @@ export default function CreateNewsPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedCreateNewsPage() {
+  return (
+    <AdminGuard 
+      permissions={[PERMISSIONS.DASHBOARD.VIEW]}
+    >
+      <CreateNewsPageInternal />
+    </AdminGuard>
   );
 }

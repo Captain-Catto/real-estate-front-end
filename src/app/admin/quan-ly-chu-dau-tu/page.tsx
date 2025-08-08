@@ -5,6 +5,8 @@ import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Pagination } from "@/components/common/Pagination";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { DeveloperService } from "@/services/developerService";
 import {
@@ -15,7 +17,7 @@ import {
 import { UploadService } from "@/services/uploadService";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function AdminDeveloperPage() {
+function AdminDeveloperPage() {
   const router = useRouter();
   const { hasRole, isAuthenticated, user } = useAuth();
   const [accessChecked, setAccessChecked] = useState(false);
@@ -788,5 +790,14 @@ export default function AdminDeveloperPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedAdminDeveloperPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.PROJECT.VIEW]}>
+      <AdminDeveloperPage />
+    </AdminGuard>
   );
 }

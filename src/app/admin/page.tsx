@@ -1,313 +1,275 @@
 "use client";
-import { useState, useEffect } from "react";
-import AdminLayout from "@/components/admin/AdminLayout";
-import StatsCard from "@/components/admin/StatsCard";
-import {
-  HomeIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  CurrencyDollarIcon,
-  EyeIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon,
-} from "@heroicons/react/24/outline";
-import {
-  AdminService,
-  AdminStats,
-  ActivityItem,
-  TopPost,
-} from "@/services/adminService";
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<AdminStats>({
-    totalPosts: 0,
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminHeader from "@/components/admin/AdminHeader";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+import {
+  UserGroupIcon,
+  HomeIcon,
+  DocumentTextIcon,
+  BuildingOfficeIcon,
+  ChartBarIcon,
+  CogIcon,
+  NewspaperIcon,
+  BanknotesIcon,
+} from "@heroicons/react/24/outline";
+
+interface DashboardStats {
+  totalUsers: number;
+  totalPosts: number;
+  totalProjects: number;
+  totalNews: number;
+  totalRevenue: number;
+  pendingPosts: number;
+}
+
+function AdminDashboard() {
+  const router = useRouter();
+  const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
-    newUsersThisMonth: 0,
-    postsThisMonth: 0,
-    postsLastMonth: 0,
-    monthlyRevenue: 0,
+    totalPosts: 0,
+    totalProjects: 0,
+    totalNews: 0,
+    totalRevenue: 0,
     pendingPosts: 0,
-    todayPostViews: 0,
-    approvedPosts: 0,
   });
-  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
-  const [topPosts, setTopPosts] = useState<TopPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    // Simulate loading dashboard stats
+    const loadStats = async () => {
       try {
-        const [statsResponse, activitiesResponse, postsResponse] =
-          await Promise.all([
-            AdminService.getAdminStats(),
-            AdminService.getRecentActivities(10),
-            AdminService.getTopPosts(10),
-          ]);
+        setLoading(true);
+        // TODO: Fetch real stats from API
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        if (statsResponse.success) {
-          setStats(statsResponse.data);
-        }
-        if (activitiesResponse.success) {
-          setRecentActivities(activitiesResponse.data);
-        }
-        if (postsResponse.success) {
-          setTopPosts(postsResponse.data);
-        }
+        setStats({
+          totalUsers: 1250,
+          totalPosts: 8500,
+          totalProjects: 125,
+          totalNews: 450,
+          totalRevenue: 150000000,
+          pendingPosts: 45,
+        });
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        console.error("Error loading dashboard stats:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    loadStats();
   }, []);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(value);
+    }).format(amount);
   };
 
-  const calculateChangePercentage = (current: number, previous: number) => {
-    if (previous === 0) return current > 0 ? "+100%" : "0%";
-    const change = ((current - previous) / previous) * 100;
-    return `${change >= 0 ? "+" : ""}${change.toFixed(1)}%`;
-  };
+  const quickActions = [
+    {
+      title: "Quản lý người dùng",
+      description: "Xem và quản lý thông tin người dùng",
+      icon: UserGroupIcon,
+      href: "/admin/quan-ly-nguoi-dung",
+      permission: PERMISSIONS.USER.VIEW,
+      color: "bg-blue-500",
+    },
+    {
+      title: "Quản lý tin đăng",
+      description: "Duyệt và quản lý tin đăng bất động sản",
+      icon: HomeIcon,
+      href: "/admin/quan-ly-tin-dang",
+      permission: PERMISSIONS.POST.VIEW,
+      color: "bg-green-500",
+    },
+    {
+      title: "Quản lý dự án",
+      description: "Tạo và quản lý các dự án bất động sản",
+      icon: BuildingOfficeIcon,
+      href: "/admin/quan-ly-du-an",
+      permission: PERMISSIONS.PROJECT.VIEW,
+      color: "bg-purple-500",
+    },
+    {
+      title: "Quản lý tin tức",
+      description: "Viết và quản lý bài viết tin tức",
+      icon: NewspaperIcon,
+      href: "/admin/quan-ly-tin-tuc",
+      permission: PERMISSIONS.NEWS.VIEW,
+      color: "bg-orange-500",
+    },
+    {
+      title: "Thống kê",
+      description: "Xem báo cáo và thống kê hệ thống",
+      icon: ChartBarIcon,
+      href: "/admin/thong-ke",
+      permission: PERMISSIONS.STATISTICS.VIEW,
+      color: "bg-indigo-500",
+    },
+    {
+      title: "Cài đặt",
+      description: "Cấu hình hệ thống và danh mục",
+      icon: CogIcon,
+      href: "/admin/quan-ly-danh-muc",
+      permission: PERMISSIONS.SETTINGS.MANAGE_CATEGORIES,
+      color: "bg-gray-500",
+    },
+  ];
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-
-    if (diffInMinutes < 1) return "Vừa xong";
-    if (diffInMinutes < 60) return `${diffInMinutes} phút trước`;
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours} giờ trước`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays} ngày trước`;
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "post_submitted":
-        return <DocumentTextIcon className="w-5 h-5" />;
-      case "user_registered":
-        return <UserGroupIcon className="w-5 h-5" />;
-      case "post_approved":
-        return <CheckCircleIcon className="w-5 h-5" />;
-      case "payment_received":
-        return <CurrencyDollarIcon className="w-5 h-5" />;
-      case "post_rejected":
-        return <XCircleIcon className="w-5 h-5" />;
-      default:
-        return <ClockIcon className="w-5 h-5" />;
-    }
-  };
-
-  const getActivityColor = (status: string) => {
-    switch (status) {
-      case "success":
-        return "text-green-600 bg-green-100";
-      case "pending":
-        return "text-yellow-600 bg-yellow-100";
-      case "error":
-        return "text-red-600 bg-red-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  if (loading) {
-    return (
-      <AdminLayout title="Tổng quan hệ thống">
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <div className="mt-4 text-gray-600">Đang tải dữ liệu...</div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
+  const statsCards = [
+    {
+      title: "Tổng người dùng",
+      value: stats.totalUsers.toLocaleString(),
+      icon: UserGroupIcon,
+      color: "bg-blue-500",
+      permission: PERMISSIONS.USER.VIEW,
+    },
+    {
+      title: "Tin đăng",
+      value: stats.totalPosts.toLocaleString(),
+      icon: HomeIcon,
+      color: "bg-green-500",
+      permission: PERMISSIONS.POST.VIEW,
+    },
+    {
+      title: "Dự án",
+      value: stats.totalProjects.toLocaleString(),
+      icon: BuildingOfficeIcon,
+      color: "bg-purple-500",
+      permission: PERMISSIONS.PROJECT.VIEW,
+    },
+    {
+      title: "Tin tức",
+      value: stats.totalNews.toLocaleString(),
+      icon: NewspaperIcon,
+      color: "bg-orange-500",
+      permission: PERMISSIONS.NEWS.VIEW,
+    },
+    {
+      title: "Doanh thu",
+      value: formatCurrency(stats.totalRevenue),
+      icon: BanknotesIcon,
+      color: "bg-emerald-500",
+      permission: PERMISSIONS.STATISTICS.VIEW,
+    },
+    {
+      title: "Tin chờ duyệt",
+      value: stats.pendingPosts.toLocaleString(),
+      icon: DocumentTextIcon,
+      color: "bg-red-500",
+      permission: PERMISSIONS.POST.APPROVE,
+    },
+  ];
 
   return (
-    <AdminLayout title="Tổng quan hệ thống">
-      {/* Page Description */}
-      <div className="mb-8">
-        <p className="text-gray-600">
-          Xem tổng quan hoạt động của hệ thống bất động sản
-        </p>
-      </div>
+    <div className="flex min-h-screen bg-gray-100">
+      <AdminSidebar />
+      <div className="flex-1">
+        <AdminHeader />
+        <main className="p-6">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Trang quản trị
+            </h1>
+            <p className="text-gray-600">
+              Chào mừng bạn đến với hệ thống quản trị Real Estate Platform
+            </p>
+          </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Tổng tin đăng"
-          value={stats.totalPosts}
-          icon={<DocumentTextIcon className="w-6 h-6" />}
-          change={calculateChangePercentage(
-            stats.postsThisMonth,
-            stats.postsLastMonth
-          )}
-          changeType={
-            stats.postsThisMonth >= stats.postsLastMonth
-              ? "increase"
-              : "decrease"
-          }
-          href="/admin/posts"
-          color="blue"
-        />
-        <StatsCard
-          title="Tin tháng này"
-          value={stats.postsThisMonth}
-          icon={<HomeIcon className="w-6 h-6" />}
-          change={calculateChangePercentage(
-            stats.postsThisMonth,
-            stats.postsLastMonth
-          )}
-          changeType={
-            stats.postsThisMonth >= stats.postsLastMonth
-              ? "increase"
-              : "decrease"
-          }
-          href="/admin/posts"
-          color="yellow"
-        />{" "}
-        <StatsCard
-          title="Doanh thu tháng"
-          value={formatCurrency(stats.monthlyRevenue)}
-          icon={<CurrencyDollarIcon className="w-6 h-6" />}
-          change="Tháng này"
-          changeType="increase"
-          href="/admin/transactions"
-          color="purple"
-        />
-        <StatsCard
-          title="Người dùng"
-          value={stats.totalUsers}
-          icon={<UserGroupIcon className="w-6 h-6" />}
-          change={`+${stats.newUsersThisMonth}`}
-          changeType="increase"
-          href="/admin/quan-ly-nguoi-dung"
-          color="green"
-        />
-      </div>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {statsCards.map((card, index) => (
+              <PermissionGuard key={index} permission={card.permission}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center">
+                    <div className={`${card.color} rounded-lg p-3`}>
+                      <card.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-sm font-medium text-gray-500">
+                        {card.title}
+                      </h3>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {loading ? (
+                          <div className="animate-pulse bg-gray-200 h-8 w-20 rounded"></div>
+                        ) : (
+                          card.value
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PermissionGuard>
+            ))}
+          </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Chờ duyệt"
-          value={stats.pendingPosts}
-          icon={<ClockIcon className="w-6 h-6" />}
-          href="/admin/posts?status=pending"
-          color="yellow"
-        />
-        <StatsCard
-          title="Đã duyệt"
-          value={stats.approvedPosts}
-          icon={<CheckCircleIcon className="w-6 h-6" />}
-          color="green"
-        />
-        <StatsCard
-          title="Lượt xem hôm nay"
-          value={stats.todayPostViews.toLocaleString()}
-          icon={<EyeIcon className="w-6 h-6" />}
-          color="blue"
-        />
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Thao tác nhanh
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {quickActions.map((action, index) => (
+                <PermissionGuard key={index} permission={action.permission}>
+                  <button
+                    onClick={() => router.push(action.href)}
+                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-left hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="flex items-center mb-3">
+                      <div className={`${action.color} rounded-lg p-2`}>
+                        <action.icon className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="ml-3 text-lg font-medium text-gray-900">
+                        {action.title}
+                      </h3>
+                    </div>
+                    <p className="text-gray-600 text-sm">
+                      {action.description}
+                    </p>
+                  </button>
+                </PermissionGuard>
+              ))}
+            </div>
+          </div>
 
-        <StatsCard
-          title="User mới tháng này"
-          value={stats.newUsersThisMonth}
-          icon={<UserGroupIcon className="w-6 h-6" />}
-          color="blue"
-        />
-      </div>
-
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
+          {/* Recent Activity (Placeholder) */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
               Hoạt động gần đây
             </h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {recentActivities.map((activity: ActivityItem) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div
-                    className={`p-2 rounded-full ${getActivityColor(
-                      activity.status
-                    )}`}
-                  >
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-500">
-                      {formatTimeAgo(activity.time)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="text-center py-8 text-gray-500">
+              <ChartBarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Tính năng đang được phát triển</p>
             </div>
           </div>
-        </div>
-
-        {/* Top Posts */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Tin đăng hot nhất
-            </h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {topPosts.map((post: TopPost, index) => (
-                <div key={post.id} className="flex items-center space-x-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600">
-                      {index + 1}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
-                      {post.title}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {post.views.toLocaleString()} lượt xem • {post.author}
-                    </p>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        post.status === "approved"
-                          ? "bg-green-100 text-green-800"
-                          : post.status === "pending"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {post.status === "approved"
-                        ? "Đang hiển thị"
-                        : post.status === "pending"
-                        ? "Chờ duyệt"
-                        : "Khác"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        </main>
       </div>
-    </AdminLayout>
+    </div>
+  );
+}
+
+// Wrap với AdminGuard
+function AdminPageInternal() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.DASHBOARD.VIEW]}>
+      <AdminDashboard />
+    </AdminGuard>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedAdminPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.DASHBOARD.VIEW]}>
+      <AdminPageInternal />
+    </AdminGuard>
   );
 }

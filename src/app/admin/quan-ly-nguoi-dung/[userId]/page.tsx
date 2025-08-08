@@ -2,17 +2,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import AdminHeader from "@/components/admin/AdminHeader";
+import Link from "next/link";
+import AdminLayout from "@/components/admin/AdminLayout";
 import { Pagination } from "@/components/common/Pagination";
+import { toast } from "sonner";
 import {
   ArrowLeftIcon,
   UserIcon,
   CheckCircleIcon,
-  XCircleIcon,
   PhoneIcon,
   EnvelopeIcon,
-  MapPinIcon,
   CalendarIcon,
   EyeIcon,
   PencilIcon,
@@ -33,8 +32,13 @@ import {
   UserPayment,
   UserLog,
 } from "@/services/userService";
+import { locationService } from "@/services/locationService";
+import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
-export default function UserDetailPage() {
+// Trang chi tiết người dùng với kiểm tra quyền truy cập
+function UserDetailPage() {
   const params = useParams();
   const router = useRouter();
   const userId = params?.userId as string;
@@ -45,44 +49,28 @@ export default function UserDetailPage() {
   const [logs, setLogs] = useState<UserLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "info" | "posts" | "transactions" | "logs"
-  >("info");
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"posts" | "transactions" | "logs">(
+    "posts"
+  );
+
+  // Location names cache
+  const [locationNames, setLocationNames] = useState<Map<string, string>>(
+    new Map()
+  );
 
   // Pagination states
-  const [postsPagination, setPostsPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 10,
-  });
-  const [paymentsPagination, setPaymentsPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 10,
-  });
-  const [logsPagination, setLogsPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 10,
-  });
+  const [postsPage, setPostsPage] = useState(1);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [logsPage, setLogsPage] = useState(1);
+  const [postsTotalPages, setPostsTotalPages] = useState(1);
+  const [transactionsTotalPages, setTransactionsTotalPages] = useState(1);
+  const [logsTotalPages, setLogsTotalPages] = useState(1);
 
-  // Filter states
-  const [postsFilters, setPostsFilters] = useState({
-    status: "all",
-    type: "all",
-  });
-  const [paymentsFilters, setPaymentsFilters] = useState({
-    status: "all",
-  });
-
-  // Form data for editing user
+  // Edit form states
+  const [isEditing, setIsEditing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [editForm, setEditForm] = useState({
     username: "",
     email: "",
@@ -91,222 +79,211 @@ export default function UserDetailPage() {
     status: "active" as User["status"],
   });
 
-  console.log("User ID from params:", userId);
+  // Fetch user data
+  const fetchUser = useCallback(async () => {
+    if (!userId) return;
 
-  const fetchUserData = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getUserById(userId);
-      if (result.success && result.data) {
-        setUser(result.data.user);
+      const response = await getUserById(userId);
+      if (response.success && response.data) {
+        setUser(response.data.user);
+        setEditForm({
+          username: response.data.user.username,
+          email: response.data.user.email,
+          phoneNumber: response.data.user.phoneNumber || "",
+          role: response.data.user.role,
+          status: response.data.user.status,
+        });
       } else {
-        console.error("Error fetching user:", result.message);
-        // Handle error - could redirect to 404 page
+        toast.error("Không thể tải thông tin người dùng");
+        router.push("/admin/quan-ly-nguoi-dung");
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      // Handle error - could redirect to 404 page
+      console.error("Error fetching user:", error);
+      toast.error("Có lỗi xảy ra khi tải thông tin người dùng");
+      router.push("/admin/quan-ly-nguoi-dung");
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, router]);
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserData();
-    }
-  }, [userId, fetchUserData]);
+  // Fetch user posts
+  const fetchPosts = useCallback(async () => {
+    if (!userId) return;
 
-  const fetchUserPosts = useCallback(
-    async (page: number = 1) => {
-      setPostsLoading(true);
-      try {
-        const result = await getUserPosts(userId, {
-          page,
-          limit: postsPagination.itemsPerPage,
-          status:
-            postsFilters.status !== "all" ? postsFilters.status : undefined,
-          type: postsFilters.type !== "all" ? postsFilters.type : undefined,
-        });
-
-        if (result.success && result.data) {
-          setPosts(result.data.posts);
-          setPostsPagination(result.data.pagination);
-        } else {
-          console.error("Error fetching user posts:", result.message);
-          setPosts([]);
-        }
-      } catch (error) {
-        console.error("Error fetching user posts:", error);
-        setPosts([]);
-      } finally {
-        setPostsLoading(false);
-      }
-    },
-    [
-      userId,
-      postsPagination.itemsPerPage,
-      postsFilters.status,
-      postsFilters.type,
-    ]
-  );
-
-  const fetchUserPayments = useCallback(
-    async (page: number = 1) => {
-      // setPaymentsLoading(true);
-      try {
-        const result = await getUserPayments(userId, {
-          page,
-          limit: 10,
-          // status:
-          //   paymentsFilters.status !== "all"
-          //     ? paymentsFilters.status
-          //     : undefined,
-        });
-
-        if (result.success && result.data) {
-          setTransactions(result.data.payments);
-          // setPaymentsPagination(result.data.pagination);
-        } else {
-          console.error("Error fetching user payments:", result.message);
-          setTransactions([]);
-        }
-      } catch (error) {
-        console.error("Error fetching user payments:", error);
-        setTransactions([]);
-      } finally {
-        // setPaymentsLoading(false);
-      }
-    },
-    [userId]
-  );
-
-  const fetchUserLogs = useCallback(
-    async (page: number = 1) => {
-      setLogsLoading(true);
-      try {
-        const result = await getUserLogs(userId, {
-          page,
-          limit: 10,
-        });
-
-        console.log("Fetching user logs:", result);
-
-        if (result.success && result.data) {
-          setLogs(result.data.logs);
-          setLogsPagination(result.data.pagination);
-        } else {
-          console.error("Error fetching user logs:", result.message);
-          setLogs([]);
-        }
-      } catch (error) {
-        console.error("Error fetching user logs:", error);
-        setLogs([]);
-      } finally {
-        setLogsLoading(false);
-      }
-    },
-    [userId]
-  );
-
-  // Load posts when activeTab changes to "posts" or filters change
-  useEffect(() => {
-    if (activeTab === "posts" && userId) {
-      fetchUserPosts(1);
-    }
-  }, [activeTab, userId, fetchUserPosts]);
-
-  // Load payments when activeTab changes to "transactions" or filters change
-  useEffect(() => {
-    if (activeTab === "transactions" && userId) {
-      fetchUserPayments(1);
-    }
-  }, [activeTab, userId, fetchUserPayments]);
-
-  // Load logs when activeTab changes to "logs"
-  useEffect(() => {
-    if (activeTab === "logs" && userId) {
-      fetchUserLogs(1);
-    }
-  }, [activeTab, userId, fetchUserLogs]);
-
-  console.log("User data:", user);
-
-  const handleStatusChange = async (newStatus: User["status"]) => {
-    if (!user) return;
-
+    setPostsLoading(true);
     try {
-      const result = await updateUserStatus(user._id, newStatus);
-      if (result.success) {
-        setUser({ ...user, status: newStatus });
-      } else {
-        console.error("Error updating user status:", result.message);
+      const response = await getUserPosts(userId, {
+        page: postsPage,
+        limit: 10,
+      });
+      if (response.success) {
+        setPosts(response.data.posts);
+        setPostsTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch (error) {
-      console.error("Error updating user status:", error);
+      console.error("Error fetching posts:", error);
+    } finally {
+      setPostsLoading(false);
     }
-  };
+  }, [userId, postsPage]);
 
-  // Handle edit user
-  const handleEditUser = () => {
-    if (!user) return;
+  // Fetch user transactions
+  const fetchTransactions = useCallback(async () => {
+    if (!userId) return;
 
-    setEditForm({
-      username: user.username,
-      email: user.email,
-      phoneNumber: user.phoneNumber || "",
-      role: user.role,
-      status: user.status,
-    });
-    setShowEditModal(true);
-  };
+    setTransactionsLoading(true);
+    try {
+      const response = await getUserPayments(userId, {
+        page: transactionsPage,
+        limit: 10,
+      });
+      if (response.success) {
+        setTransactions(response.data.payments);
+        setTransactionsTotalPages(response.data.pagination?.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    } finally {
+      setTransactionsLoading(false);
+    }
+  }, [userId, transactionsPage]);
 
+  // Fetch user logs
+  const fetchLogs = useCallback(async () => {
+    if (!userId) return;
+
+    setLogsLoading(true);
+    try {
+      const response = await getUserLogs(userId, { page: logsPage, limit: 10 });
+      if (response.success) {
+        setLogs(response.data.logs);
+        setLogsTotalPages(response.data.pagination?.totalPages || 1);
+      }
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+    } finally {
+      setLogsLoading(false);
+    }
+  }, [userId, logsPage]);
+
+  // Get location name from cache or fetch
+  const getLocationName = useCallback(
+    async (
+      provinceCode?: string,
+      districtCode?: string,
+      wardCode?: string
+    ): Promise<string> => {
+      if (!provinceCode) return "Không xác định";
+
+      const cacheKey = `${provinceCode}-${districtCode || ""}-${
+        wardCode || ""
+      }`;
+
+      // Check cache first
+      if (locationNames.has(cacheKey)) {
+        return locationNames.get(cacheKey)!;
+      }
+
+      try {
+        // Use locationService to get names
+        const locationNamesData = await locationService.getLocationNames(
+          provinceCode,
+          wardCode
+        );
+
+        let fullAddress = "";
+        if (locationNamesData.wardName && locationNamesData.provinceName) {
+          fullAddress = `${locationNamesData.wardName}, ${locationNamesData.provinceName}`;
+        } else if (locationNamesData.provinceName) {
+          fullAddress = locationNamesData.provinceName;
+        } else {
+          fullAddress = provinceCode;
+        }
+
+        // Cache the result
+        setLocationNames((prev) => new Map(prev.set(cacheKey, fullAddress)));
+        return fullAddress;
+      } catch (error) {
+        console.error("Error fetching location name:", error);
+        const fallback = `${wardCode || districtCode || provinceCode}`;
+        setLocationNames((prev) => new Map(prev.set(cacheKey, fallback)));
+        return fallback;
+      }
+    },
+    [locationNames, setLocationNames]
+  );
+
+  // Load initial data
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
+
+  // Load tab data when tab changes
+  useEffect(() => {
+    if (activeTab === "posts") {
+      fetchPosts();
+    } else if (activeTab === "transactions") {
+      fetchTransactions();
+    } else if (activeTab === "logs") {
+      fetchLogs();
+    }
+  }, [activeTab, fetchPosts, fetchTransactions, fetchLogs]);
+
+  // Handle user update
   const handleSaveUser = async () => {
     if (!user) return;
 
     setIsProcessing(true);
     try {
-      const result = await updateUser(user._id, {
+      const response = await updateUser(user._id, {
         username: editForm.username,
-        // email is not included as it should not be modified
         phoneNumber: editForm.phoneNumber || undefined,
         role: editForm.role,
         status: editForm.status,
       });
 
-      if (result.success && result.data) {
-        setUser(result.data.user);
-        setShowEditModal(false);
-        alert("Cập nhật thông tin người dùng thành công!");
+      if (response.success && response.data) {
+        setUser(response.data.user);
+        setIsEditing(false);
+        toast.success("Cập nhật thông tin thành công!");
       } else {
-        alert(result.message || "Có lỗi xảy ra khi cập nhật thông tin");
+        toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error) {
       console.error("Error updating user:", error);
-      alert("Có lỗi xảy ra khi cập nhật thông tin");
+      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Handle view post - always use admin preview when in admin
-  const handleViewPost = (post: UserPost) => {
-    window.open(`/admin/quan-ly-tin-dang/${post._id}`, "_blank");
-  };
+  // Handle status change
+  const handleStatusChange = async (newStatus: User["status"]) => {
+    if (!user) return;
 
-  const handleCancelEdit = () => {
-    if (user) {
-      setEditForm({
-        username: user.username,
-        email: user.email,
-        phoneNumber: user.phoneNumber || "",
-        role: user.role,
-        status: user.status,
-      });
+    setIsProcessing(true);
+    try {
+      const response = await updateUserStatus(user._id, newStatus);
+      if (response.success) {
+        setUser({ ...user, status: newStatus });
+        setEditForm({ ...editForm, status: newStatus });
+        toast.success("Cập nhật trạng thái thành công");
+      } else {
+        toast.error(
+          response.message || "Có lỗi xảy ra khi cập nhật trạng thái"
+        );
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
+    } finally {
+      setIsProcessing(false);
     }
-    setShowEditModal(false);
   };
 
+  // Helper functions
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -322,46 +299,6 @@ export default function UserDetailPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const formatDetailedDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor(
-      (now.getTime() - date.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 1) {
-      return "Vừa xong";
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes} phút trước`;
-    } else if (diffInMinutes < 1440) {
-      const hours = Math.floor(diffInMinutes / 60);
-      return `${hours} giờ trước`;
-    } else {
-      const days = Math.floor(diffInMinutes / 1440);
-      if (days < 7) {
-        return `${days} ngày trước`;
-      } else {
-        return date.toLocaleDateString("vi-VN", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
-    }
-  };
-
-  const formatPrice = (price: string) => {
-    const num = parseInt(price);
-    if (num >= 1000000000) {
-      return `${(num / 1000000000).toFixed(1)} tỷ`;
-    } else if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)} tr`;
-    }
-    return num.toLocaleString();
   };
 
   const getRoleText = (role: User["role"]) => {
@@ -403,1127 +340,771 @@ export default function UserDetailPage() {
     }
   };
 
-  const getPostStatusColor = (status: UserPost["status"]) => {
+  const getPostStatusColor = (status: string) => {
     switch (status) {
-      case "active":
+      case "approved":
         return "bg-green-100 text-green-800";
       case "pending":
         return "bg-yellow-100 text-yellow-800";
       case "rejected":
         return "bg-red-100 text-red-800";
-      case "expired":
-        return "bg-gray-100 text-gray-800";
-      case "sold":
-        return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getPostStatusText = (status: UserPost["status"]) => {
+  const getTransactionStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "Đang hiển thị";
+      case "completed":
+        return "bg-green-100 text-green-800";
       case "pending":
-        return "Chờ duyệt";
-      case "rejected":
-        return "Bị từ chối";
-      case "expired":
-        return "Hết hạn";
-      case "sold":
-        return "Đã bán";
+        return "bg-yellow-100 text-yellow-800";
+      case "failed":
+        return "bg-red-100 text-red-800";
       default:
-        return status;
+        return "bg-gray-100 text-gray-800";
     }
+  };
+
+  // Location Display Component
+  const LocationDisplay = ({
+    location,
+    fallback = "Không xác định",
+  }: {
+    location?: {
+      province?: string;
+      district?: string;
+      ward?: string;
+      address?: string;
+    };
+    fallback?: string;
+  }) => {
+    const [displayName, setDisplayName] = useState<string>(fallback);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+      const fetchLocationName = async () => {
+        if (!location?.province) {
+          setDisplayName(fallback);
+          return;
+        }
+
+        setIsLoading(true);
+        try {
+          const name = await getLocationName(
+            location.province,
+            location.district,
+            location.ward
+          );
+          let fullAddress = name;
+
+          // Thêm địa chỉ cụ thể nếu có
+          if (location.address && location.address.trim()) {
+            fullAddress = `${location.address}, ${name}`;
+          }
+
+          setDisplayName(fullAddress);
+        } catch (error) {
+          console.error("Error fetching location:", error);
+          setDisplayName(fallback);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchLocationName();
+    }, [location, fallback]);
+
+    if (isLoading) {
+      return <span className="text-gray-400">⏳</span>;
+    }
+
+    return (
+      <span title={displayName} className="truncate max-w-xs inline-block">
+        {displayName}
+      </span>
+    );
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
+      <AdminLayout title="Chi tiết người dùng">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                Không tìm thấy người dùng
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Người dùng này không tồn tại hoặc đã bị xóa.
-              </p>
-              <div className="mt-6">
+      <AdminLayout title="Không tìm thấy người dùng">
+        <div className="text-center py-12">
+          <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">
+            Không tìm thấy người dùng
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Người dùng không tồn tại hoặc đã bị xóa.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/admin/quan-ly-nguoi-dung"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <ArrowLeftIcon className="mr-2 h-4 w-4" />
+              Quay lại danh sách
+            </Link>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout title={`Chi tiết: ${user.username}`}>
+      {/* Back Button */}
+      <div className="mb-6">
+        <Link
+          href="/admin/quan-ly-nguoi-dung"
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+          Quay lại danh sách người dùng
+        </Link>
+      </div>
+
+      {/* User Overview Card */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {user.avatar ? (
+                <Image
+                  className="h-16 w-16 rounded-full object-cover"
+                  src={user.avatar}
+                  alt={user.username}
+                  width={64}
+                  height={64}
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center">
+                  <UserIcon className="h-8 w-8 text-gray-600" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  {user.username}
+                  {user.isVerified && (
+                    <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                  )}
+                </h1>
+                <p className="text-sm text-gray-500 flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <EnvelopeIcon className="h-4 w-4" />
+                    {user.email}
+                  </span>
+                  {user.phoneNumber && (
+                    <span className="flex items-center gap-1">
+                      <PhoneIcon className="h-4 w-4" />
+                      {user.phoneNumber}
+                    </span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-sm text-gray-600">
+                    {getRoleText(user.role)}
+                  </span>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
+                      user.status
+                    )}`}
+                  >
+                    {getStatusText(user.status)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <PermissionGuard permission={PERMISSIONS.USER.EDIT}>
                 <button
-                  onClick={() => router.back()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
-                  Quay lại
+                  <PencilIcon className="mr-2 h-4 w-4" />
+                  {isEditing ? "Hủy chỉnh sửa" : "Chỉnh sửa"}
                 </button>
+              </PermissionGuard>
+
+              <PermissionGuard permission={PERMISSIONS.USER.CHANGE_STATUS}>
+                <select
+                  value={user.status}
+                  onChange={(e) =>
+                    handleStatusChange(e.target.value as User["status"])
+                  }
+                  disabled={isProcessing}
+                  className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Không hoạt động</option>
+                  <option value="banned">Đã cấm</option>
+                </select>
+              </PermissionGuard>
+            </div>
+          </div>
+        </div>
+
+        {/* Edit Form */}
+        {isEditing && (
+          <PermissionGuard permission={PERMISSIONS.USER.EDIT}>
+            <div className="border-t border-gray-200 px-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tên người dùng
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.username}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, username: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số điện thoại
+                  </label>
+                  <input
+                    type="tel"
+                    value={editForm.phoneNumber}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, phoneNumber: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vai trò
+                  </label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        role: e.target.value as User["role"],
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="user">Người dùng</option>
+                    <option value="employee">Nhân viên</option>
+                    <option value="admin">Quản trị viên</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveUser}
+                  disabled={isProcessing}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isProcessing ? "Đang lưu..." : "Lưu thay đổi"}
+                </button>
+              </div>
+            </div>
+          </PermissionGuard>
+        )}
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <DocumentTextIcon className="h-6 w-6 text-gray-400" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Tổng tin đăng
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {user.totalPosts || 0}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CurrencyDollarIcon className="h-6 w-6 text-gray-400" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Tổng giao dịch
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {user.totalTransactions || 0}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CurrencyDollarIcon className="h-6 w-6 text-gray-400" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Tổng chi tiêu
+                  </dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {formatCurrency(user.totalSpent || 0)}
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <CalendarIcon className="h-6 w-6 text-gray-400" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Ngày tham gia
+                  </dt>
+                  <dd className="text-sm font-medium text-gray-900">
+                    {formatDate(user.createdAt)}
+                  </dd>
+                </dl>
               </div>
             </div>
           </div>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="flex min-h-screen bg-gray-100">
-      <AdminSidebar />
+      {/* Tabs */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            {[
+              { key: "posts", label: "Tin đăng", icon: HomeIcon },
+              {
+                key: "transactions",
+                label: "Giao dịch",
+                icon: CurrencyDollarIcon,
+              },
+              { key: "logs", label: "Lịch sử", icon: DocumentTextIcon },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                  activeTab === tab.key
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
 
-      <div className="flex-1">
-        <AdminHeader />
-
-        <main className="p-6">
-          {/* Back Button */}
-          <div className="mb-6">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeftIcon className="w-4 h-4" />
-              Quay lại danh sách người dùng
-            </button>
-          </div>
-
-          {/* User Header */}
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                {/* User Info */}
-                <div className="flex items-center gap-6">
-                  {/* Avatar */}
-                  <div>
-                    {user.avatar ? (
-                      <Image
-                        className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
-                        src={user.avatar}
-                        alt={user.username}
-                        width={96}
-                        height={96}
-                        style={{ objectFit: "cover" }}
-                      />
-                    ) : (
-                      <div className="h-24 w-24 rounded-full bg-gray-300 flex items-center justify-center border-4 border-white shadow-lg">
-                        <UserIcon className="h-12 w-12 text-gray-600" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Basic Info */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-2xl font-bold text-gray-900">
-                        {user.username}
-                      </h1>
-                      {user.isVerified && (
-                        <CheckCircleIcon className="h-6 w-6 text-green-500" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                      <div className="flex items-center gap-1">
-                        <EnvelopeIcon className="h-4 w-4" />
-                        {user.email}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <PhoneIcon className="h-4 w-4" />
-                        {user.phoneNumber}
-                      </div>
-                      {user.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPinIcon className="h-4 w-4" />
-                          {user.location}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                          user.status
-                        )}`}
-                      >
-                        {getStatusText(user.status)}
-                      </span>
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        {getRoleText(user.role)}
-                      </span>
-                    </div>
-                  </div>
+        <div className="p-6">
+          {/* Posts Tab */}
+          {activeTab === "posts" && (
+            <div>
+              {postsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                 </div>
-
-                {/* Actions */}
-                <div className="flex flex-col lg:flex-row gap-3">
-                  <select
-                    value={user.status}
-                    onChange={(e) =>
-                      handleStatusChange(e.target.value as User["status"])
-                    }
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
-                    <option value="banned">Đã cấm</option>
-                  </select>
-
-                  <button
-                    onClick={handleEditUser}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    <PencilIcon className="h-4 w-4 mr-2" />
-                    Chỉnh sửa
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-blue-100">
-                  <DocumentTextIcon className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tin đăng</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {user.totalPosts}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-green-100">
-                  <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Giao dịch</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {user.totalTransactions}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-purple-100">
-                  <HomeIcon className="w-6 h-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Tổng chi tiêu
-                  </p>
-                  <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(user.totalSpent || 0)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-orange-100">
-                  <CalendarIcon className="w-6 h-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">
-                    Thành viên từ
-                  </p>
-                  <p className="text-sm font-bold text-gray-900">
-                    {new Date(user.createdAt).toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8 px-6">
-                <button
-                  onClick={() => setActiveTab("info")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "info"
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Thông tin chi tiết
-                </button>
-                <button
-                  onClick={() => setActiveTab("posts")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "posts"
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Tin đăng
-                </button>
-                <button
-                  onClick={() => setActiveTab("transactions")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "transactions"
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Giao dịch
-                </button>
-                <button
-                  onClick={() => setActiveTab("logs")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "logs"
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  Lịch sử thay đổi
-                </button>
-              </nav>
-            </div>
-
-            <div className="p-6">
-              {/* User Info Tab */}
-              {activeTab === "info" && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Personal Information */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Thông tin cá nhân
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Họ và tên
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {user.username}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Email
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {user.email}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Số điện thoại
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {user.phoneNumber || "Chưa cập nhật"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contact & Security */}
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      Thông tin hệ thống
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">
-                          Ngày tạo tài khoản
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900">
-                          {formatDate(user.createdAt)}
-                        </p>
-                      </div>
-                      {user.lastLoginAt && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Đăng nhập lần cuối
-                          </label>
-                          <p className="mt-1 text-sm text-gray-900">
-                            {formatDate(user.lastLoginAt)}
+              ) : posts.length > 0 ? (
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <div
+                      key={post._id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <HomeIcon className="h-4 w-4 text-blue-500" />
+                            <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
+                              {post.title}
+                            </h3>
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                post.type === "ban"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {post.type === "ban" ? "Bán" : "Cho thuê"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-1">
+                            📍{" "}
+                            <LocationDisplay
+                              location={post.location}
+                              fallback="Không xác định địa chỉ"
+                            />{" "}
+                            • {post.category}
                           </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span className="flex items-center gap-1 font-medium text-green-600">
+                              💰 {formatCurrency(post.price)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              📏 {post.area} m²
+                            </span>
+                            <span className="flex items-center gap-1">
+                              👁️ {post.views || 0} lượt xem
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />
+                              {formatDate(post.createdAt)}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Posts Tab */}
-              {activeTab === "posts" && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Tin đăng của {user.username}
-                    </h3>
-                  </div>
-
-                  {postsLoading ? (
-                    <div className="flex justify-center items-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : posts.length > 0 ? (
-                    <>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Tin đăng
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Thông tin
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Trạng thái
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ngày tạo
-                              </th>
-                              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Thao tác
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {posts.map((post) => (
-                              <tr key={post._id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <div className="flex-shrink-0 w-12 h-12">
-                                      {post.images && post.images.length > 0 ? (
-                                        <Image
-                                          src={post.images[0]}
-                                          alt={post.title}
-                                          width={48}
-                                          height={48}
-                                          className="w-12 h-12 object-cover rounded-lg"
-                                        />
-                                      ) : (
-                                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                                          <span className="text-gray-500 text-xs">
-                                            IMG
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="ml-4">
-                                      <div className="flex items-center gap-2">
-                                        <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-xs">
-                                          {post.title}
-                                        </div>
-                                      </div>
-                                      <div className="text-sm text-gray-500">
-                                        #{post._id}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-900">
-                                    <div className="font-medium">
-                                      {formatPrice(post.price.toString())}{" "}
-                                      {post.type === "ban"
-                                        ? "VNĐ"
-                                        : "VNĐ/tháng"}
-                                    </div>
-                                    <div className="text-gray-500">
-                                      {post.area}m² • {post.location.province},{" "}
-                                      {post.location.district}
-                                    </div>
-                                    <div className="text-gray-500">
-                                      {post.views.toLocaleString()} lượt xem
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span
-                                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPostStatusColor(
-                                      post.status
-                                    )}`}
-                                  >
-                                    {getPostStatusText(post.status)}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {formatDate(post.createdAt)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                  <div className="flex items-center justify-end space-x-2">
-                                    <button
-                                      onClick={() => handleViewPost(post)}
-                                      className="p-1 text-blue-600 hover:text-blue-900"
-                                      title="Xem chi tiết trong admin"
-                                    >
-                                      <EyeIcon className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <div className="flex flex-col items-end gap-2 ml-4">
+                          <span
+                            className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getPostStatusColor(
+                              post.status
+                            )}`}
+                          >
+                            {post.status === "active"
+                              ? "Hoạt động"
+                              : post.status === "pending"
+                              ? "Chờ duyệt"
+                              : post.status === "rejected"
+                              ? "Từ chối"
+                              : post.status === "expired"
+                              ? "Hết hạn"
+                              : post.status === "deleted"
+                              ? "Đã xóa"
+                              : post.status}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/admin/quan-ly-tin-dang/${post._id}`}
+                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors group flex items-center gap-1"
+                              title="Xem chi tiết tin đăng"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                              <span className="text-xs">Chi tiết</span>
+                            </Link>
+                          </div>
+                        </div>
                       </div>
+                    </div>
+                  ))}
 
-                      {/* Posts Pagination */}
-                      {postsPagination.totalPages > 1 && (
-                        <div className="mt-6 flex justify-center">
-                          <Pagination
-                            currentPage={postsPagination.currentPage}
-                            totalPages={postsPagination.totalPages}
-                            onPageChange={(page) => fetchUserPosts(page)}
-                            showPages={5}
-                          />
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        Chưa có tin đăng nào
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Người dùng này chưa đăng tin nào.
-                      </p>
+                  {postsTotalPages > 1 && (
+                    <div className="flex justify-center mt-6">
+                      <Pagination
+                        currentPage={postsPage}
+                        totalPages={postsTotalPages}
+                        onPageChange={setPostsPage}
+                        showPages={5}
+                      />
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* Transactions Tab */}
-              {activeTab === "transactions" && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Lịch sử giao dịch
-                    </h3>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <HomeIcon className="h-8 w-8 text-gray-400" />
                   </div>
-
-                  {transactions.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Mã giao dịch
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Mô tả
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Số tiền
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Trạng thái
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Ngày giao dịch
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {transactions.map((transaction) => (
-                            <tr
-                              key={transaction._id}
-                              className="hover:bg-gray-50"
-                            >
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                #{transaction.orderId}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="text-sm text-gray-900">
-                                  {transaction.description}
-                                </div>
-                                {transaction.postId && (
-                                  <div className="text-xs text-gray-500">
-                                    Tin: {transaction.postId.title}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {formatCurrency(transaction.amount)}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {transaction.paymentMethod}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                    transaction.status === "completed"
-                                      ? "bg-green-100 text-green-800"
-                                      : transaction.status === "pending"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {transaction.status === "completed"
-                                    ? "Hoàn thành"
-                                    : transaction.status === "pending"
-                                    ? "Đang xử lý"
-                                    : "Thất bại"}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {formatDate(transaction.createdAt)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <CurrencyDollarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        Chưa có giao dịch nào
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Người dùng này chưa thực hiện giao dịch nào.
-                      </p>
-                    </div>
-                  )}
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Chưa có tin đăng nào
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Người dùng này chưa đăng tin bất động sản nào.
+                  </p>
                 </div>
               )}
-
-              {/* Logs Tab */}
-              {activeTab === "logs" && (
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      Lịch sử thay đổi
-                    </h3>
-                    <div className="text-sm text-gray-500">
-                      Theo dõi tất cả thay đổi thông tin người dùng
-                    </div>
-                  </div>
-
-                  {logsLoading ? (
-                    <div className="flex justify-center items-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : logs.length > 0 ? (
-                    <div className="space-y-4">
-                      {logs.map((log) => (
-                        <div
-                          key={log._id}
-                          className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              {/* Action Header */}
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="flex items-center gap-2">
-                                  {log.action === "updated" && (
-                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                      <PencilIcon className="w-4 h-4 text-blue-600" />
-                                    </div>
-                                  )}
-                                  {log.action === "statusChanged" && (
-                                    <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                      <ExclamationTriangleIcon className="w-4 h-4 text-yellow-600" />
-                                    </div>
-                                  )}
-                                  {log.action === "created" && (
-                                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                      <UserIcon className="w-4 h-4 text-green-600" />
-                                    </div>
-                                  )}
-                                  {log.action === "deleted" && (
-                                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                                      <XCircleIcon className="w-4 h-4 text-red-600" />
-                                    </div>
-                                  )}
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {log.action === "updated" &&
-                                        "Cập nhật thông tin"}
-                                      {log.action === "statusChanged" &&
-                                        "Thay đổi trạng thái"}
-                                      {log.action === "created" &&
-                                        "Tạo tài khoản"}
-                                      {log.action === "deleted" &&
-                                        "Xóa tài khoản"}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {formatDetailedDate(log.createdAt)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Changed By Info */}
-                              <div className="mb-3">
-                                <div className="flex items-center gap-2 text-sm">
-                                  <span className="text-gray-500">
-                                    Thực hiện bởi:
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                      <span className="text-xs font-medium text-gray-600">
-                                        {log.changedBy?.username
-                                          ?.charAt(0)
-                                          .toUpperCase() || "?"}
-                                      </span>
-                                    </div>
-                                    <span className="font-medium text-gray-900">
-                                      {log.changedBy?.username || "Hệ thống"}
-                                    </span>
-                                    <span className="text-gray-500">
-                                      ({log.changedBy?.email})
-                                    </span>
-                                    <span
-                                      className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                                        log.changedBy?.role === "admin"
-                                          ? "bg-red-100 text-red-800"
-                                          : log.changedBy?.role === "employee"
-                                          ? "bg-blue-100 text-blue-800"
-                                          : "bg-gray-100 text-gray-800"
-                                      }`}
-                                    >
-                                      {log.changedBy?.role === "admin" &&
-                                        "Quản trị viên"}
-                                      {log.changedBy?.role === "employee" &&
-                                        "Nhân viên"}
-                                      {log.changedBy?.role === "employee" &&
-                                        "Nhân viên"}
-                                      {log.changedBy?.role === "user" &&
-                                        "Người dùng"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Changes Detail */}
-                              {log.changes &&
-                                Object.keys(log.changes).length > 0 && (
-                                  <div className="bg-gray-50 rounded-md p-3">
-                                    <div className="text-sm font-medium text-gray-700 mb-2">
-                                      Chi tiết thay đổi:
-                                    </div>
-                                    <div className="space-y-2">
-                                      {Object.entries(log.changes).map(
-                                        ([field, change]) => (
-                                          <div key={field} className="text-sm">
-                                            <div className="flex items-center gap-2">
-                                              <span className="font-medium text-gray-900 capitalize">
-                                                {field === "username" &&
-                                                  "Tên người dùng"}
-                                                {field === "email" && "Email"}
-                                                {field === "phoneNumber" &&
-                                                  "Số điện thoại"}
-                                                {field === "role" && "Vai trò"}
-                                                {field === "status" &&
-                                                  "Trạng thái"}
-                                                {![
-                                                  "username",
-                                                  "email",
-                                                  "phoneNumber",
-                                                  "role",
-                                                  "status",
-                                                ].includes(field) && field}
-                                              </span>
-                                            </div>
-                                            <div className="ml-4 flex items-center gap-2 text-sm">
-                                              <span className="text-red-600 bg-red-50 px-2 py-1 rounded">
-                                                {String(
-                                                  change.from || "(trống)"
-                                                )}
-                                              </span>
-                                              <span className="text-gray-400">
-                                                →
-                                              </span>
-                                              <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-                                                {String(change.to || "(trống)")}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        )
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                              {/* Details */}
-                              {/* {log.details && (
-                                <div className="mt-3 text-sm text-gray-600 bg-blue-50 p-2 rounded">
-                                  <span className="font-medium">Ghi chú:</span> {log.details}
-                                </div>
-                              )} */}
-
-                              {/* Technical Info */}
-                              {/* {(log.ipAddress || log.userAgent) && (
-                                <div className="mt-3 text-xs text-gray-500 bg-gray-50 p-2 rounded space-y-1">
-                                  {log.ipAddress && (
-                                    <div>
-                                      <span className="font-medium">IP Address:</span> {log.ipAddress}
-                                    </div>
-                                  )}
-                                  {log.userAgent && (
-                                    <div>
-                                      <span className="font-medium">Device:</span> {
-                                        log.userAgent.includes('Mobile') ? '📱 Mobile' :
-                                        log.userAgent.includes('Tablet') ? '📱 Tablet' :
-                                        log.userAgent.includes('Windows') ? '💻 Windows' :
-                                        log.userAgent.includes('Mac') ? '🖥️ Mac' :
-                                        log.userAgent.includes('Android') ? '📱 Android' :
-                                        log.userAgent.includes('iPhone') ? '📱 iPhone' :
-                                        '💻 Desktop'
-                                      }
-                                    </div>
-                                  )}
-                                </div>
-                              )} */}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Logs Pagination */}
-                      {logsPagination.totalPages > 1 && (
-                        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-6">
-                          <div className="flex flex-1 justify-between sm:hidden">
-                            <button
-                              onClick={() => {
-                                if (logsPagination.currentPage > 1) {
-                                  fetchUserLogs(logsPagination.currentPage - 1);
-                                }
-                              }}
-                              disabled={logsPagination.currentPage <= 1}
-                              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Trước
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (
-                                  logsPagination.currentPage <
-                                  logsPagination.totalPages
-                                ) {
-                                  fetchUserLogs(logsPagination.currentPage + 1);
-                                }
-                              }}
-                              disabled={
-                                logsPagination.currentPage >=
-                                logsPagination.totalPages
-                              }
-                              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Sau
-                            </button>
-                          </div>
-                          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                            <div>
-                              <p className="text-sm text-gray-700">
-                                Hiển thị{" "}
-                                <span className="font-medium">
-                                  {(logsPagination.currentPage - 1) *
-                                    logsPagination.itemsPerPage +
-                                    1}
-                                </span>{" "}
-                                đến{" "}
-                                <span className="font-medium">
-                                  {Math.min(
-                                    logsPagination.currentPage *
-                                      logsPagination.itemsPerPage,
-                                    logsPagination.totalItems
-                                  )}
-                                </span>{" "}
-                                trong tổng số{" "}
-                                <span className="font-medium">
-                                  {logsPagination.totalItems}
-                                </span>{" "}
-                                bản ghi
-                              </p>
-                            </div>
-                            <div>
-                              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
-                                <button
-                                  onClick={() => {
-                                    if (logsPagination.currentPage > 1) {
-                                      fetchUserLogs(
-                                        logsPagination.currentPage - 1
-                                      );
-                                    }
-                                  }}
-                                  disabled={logsPagination.currentPage <= 1}
-                                  className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <span className="sr-only">Trang trước</span>
-                                  <ArrowLeftIcon className="h-5 w-5" />
-                                </button>
-                                {Array.from(
-                                  { length: logsPagination.totalPages },
-                                  (_, i) => i + 1
-                                )
-                                  .filter(
-                                    (page) =>
-                                      page === 1 ||
-                                      page === logsPagination.totalPages ||
-                                      Math.abs(
-                                        page - logsPagination.currentPage
-                                      ) <= 1
-                                  )
-                                  .map((page, index, visiblePages) => {
-                                    const showDots =
-                                      index > 0 &&
-                                      visiblePages[index - 1] !== page - 1;
-                                    return (
-                                      <React.Fragment key={page}>
-                                        {showDots && (
-                                          <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">
-                                            ...
-                                          </span>
-                                        )}
-                                        <button
-                                          onClick={() => fetchUserLogs(page)}
-                                          className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${
-                                            page === logsPagination.currentPage
-                                              ? "bg-blue-600 text-white hover:bg-blue-500"
-                                              : "text-gray-900"
-                                          }`}
-                                        >
-                                          {page}
-                                        </button>
-                                      </React.Fragment>
-                                    );
-                                  })}
-                                <button
-                                  onClick={() => {
-                                    if (
-                                      logsPagination.currentPage <
-                                      logsPagination.totalPages
-                                    ) {
-                                      fetchUserLogs(
-                                        logsPagination.currentPage + 1
-                                      );
-                                    }
-                                  }}
-                                  disabled={
-                                    logsPagination.currentPage >=
-                                    logsPagination.totalPages
-                                  }
-                                  className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <span className="sr-only">Trang sau</span>
-                                  <ArrowLeftIcon className="h-5 w-5 rotate-180" />
-                                </button>
-                              </nav>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        Chưa có lịch sử thay đổi
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Chưa có bản ghi thay đổi nào cho người dùng này.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Edit User Modal */}
-          {showEditModal && (
-            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                      Chỉnh sửa thông tin người dùng
-                    </h2>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <XCircleIcon className="h-6 w-6" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Avatar and Basic Info */}
-                    <div className="flex items-center gap-4 mb-6">
-                      {user?.avatar ? (
-                        <Image
-                          className="h-20 w-20 rounded-full object-cover"
-                          src={user.avatar}
-                          alt={user.username}
-                          width={80}
-                          height={80}
-                        />
-                      ) : (
-                        <div className="h-20 w-20 rounded-full bg-gray-300 flex items-center justify-center">
-                          <UserIcon className="h-10 w-10 text-gray-600" />
-                        </div>
-                      )}
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">
-                          Cập nhật thông tin của {user?.username}
-                        </h3>
-                        <p className="text-gray-500">
-                          Chỉnh sửa thông tin cơ bản của người dùng
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Edit Form Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Username */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Tên người dùng
-                        </label>
-                        <input
-                          type="text"
-                          value={editForm.username}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              username: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập tên người dùng"
-                        />
-                      </div>
-
-                      {/* Email */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          value={editForm.email}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, email: e.target.value })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                          placeholder="Email không thể thay đổi"
-                          disabled
-                          readOnly
-                        />
-                      </div>
-
-                      {/* Phone Number */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Số điện thoại
-                        </label>
-                        <input
-                          type="text"
-                          value={editForm.phoneNumber}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              phoneNumber: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="Nhập số điện thoại"
-                        />
-                      </div>
-
-                      {/* Role */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Vai trò
-                        </label>
-                        <select
-                          value={editForm.role}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              role: e.target.value as User["role"],
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="user">Người dùng</option>
-                          <option value="employee">Nhân viên</option>
-                          <option value="employee">Nhân viên</option>
-                          <option value="admin">Quản trị viên</option>
-                        </select>
-                      </div>
-
-                      {/* Status */}
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Trạng thái
-                        </label>
-                        <select
-                          value={editForm.status}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              status: e.target.value as User["status"],
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="active">Hoạt động</option>
-                          <option value="inactive">Không hoạt động</option>
-                          <option value="banned">Đã cấm</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-                    <button
-                      onClick={handleSaveUser}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      ) : (
-                        <CheckCircleIcon className="h-4 w-4 mr-2" />
-                      )}
-                      {isProcessing ? "Đang lưu..." : "Lưu thay đổi"}
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
-                      disabled={isProcessing}
-                    >
-                      <XCircleIcon className="h-4 w-4 mr-2" />
-                      Hủy
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
-        </main>
+
+          {/* Transactions Tab */}
+          {activeTab === "transactions" && (
+            <div>
+              {transactionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                </div>
+              ) : transactions.length > 0 ? (
+                <div className="space-y-4">
+                  {transactions.map((transaction) => (
+                    <div
+                      key={transaction._id}
+                      className="border border-gray-200 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CurrencyDollarIcon className="h-4 w-4 text-blue-500" />
+                            <h3 className="text-sm font-medium text-gray-900">
+                              Giao dịch #{transaction.orderId}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {transaction.description}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />
+                              {formatDate(transaction.createdAt)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              💳 {transaction.paymentMethod || "N/A"}
+                            </span>
+                            {transaction.postId && (
+                              <span className="flex items-center gap-1">
+                                🏠 {transaction.postId.title}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <div className="text-lg font-bold text-gray-900 mb-1">
+                            {formatCurrency(transaction.amount)}
+                          </div>
+                          <span
+                            className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${getTransactionStatusColor(
+                              transaction.status
+                            )}`}
+                          >
+                            {transaction.status === "completed"
+                              ? "Thành công"
+                              : transaction.status === "pending"
+                              ? "Đang xử lý"
+                              : transaction.status === "failed"
+                              ? "Thất bại"
+                              : transaction.status}
+                          </span>
+                          {transaction.completedAt && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Hoàn thành: {formatDate(transaction.completedAt)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {transactionsTotalPages > 1 && (
+                    <div className="flex justify-center mt-6">
+                      <Pagination
+                        currentPage={transactionsPage}
+                        totalPages={transactionsTotalPages}
+                        onPageChange={setTransactionsPage}
+                        showPages={5}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <CurrencyDollarIcon className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Chưa có giao dịch nào
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Người dùng này chưa thực hiện giao dịch thanh toán nào.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Logs Tab */}
+          {activeTab === "logs" && (
+            <div>
+              {logsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                </div>
+              ) : logs.length > 0 ? (
+                <div className="space-y-4">
+                  {logs.map((log) => (
+                    <div
+                      key={log._id}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <DocumentTextIcon className="h-4 w-4 text-purple-500" />
+                            <h3 className="text-sm font-medium text-gray-900">
+                              {log.action === "created"
+                                ? "Tạo mới"
+                                : log.action === "updated"
+                                ? "Cập nhật"
+                                : log.action === "statusChanged"
+                                ? "Thay đổi trạng thái"
+                                : log.action === "deleted"
+                                ? "Xóa"
+                                : log.action}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {log.details || "Không có chi tiết"}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />
+                              {formatDate(log.createdAt)}
+                            </span>
+                            {log.changedBy && (
+                              <span className="flex items-center gap-1">
+                                👤 {log.changedBy.username} (
+                                {log.changedBy.role})
+                              </span>
+                            )}
+                          </div>
+                          {log.changes &&
+                            Object.keys(log.changes).length > 0 && (
+                              <div className="mt-3 p-2 bg-gray-50 rounded-md">
+                                <p className="text-xs font-medium text-gray-700 mb-1">
+                                  Thay đổi:
+                                </p>
+                                <div className="space-y-1">
+                                  {Object.entries(log.changes).map(
+                                    ([field, change]) => (
+                                      <div
+                                        key={field}
+                                        className="text-xs text-gray-600"
+                                      >
+                                        <span className="font-medium">
+                                          {field}:
+                                        </span>{" "}
+                                        <span className="text-red-600">
+                                          &quot;{String(change.from)}&quot;
+                                        </span>{" "}
+                                        →{" "}
+                                        <span className="text-green-600">
+                                          &quot;{String(change.to)}&quot;
+                                        </span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                        <div className="ml-4">
+                          <div
+                            className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                              log.action === "created"
+                                ? "bg-green-100 text-green-800"
+                                : log.action === "updated"
+                                ? "bg-blue-100 text-blue-800"
+                                : log.action === "statusChanged"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : log.action === "deleted"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {log.action === "created"
+                              ? "Tạo mới"
+                              : log.action === "updated"
+                              ? "Cập nhật"
+                              : log.action === "statusChanged"
+                              ? "Thay đổi"
+                              : log.action === "deleted"
+                              ? "Xóa"
+                              : log.action}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {logsTotalPages > 1 && (
+                    <div className="flex justify-center mt-6">
+                      <Pagination
+                        currentPage={logsPage}
+                        totalPages={logsTotalPages}
+                        onPageChange={setLogsPage}
+                        showPages={5}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    Chưa có lịch sử hoạt động
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Các thay đổi đối với tài khoản này sẽ được hiển thị ở đây.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </AdminLayout>
+  );
+}
+
+// Wrap with PagePermissionGuard
+
+// Wrap component with AdminGuard
+export default function ProtectedUserDetailPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.USER.VIEW]}>
+      <UserDetailPage />
+    </AdminGuard>
   );
 }

@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   PlusIcon,
   PencilIcon,
@@ -132,20 +134,24 @@ function SortableMenuItem({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => onEdit(menu)}
-            className="text-blue-600 hover:text-blue-900 transition-colors"
-            title="Chỉnh sửa"
-          >
-            <PencilIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => onDelete(menu.id, menu.label)}
-            className="text-red-600 hover:text-red-900 transition-colors"
-            title="Xóa"
-          >
-            <TrashIcon className="w-5 h-5" />
-          </button>
+          <PermissionGuard permission={PERMISSIONS.SETTINGS.EDIT}>
+            <button
+              onClick={() => onEdit(menu)}
+              className="text-blue-600 hover:text-blue-900 transition-colors"
+              title="Chỉnh sửa"
+            >
+              <PencilIcon className="w-5 h-5" />
+            </button>
+          </PermissionGuard>
+          <PermissionGuard permission={PERMISSIONS.SETTINGS.EDIT}>
+            <button
+              onClick={() => onDelete(menu.id, menu.label)}
+              className="text-red-600 hover:text-red-900 transition-colors"
+              title="Xóa"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
+          </PermissionGuard>
         </div>
       </div>
 
@@ -186,9 +192,7 @@ function SortableMenuItem({
   );
 }
 
-export default function HeaderSettingsPage() {
-  const { isAuthenticated, hasRole } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
+function HeaderSettingsManagementInternal() {
   const [headerMenus, setHeaderMenus] = useState<HeaderMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -219,18 +223,10 @@ export default function HeaderSettingsPage() {
   });
 
   // Authentication check
-  useEffect(() => {
-    if (isAuthenticated !== undefined) {
-      setAccessChecked(true);
-    }
-  }, [isAuthenticated]);
-
   // Load header menus data
   useEffect(() => {
-    if (isAuthenticated && accessChecked && hasRole("admin")) {
-      loadHeaderMenus();
-    }
-  }, [isAuthenticated, accessChecked, hasRole]); // eslint-disable-line react-hooks/exhaustive-deps
+    loadHeaderMenus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadHeaderMenus = async () => {
     try {
@@ -640,47 +636,6 @@ export default function HeaderSettingsPage() {
     }));
   };
 
-  if (!accessChecked) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !hasRole("admin")) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-12 w-12 text-red-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Không có quyền truy cập
-          </h2>
-          <p className="text-gray-600">
-            Chỉ quản trị viên mới có thể truy cập trang này.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen bg-gray-100 animate-fade-in">
       <AdminSidebar />
@@ -701,13 +656,15 @@ export default function HeaderSettingsPage() {
                     xếp thứ tự menu.
                   </p>
                 </div>
-                <button
-                  onClick={handleAddMenu}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <PlusIcon className="w-5 h-5" />
-                  Thêm menu
-                </button>
+                <PermissionGuard permission={PERMISSIONS.SETTINGS.EDIT}>
+                  <button
+                    onClick={handleAddMenu}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                    Thêm menu
+                  </button>
+                </PermissionGuard>
               </div>
             </div>
 
@@ -957,5 +914,14 @@ export default function HeaderSettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedHeaderSettingsPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.SETTINGS.EDIT]}>
+      <HeaderSettingsManagementInternal />
+    </AdminGuard>
   );
 }

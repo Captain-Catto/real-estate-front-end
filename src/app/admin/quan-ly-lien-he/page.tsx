@@ -2,8 +2,10 @@
 
 import ContactManagement from "../../../components/admin/ContactManagement";
 import AdminLayout from "../../../components/admin/AdminLayout";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
-export default function ContactManagementPage() {
+function ContactManagementPage() {
   return (
     <AdminLayout
       title="Quản lý liên hệ"
@@ -11,5 +13,14 @@ export default function ContactManagementPage() {
     >
       <ContactManagement />
     </AdminLayout>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedContactManagementPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.SETTINGS.VIEW]}>
+      <ContactManagementPage />
+    </AdminGuard>
   );
 }

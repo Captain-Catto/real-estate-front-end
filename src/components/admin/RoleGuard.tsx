@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * @deprecated This component is deprecated. Please use ProtectionGuard from "@/components/auth/ProtectionGuard" instead.
+ *
+ * Migration example:
+ * // OLD
+ * <RoleGuard allowedRoles={["admin"]} redirectTo="/unauthorized">
+ *
+ * // NEW
+ * <AdminGuard isPageGuard redirectTo="/unauthorized"> // from ProtectionGuard
+ * // or
+ * <ProtectionGuard roles={["admin"]} isPageGuard redirectTo="/unauthorized">
+ */
+
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
@@ -136,7 +149,7 @@ export function UserGuard({
   ...props
 }: Omit<RoleGuardProps, "allowedRoles">) {
   return (
-    <RoleGuard allowedRoles={["user", "admin", "employee"]} {...props}>
+    <RoleGuard allowedRoles={["admin", "employee"]} {...props}>
       {children}
     </RoleGuard>
   );

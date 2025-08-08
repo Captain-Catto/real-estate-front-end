@@ -79,6 +79,7 @@ export interface CreateProjectRequest {
   latitude: number;
   longitude: number;
   developer: Developer | string; // Can be Developer object or developer ID
+  category: string; // Add category field
   images: string[];
   videos?: string[];
   totalUnits: number;

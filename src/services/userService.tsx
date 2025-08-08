@@ -74,7 +74,7 @@ export interface UserPost {
   };
   price: number;
   area: string;
-  status: "active" | "pending" | "rejected" | "expired" | "sold";
+  status: "active" | "pending" | "rejected" | "expired" | "deleted";
   views: number;
   createdAt: string;
   updatedAt: string;

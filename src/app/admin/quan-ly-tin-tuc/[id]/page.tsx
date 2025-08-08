@@ -3,12 +3,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { newsService, NewsCategory } from "@/services/newsService";
 import { UploadService } from "@/services/uploadService";
 import dynamic from "next/dynamic";
 import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PERMISSIONS } from "@/constants/permissions";
 
 // Dynamically import Quill editor to avoid SSR issues
 const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
@@ -44,10 +48,11 @@ interface NewsData {
   updatedAt: string;
 }
 
-export default function EditNewsPage() {
+function EditNewsPage() {
   const router = useRouter();
   const params = useParams();
   const { user, isAuthenticated } = useAuth();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [news, setNews] = useState<NewsData | null>(null);
@@ -325,7 +330,7 @@ export default function EditNewsPage() {
                     Chỉnh sửa tin tức
                   </h1>
                 </div>
-                {user?.role === "admin" && (
+                <PermissionGuard permission={PERMISSIONS.NEWS.DELETE}>
                   <button
                     onClick={handleDelete}
                     className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
@@ -333,7 +338,7 @@ export default function EditNewsPage() {
                     <TrashIcon className="w-5 h-5" />
                     Xóa tin tức
                   </button>
-                )}
+                </PermissionGuard>
               </div>
             </div>
 
@@ -564,13 +569,38 @@ export default function EditNewsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="pending">Chờ duyệt</option>
+                      <option value="draft">Bản nháp</option>
+
+                      {/* Admin có thể thay đổi sang published và rejected */}
                       {user?.role === "admin" && (
                         <>
                           <option value="published">Đã xuất bản</option>
-                          <option value="rejected">Đã hạ</option>
+                          <option value="rejected">Đã từ chối</option>
                         </>
                       )}
+
+                      {/* Employee có quyền publish_news có thể xuất bản trực tiếp */}
+                      {user?.role === "employee" &&
+                        can(PERMISSIONS.NEWS.PUBLISH) && (
+                          <option value="published">Đã xuất bản</option>
+                        )}
                     </select>
+
+                    {/* Hiển thị thông báo về quyền hạn */}
+                    {user?.role === "employee" &&
+                      !can(PERMISSIONS.NEWS.PUBLISH) && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Bạn chỉ có thể lưu bản nháp hoặc gửi để chờ duyệt.
+                          Liên hệ admin để được cấp quyền xuất bản.
+                        </p>
+                      )}
+
+                    {user?.role === "employee" &&
+                      can(PERMISSIONS.NEWS.PUBLISH) && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Bạn có quyền xuất bản bài viết trực tiếp.
+                        </p>
+                      )}
                   </div>
 
                   <div className="flex items-center">
@@ -581,11 +611,18 @@ export default function EditNewsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, isHot: e.target.checked })
                       }
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      disabled={
+                        !can(PERMISSIONS.NEWS.FEATURE) && user?.role !== "admin"
+                      }
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                     />
                     <label
                       htmlFor="isHot"
-                      className="ml-2 text-sm text-gray-700"
+                      className={`ml-2 text-sm ${
+                        !can(PERMISSIONS.NEWS.FEATURE) && user?.role !== "admin"
+                          ? "text-gray-400"
+                          : "text-gray-700"
+                      }`}
                     >
                       Tin nóng
                     </label>
@@ -602,11 +639,18 @@ export default function EditNewsPage() {
                           isFeatured: e.target.checked,
                         })
                       }
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      disabled={
+                        !can(PERMISSIONS.NEWS.FEATURE) && user?.role !== "admin"
+                      }
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                     />
                     <label
                       htmlFor="isFeatured"
-                      className="ml-2 text-sm text-gray-700"
+                      className={`ml-2 text-sm ${
+                        !can(PERMISSIONS.NEWS.FEATURE) && user?.role !== "admin"
+                          ? "text-gray-400"
+                          : "text-gray-700"
+                      }`}
                     >
                       Tin nổi bật
                     </label>
@@ -636,5 +680,14 @@ export default function EditNewsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedEditNewsPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.NEWS.VIEW]}>
+      <EditNewsPage />
+    </AdminGuard>
   );
 }

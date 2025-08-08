@@ -52,7 +52,7 @@ export function Navbar() {
   const loadHeaderMenus = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await headerSettingsService.getHeaderMenus();
+      const response = await headerSettingsService.getPublicHeaderMenus();
       if (response.success) {
         console.log("Raw API response:", response.data);
         // Only show active menus, sorted by order

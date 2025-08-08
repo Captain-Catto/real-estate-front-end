@@ -2,9 +2,10 @@
 
 import AdminLayout from "../../../components/admin/AdminLayout";
 import SidebarConfigManager from "../../../components/admin/SidebarConfigManager";
-import { withAdminProtection } from "../../../components/admin/withRoleProtection";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
-function SidebarConfigPage() {
+function SidebarConfigPageInternal() {
   return (
     <AdminLayout
       title="Cấu hình Sidebar"
@@ -15,8 +16,13 @@ function SidebarConfigPage() {
   );
 }
 
-// Bảo vệ page này chỉ dành cho admin
-export default withAdminProtection(SidebarConfigPage, {
-  redirectTo: "/admin",
-  showToast: true,
-});
+// Wrap component with AdminGuard
+export default function ProtectedSidebarConfigPage() {
+  return (
+    <AdminGuard 
+      permissions={[PERMISSIONS.SETTINGS.EDIT]}
+    >
+      <SidebarConfigPageInternal />
+    </AdminGuard>
+  );
+}

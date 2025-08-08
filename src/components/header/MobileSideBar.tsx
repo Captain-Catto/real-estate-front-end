@@ -25,7 +25,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const loadHeaderMenus = async () => {
     try {
       setLoading(true);
-      const response = await headerSettingsService.getHeaderMenus();
+      const response = await headerSettingsService.getPublicHeaderMenus();
       if (response.success) {
         // Only show active menus, sorted by order
         const activeMenus = response.data

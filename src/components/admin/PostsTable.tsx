@@ -11,6 +11,8 @@ import { Post } from "@/services/postsService";
 import { locationService, LocationNames } from "@/services/locationService";
 import { ProjectService } from "@/services/projectService";
 import { categoryService } from "@/services/categoryService";
+import { PermissionGuard } from "@/components/auth/ProtectionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 interface PostsTableProps {
   posts: Post[];
@@ -680,42 +682,48 @@ export default function PostsTable({
 
                       {/* Approve Button - only for pending posts */}
                       {post.status === "pending" && (
-                        <button
-                          onClick={() => onApprove(post._id)}
-                          className="text-green-600 hover:text-green-900 transition-colors"
-                          title="Duyệt tin"
-                        >
-                          <CheckIcon className="w-4 h-4" />
-                        </button>
+                        <PermissionGuard permission={PERMISSIONS.POST.APPROVE}>
+                          <button
+                            onClick={() => onApprove(post._id)}
+                            className="text-green-600 hover:text-green-900 transition-colors"
+                            title="Duyệt tin"
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                          </button>
+                        </PermissionGuard>
                       )}
 
                       {/* Reject Button - only for pending posts */}
                       {post.status === "pending" && (
-                        <button
-                          onClick={() => handleReject(post._id)}
-                          className="text-red-600 hover:text-red-900 transition-colors"
-                          title="Từ chối"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
+                        <PermissionGuard permission={PERMISSIONS.POST.REJECT}>
+                          <button
+                            onClick={() => handleReject(post._id)}
+                            className="text-red-600 hover:text-red-900 transition-colors"
+                            title="Từ chối"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </PermissionGuard>
                       )}
 
                       {/* Delete Button - Soft delete for non-deleted posts, hard delete for deleted posts */}
-                      <button
-                        onClick={() => onDelete(post._id, post.status)}
-                        className={`transition-colors ${
-                          post.status === "deleted"
-                            ? "text-red-600 hover:text-red-900"
-                            : "text-orange-600 hover:text-orange-900"
-                        }`}
-                        title={
-                          post.status === "deleted"
-                            ? "Xóa vĩnh viễn"
-                            : "Chuyển vào thùng rác"
-                        }
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                      <PermissionGuard permission={PERMISSIONS.POST.DELETE}>
+                        <button
+                          onClick={() => onDelete(post._id, post.status)}
+                          className={`transition-colors ${
+                            post.status === "deleted"
+                              ? "text-red-600 hover:text-red-900"
+                              : "text-orange-600 hover:text-orange-900"
+                          }`}
+                          title={
+                            post.status === "deleted"
+                              ? "Xóa vĩnh viễn"
+                              : "Chuyển vào thùng rác"
+                          }
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
+                      </PermissionGuard>
                     </div>
                   </td>
                 </tr>

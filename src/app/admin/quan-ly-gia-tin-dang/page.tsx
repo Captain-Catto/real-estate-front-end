@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
@@ -9,44 +8,10 @@ import {
   Package,
   PackageFormData,
 } from "@/services/packageService";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
-export default function AdminPackagesPage() {
-  const router = useRouter();
-  const { hasRole, isAuthenticated, loading: authLoading, user } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
-
-  // Debug: Log user info
-  console.log("Admin page - Auth state:", {
-    isAuthenticated,
-    authLoading,
-    user: user,
-    userRole: user?.role,
-    hasAdminRole: hasRole(["admin", "employee"]),
-    accessChecked,
-  });
-
-  // Kiểm tra quyền truy cập - chỉ admin và employee mới được vào
-  useEffect(() => {
-    if (!accessChecked && user) {
-      setAccessChecked(true);
-
-      if (!isAuthenticated) {
-        console.log("Not authenticated, redirecting to login");
-        router.push("/dang-nhap");
-        return;
-      }
-
-      const hasAccess = hasRole(["admin", "employee"]);
-      console.log("Has access:", hasAccess, "User role:", user?.role);
-      if (!hasAccess) {
-        // Nếu không có quyền, chuyển hướng về trang chủ
-        console.log("No access, redirecting to home");
-        router.push("/");
-        return;
-      }
-    }
-  }, [hasRole, isAuthenticated, router, user, accessChecked]);
-
+function AdminPackagesPageInternalContent() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -269,456 +234,420 @@ export default function AdminPackagesPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Show loading while checking authentication and permissions */}
-      {(!user || !accessChecked) && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-gray-700">
-              Đang kiểm tra quyền truy cập...
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Only render admin interface if user has proper permissions */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        hasRole(["admin", "employee"]) && (
-          <>
-            <AdminSidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <AdminHeader />
-              <main className="flex-1 overflow-y-auto p-6">
-                <div className="max-w-7xl mx-auto">
-                  <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      Quản lý giá tin đăng
-                    </h1>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Quản lý giá cả và gói dịch vụ tin đăng bất động sản
-                    </p>
-                  </div>
-
-                  {/* Add Package Button */}
-                  <div className="mb-6">
-                    <button
-                      onClick={() => setShowCreateModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      Thêm gói dịch vụ mới
-                    </button>
-                  </div>
-
-                  {/* Packages Table */}
-                  <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        Danh sách gói dịch vụ
-                      </h3>
-                    </div>
-
-                    {loading ? (
-                      <div className="p-6 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-2 text-gray-500">Đang tải...</p>
-                      </div>
-                    ) : packages.length === 0 ? (
-                      <div className="p-6 text-center text-gray-500">
-                        Chưa có gói dịch vụ nào
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Tên gói
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Giá
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Thời hạn
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Loại
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Trạng thái
-                              </th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Thao tác
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {packages.map((pkg) => (
-                              <tr key={pkg.id}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {pkg.name}
-                                  </div>
-                                  {pkg.description && (
-                                    <div className="text-sm text-gray-500">
-                                      {pkg.description}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-900">
-                                    {formatPrice(pkg.price)}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-900">
-                                    {pkg.duration} ngày
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  {getPriorityBadge(pkg.priority)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <button
-                                    onClick={() =>
-                                      handleTogglePackageStatus(
-                                        pkg.id,
-                                        pkg.isActive
-                                      )
-                                    }
-                                    className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                                      pkg.isActive
-                                        ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                        : "bg-red-100 text-red-800 hover:bg-red-200"
-                                    }`}
-                                    title={
-                                      pkg.isActive
-                                        ? "Bấm để tạm dừng gói"
-                                        : "Bấm để kích hoạt gói"
-                                    }
-                                  >
-                                    {pkg.isActive ? "Hoạt động" : "Tạm dừng"}
-                                  </button>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <button
-                                    onClick={() => handleEditPackage(pkg)}
-                                    className="text-blue-600 hover:text-blue-900 mr-3"
-                                  >
-                                    Sửa
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePackage(pkg.id)}
-                                    className="text-red-600 hover:text-red-900"
-                                  >
-                                    Xóa
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Create Package Modal */}
-                  {showCreateModal && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                        <div className="mt-3">
-                          <h3 className="text-lg font-medium text-gray-900 mb-4">
-                            Thêm gói dịch vụ mới
-                          </h3>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Tên gói
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    name: e.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Giá (VND)
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.price}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    price: parseInt(e.target.value) || 0,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Thời hạn (ngày)
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.duration}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    duration: parseInt(e.target.value) || 0,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Loại gói
-                              </label>
-                              <select
-                                value={formData.priority}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    priority: e.target.value as
-                                      | "normal"
-                                      | "premium"
-                                      | "vip",
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              >
-                                <option value="normal">Normal</option>
-                                <option value="premium">Premium</option>
-                                <option value="vip">VIP</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Mô tả
-                              </label>
-                              <textarea
-                                value={formData.description}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    description: e.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                                rows={3}
-                              />
-                            </div>
-                            <div className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={formData.isActive}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    isActive: e.target.checked,
-                                  })
-                                }
-                                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                              />
-                              <label className="ml-2 block text-sm text-gray-900">
-                                Kích hoạt gói
-                              </label>
-                            </div>
-                          </div>
-                          <div className="flex justify-end space-x-3 mt-6">
-                            <button
-                              onClick={() => {
-                                setShowCreateModal(false);
-                                resetForm();
-                              }}
-                              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              onClick={handleCreatePackage}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                              Tạo gói
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Edit Package Modal */}
-                  {showEditModal && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                        <div className="mt-3">
-                          <h3 className="text-lg font-medium text-gray-900 mb-4">
-                            Chỉnh sửa gói dịch vụ
-                          </h3>
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Tên gói
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    name: e.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Giá (VND)
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.price}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    price: parseInt(e.target.value) || 0,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Thời hạn (ngày)
-                              </label>
-                              <input
-                                type="number"
-                                value={formData.duration}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    duration: parseInt(e.target.value) || 0,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Loại gói
-                              </label>
-                              <select
-                                value={formData.priority}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    priority: e.target.value as
-                                      | "normal"
-                                      | "premium"
-                                      | "vip",
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                              >
-                                <option value="normal">Normal</option>
-                                <option value="premium">Premium</option>
-                                <option value="vip">VIP</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Mô tả
-                              </label>
-                              <textarea
-                                value={formData.description}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    description: e.target.value,
-                                  })
-                                }
-                                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
-                                rows={3}
-                              />
-                            </div>
-                            <div className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={formData.isActive}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    isActive: e.target.checked,
-                                  })
-                                }
-                                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                              />
-                              <label className="ml-2 block text-sm text-gray-900">
-                                Kích hoạt gói
-                              </label>
-                            </div>
-                          </div>
-                          <div className="flex justify-end space-x-3 mt-6">
-                            <button
-                              onClick={() => {
-                                setShowEditModal(false);
-                                setEditingPackage(null);
-                                resetForm();
-                              }}
-                              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-                            >
-                              Hủy
-                            </button>
-                            <button
-                              onClick={handleUpdatePackage}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                              Cập nhật
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </main>
-            </div>
-          </>
-        )}
-
-      {/* Show access denied message */}
-      {user &&
-        accessChecked &&
-        isAuthenticated &&
-        !hasRole(["admin", "employee"]) && (
-          <div className="flex items-center justify-center min-h-screen w-full">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Không có quyền truy cập
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Quản lý giá tin đăng
               </h1>
-              <p className="text-gray-600 mb-4">
-                Bạn không có quyền truy cập vào trang này.
+              <p className="mt-1 text-sm text-gray-600">
+                Quản lý giá cả và gói dịch vụ tin đăng bất động sản
               </p>
+            </div>
+
+            {/* Add Package Button */}
+            <div className="mb-6">
               <button
-                onClick={() => router.push("/")}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={() => setShowCreateModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Về trang chủ
+                Thêm gói dịch vụ mới
               </button>
             </div>
+
+            {/* Packages Table */}
+            <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Danh sách gói dịch vụ
+                </h3>
+              </div>
+
+              {loading ? (
+                <div className="p-6 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Đang tải...</p>
+                </div>
+              ) : packages.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">
+                  Chưa có gói dịch vụ nào
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tên gói
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Giá
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Thời hạn
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Loại
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {packages.map((pkg) => (
+                        <tr key={pkg.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {pkg.name}
+                            </div>
+                            {pkg.description && (
+                              <div className="text-sm text-gray-500">
+                                {pkg.description}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {formatPrice(pkg.price)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {pkg.duration} ngày
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getPriorityBadge(pkg.priority)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() =>
+                                handleTogglePackageStatus(pkg.id, pkg.isActive)
+                              }
+                              className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                pkg.isActive
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "bg-red-100 text-red-800 hover:bg-red-200"
+                              }`}
+                              title={
+                                pkg.isActive
+                                  ? "Bấm để tạm dừng gói"
+                                  : "Bấm để kích hoạt gói"
+                              }
+                            >
+                              {pkg.isActive ? "Hoạt động" : "Tạm dừng"}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleEditPackage(pkg)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeletePackage(pkg.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Xóa
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Create Package Modal */}
+            {showCreateModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Thêm gói dịch vụ mới
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Tên gói
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              name: e.target.value,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Giá (VND)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.price}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              price: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Thời hạn (ngày)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.duration}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              duration: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Loại gói
+                        </label>
+                        <select
+                          value={formData.priority}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              priority: e.target.value as
+                                | "normal"
+                                | "premium"
+                                | "vip",
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="premium">Premium</option>
+                          <option value="vip">VIP</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Mô tả
+                        </label>
+                        <textarea
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              description: e.target.value,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.isActive}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              isActive: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 block text-sm text-gray-900">
+                          Kích hoạt gói
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        onClick={() => {
+                          setShowCreateModal(false);
+                          resetForm();
+                        }}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        onClick={handleCreatePackage}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      >
+                        Tạo gói
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit Package Modal */}
+            {showEditModal && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                  <div className="mt-3">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Chỉnh sửa gói dịch vụ
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Tên gói
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              name: e.target.value,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Giá (VND)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.price}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              price: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Thời hạn (ngày)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.duration}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              duration: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Loại gói
+                        </label>
+                        <select
+                          value={formData.priority}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              priority: e.target.value as
+                                | "normal"
+                                | "premium"
+                                | "vip",
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                        >
+                          <option value="normal">Normal</option>
+                          <option value="premium">Premium</option>
+                          <option value="vip">VIP</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                          Mô tả
+                        </label>
+                        <textarea
+                          value={formData.description}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              description: e.target.value,
+                            })
+                          }
+                          className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.isActive}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              isActive: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                        />
+                        <label className="ml-2 block text-sm text-gray-900">
+                          Kích hoạt gói
+                        </label>
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        onClick={() => {
+                          setShowEditModal(false);
+                          setEditingPackage(null);
+                          resetForm();
+                        }}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Hủy
+                      </button>
+                      <button
+                        onClick={handleUpdatePackage}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      >
+                        Cập nhật
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </main>
+      </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+// Wrap component with AdminGuard
+export default function ProtectedAdminPackagesPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.LOCATION.MANAGE_PRICES]}>
+      <AdminPackagesPageInternalContent />
+    </AdminGuard>
   );
 }

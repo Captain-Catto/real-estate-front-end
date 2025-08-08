@@ -2,20 +2,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useSidebar } from "@/hooks/useSidebar";
 import { useState, useEffect } from "react";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import {
+  ProcessedSidebarGroup,
+  SidebarMenuItem,
+} from "@/store/slices/sidebarSlice";
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { processedGroups, loading, error } = useSidebarConfig();
+  const { processedGroups, loading, error } = useSidebar();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Initialize expanded groups when processedGroups loads
   useEffect(() => {
     if (processedGroups.length > 0) {
-      setExpandedGroups(new Set(processedGroups.map((g) => g.id)));
+      setExpandedGroups(
+        new Set(processedGroups.map((g: ProcessedSidebarGroup) => g.id))
+      );
     }
   }, [processedGroups]);
 
@@ -85,7 +91,7 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="p-4">
         <div className="space-y-2">
-          {processedGroups.map((group) => {
+          {processedGroups.map((group: ProcessedSidebarGroup) => {
             const isExpanded = expandedGroups.has(group.id);
             const hasChildren = group.children.length > 0;
 
@@ -130,7 +136,7 @@ export default function AdminSidebar() {
                 {/* Group Children */}
                 {hasChildren && isExpanded && (
                   <div className="ml-4 mt-1 space-y-1">
-                    {group.children.map((item) => {
+                    {group.children.map((item: SidebarMenuItem) => {
                       const isActive = pathname === item.path;
 
                       return (

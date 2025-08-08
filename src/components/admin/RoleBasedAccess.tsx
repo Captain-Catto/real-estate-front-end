@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * @deprecated This component is deprecated. Please use ProtectionGuard from "@/components/auth/ProtectionGuard" instead.
+ *
+ * Migration example:
+ * // OLD
+ * <RoleBasedAccess allowedRoles={["admin", "employee"]} fallback={<div>No access</div>}>
+ *
+ * // NEW
+ * <EmployeeGuard fallback={<div>No access</div>}> // from ProtectionGuard
+ * // or
+ * <ProtectionGuard roles={["admin", "employee"]} fallback={<div>No access</div>}>
+ */
+
 import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 

@@ -12,6 +12,8 @@ import {
 } from "@/services/newsService";
 import { ArrowLeftIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 // Dynamically import Quill editor to avoid SSR issues
 const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
@@ -39,7 +41,7 @@ interface NewsFormData {
   isFeatured: boolean;
 }
 
-export default function CreateNewsPage() {
+function CreateNewsPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
 
@@ -478,5 +480,14 @@ export default function CreateNewsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedCreateNews() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.NEWS.VIEW]}>
+      <CreateNewsPage />
+    </AdminGuard>
   );
 }

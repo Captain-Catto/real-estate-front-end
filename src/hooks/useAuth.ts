@@ -10,8 +10,6 @@ import {
   updateProfileAsync,
   initializeAuth,
   clearError,
-  setUserRole,
-  setUser,
   type UserRole,
 } from "@/store/slices/authSlice";
 import { LoginRequest, RegisterRequest } from "@/services/authService";
@@ -58,7 +56,8 @@ export const useAuth = () => {
     };
 
     initAuth();
-  }, [dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Remove dispatch from dependencies to prevent infinite loop
 
   // Simplified and more reliable loading state
   const isLoading = isInitializing || loading;

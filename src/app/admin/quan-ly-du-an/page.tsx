@@ -5,19 +5,22 @@ import Image from "next/image";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Pagination } from "@/components/common/Pagination";
+import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
   EyeIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "@/hooks/useAuth";
 import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { locationService, Location } from "@/services/locationService";
 import { DeveloperService } from "@/services/developerService";
 import { DeveloperForSelection } from "@/types/developer";
 import { ProjectLocationDisplay } from "@/components/admin/ProjectLocationDisplay";
+import { categoryService, Category } from "@/services/categoryService";
 import {
   ProjectListItem,
   Project,
@@ -25,11 +28,8 @@ import {
   UpdateProjectRequest,
 } from "@/types/project";
 
-export default function AdminProjectPage() {
+function AdminProjectPage() {
   const router = useRouter();
-  const { hasRole, isAuthenticated, user } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
-
   const [projects, setProjects] = useState<ProjectListItem[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<ProjectListItem[]>(
     []
@@ -63,6 +63,10 @@ export default function AdminProjectPage() {
   const [developers, setDevelopers] = useState<DeveloperForSelection[]>([]);
   const [selectedDeveloper, setSelectedDeveloper] = useState<string>("");
 
+  // Category states
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+
   const [locationLoading, setLocationLoading] = useState<{
     provinces: boolean;
     wards: boolean;
@@ -94,6 +98,7 @@ export default function AdminProjectPage() {
       phone: "",
       email: "",
     },
+    category: "", // Add category field
     images: [],
     videos: [],
     totalUnits: 0,
@@ -124,31 +129,15 @@ export default function AdminProjectPage() {
     isFeatured: false, // Thêm field isFeatured
   });
 
-  // Authentication check
-  useEffect(() => {
-    if (!accessChecked && user) {
-      setAccessChecked(true);
-
-      if (!isAuthenticated) {
-        router.push("/dang-nhap");
-        return;
-      }
-
-      const hasAccess = hasRole("admin") || hasRole("employee");
-      if (!hasAccess) {
-        router.push("/");
-        return;
-      }
-    }
-  }, [hasRole, isAuthenticated, router, user, accessChecked]);
+  // Authentication check - REMOVED because AdminGuard handles this
+  // useEffect(() => { ... }, []);
 
   useEffect(() => {
-    if (user && accessChecked) {
-      fetchProjects();
-      fetchProvinces();
-      fetchDevelopers();
-    }
-  }, [user, accessChecked]);
+    fetchProjects();
+    fetchProvinces();
+    fetchDevelopers();
+    fetchCategories();
+  }, []);
 
   // Filter projects based on status and search term
   useEffect(() => {
@@ -244,6 +233,16 @@ export default function AdminProjectPage() {
     }
   };
 
+  // Fetch categories for dropdown
+  const fetchCategories = async () => {
+    try {
+      const data = await categoryService.getByProjectType(true); // Get project categories only
+      setCategories(data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
   // Fetch location data
   const fetchProvinces = async () => {
     setLocationLoading((prev) => ({ ...prev, provinces: true }));
@@ -324,7 +323,24 @@ export default function AdminProjectPage() {
         const fullProject = await ProjectService.getProjectById(project.id);
         if (fullProject) {
           setEditingProject(fullProject);
-          setForm(fullProject);
+
+          // Convert the project data to match the form structure
+          const categoryId =
+            typeof fullProject.category === "object" &&
+            fullProject.category?._id
+              ? fullProject.category._id
+              : typeof fullProject.category === "string"
+              ? fullProject.category
+              : "";
+
+          const formData = {
+            ...fullProject,
+            category: categoryId,
+          };
+          setForm(formData);
+
+          // Set selected category if available
+          setSelectedCategory(categoryId);
 
           // Set selected developer if available
           if (typeof fullProject.developer === "string") {
@@ -394,6 +410,7 @@ export default function AdminProjectPage() {
           phone: "",
           email: "",
         },
+        category: "", // Reset category field
         images: [],
         videos: [],
         totalUnits: 0,
@@ -421,11 +438,14 @@ export default function AdminProjectPage() {
           lat: 0,
           lng: 0,
         },
+        isFeatured: false, // Reset isFeatured field
       });
 
-      // Reset location selections
+      // Reset location and category selections
       setSelectedProvince("");
       setSelectedWard("");
+      setSelectedCategory("");
+      setSelectedDeveloper("");
       setWards([]);
     }
     setShowModal(true);
@@ -436,6 +456,11 @@ export default function AdminProjectPage() {
     setShowModal(false);
     setEditingProject(null);
     setModalStep(1);
+    // Reset selection states
+    setSelectedCategory("");
+    setSelectedDeveloper("");
+    setSelectedProvince("");
+    setSelectedWard("");
   };
 
   const handleChange = (
@@ -444,6 +469,11 @@ export default function AdminProjectPage() {
     >
   ) => {
     const { name, value } = e.target;
+
+    // Handle special case for category selection
+    if (name === "category") {
+      setSelectedCategory(value);
+    }
 
     if (name.includes(".")) {
       const [parent, child] = name.split(".");
@@ -862,6 +892,37 @@ export default function AdminProjectPage() {
                   <option value="Sắp mở bán">Sắp mở bán</option>
                   <option value="Đang cập nhật">Đang cập nhật</option>
                 </select>
+              </div>
+
+              {/* Category Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Loại dự án *
+                </label>
+                <select
+                  name="category"
+                  value={form.category || ""}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">-- Chọn loại dự án --</option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                {categories.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Đang tải danh sách loại dự án...
+                  </p>
+                )}
+                {!form.category && selectedCategory && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Vui lòng chọn loại dự án
+                  </p>
+                )}
               </div>
 
               {/* Thêm radio button cho Dự án nổi bật */}
@@ -1520,95 +1581,6 @@ export default function AdminProjectPage() {
     }
   };
 
-  if (!accessChecked) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="mx-auto h-12 w-12 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Chưa đăng nhập
-              </h2>
-              <p className="text-gray-600">
-                Vui lòng đăng nhập để truy cập trang này.
-              </p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasRole("admin")) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="mx-auto h-12 w-12 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Không có quyền truy cập
-              </h2>
-              <p className="text-gray-600">
-                Bạn không có quyền truy cập vào trang này.
-              </p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
@@ -1626,13 +1598,15 @@ export default function AdminProjectPage() {
                   đăng tin
                 </p>
               </div>
-              <button
-                onClick={() => handleOpenModal()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Thêm dự án
-              </button>
+              <PermissionGuard permission={PERMISSIONS.PROJECT.CREATE}>
+                <button
+                  onClick={() => handleOpenModal()}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Thêm dự án
+                </button>
+              </PermissionGuard>
             </div>
 
             {/* Search Section */}
@@ -1880,20 +1854,28 @@ export default function AdminProjectPage() {
                                 >
                                   <EyeIcon className="h-4 w-4" />
                                 </button>
-                                <button
-                                  onClick={() => handleOpenModal(project)}
-                                  className="p-1 text-blue-600 hover:text-blue-900"
-                                  title="Chỉnh sửa nhanh"
+                                <PermissionGuard
+                                  permission={PERMISSIONS.PROJECT.EDIT}
                                 >
-                                  <PencilIcon className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(project.id)}
-                                  className="p-1 text-red-600 hover:text-red-900"
-                                  title="Xóa"
+                                  <button
+                                    onClick={() => handleOpenModal(project)}
+                                    className="p-1 text-blue-600 hover:text-blue-900"
+                                    title="Chỉnh sửa nhanh"
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                  </button>
+                                </PermissionGuard>
+                                <PermissionGuard
+                                  permission={PERMISSIONS.PROJECT.DELETE}
                                 >
-                                  <TrashIcon className="h-4 w-4" />
-                                </button>
+                                  <button
+                                    onClick={() => handleDelete(project.id)}
+                                    className="p-1 text-red-600 hover:text-red-900"
+                                    title="Xóa"
+                                  >
+                                    <TrashIcon className="h-4 w-4" />
+                                  </button>
+                                </PermissionGuard>
                               </div>
                             </td>
                           </tr>
@@ -2113,5 +2095,14 @@ export default function AdminProjectPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedAdminProject() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.PROJECT.VIEW]}>
+      <AdminProjectPage />
+    </AdminGuard>
   );
 }

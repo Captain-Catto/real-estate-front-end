@@ -12,6 +12,8 @@ import {
 import { DeveloperService } from "@/services/developerService";
 import { Developer, UpdateDeveloperRequest } from "@/types/developer";
 import { UploadService } from "@/services/uploadService";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 
 interface DeveloperDetailPageProps {
   params: Promise<{
@@ -19,9 +21,7 @@ interface DeveloperDetailPageProps {
   }>;
 }
 
-export default function DeveloperDetailPage({
-  params,
-}: DeveloperDetailPageProps) {
+function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
   const router = useRouter();
   const { id } = use(params);
   const [developer, setDeveloper] = useState<Developer | null>(null);
@@ -531,5 +531,16 @@ export default function DeveloperDetailPage({
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedDeveloperDetailPage({
+  params,
+}: DeveloperDetailPageProps) {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.PROJECT.VIEW]}>
+      <DeveloperDetailPage params={params} />
+    </AdminGuard>
   );
 }

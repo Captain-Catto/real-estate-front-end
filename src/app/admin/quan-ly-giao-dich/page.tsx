@@ -4,6 +4,8 @@ import Link from "next/link";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Pagination } from "@/components/common/Pagination";
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
 import {
   MagnifyingGlassIcon,
   CurrencyDollarIcon,
@@ -16,11 +18,8 @@ import {
   AdminPaymentFilters,
 } from "@/services/adminTransactionService";
 import { toast } from "sonner";
-import { useAuth } from "@/hooks/useAuth";
 
-export default function AdminTransactionsPage() {
-  const { hasRole, isAuthenticated, user } = useAuth();
-  const [accessChecked, setAccessChecked] = useState(false);
+function AdminTransactionsPage() {
   const [transactions, setTransactions] = useState<AdminPayment[]>([]);
   const [stats, setStats] = useState<AdminPaymentStats | null>(null);
   const [filters, setFilters] = useState<AdminPaymentFilters>({
@@ -33,13 +32,6 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  // Authentication check
-  useEffect(() => {
-    if (user !== undefined) {
-      setAccessChecked(true);
-    }
-  }, [user]);
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
@@ -80,10 +72,8 @@ export default function AdminTransactionsPage() {
   }, [filters, currentPage]);
 
   useEffect(() => {
-    if (user && accessChecked && isAuthenticated && hasRole("admin")) {
-      fetchTransactions();
-    }
-  }, [fetchTransactions, user, accessChecked, isAuthenticated, hasRole]);
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const handleSearch = (searchTerm: string) => {
     console.log("🔍 Search triggered with term:", searchTerm);
@@ -150,95 +140,6 @@ export default function AdminTransactionsPage() {
     }
     return { type: "other", label: "Khác", color: "text-gray-700" };
   };
-
-  if (!accessChecked) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="mx-auto h-12 w-12 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 13.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Chưa đăng nhập
-              </h2>
-              <p className="text-gray-600">
-                Vui lòng đăng nhập để truy cập trang này.
-              </p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasRole("admin")) {
-    return (
-      <div className="flex min-h-screen bg-gray-100">
-        <AdminSidebar />
-        <div className="flex-1">
-          <AdminHeader />
-          <main className="flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <svg
-                  className="mx-auto h-12 w-12 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 715.636 5.636m12.728 12.728L5.636 5.636"
-                  />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Không có quyền truy cập
-              </h2>
-              <p className="text-gray-600">
-                Bạn không có quyền truy cập vào trang này.
-              </p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -530,5 +431,16 @@ export default function AdminTransactionsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function ProtectedAdminTransactions() {
+  return (
+    <AdminGuard 
+      permissions={[PERMISSIONS.TRANSACTION.VIEW]}
+    >
+      <AdminTransactionsInternal />
+    </AdminGuard>
   );
 }

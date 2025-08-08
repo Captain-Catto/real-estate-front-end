@@ -8,8 +8,9 @@ import AdminPostDetail from "@/components/admin/AdminPostDetail";
 import { adminPostsService, Post } from "@/services/postsService";
 import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
-
-export default function AdminPostDetailPage() {
+import AdminGuard from "@/components/auth/AdminGuard";
+import { PERMISSIONS } from "@/constants/permissions";
+function AdminPostDetailPageInternalInternal() {
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(null);
@@ -237,5 +238,14 @@ export default function AdminPostDetailPage() {
         locationLoading={editPostModal.locationLoading}
       />
     </div>
+  );
+}
+
+// Wrap component with AdminGuard
+export default function AdminPostDetailPage() {
+  return (
+    <AdminGuard permissions={[PERMISSIONS.POST.VIEW]}>
+      <AdminPostDetailPageInternalInternal />
+    </AdminGuard>
   );
 }
