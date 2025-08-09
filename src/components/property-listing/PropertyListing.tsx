@@ -11,6 +11,8 @@ import { Pagination } from "@/components/common/Pagination";
 import SearchSection from "@/components/home/SearchSection";
 import { locationService } from "@/services/locationService";
 import { PropertyData } from "@/types/property";
+import { formatPriceByType } from "@/utils/format";
+import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
 
 interface PropertyListingProps {
   properties: PropertyData[];
@@ -40,6 +42,7 @@ export function PropertyListing({
   searchParams = {},
 }: PropertyListingProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   // Sử dụng interface Location từ locationService
   interface BasicLocation {
     code: string;
@@ -56,7 +59,6 @@ export function PropertyListing({
     initialDistricts: [],
     initialWard: null,
   });
-  const itemsPerPage = 20;
 
   // Fetch location data để populate vào SearchSection
   useEffect(() => {
@@ -224,6 +226,11 @@ export function PropertyListing({
 
     fetchLocationData();
   }, [location, searchParams]);
+
+  // Reset to first page when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   // Debug log để kiểm tra category data
   console.log("=== SEARCH SECTION DEBUG ===", {
@@ -408,6 +415,31 @@ export function PropertyListing({
           </div>
         ) : (
           <>
+            {/* Controls and Stats */}
+            <div className="bg-white rounded-lg p-4 mb-6 shadow-sm">
+              <div className="flex justify-end items-center">
+                {/* Items per page selector */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-700 whitespace-nowrap">
+                    Hiển thị:
+                  </label>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">
+                    / trang
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Properties Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
               {currentProperties.map((property: PropertyData) => (
@@ -419,14 +451,17 @@ export function PropertyListing({
               ))}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+            {/* Results summary and Pagination */}
+            {propertiesArray.length > 0 && (
+              <div className="mt-8 space-y-4">
+                {/* Pagination - always show if there are results */}
+                <div className="flex justify-center">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
               </div>
             )}
           </>
@@ -541,13 +576,24 @@ const PropertyCard = React.memo(
           </Link>
 
           <div className="text-lg font-bold text-red-600 mb-2">
-            {property.price
-              ? `${property.price} ${property.currency || "VND"}`
-              : "Thỏa thuận"}
+            {(() => {
+              if (!property.price || property.price === 0) return "Thỏa thuận";
+
+              const numericPrice =
+                typeof property.price === "string"
+                  ? parseFloat(property.price.replace(/[^\d]/g, "")) || 0
+                  : property.price;
+
+              if (numericPrice === 0) return "Thỏa thuận";
+
+              const priceType =
+                transactionType === "cho-thue" ? "cho-thue" : "ban";
+              return formatPriceByType(numericPrice, priceType);
+            })()}
           </div>
 
           <div className="flex items-center text-gray-600 text-sm mb-3">
-            <i className="fas fa-map-marker-alt mr-1"></i>
+            <MdLocationOn className="w-4 h-4 mr-1 flex-shrink-0" />
             <span className="line-clamp-1">
               {[
                 property.location?.ward,
@@ -559,22 +605,38 @@ const PropertyCard = React.memo(
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+          <div className="flex justify-between gap-4 text-sm text-gray-600">
             {property.area && (
               <div className="text-center">
-                <div className="font-medium">{property.area} m²</div>
+                <div className="font-medium flex items-center justify-center">
+                  <MdSquareFoot className="w-4 h-4 mr-1" />
+                  <span className="text-base font-semibold">
+                    {property.area}
+                  </span>
+                </div>
               </div>
             )}
-            {property.bedrooms && (
+            {property.bedrooms !== undefined && property.bedrooms !== null && (
               <div className="text-center">
-                <div className="font-medium">{property.bedrooms} PN</div>
+                <div className="font-medium flex items-center justify-center">
+                  <MdBed className="w-4 h-4 mr-1" />
+                  <span className="text-base font-semibold">
+                    {property.bedrooms}
+                  </span>
+                </div>
               </div>
             )}
-            {property.bathrooms && (
-              <div className="text-center">
-                <div className="font-medium">{property.bathrooms} PT</div>
-              </div>
-            )}
+            {property.bathrooms !== undefined &&
+              property.bathrooms !== null && (
+                <div className="text-center">
+                  <div className="font-medium flex items-center justify-center">
+                    <MdBathtub className="w-4 h-4 mr-1" />
+                    <span className="text-base font-semibold">
+                      {property.bathrooms}
+                    </span>
+                  </div>
+                </div>
+              )}
           </div>
         </div>
       </div>

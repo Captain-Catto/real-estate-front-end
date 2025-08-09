@@ -346,14 +346,8 @@ export function useCreatePostModal() {
       } else {
         throw new Error(result?.message || "Có lỗi xảy ra khi đăng tin");
       }
-    } catch (error) {
-      console.error("Error creating post:", error);
-      // Handle the error depending on its type
-      if (error instanceof Error) {
-        toast.error(error.message || "Có lỗi xảy ra khi đăng tin!");
-      } else {
-        toast.error("Có lỗi xảy ra khi đăng tin!");
-      }
+    } catch {
+      // Error toast đã được hiển thị trong service
     } finally {
       setIsSubmitting(false);
     }

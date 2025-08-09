@@ -3,6 +3,8 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FavoriteButton } from "./FavoriteButton";
+import { formatPriceByType } from "@/utils/format";
+import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
 
 interface PropertyCardProps {
   property: {
@@ -28,9 +30,13 @@ interface PropertyCardProps {
     createdAt?: string;
     status?: string;
   };
+  transactionType?: string; // Added to determine price format type
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+export function PropertyCard({
+  property,
+  transactionType = "ban",
+}: PropertyCardProps) {
   console.log("Rendering PropertyCard for:", property);
   // Xử lý id
   const id = property.id || property._id || "";
@@ -54,10 +60,24 @@ export function PropertyCard({ property }: PropertyCardProps) {
   const slug = property.slug || id;
 
   // Xử lý price
-  const formattedPrice =
-    typeof property.price === "number"
-      ? new Intl.NumberFormat("vi-VN").format(property.price) + " tỷ"
-      : property.price;
+  const formattedPrice = (() => {
+    if (typeof property.price === "number") {
+      // Determine the price type from transactionType
+      const priceType = transactionType === "cho-thue" ? "cho-thue" : "ban";
+      return formatPriceByType(property.price, priceType);
+    } else if (typeof property.price === "string") {
+      // Check if it's a numeric string
+      const numericPrice =
+        parseFloat(property.price.replace(/[^\d]/g, "")) || 0;
+      if (numericPrice > 0) {
+        const priceType = transactionType === "cho-thue" ? "cho-thue" : "ban";
+        return formatPriceByType(numericPrice, priceType);
+      }
+      // Return the original string if it's not numeric (e.g., "Thỏa thuận")
+      return property.price;
+    }
+    return "Thỏa thuận";
+  })();
 
   // Xử lý area
   const formattedArea = property.area
@@ -132,41 +152,33 @@ export function PropertyCard({ property }: PropertyCardProps) {
           {/* Area */}
           {formattedArea && (
             <div className="text-gray-700 text-base flex items-center">
-              <span>•</span>
-              <span className="ml-2">{formattedArea}</span>
+              <MdSquareFoot className="w-5 h-5 mr-2" />
+              <span className="text-lg font-semibold">{formattedArea}</span>
             </div>
           )}
 
           {/* Bedrooms */}
-          {property.bedrooms && (
+          {property.bedrooms !== undefined && property.bedrooms !== null && (
             <div className="text-gray-700 text-base flex items-center">
-              <span>•</span>
-              <span className="ml-2">{property.bedrooms} PN</span>
+              <MdBed className="w-5 h-5 mr-2" />
+              <span className="text-lg font-semibold">{property.bedrooms}</span>
+            </div>
+          )}
+
+          {/* Bathrooms */}
+          {property.bathrooms !== undefined && property.bathrooms !== null && (
+            <div className="text-gray-700 text-base flex items-center">
+              <MdBathtub className="w-5 h-5 mr-2" />
+              <span className="text-lg font-semibold">
+                {property.bathrooms}
+              </span>
             </div>
           )}
         </div>
 
         {/* Location */}
         <div className="flex items-start text-gray-600 mb-3">
-          <svg
-            className="h-5 w-5 text-gray-500 mr-1 mt-0.5 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
+          <MdLocationOn className="h-5 w-5 mr-1 mt-0.5 shrink-0" />
           <span className="text-sm line-clamp-1">{locationText}</span>
         </div>
 

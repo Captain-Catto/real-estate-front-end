@@ -217,7 +217,7 @@ const FixedNewsSection = () => {
   };
 
   return (
-    <section className="py-16 bg-gray-50">
+    <section className="my-8 py-8 bg-gray-50">
       <div className="container mx-auto px-4">
         {/* Tab Navigation */}
         <div className="mb-8">

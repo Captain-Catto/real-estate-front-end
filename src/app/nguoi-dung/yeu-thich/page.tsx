@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
+import { formatPriceByType } from "@/utils/format";
 
 export default function YeuThichPage() {
   const { user } = useAuth();
@@ -91,9 +92,17 @@ export default function YeuThichPage() {
   });
 
   // Format price for display in the UI
-
   const formatPrice = (price: string) => {
-    return price || "Liên hệ";
+    // Parse price to handle different formats
+    const numericPrice =
+      typeof price === "string"
+        ? parseFloat(price.replace(/[^\d]/g, "")) || 0
+        : Number(price) || 0;
+
+    if (numericPrice === 0) return "Thỏa thuận";
+
+    // Default to "ban" type if can't determine
+    return formatPriceByType(numericPrice, "ban");
   };
 
   const handleRemoveFavorite = async (propertyId: string) => {

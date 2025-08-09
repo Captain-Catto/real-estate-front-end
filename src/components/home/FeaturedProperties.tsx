@@ -8,6 +8,7 @@ import {
   FavoriteItem,
 } from "@/components/common/FavoriteButton";
 import testCardImg from "@/assets/images/card-img.jpg";
+import { formatPriceByType } from "@/utils/format";
 
 interface FeaturedProperty {
   id: string;
@@ -100,7 +101,11 @@ export function FeaturedProperties() {
                 id: post._id,
                 type: "property",
                 title: post.title,
-                price: formatPrice(post.price, post.currency || "VND"),
+                price: formatPrice(
+                  post.price,
+                  post.currency || "VND",
+                  transactionType || "ban"
+                ),
                 location: locationName,
                 image:
                   post.images && post.images.length > 0
@@ -120,7 +125,11 @@ export function FeaturedProperties() {
               return {
                 id: post._id,
                 title: post.title,
-                price: formatPrice(post.price, post.currency || "VND"),
+                price: formatPrice(
+                  post.price,
+                  post.currency || "VND",
+                  transactionType || "ban"
+                ),
                 location: locationName,
                 bedrooms: post.bedrooms || 0,
                 bathrooms: post.bathrooms || 0,
@@ -158,15 +167,13 @@ export function FeaturedProperties() {
   }, []);
 
   // Helper function to format price
-  const formatPrice = (price: number, currency: string = "VND"): string => {
+  const formatPrice = (
+    price: number,
+    currency: string = "VND",
+    type: string = "ban"
+  ): string => {
     if (currency === "VND") {
-      if (price >= 1000000000) {
-        return `${(price / 1000000000).toFixed(1)} tỷ`.replace(".0", "");
-      } else if (price >= 1000000) {
-        return `${(price / 1000000).toFixed(0)} triệu`;
-      } else {
-        return `${price.toLocaleString()} VND`;
-      }
+      return formatPriceByType(price, type);
     }
     return `${price.toLocaleString()} ${currency}`;
   };
@@ -240,7 +247,7 @@ export function FeaturedProperties() {
   };
 
   return (
-    <section className="py-8 md:py-16">
+    <section className="py-8">
       <div className="container mx-auto px-4">
         {/* Header với tiêu đề và link */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 md:mb-12">
@@ -401,55 +408,63 @@ export function FeaturedProperties() {
                   </div>
 
                   {/* Property details */}
-                  <div className="flex justify-between text-xs md:text-sm text-gray-500 border-t pt-2 md:pt-3">
-                    <span className="flex items-center">
-                      <svg
-                        className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
-                        />
-                      </svg>
-                      {property.bedrooms} PN
-                    </span>
-                    <span className="flex items-center">
-                      <svg
-                        className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                        />
-                      </svg>
-                      {property.bathrooms} WC
-                    </span>
-                    <span className="flex items-center">
-                      <svg
-                        className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                        />
-                      </svg>
-                      {property.area}m²
-                    </span>
+                  <div className="flex gap-4 text-xs md:text-sm text-gray-500 border-t pt-2 md:pt-3">
+                    {property.bedrooms !== undefined &&
+                      property.bedrooms !== null && (
+                        <span className="flex items-center">
+                          <svg
+                            className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                            />
+                          </svg>
+                          {property.bedrooms} PN
+                        </span>
+                      )}
+                    {property.bathrooms !== undefined &&
+                      property.bathrooms !== null && (
+                        <span className="flex items-center">
+                          <svg
+                            className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+                            />
+                          </svg>
+                          {property.bathrooms} WC
+                        </span>
+                      )}
+                    {property.area && (
+                      <span className="flex items-center">
+                        <svg
+                          className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                          />
+                        </svg>
+                        {property.area}m²
+                      </span>
+                    )}
                   </div>
                 </div>
               </Link>

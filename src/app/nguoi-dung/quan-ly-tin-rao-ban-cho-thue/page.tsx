@@ -43,7 +43,7 @@ export default function QuanLyTinDangPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<
-    "all" | "active" | "pending" | "expired" | "rejected"
+    "all" | "active" | "pending" | "expired" | "rejected" | "deleted"
   >("all");
   const [filterType, setFilterType] = useState<"all" | "ban" | "cho-thue">(
     "all"
@@ -264,6 +264,7 @@ export default function QuanLyTinDangPage() {
       pending: "bg-yellow-100 text-yellow-800",
       expired: "bg-red-100 text-red-800",
       rejected: "bg-gray-100 text-gray-800",
+      deleted: "bg-gray-400 text-white",
     };
 
     const labels = {
@@ -271,6 +272,7 @@ export default function QuanLyTinDangPage() {
       pending: "Chờ duyệt",
       expired: "Hết hạn",
       rejected: "Bị từ chối",
+      deleted: "Đã xóa",
     };
 
     return (
@@ -414,6 +416,7 @@ export default function QuanLyTinDangPage() {
                         | "pending"
                         | "expired"
                         | "rejected"
+                        | "deleted"
                     )
                   }
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -423,6 +426,7 @@ export default function QuanLyTinDangPage() {
                   <option value="pending">Chờ duyệt</option>
                   <option value="expired">Hết hạn</option>
                   <option value="rejected">Bị từ chối</option>
+                  <option value="deleted">Thùng rác</option>
                 </select>
 
                 <select

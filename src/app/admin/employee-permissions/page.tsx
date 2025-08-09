@@ -258,11 +258,39 @@ function EmployeePermissionManagement() {
     }
   };
 
+  // Test toast function
+  const testToast = () => {
+    console.log("Testing toast notifications...");
+    toast.success("Test Toast Success", {
+      description: "This is a test success toast",
+      duration: 3000,
+      icon: "✅",
+    });
+
+    setTimeout(() => {
+      toast.error("Test Toast Error", {
+        description: "This is a test error toast",
+        duration: 3000,
+        icon: "❌",
+      });
+    }, 1000);
+  };
+
   return (
     <AdminLayout
       title="Quản lý quyền Employee"
       description="Kích hoạt hoặc khóa các chức năng mà employee có thể thực hiện"
     >
+      {/* Test Toast Button - Remove after testing */}
+      <div className="mb-4">
+        <button
+          onClick={testToast}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+        >
+          Test Toast System
+        </button>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

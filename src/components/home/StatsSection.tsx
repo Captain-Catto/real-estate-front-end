@@ -127,7 +127,7 @@ export function StatsSection() {
   return (
     <section
       ref={sectionRef}
-      className="py-16 bg-gradient-to-r from-red-400 to-red-500 text-white"
+      className="my-8 py-8 bg-gradient-to-r from-red-400 to-red-500 text-white"
       style={{ minHeight: "300px" }}
     >
       <div className="container mx-auto px-4">

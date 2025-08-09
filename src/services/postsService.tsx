@@ -1,5 +1,6 @@
 import { refreshToken } from "./authService";
 import { categoryService } from "./categoryService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -160,6 +161,24 @@ export interface UploadImageResponse {
 }
 
 class PostService {
+  // Helper function để handle response và hiển thị toast
+  private handleResponse(
+    response: Response | null,
+    errorMessage: string = "Đã xảy ra lỗi"
+  ) {
+    if (!response) {
+      toast.error("Không thể kết nối đến server");
+      return null;
+    }
+
+    if (!response.ok) {
+      toast.error(errorMessage);
+      return null;
+    }
+
+    return response;
+  }
+
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
     try {
       const token = localStorage.getItem("accessToken");
@@ -178,7 +197,8 @@ class PostService {
       return response;
     } catch (error) {
       console.error(`Network error when fetching ${url}:`, error);
-      throw error;
+      toast.error("Đã xảy ra lỗi kết nối mạng");
+      return null;
     }
   }
 
@@ -269,13 +289,15 @@ class PostService {
         // Nếu refresh cũng fail, logout
         localStorage.removeItem("accessToken");
         window.location.href = "/dang-nhap";
-        throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+        toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+        return null;
       }
     }
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || "Failed to create post");
+      toast.error(error.message || "Tạo tin đăng thất bại");
+      return null;
     }
 
     return await response.json();
@@ -313,8 +335,14 @@ class PostService {
         `${API_BASE_URL}/posts/my?${queryParams}`
       );
 
+      if (!response) {
+        toast.error("Không thể kết nối đến server");
+        return null;
+      }
+
       if (!response.ok) {
-        throw new Error("Failed to fetch user posts");
+        toast.error("Lấy danh sách tin đăng thất bại");
+        return null;
       }
       const result = await response.json();
       console.log("getuserpost result", result);
@@ -322,7 +350,8 @@ class PostService {
       return result;
     } catch (error) {
       console.error("Error fetching user posts:", error);
-      throw error;
+      toast.error("Đã xảy ra lỗi khi lấy danh sách tin đăng");
+      return null;
     }
   }
 
@@ -366,11 +395,16 @@ class PostService {
         }
       );
 
+      if (!response) {
+        toast.error("Không thể kết nối đến server");
+        return null;
+      }
+
       // Log full response for debugging
       console.log(`Update response status: ${response.status}`);
 
       if (!response.ok) {
-        let errorMessage = "Failed to update post";
+        let errorMessage = "Cập nhật tin đăng thất bại";
         try {
           const contentType = response.headers.get("content-type");
           if (contentType && contentType.includes("application/json")) {
@@ -384,7 +418,8 @@ class PostService {
         } catch (parseError) {
           console.error("Error parsing error response:", parseError);
         }
-        throw new Error(errorMessage);
+        toast.error(errorMessage);
+        return null;
       }
 
       try {
@@ -397,7 +432,8 @@ class PostService {
       }
     } catch (error) {
       console.error("Error updating post:", error);
-      throw error;
+      toast.error("Đã xảy ra lỗi khi cập nhật tin đăng");
+      return null;
     }
   }
 
@@ -472,15 +508,17 @@ class PostService {
         }
       );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to delete post");
-      }
+      const validResponse = this.handleResponse(
+        response,
+        "Xóa tin đăng thất bại"
+      );
+      if (!validResponse) return null;
 
-      return await response.json();
+      return await validResponse.json();
     } catch (error) {
       console.error("Error deleting post:", error);
-      throw error;
+      toast.error("Đã xảy ra lỗi khi xóa tin đăng");
+      return null;
     }
   }
 
@@ -500,15 +538,17 @@ class PostService {
         }
       );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to extend post");
-      }
+      const validResponse = this.handleResponse(
+        response,
+        "Gia hạn tin đăng thất bại"
+      );
+      if (!validResponse) return null;
 
-      return await response.json();
+      return await validResponse.json();
     } catch (error) {
       console.error("Error extending post:", error);
-      throw error;
+      toast.error("Đã xảy ra lỗi khi gia hạn tin đăng");
+      return null;
     }
   }
 

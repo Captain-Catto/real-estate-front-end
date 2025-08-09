@@ -3,6 +3,12 @@ import { useState, Fragment, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+
+// Global flag to prevent multiple ActionButton instances from fetching simultaneously
+let isNotificationsFetching = false;
+let lastNotificationsFetch = 0;
+const NOTIFICATION_CACHE_TIME = 5000; // 5 seconds cache
+
 import {
   Menu,
   MenuButton,
@@ -14,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth"; // Updated import path
 import { useFavorites } from "@/store/hooks";
 import { toast } from "sonner";
 import { FavoriteItem } from "@/store/slices/favoritesSlices";
+import { formatPriceByType } from "@/utils/format";
 
 // Notification interfaces
 interface ActionButton {
@@ -84,7 +91,26 @@ export default function ActionButton() {
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) return;
 
+    // Prevent multiple simultaneous fetches, but allow first fetch
+    const now = Date.now();
+    if (isNotificationsFetching) {
+      console.log("Skipping notifications fetch - already in progress");
+      return;
+    }
+
+    // Only apply cache for subsequent fetches (not the first one)
+    if (
+      lastNotificationsFetch > 0 &&
+      now - lastNotificationsFetch < NOTIFICATION_CACHE_TIME
+    ) {
+      console.log("Skipping notifications fetch - recently fetched");
+      return;
+    }
+
+    isNotificationsFetching = true;
+    lastNotificationsFetch = now;
     setNotificationsLoading(true);
+
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -109,9 +135,11 @@ export default function ActionButton() {
       console.error("Error fetching notifications:", error);
     } finally {
       setNotificationsLoading(false);
+      isNotificationsFetching = false;
     }
   }, [isAuthenticated]);
 
+  // Function to fetch only unread count (for initial load)
   const fetchUnreadCount = useCallback(async () => {
     if (!isAuthenticated) return;
 
@@ -140,15 +168,9 @@ export default function ActionButton() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserFavorites();
-      fetchNotifications();
-      fetchUnreadCount();
+      fetchUnreadCount(); // Fetch unread count immediately for badge display
     }
-  }, [
-    isAuthenticated,
-    fetchUserFavorites,
-    fetchNotifications,
-    fetchUnreadCount,
-  ]);
+  }, [isAuthenticated, fetchUserFavorites, fetchUnreadCount]);
 
   // Auto-refresh notifications every 30 seconds when user is authenticated
   // EMERGENCY FIX: Disabled to prevent infinite API loops
@@ -323,8 +345,6 @@ export default function ActionButton() {
     switch (activeNotificationTab) {
       case "UNREAD":
         return notifications.filter((n) => !n.read);
-      case "SYSTEM":
-        return notifications.filter((n) => n.type === "SYSTEM");
       default:
         return notifications;
     }
@@ -541,7 +561,20 @@ export default function ActionButton() {
                             </h4>
                           </Link>
                           <div className="text-sm font-semibold text-red-600 mb-1">
-                            {item.price}
+                            {(() => {
+                              // Parse price to handle different formats
+                              const numericPrice =
+                                typeof item.price === "string"
+                                  ? parseFloat(
+                                      item.price.replace(/[^\d]/g, "")
+                                    ) || 0
+                                  : Number(item.price) || 0;
+
+                              if (numericPrice === 0) return "Thỏa thuận";
+
+                              // Default to "ban" type if can't determine
+                              return formatPriceByType(numericPrice, "ban");
+                            })()}
                           </div>
                           <div className="flex items-center text-xs text-gray-500">
                             <svg
@@ -622,7 +655,13 @@ export default function ActionButton() {
       {isAuthenticated && user && (
         <div className="relative" ref={notificationRef}>
           <button
-            onClick={() => setShowNotificationPopup(!showNotificationPopup)}
+            onClick={() => {
+              setShowNotificationPopup(!showNotificationPopup);
+              if (!showNotificationPopup) {
+                // Fetch full notifications when opening popup
+                fetchNotifications();
+              }
+            }}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group relative"
             title="Thông báo"
           >
@@ -694,7 +733,7 @@ export default function ActionButton() {
 
                     {/* Notification Tabs */}
                     <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-                      {["ALL", "UNREAD", "SYSTEM"].map((tab) => (
+                      {["ALL", "UNREAD"].map((tab) => (
                         <button
                           key={tab}
                           onClick={() => setActiveNotificationTab(tab)}
@@ -704,11 +743,7 @@ export default function ActionButton() {
                               : "text-gray-600 hover:text-gray-900"
                           }`}
                         >
-                          {tab === "ALL"
-                            ? "Tất cả"
-                            : tab === "UNREAD"
-                            ? "Chưa đọc"
-                            : "Hệ thống"}
+                          {tab === "ALL" ? "Tất cả" : "Chưa đọc"}
                         </button>
                       ))}
                     </div>

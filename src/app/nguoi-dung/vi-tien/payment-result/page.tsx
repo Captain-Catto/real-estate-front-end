@@ -56,6 +56,14 @@ export default function PaymentResultPage() {
     async function processPaymentResult() {
       console.log("Starting payment result processing");
 
+      // Prevent duplicate processing
+      if (statusChecked) {
+        console.log("Payment already processed, skipping...");
+        return;
+      }
+
+      setStatusChecked(true);
+
       // NOTE: VNPay returns amounts multiplied by 100 (in smallest currency unit)
       // For example, 500,000 VND will come back as 50000000
       // Always divide vnp_Amount by 100 when processing
@@ -286,9 +294,14 @@ export default function PaymentResultPage() {
 
     // Call the async function
     processPaymentResult();
-    // Don't include result as a dependency as it's being set within the effect
+    // Don't include refreshWallet as it's called within the effect and would cause infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, refreshWallet]); // extractedOrderId là biến local trong hàm processPaymentResult
+  }, [searchParams]); // extractedOrderId là biến local trong hàm processPaymentResult
+
+  // Reset statusChecked when searchParams change (new payment)
+  useEffect(() => {
+    setStatusChecked(false);
+  }, [searchParams]);
 
   // Enhanced function to update payment status with VNPay data
   const updatePaymentStatus = async (

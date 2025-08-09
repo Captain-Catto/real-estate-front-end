@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
+import { formatPriceByType } from "@/utils/format";
+import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
 
 interface Property {
   id: string;
@@ -126,28 +128,48 @@ export function RelatedProperties({
           </Link>
 
           <div className="text-red-600 font-bold text-lg mb-2">
-            {property.price}
+            {(() => {
+              // Handle price formatting
+              if (typeof property.price === "string") {
+                const numericPrice =
+                  parseFloat(property.price.replace(/[^\d]/g, "")) || 0;
+                if (numericPrice > 0) {
+                  // Default to "ban" for related properties - could be enhanced to detect from context
+                  return formatPriceByType(numericPrice, "ban");
+                }
+                return property.price; // Return original if it's not numeric
+              }
+              return property.price;
+            })()}
           </div>
 
           <div className="flex items-center text-gray-500 text-sm mb-3">
-            <i className="fas fa-map-marker-alt mr-1"></i>
+            <MdLocationOn className="w-4 h-4 mr-1 flex-shrink-0" />
             <span className="truncate">{property.location}</span>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-            <div className="flex items-center space-x-3">
-              <span className="flex items-center">
-                <i className="fas fa-ruler-combined mr-1"></i>
-                {property.area}
-              </span>
-              <span className="flex items-center">
-                <i className="fas fa-bed mr-1"></i>
-                {property.bedrooms}
-              </span>
-              <span className="flex items-center">
-                <i className="fas fa-bath mr-1"></i>
-                {property.bathrooms}
-              </span>
+          <div className="flex items-center justify-between text-sm text-gray-500 mb-3">
+            <div className="flex items-center space-x-4">
+              {property.area && (
+                <span className="flex items-center">
+                  <MdSquareFoot className="w-4 h-4 mr-1" />
+                  <span className="font-semibold">{property.area}</span>
+                </span>
+              )}
+              {property.bedrooms !== undefined &&
+                property.bedrooms !== null && (
+                  <span className="flex items-center">
+                    <MdBed className="w-4 h-4 mr-1" />
+                    <span className="font-semibold">{property.bedrooms}</span>
+                  </span>
+                )}
+              {property.bathrooms !== undefined &&
+                property.bathrooms !== null && (
+                  <span className="flex items-center">
+                    <MdBathtub className="w-4 h-4 mr-1" />
+                    <span className="font-semibold">{property.bathrooms}</span>
+                  </span>
+                )}
             </div>
           </div>
 

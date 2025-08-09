@@ -124,7 +124,7 @@ export function FeaturedProject() {
   };
 
   return (
-    <section className="py-8 md:py-16 bg-gray-50">
+    <section className="py-8 md:py-8 bg-gray-50 my-8">
       <div className="container mx-auto px-4">
         {/* Header với layout flex - tiêu đề bên trái, nút bên phải */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 md:mb-12">

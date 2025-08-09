@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { favoriteService } from "@/services/favoriteService";
+import { locationService } from "@/services/locationService";
 
 // Types
 export interface FavoriteItem {
@@ -40,27 +41,64 @@ export const fetchFavoritesAsync = createAsyncThunk(
       // Make sure this matches the function name in favoriteService
       const response = await favoriteService.getFavorites();
       if (response.success) {
-        // Chuyển đổi dữ liệu từ API sang định dạng FavoriteItem
-        return response.data.favorites.map((fav: any) => ({
-          id: fav.post._id,
-          type: "property" as const,
-          title: fav.post.title,
-          price: fav.post.price,
-          location:
-            (fav.post.location.ward || "Không xác định") +
-            ", " +
-            (fav.post.location.province || "Không xác định"),
-          image: fav.post.images[0] || "/placeholder.jpg",
-          slug: fav.post.slug || fav.post._id,
-          area: fav.post.area + " m²",
-          bedrooms: fav.post.bedrooms,
-          bathrooms: fav.post.bathrooms,
-          propertyType:
-            typeof fav.post.category === "object"
-              ? fav.post.category?.name
-              : fav.post.category,
-          addedAt: fav.createdAt,
-        }));
+        // Chuyển đổi dữ liệu từ API sang định dạng FavoriteItem với location names
+        const favoritesWithLocationNames = await Promise.all(
+          response.data.favorites.map(async (fav: any) => {
+            let locationText = "Không xác định";
+
+            // Try to get location names if location data exists
+            if (fav.post.location) {
+              try {
+                const locationNames = await locationService.getLocationNames(
+                  fav.post.location.province,
+                  fav.post.location.ward
+                );
+                const provinceName =
+                  locationNames.provinceName ||
+                  fav.post.location.province ||
+                  "";
+                const wardName =
+                  locationNames.wardName || fav.post.location.ward || "";
+                locationText = [wardName, provinceName]
+                  .filter(Boolean)
+                  .join(", ");
+              } catch (error) {
+                console.error(
+                  "Error getting location names for favorite:",
+                  error
+                );
+                // Fallback to original location data
+                locationText =
+                  [
+                    fav.post.location.ward || "",
+                    fav.post.location.province || "",
+                  ]
+                    .filter(Boolean)
+                    .join(", ") || "Không xác định";
+              }
+            }
+
+            return {
+              id: fav.post._id,
+              type: "property" as const,
+              title: fav.post.title,
+              price: fav.post.price,
+              location: locationText,
+              image: fav.post.images[0] || "/placeholder.jpg",
+              slug: fav.post.slug || fav.post._id,
+              area: fav.post.area + " m²",
+              bedrooms: fav.post.bedrooms,
+              bathrooms: fav.post.bathrooms,
+              propertyType:
+                typeof fav.post.category === "object"
+                  ? fav.post.category?.name
+                  : fav.post.category,
+              addedAt: fav.createdAt,
+            };
+          })
+        );
+
+        return favoritesWithLocationNames;
       }
       return rejectWithValue("Failed to fetch favorites");
     } catch (error: unknown) {

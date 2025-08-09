@@ -376,7 +376,11 @@ export function CategoryPage({
                 {/* Property Listings */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 mb-8">
                   {searchResults.map((property) => (
-                    <PropertyCard key={property._id} property={property} />
+                    <PropertyCard
+                      key={property._id}
+                      property={property}
+                      transactionType={categoryType}
+                    />
                   ))}
                 </div>
 

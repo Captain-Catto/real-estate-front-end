@@ -128,8 +128,13 @@ export function FavoriteButton({
       e.stopPropagation();
     }
 
+    console.log("FavoriteButton clicked, current state:", isFavorited);
+    console.log("Toast function available:", typeof toast === "function");
+
     if (!isAuthenticated) {
+      console.log("User not authenticated, showing login toast");
       toast.error("Vui lòng đăng nhập để lưu tin", {
+        description: "Bạn cần đăng nhập để sử dụng tính năng này",
         action: {
           label: "Đăng nhập",
           onClick: () => (window.location.href = "/dang-nhap"),
@@ -154,6 +159,7 @@ export function FavoriteButton({
           };
 
           // Toast notification
+          console.log("Showing remove from favorites toast");
           toast.success("Đã xóa khỏi danh sách yêu thích", {
             description: `${item.title} đã được bỏ khỏi danh sách đã lưu`,
             icon: "💔",
@@ -184,6 +190,7 @@ export function FavoriteButton({
           };
 
           // Toast notification
+          console.log("Showing add to favorites toast");
           toast.success("Đã thêm vào danh sách yêu thích", {
             description: `${item.title} đã được lưu vào danh sách của bạn`,
             icon: "❤️",
@@ -213,6 +220,7 @@ export function FavoriteButton({
       console.error("Error toggling favorite:", error);
       toast.error("Không thể thực hiện thao tác", {
         description: "Đã xảy ra lỗi, vui lòng thử lại sau",
+        icon: "⚠️",
       });
     } finally {
       setIsLoading(false);
