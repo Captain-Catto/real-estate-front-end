@@ -1,13 +1,10 @@
 "use client";
-import { useState, Fragment, useRef, useEffect, useCallback } from "react";
+import { useState, Fragment, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
-// Global flag to prevent multiple ActionButton instances from fetching simultaneously
-let isNotificationsFetching = false;
-let lastNotificationsFetch = 0;
-const NOTIFICATION_CACHE_TIME = 5000; // 5 seconds cache
+import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationRefresh } from "@/hooks/useNotificationRefresh";
 
 import {
   Menu,
@@ -22,45 +19,20 @@ import { toast } from "sonner";
 import { FavoriteItem } from "@/store/slices/favoritesSlices";
 import { formatPriceByType } from "@/utils/format";
 
-// Notification interfaces
-interface ActionButton {
-  text: string;
-  link: string;
-  style: "primary" | "secondary" | "success" | "warning" | "info" | "danger";
-}
-
-interface NotificationData {
-  actionButton?: ActionButton;
-  orderId?: string;
-  amount?: number;
-  postId?: string;
-  postTitle?: string;
-  packageName?: string;
-  duration?: number;
-  reason?: string;
-  action?: string;
-}
-
-interface NotificationItem {
-  _id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type:
-    | "PAYMENT"
-    | "POST_APPROVED"
-    | "POST_REJECTED"
-    | "PACKAGE_PURCHASE"
-    | "SYSTEM"
-    | "INTEREST";
-  data: NotificationData;
-  read: boolean;
-  createdAt: string;
-}
-
 export default function ActionButton() {
   // Use our enhanced auth hook
   const { user, isAuthenticated, loading, logout } = useAuth();
+
+  // DEBUG: Log current user info
+  useEffect(() => {
+    if (user) {
+      console.log("🔍 Current user ID:", user.id);
+      console.log("🔍 Current user:", user);
+    }
+  }, [user]);
+
+  // Listen for notification refresh events
+  useNotificationRefresh();
 
   // Initialize router for navigation
   const router = useRouter();
@@ -73,6 +45,16 @@ export default function ActionButton() {
     fetchUserFavorites,
   } = useFavorites();
 
+  // Use Redux notifications
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    markAsRead,
+    markAllAsRead: markAllNotificationsAsRead,
+    getFilteredNotifications,
+  } = useNotifications();
+
   // State cho popup yêu thích
   const [showFavoritesPopup, setShowFavoritesPopup] = useState(false);
   const favoritesRef = useRef<HTMLDivElement>(null);
@@ -82,271 +64,53 @@ export default function ActionButton() {
   const notificationRef = useRef<HTMLDivElement>(null);
   const [activeNotificationTab, setActiveNotificationTab] = useState("ALL");
 
-  // Notification states
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // Notification functions
-  const fetchNotifications = useCallback(async () => {
-    if (!isAuthenticated) return;
-
-    // Prevent multiple simultaneous fetches, but allow first fetch
-    const now = Date.now();
-    if (isNotificationsFetching) {
-      console.log("Skipping notifications fetch - already in progress");
-      return;
-    }
-
-    // Only apply cache for subsequent fetches (not the first one)
-    if (
-      lastNotificationsFetch > 0 &&
-      now - lastNotificationsFetch < NOTIFICATION_CACHE_TIME
-    ) {
-      console.log("Skipping notifications fetch - recently fetched");
-      return;
-    }
-
-    isNotificationsFetching = true;
-    lastNotificationsFetch = now;
-    setNotificationsLoading(true);
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        console.log("No access token found");
-        return;
-      }
-
-      const response = await fetch(
-        "http://localhost:8080/api/notifications?limit=10",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setNotifications(data.data.notifications);
-        setUnreadCount(data.data.unreadCount);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    } finally {
-      setNotificationsLoading(false);
-      isNotificationsFetching = false;
-    }
-  }, [isAuthenticated]);
-
-  // Function to fetch only unread count (for initial load)
-  const fetchUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) return;
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
-
-      const response = await fetch(
-        "http://localhost:8080/api/notifications?limit=1",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setUnreadCount(data.data.unreadCount);
-      }
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
-  }, [isAuthenticated]);
-
   // Fetch favorites when component mounts or user authentication changes
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserFavorites();
-      fetchUnreadCount(); // Fetch unread count immediately for badge display
     }
-  }, [isAuthenticated, fetchUserFavorites, fetchUnreadCount]);
+  }, [isAuthenticated, fetchUserFavorites]);
 
-  // Auto-refresh notifications every 30 seconds when user is authenticated
-  // EMERGENCY FIX: Disabled to prevent infinite API loops
-  useEffect(() => {
-    // DISABLED: Causing infinite loops - do not re-enable without fixing dependency cycles
-    // if (!isAuthenticated) return;
-    // const refreshInterval = setInterval(() => {
-    //   fetchNotifications();
-    // }, 30000); // 30 seconds
-    // return () => clearInterval(refreshInterval);
-  }, [isAuthenticated]);
+  // Handle notification click - navigate to link if available
+  const handleNotificationClick = (notification: any) => {
+    console.log(
+      "🔔 Notification clicked:",
+      notification._id,
+      "read:",
+      notification.read
+    );
 
-  // Handle notification popup visibility
-  // EMERGENCY FIX: Disabled to prevent infinite API loops
-  useEffect(() => {
-    // DISABLED: Causing infinite loops - do not re-enable without fixing dependency cycles
-    // if (showNotificationPopup && isAuthenticated) {
-    //   // Refresh notifications when popup opens
-    //   fetchNotifications();
-    // }
-  }, [showNotificationPopup, isAuthenticated]);
+    // Always mark as read when clicked (even if already read for consistency)
+    if (!notification.read) {
+      console.log("📖 Marking notification as read:", notification._id);
+      markAsRead(notification._id);
+    }
 
-  // Listen for wallet updates to refresh notifications (since payments create notifications)
-  // EMERGENCY FIX: Completely disabled to prevent infinite API loops
-  useEffect(() => {
-    // DISABLED: Entire useEffect disabled to prevent infinite loops
-    // Do not re-enable without fixing dependency cycles and multiple hook instances
-    return () => {
-      // Cleanup placeholder
-    };
-  }, [isAuthenticated]);
+    if (notification.data?.actionButton?.link) {
+      // Close notification popup
+      setShowNotificationPopup(false);
 
-  const markAsRead = async (id: string) => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
+      // Navigate to the link using Next.js router
+      const link = notification.data.actionButton.link;
+      console.log("🔗 Navigating to:", link);
 
-      await fetch(`http://localhost:8080/api/notifications/${id}/read`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((notif) =>
-          notif._id === id ? { ...notif, read: true } : notif
-        )
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
+      // Check if it's an external link
+      if (link.startsWith("http://") || link.startsWith("https://")) {
+        window.open(link, "_blank");
+      } else {
+        // Internal link - use Next.js router
+        router.push(link);
+      }
     }
   };
 
-  const markAllAsRead = async () => {
+  const handleMarkAllAsRead = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
-
-      await fetch("http://localhost:8080/api/notifications/read-all", {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, read: true }))
-      );
-      setUnreadCount(0);
+      await markAllNotificationsAsRead();
       toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
     } catch (error) {
       console.error("Error marking all as read:", error);
       toast.error("Có lỗi xảy ra");
-    }
-  };
-
-  const handleNotificationAction = (notification: NotificationItem) => {
-    if (notification.data.actionButton?.link) {
-      // Mark as read when action is clicked
-      if (!notification.read) {
-        markAsRead(notification._id);
-      }
-
-      // Close notification popup
-      setShowNotificationPopup(false);
-
-      // Navigate to the link using Next.js router
-      const link = notification.data.actionButton.link;
-
-      // Check if it's an external link
-      if (link.startsWith("http://") || link.startsWith("https://")) {
-        window.open(link, "_blank");
-      } else {
-        // Internal link - use Next.js router
-        router.push(link);
-      }
-    }
-  };
-
-  // Handle notification click - navigate to link if available
-  const handleNotificationClick = (notification: NotificationItem) => {
-    if (notification.data.actionButton?.link) {
-      // Mark as read if not already read
-      if (!notification.read) {
-        markAsRead(notification._id);
-      }
-
-      // Close notification popup
-      setShowNotificationPopup(false);
-
-      // Navigate to the link using Next.js router
-      const link = notification.data.actionButton.link;
-
-      // Check if it's an external link
-      if (link.startsWith("http://") || link.startsWith("https://")) {
-        window.open(link, "_blank");
-      } else {
-        // Internal link - use Next.js router
-        router.push(link);
-      }
-    } else if (!notification.read) {
-      // If no action button but notification is unread, just mark as read
-      markAsRead(notification._id);
-    }
-  };
-
-  // Helper functions for notification UI
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "PAYMENT":
-        return "💰";
-      case "PACKAGE_PURCHASE":
-        return "🎉";
-      case "POST_APPROVED":
-        return "✅";
-      case "POST_REJECTED":
-        return "❌";
-      case "INTEREST":
-        return "💖";
-      case "SYSTEM":
-        return "🔔";
-      default:
-        return "📢";
-    }
-  };
-
-  const getButtonStyle = (style: string) => {
-    const baseClasses =
-      "px-3 py-1 text-xs font-medium rounded transition-colors";
-
-    switch (style) {
-      case "primary":
-        return `${baseClasses} bg-blue-600 text-white hover:bg-blue-700`;
-      case "success":
-        return `${baseClasses} bg-green-600 text-white hover:bg-green-700`;
-      case "warning":
-        return `${baseClasses} bg-yellow-600 text-white hover:bg-yellow-700`;
-      case "info":
-        return `${baseClasses} bg-cyan-600 text-white hover:bg-cyan-700`;
-      case "danger":
-        return `${baseClasses} bg-red-600 text-white hover:bg-red-700`;
-      case "secondary":
-      default:
-        return `${baseClasses} bg-gray-600 text-white hover:bg-gray-700`;
-    }
-  };
-
-  // Filter notifications based on active tab
-  const getFilteredNotifications = () => {
-    switch (activeNotificationTab) {
-      case "UNREAD":
-        return notifications.filter((n) => !n.read);
-      default:
-        return notifications;
     }
   };
 
@@ -657,10 +421,6 @@ export default function ActionButton() {
           <button
             onClick={() => {
               setShowNotificationPopup(!showNotificationPopup);
-              if (!showNotificationPopup) {
-                // Fetch full notifications when opening popup
-                fetchNotifications();
-              }
             }}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group relative"
             title="Thông báo"
@@ -724,7 +484,7 @@ export default function ActionButton() {
                         Thông báo
                       </h3>
                       <button
-                        onClick={markAllAsRead}
+                        onClick={handleMarkAllAsRead}
                         className="text-xs text-gray-500 hover:text-gray-700"
                       >
                         Đánh dấu tất cả đã đọc
@@ -759,7 +519,9 @@ export default function ActionButton() {
                     <div className="px-4 py-8 flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400"></div>
                     </div>
-                  ) : getFilteredNotifications().length === 0 ? (
+                  ) : getFilteredNotifications(
+                      activeNotificationTab as "ALL" | "UNREAD"
+                    ).length === 0 ? (
                     /* Empty State */
                     <div className="px-4 py-8">
                       <div className="text-center">
@@ -802,7 +564,9 @@ export default function ActionButton() {
                   ) : (
                     /* Notification List */
                     <div className="divide-y divide-gray-100">
-                      {getFilteredNotifications().map((notification) => (
+                      {getFilteredNotifications(
+                        activeNotificationTab as "ALL" | "UNREAD"
+                      ).map((notification) => (
                         <div
                           key={notification._id}
                           onClick={() => handleNotificationClick(notification)}
@@ -810,18 +574,9 @@ export default function ActionButton() {
                             !notification.read
                               ? "bg-blue-50 border-l-2 border-l-blue-500"
                               : ""
-                          } ${
-                            notification.data.actionButton?.link
-                              ? "hover:bg-blue-100"
-                              : ""
                           }`}
                         >
-                          <div className="flex items-start space-x-3">
-                            {/* Icon */}
-                            <div className="text-lg flex-shrink-0 mt-1">
-                              {getNotificationIcon(notification.type)}
-                            </div>
-
+                          <div className="flex items-start">
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               <h4
@@ -856,23 +611,6 @@ export default function ActionButton() {
                                   <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                                 )}
                               </div>
-
-                              {/* Action Button */}
-                              {notification.data.actionButton && (
-                                <div className="mt-3">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleNotificationAction(notification);
-                                    }}
-                                    className={getButtonStyle(
-                                      notification.data.actionButton.style
-                                    )}
-                                  >
-                                    {notification.data.actionButton.text}
-                                  </button>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>

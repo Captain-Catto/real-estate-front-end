@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   toggleFavoriteAsync,
-  fetchFavoritesAsync,
   selectIsFavorited,
   selectFavoritesLoading,
 } from "@/store/slices/favoritesSlices";
@@ -94,14 +93,10 @@ export function FavoriteButton({
           toast.success("Đã thêm vào danh sách yêu thích", {
             duration: 3000,
           });
-          // Fetch full favorites data to update the placeholder with real data
-          dispatch(fetchFavoritesAsync());
         } else if (action === "already_exists") {
           toast.info("Tin này đã có trong danh sách yêu thích", {
             duration: 3000,
           });
-          // Also fetch to ensure we have the complete data
-          dispatch(fetchFavoritesAsync());
         }
       } else {
         // Handle error

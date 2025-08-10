@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { notFound } from "next/navigation";
-import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Breadcrumb } from "./Breadcrumb";
 import { ProjectGallery } from "./ProjectGallery";
 import { DisplayMap } from "../property-detail/DisplayMap";
@@ -218,22 +217,6 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
     );
   }
 
-  const favoriteItem = {
-    id: project.id,
-    type: "project" as const,
-    title: project.name,
-    price: project.priceRange,
-    location: project.address || "",
-    image:
-      project.images && project.images.length > 0
-        ? project.images[0]
-        : "/images/default-project.jpg",
-    slug: project.slug,
-    area: project.area,
-    totalUnits: project.totalUnits,
-    developer: project.developer?.name || "N/A",
-  };
-
   // Build dynamic breadcrumb based on project location
   const buildProjectBreadcrumb = () => {
     const items: Array<{ label: string; href: string; isActive?: boolean }> = [
@@ -311,14 +294,6 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
                     Xem bản đồ
                   </button>
                 </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <FavoriteButton item={favoriteItem} />
-                <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                  <i className="fas fa-share-alt"></i>
-                  <span>Chia sẻ</span>
-                </button>
               </div>
             </div>
 

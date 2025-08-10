@@ -228,21 +228,40 @@ export function RelatedProjects({
   }, [currentProjectId, currentProjectLocation, currentProjectDeveloper]);
 
   const getProjectImage = (project: Project): string => {
-    // Get first image or use placeholder
-    if (project.images && project.images.length > 0) {
-      const firstImage = project.images[0];
+    console.log(`🔍 Processing images for project: ${project.name}`, {
+      images: project.images,
+      imageCount: project.images?.length || 0,
+    });
 
-      // Check if it's S3 placeholder logo
-      if (firstImage.includes("logo_placeholder")) {
-        // Use Picsum Photos for diverse project images
-        const seed = encodeURIComponent(project.name || "project");
-        return `https://picsum.photos/seed/${seed}/400/300`;
+    // Always use database images if available, even if they are placeholders
+    if (project.images && project.images.length > 0) {
+      // First, try to find a non-placeholder image
+      const validImage = project.images.find(
+        (img) =>
+          img &&
+          !img.includes("logo_placeholder") &&
+          !img.includes("via.placeholder.com") &&
+          !img.includes("placeholder")
+      );
+
+      if (validImage) {
+        console.log(`✅ Found valid image for: ${project.name}`, validImage);
+        return validImage;
       }
 
+      // If only placeholder images exist, use the first one from database
+      const firstImage = project.images[0];
+      console.log(
+        `🖼️ Using database image (even if placeholder) for: ${project.name}`,
+        firstImage
+      );
       return firstImage;
     }
 
-    // Fallback to diverse Picsum image based on project name
+    console.log(
+      `📷 No images found for project: ${project.name}, using fallback`
+    );
+    // Only use fallback if no images exist at all
     const seed = encodeURIComponent(project.name || "default");
     return `https://picsum.photos/seed/${seed}/400/300`;
   };
@@ -318,12 +337,23 @@ export function RelatedProjects({
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   onError={(e) => {
-                    console.log(
-                      `❌ Image failed to load for project: ${project.name}`
+                    console.error(
+                      `❌ Image failed to load for project: ${project.name}`,
+                      {
+                        originalSrc: (e.target as HTMLImageElement).src,
+                        projectImages: project.images,
+                      }
                     );
                     const target = e.target as HTMLImageElement;
                     const seed = encodeURIComponent(project.name || "fallback");
-                    target.src = `https://picsum.photos/seed/${seed}/400/300`;
+                    const fallbackUrl = `https://picsum.photos/seed/${seed}/400/300`;
+                    console.log(`🔄 Setting fallback image:`, fallbackUrl);
+                    target.src = fallbackUrl;
+                  }}
+                  onLoad={() => {
+                    console.log(
+                      `✅ Image loaded successfully for: ${project.name}`
+                    );
                   }}
                 />
               </div>

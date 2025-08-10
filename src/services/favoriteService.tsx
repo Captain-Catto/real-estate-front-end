@@ -15,11 +15,18 @@ export const favoriteService = {
         body: JSON.stringify({ postId }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
+        // Return the actual error message from the server
+        return {
+          success: false,
+          message:
+            data.message || `Server responded with status: ${response.status}`,
+        };
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error("Error adding to favorites:", error);
       // Trả về response giả để UI có thể xử lý mà không bị crash
@@ -40,11 +47,18 @@ export const favoriteService = {
         }
       );
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
+        // Return the actual error message from the server
+        return {
+          success: false,
+          message:
+            data.message || `Server responded with status: ${response.status}`,
+        };
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error("Error removing from favorites:", error);
       return {

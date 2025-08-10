@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Toaster } from "sonner";
 import { useAppDispatch } from "./hooks";
 import { initializeAuth, getProfileAsync } from "./slices/authSlice";
-import { fetchFavorites } from "./slices/favoritesSlices";
+import { fetchFavoritesAsync } from "./slices/favoritesSlices";
 import { WalletSyncProvider } from "@/components/providers/WalletSyncProvider";
 
 // Auth initializer component
@@ -24,7 +24,7 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
         : null;
     if (token) {
       dispatch(getProfileAsync());
-      dispatch(fetchFavorites());
+      dispatch(fetchFavoritesAsync());
     }
   }, [dispatch]);
 

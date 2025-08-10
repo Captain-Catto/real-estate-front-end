@@ -139,12 +139,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({
                         >
                           Quản lý ví
                         </Link>
-                        <Link
-                          href="/nguoi-dung/vi-tien"
-                          className="w-full py-2 px-3 bg-blue-600 text-white rounded-lg text-center hover:bg-blue-700 transition-colors block"
-                        >
-                          Nạp tiền
-                        </Link>
                       </div>
                     </div>
                   </div>

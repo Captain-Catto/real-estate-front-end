@@ -2,9 +2,8 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./index";
 import { useCallback } from "react";
 import {
-  addFavoriteAsync,
-  removeFavoriteAsync,
-  fetchFavorites, // Updated to match the actual export name
+  fetchFavoritesAsync,
+  toggleFavoriteAsync,
 } from "./slices/favoritesSlices";
 import { clearError as clearAuthError } from "./slices/authSlice";
 import {
@@ -54,83 +53,78 @@ export const useFavorites = () => {
   const favorites = useAppSelector((state) => state.favorites.items);
   const loading = useAppSelector((state) => state.favorites.isLoading);
   const error = useAppSelector((state) => state.favorites.error);
-  const { isAuthenticated } = useAuth();
 
-  // Fix the function name to match the actual export
+  // Fetch favorites from server
   const fetchUserFavorites = useCallback(async () => {
-    if (!isAuthenticated) {
-      return { success: false };
-    }
-
     try {
-      await dispatch(fetchFavorites()).unwrap(); // Updated function name
-      return { success: true };
+      await dispatch(fetchFavoritesAsync()).unwrap();
+      return true;
     } catch (err) {
       console.error("Failed to fetch user favorites:", err);
-      return { success: false, error: err };
+      return false;
     }
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch]);
 
+  // Check if an item is favorited
   const isFavorite = useCallback(
     (propertyId: string) => favorites.some((item) => item.id === propertyId),
     [favorites]
   );
 
-  const addFavorite = useCallback(
+  // Toggle favorite status (add/remove)
+  const toggleFavorite = useCallback(
     async (propertyId: string) => {
-      if (!isAuthenticated) {
-        // Handle unauthenticated case - perhaps redirect to login
-        return false;
-      }
-
       try {
-        await dispatch(addFavoriteAsync(propertyId)).unwrap();
-        return true;
+        const result = await dispatch(toggleFavoriteAsync(propertyId));
+        if (toggleFavoriteAsync.fulfilled.match(result)) {
+          return true;
+        }
+        return false;
       } catch (err) {
-        console.error("Failed to add property to favorites:", err);
+        console.error("Failed to toggle favorite:", err);
         return false;
       }
     },
-    [dispatch, isAuthenticated]
+    [dispatch]
+  );
+
+  // Legacy compatibility functions (deprecated - use toggleFavorite instead)
+  const addFavorite = useCallback(
+    async (propertyId: string) => {
+      const isCurrentlyFavorited = favorites.some(
+        (item) => item.id === propertyId
+      );
+      if (!isCurrentlyFavorited) {
+        return await toggleFavorite(propertyId);
+      }
+      return true; // Already favorited
+    },
+    [favorites, toggleFavorite]
   );
 
   const removeFavorite = useCallback(
     async (propertyId: string) => {
-      if (!isAuthenticated) {
-        return false;
+      const isCurrentlyFavorited = favorites.some(
+        (item) => item.id === propertyId
+      );
+      if (isCurrentlyFavorited) {
+        return await toggleFavorite(propertyId);
       }
-
-      try {
-        await dispatch(removeFavoriteAsync(propertyId)).unwrap();
-        return true;
-      } catch (err) {
-        console.error("Failed to remove property from favorites:", err);
-        return false;
-      }
+      return true; // Already not favorited
     },
-    [dispatch, isAuthenticated]
-  );
-
-  const toggleFavorite = useCallback(
-    async (propertyId: string) => {
-      if (isFavorite(propertyId)) {
-        return await removeFavorite(propertyId);
-      } else {
-        return await addFavorite(propertyId);
-      }
-    },
-    [isFavorite, addFavorite, removeFavorite]
+    [favorites, toggleFavorite]
   );
 
   return {
     favorites,
     loading,
     error,
+    fetchUserFavorites,
+    isFavorite,
+    toggleFavorite,
+    // Legacy functions for backward compatibility
     addFavorite,
     removeFavorite,
-    toggleFavorite,
-    isFavorite,
-    fetchUserFavorites,
   };
 };
 

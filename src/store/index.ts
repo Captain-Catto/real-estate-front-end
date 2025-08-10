@@ -3,6 +3,7 @@ import favoritesReducer from "./slices/favoritesSlices";
 import authReducer from "./slices/authSlice";
 import walletReducer from "./slices/walletSlice";
 import sidebarReducer from "./slices/sidebarSlice";
+import notificationReducer from "./slices/notificationSlice";
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     auth: authReducer,
     wallet: walletReducer,
     sidebar: sidebarReducer,
+    notifications: notificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

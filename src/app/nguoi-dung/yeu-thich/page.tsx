@@ -13,17 +13,18 @@ import {
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
 import { formatPriceByType } from "@/utils/format";
+import { Pagination } from "@/components/common/Pagination";
+import { toast } from "sonner";
 
 export default function YeuThichPage() {
   const { user } = useAuth();
   const { favorites, loading, removeFavorite, fetchUserFavorites } =
     useFavorites();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "property" | "project">(
-    "all"
-  );
   const [sortBy, setSortBy] = useState<"newest" | "price" | "title">("newest");
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   // Helper function to generate the correct URL for a property
   const generatePropertyUrl = (property: FavoriteItem) => {
@@ -107,10 +108,40 @@ export default function YeuThichPage() {
 
   const handleRemoveFavorite = async (propertyId: string) => {
     setIsRemoving(propertyId);
+
+    // Hiển thị toast loading trước
+    const loadingToast = toast.loading("Đang xóa khỏi danh sách yêu thích...");
+
     try {
-      await removeFavorite(propertyId);
+      const result = await removeFavorite(propertyId);
+
+      // Đảm bảo dismiss loading toast trước
+      toast.dismiss(loadingToast);
+
+      // Thêm delay nhỏ để đảm bảo loading toast đã dismiss
+      setTimeout(() => {
+        if (result) {
+          // Hiển thị toast thành công
+          toast.success("Đã xóa khỏi danh sách yêu thích", {
+            duration: 3000, // 3 giây
+          });
+        } else {
+          toast.error("Không thể xóa khỏi danh sách yêu thích", {
+            duration: 3000,
+          });
+        }
+      }, 100);
     } catch (error) {
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       console.error("Error removing favorite:", error);
+
+      // Thêm delay nhỏ cho error toast
+      setTimeout(() => {
+        toast.error("Không thể xóa khỏi danh sách yêu thích", {
+          duration: 3000,
+        });
+      }, 100);
     } finally {
       setIsRemoving(null);
     }
@@ -123,10 +154,7 @@ export default function YeuThichPage() {
         property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         property.location.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Filter by type (property or project)
-      const matchesFilter =
-        filterType === "all" || property.type === filterType;
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -143,6 +171,29 @@ export default function YeuThichPage() {
           return 0;
       }
     });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredFavorites.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentFavorites = filteredFavorites.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  const handleSearchChange = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   if (loading) {
     return (
@@ -180,24 +231,23 @@ export default function YeuThichPage() {
                 type="text"
                 placeholder="Tìm kiếm theo tên hoặc địa điểm..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
 
-          {/* Filter by type */}
+          {/* Items per page */}
           <div>
             <select
-              value={filterType}
-              onChange={(e) =>
-                setFilterType(e.target.value as "all" | "property" | "project")
-              }
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">Tất cả loại</option>
-              <option value="property">Bất động sản</option>
-              <option value="project">Dự án</option>
+              <option value={6}>6 / trang</option>
+              <option value={12}>12 / trang</option>
+              <option value={24}>24 / trang</option>
+              <option value={48}>48 / trang</option>
             </select>
           </div>
 
@@ -220,101 +270,114 @@ export default function YeuThichPage() {
 
       {/* Favorites Grid */}
       {filteredFavorites.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredFavorites.map((property) => (
-            <Link
-              href={generatePropertyUrl(property)}
-              key={property.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden group hover:shadow-md transition-shadow block"
-            >
-              <div className="relative">
-                <Image
-                  src={
-                    typeof property.image === "string"
-                      ? property.image
-                      : property.image[0] || "/placeholder.jpg"
-                  }
-                  alt={property.title}
-                  width={400}
-                  height={300}
-                  className="w-full h-48 object-cover"
-                  priority={false}
-                />
-                <div className="absolute top-3 right-3">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault(); // Prevent navigation
-                      e.stopPropagation(); // Stop event bubbling
-                      handleRemoveFavorite(property.id);
-                    }}
-                    disabled={isRemoving === property.id}
-                    className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    {isRemoving === property.id ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-red-500 rounded-full border-t-transparent"></div>
-                    ) : (
-                      <TrashIcon className="h-4 w-4 text-red-500" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                  {property.title}
-                </h3>
-
-                <div className="flex items-center text-gray-600 mb-2">
-                  <MapPinIcon className="h-4 w-4 mr-1" />
-                  <span className="text-sm">{property.location}</span>
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentFavorites.map((property) => (
+              <Link
+                href={generatePropertyUrl(property)}
+                key={property.id}
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden group hover:shadow-md transition-shadow block"
+              >
+                <div className="relative">
+                  <Image
+                    src={
+                      typeof property.image === "string"
+                        ? property.image
+                        : property.image[0] || "/placeholder.jpg"
+                    }
+                    alt={property.title}
+                    width={400}
+                    height={300}
+                    className="w-full h-48 object-cover"
+                    priority={false}
+                  />
+                  <div className="absolute top-3 right-3">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault(); // Prevent navigation
+                        e.stopPropagation(); // Stop event bubbling
+                        handleRemoveFavorite(property.id);
+                      }}
+                      disabled={isRemoving === property.id}
+                      className="p-2 bg-white rounded-full shadow-md hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      {isRemoving === property.id ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-red-500 rounded-full border-t-transparent"></div>
+                      ) : (
+                        <TrashIcon className="h-4 w-4 text-red-500" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-lg font-bold text-blue-600">
-                    {formatPrice(property.price || "Liên hệ")}
-                  </span>
-                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">
+                    {property.title}
+                  </h3>
 
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                  <span className="flex items-center">
-                    <i className="fas fa-ruler-combined mr-1"></i>{" "}
-                    {property.area}
-                  </span>
-                  <span className="flex items-center">
-                    <i className="fas fa-bed mr-1"></i> {property.bedrooms || 0}{" "}
-                    PN
-                  </span>
-                  <span className="flex items-center">
-                    <i className="fas fa-bath mr-1"></i>{" "}
-                    {property.bathrooms || 0} WC
-                  </span>
-                  <span>{property.propertyType}</span>
-                </div>
+                  <div className="flex items-center text-gray-600 mb-2">
+                    <MapPinIcon className="h-4 w-4 mr-1" />
+                    <span className="text-sm">{property.location}</span>
+                  </div>
 
-                <div className="flex items-center justify-end">
-                  <span className="text-xs text-gray-500">
-                    Thêm vào:{" "}
-                    {new Date(property.addedAt).toLocaleDateString("vi-VN")}
-                  </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-lg font-bold text-red-600">
+                      {formatPrice(property.price || "Liên hệ")}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                    <span className="flex items-center">
+                      <i className="fas fa-ruler-combined mr-1"></i>{" "}
+                      {property.area}
+                    </span>
+                    <span className="flex items-center">
+                      <i className="fas fa-bed mr-1"></i>{" "}
+                      {property.bedrooms || 0} PN
+                    </span>
+                    <span className="flex items-center">
+                      <i className="fas fa-bath mr-1"></i>{" "}
+                      {property.bathrooms || 0} WC
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <span className="text-xs text-gray-500">
+                      Thêm vào:{" "}
+                      {new Date(property.addedAt).toLocaleDateString("vi-VN")}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-8">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                className="flex justify-center"
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <HeartOutline className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchTerm || filterType !== "all"
+            {searchTerm
               ? "Không tìm thấy kết quả"
               : "Chưa có bất động sản yêu thích"}
           </h3>
           <p className="text-gray-600 mb-6">
-            {searchTerm || filterType !== "all"
-              ? "Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc"
+            {searchTerm
+              ? "Thử thay đổi từ khóa tìm kiếm"
               : "Hãy khám phá và thêm những bất động sản yêu thích của bạn"}
           </p>
-          {!searchTerm && filterType === "all" && (
+          {!searchTerm && (
             <Link
               href="/du-an"
               className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"

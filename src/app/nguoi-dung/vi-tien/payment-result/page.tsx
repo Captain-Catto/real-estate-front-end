@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { paymentService } from "@/services/paymentService";
 import { useWallet } from "@/hooks/useWallet";
+import { triggerNotificationRefresh } from "@/hooks/useNotificationRefresh";
 
 export default function PaymentResultPage() {
   const searchParams = useSearchParams();
@@ -220,6 +221,10 @@ export default function PaymentResultPage() {
             // Update wallet balance immediately
             console.log("Payment successful - refreshing wallet balance");
             refreshWallet();
+
+            // Trigger notification refresh
+            console.log("Payment successful - triggering notification refresh");
+            triggerNotificationRefresh();
 
             // Gọi hàm tự động refresh từ tất cả các tab
             paymentService.invalidateWalletCache();
@@ -461,8 +466,12 @@ export default function PaymentResultPage() {
                 : "Giao dịch đang được cập nhật trên hệ thống."}
             </div>
             <Link
-              href="/nguoi-dung/vi-tien"
+              href="/nguoi-dung/vi-tien?from=payment"
               className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              onClick={() => {
+                // Set flag to indicate we're coming from payment
+                sessionStorage.setItem("justCompletedPayment", "true");
+              }}
             >
               Quay lại ví tiền
             </Link>
@@ -490,8 +499,12 @@ export default function PaymentResultPage() {
 
             <div className="flex flex-col space-y-3">
               <Link
-                href="/nguoi-dung/vi-tien"
+                href="/nguoi-dung/vi-tien?from=payment"
                 className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => {
+                  // Set flag to indicate we're coming from payment
+                  sessionStorage.setItem("justCompletedPayment", "true");
+                }}
               >
                 Quay lại ví tiền
               </Link>

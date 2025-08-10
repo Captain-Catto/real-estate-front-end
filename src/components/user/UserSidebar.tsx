@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,36 @@ export default function UserSidebar() {
   const router = useRouter();
   const { logout } = useAuth();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const isDesktopMenuClick =
+        desktopMenuRef.current &&
+        desktopMenuRef.current.contains(event.target as Node);
+      const isMobileMenuClick =
+        mobileMenuRef.current &&
+        mobileMenuRef.current.contains(event.target as Node);
+
+      if (!isDesktopMenuClick && !isMobileMenuClick) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    if (isAccountMenuOpen) {
+      // Use a slight delay to prevent immediate closing when menu opens
+      const timeoutId = setTimeout(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+      }, 100);
+
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isAccountMenuOpen]);
 
   // Desktop menu (6 items)
   const desktopMenu = [
@@ -194,7 +224,11 @@ export default function UserSidebar() {
 
             if (item.hasSubmenu) {
               return (
-                <div key={item.id} className="relative mb-1">
+                <div
+                  key={item.id}
+                  className="relative mb-1"
+                  ref={desktopMenuRef}
+                >
                   <button
                     onClick={toggleAccountMenu}
                     className={`w-full flex flex-col items-center p-2 rounded-lg text-xs font-medium transition-all duration-300 hover:bg-gray-50 hover:-translate-y-0.5 ${
@@ -224,8 +258,13 @@ export default function UserSidebar() {
                               : "text-gray-700"
                           }`}
                           onClick={(e) => {
-                            subItem.onClick?.(e); // Gọi hàm onClick nếu có
-                            setIsAccountMenuOpen(false);
+                            if (subItem.onClick) {
+                              subItem.onClick(e); // Chỉ gọi onClick cho "Đăng xuất"
+                              setIsAccountMenuOpen(false);
+                            } else {
+                              // Đối với các link thông thường, để Next.js xử lý navigation
+                              setIsAccountMenuOpen(false);
+                            }
                           }}
                         >
                           {subItem.title}
@@ -276,7 +315,11 @@ export default function UserSidebar() {
 
             if (item.hasSubmenu) {
               return (
-                <div key={item.id} className="relative flex-1">
+                <div
+                  key={item.id}
+                  className="relative flex-1"
+                  ref={mobileMenuRef}
+                >
                   <button
                     onClick={toggleAccountMenu}
                     className={`w-full flex flex-col items-center py-2 px-1 transition-colors ${
@@ -306,8 +349,13 @@ export default function UserSidebar() {
                               : "text-gray-700"
                           }`}
                           onClick={(e) => {
-                            subItem.onClick?.(e); // Gọi hàm onClick nếu có
-                            setIsAccountMenuOpen(false);
+                            if (subItem.onClick) {
+                              subItem.onClick(e); // Chỉ gọi onClick cho "Đăng xuất"
+                              setIsAccountMenuOpen(false);
+                            } else {
+                              // Đối với các link thông thường, để Next.js xử lý navigation
+                              setIsAccountMenuOpen(false);
+                            }
                           }}
                         >
                           {subItem.title}
@@ -353,7 +401,7 @@ export default function UserSidebar() {
       {/* Mobile Overlay for Account Menu */}
       {isAccountMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 backdrop-blur-sm"
+          className="fixed inset-0 z-40 backdrop-blur-sm"
           onClick={() => setIsAccountMenuOpen(false)}
         />
       )}

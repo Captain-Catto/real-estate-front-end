@@ -36,18 +36,14 @@ export function ProjectGallery({
           {/* Main image */}
           <div className="col-span-2 row-span-2 relative group cursor-pointer">
             <Image
-              src={
-                visibleMedia[0]?.src ||
-                "https://via.placeholder.com/800x600/f3f4f6/9ca3af?text=No+Image"
-              }
+              src={visibleMedia[0]?.src || "/placeholder.jpg"}
               alt={title}
               fill
               className="object-cover rounded-l-lg"
               onClick={() => openModal(0)}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src =
-                  "https://via.placeholder.com/800x600/f3f4f6/9ca3af?text=No+Image";
+                target.src = "/placeholder.jpg";
               }}
             />
             {/* Loại bỏ overlay đen khi hover */}
@@ -73,8 +69,7 @@ export function ProjectGallery({
                 }`}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src =
-                    "https://via.placeholder.com/400x300/f3f4f6/9ca3af?text=No+Image";
+                  target.src = "/placeholder.jpg";
                 }}
               />
               {media.type === "video" && (

@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { favoriteService } from "@/services/favoriteService";
 import { locationService } from "@/services/locationService";
 
@@ -21,15 +21,13 @@ export interface FavoriteItem {
 export interface FavoritesState {
   items: FavoriteItem[];
   isLoading: boolean;
-  lastUpdated: string | null;
-  error: any;
+  error: string | null;
 }
 
 // Initial state
 const initialState: FavoritesState = {
   items: [],
   isLoading: false,
-  lastUpdated: null,
   error: null,
 };
 
@@ -38,138 +36,127 @@ export const fetchFavoritesAsync = createAsyncThunk(
   "favorites/fetchFavorites",
   async (_, { rejectWithValue }) => {
     try {
-      // Make sure this matches the function name in favoriteService
       const response = await favoriteService.getFavorites();
-      if (response.success) {
-        // Chuyển đổi dữ liệu từ API sang định dạng FavoriteItem với location names
-        const favoritesWithLocationNames = await Promise.all(
-          response.data.favorites.map(async (fav: any) => {
-            let locationText = "Không xác định";
 
-            // Try to get location names if location data exists
-            if (fav.post.location) {
-              try {
-                const locationNames = await locationService.getLocationNames(
-                  fav.post.location.province,
-                  fav.post.location.ward
-                );
-                const provinceName =
-                  locationNames.provinceName ||
-                  fav.post.location.province ||
-                  "";
-                const wardName =
-                  locationNames.wardName || fav.post.location.ward || "";
-                locationText = [wardName, provinceName]
-                  .filter(Boolean)
-                  .join(", ");
-              } catch (error) {
-                console.error(
-                  "Error getting location names for favorite:",
-                  error
-                );
-                // Fallback to original location data
-                locationText =
-                  [
-                    fav.post.location.ward || "",
-                    fav.post.location.province || "",
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "Không xác định";
+      if (response.success && response.data.favorites) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawFavorites: any[] = response.data.favorites;
+
+        // Transform to FavoriteItem format with location names
+        const transformedFavorites = await Promise.all(
+          rawFavorites
+            .filter((fav) => fav?.post?._id)
+            .map(async (fav) => {
+              let locationText = "Không xác định";
+
+              if (fav.post.location) {
+                try {
+                  const locationNames = await locationService.getLocationNames(
+                    fav.post.location.province,
+                    fav.post.location.ward
+                  );
+                  locationText =
+                    [locationNames.wardName, locationNames.provinceName]
+                      .filter(Boolean)
+                      .join(", ") || "Không xác định";
+                } catch {
+                  locationText =
+                    [fav.post.location.ward, fav.post.location.province]
+                      .filter(Boolean)
+                      .join(", ") || "Không xác định";
+                }
               }
-            }
 
-            return {
-              id: fav.post._id,
-              type: "property" as const,
-              title: fav.post.title,
-              price: fav.post.price,
-              location: locationText,
-              image: fav.post.images[0] || "/placeholder.jpg",
-              slug: fav.post.slug || fav.post._id,
-              area: fav.post.area + " m²",
-              bedrooms: fav.post.bedrooms,
-              bathrooms: fav.post.bathrooms,
-              propertyType:
-                typeof fav.post.category === "object"
-                  ? fav.post.category?.name
-                  : fav.post.category,
-              addedAt: fav.createdAt,
-            };
-          })
+              return {
+                id: fav.post._id,
+                type: "property" as const,
+                title: fav.post.title,
+                price: fav.post.price,
+                location: locationText,
+                image: fav.post.images?.[0] || "/placeholder.jpg",
+                slug: fav.post.slug || fav.post._id,
+                area: fav.post.area ? `${fav.post.area} m²` : undefined,
+                bedrooms: fav.post.bedrooms,
+                bathrooms: fav.post.bathrooms,
+                propertyType:
+                  typeof fav.post.category === "object"
+                    ? fav.post.category?.name
+                    : fav.post.category,
+                addedAt: fav.createdAt,
+              };
+            })
         );
 
-        return favoritesWithLocationNames;
+        return transformedFavorites;
       }
+
       return rejectWithValue("Failed to fetch favorites");
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An error occurred";
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(
+        error instanceof Error ? error.message : "An error occurred"
+      );
     }
   }
 );
 
-// For backward compatibility, also export as fetchFavorites
-export const fetchFavorites = fetchFavoritesAsync;
-
-export const removeFavoriteAsync = createAsyncThunk(
-  "favorites/removeFavoriteAsync",
-  async (itemId: string, { rejectWithValue }) => {
+export const toggleFavoriteAsync = createAsyncThunk(
+  "favorites/toggleFavorite",
+  async (itemId: string, { getState, rejectWithValue }) => {
     try {
-      // Gọi API xóa favorite
-      const response = await favoriteService.removeFromFavorites(itemId);
-      return { itemId, response };
-    } catch (error) {
-      return rejectWithValue(error);
-    }
-  }
-);
+      const state = getState() as { favorites: FavoritesState };
+      const isCurrentlyFavorited = state.favorites.items.some(
+        (item) => item.id === itemId
+      );
 
-export const addFavoriteAsync = createAsyncThunk(
-  "favorites/addFavoriteAsync",
-  async (itemId: string, { rejectWithValue }) => {
-    try {
-      // Call API to add to favorites
-      const response = await favoriteService.addToFavorites(itemId);
-      if (response.success) {
-        return response.data;
+      if (isCurrentlyFavorited) {
+        // Remove from favorites
+        const response = await favoriteService.removeFromFavorites(itemId);
+        if (response.success) {
+          return { action: "removed", itemId };
+        } else {
+          return rejectWithValue(
+            response.message || "Failed to remove favorite"
+          );
+        }
+      } else {
+        // Add to favorites
+        const response = await favoriteService.addToFavorites(itemId);
+        if (response.success) {
+          return { action: "added", itemId, data: response.data };
+        } else {
+          // Handle case where item is already in favorites
+          if (response.message?.includes("already in favorites")) {
+            return { action: "already_exists", itemId };
+          }
+          return rejectWithValue(response.message || "Failed to add favorite");
+        }
       }
-      return rejectWithValue("Failed to add favorite");
-    } catch (error) {
-      return rejectWithValue(error);
+    } catch (error: unknown) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "An error occurred"
+      );
     }
   }
 );
 
-// Slice
+// Create the slice
 const favoritesSlice = createSlice({
   name: "favorites",
   initialState,
   reducers: {
-    // Thêm một mục vào danh sách yêu thích
-    addFavorite: (state, action: PayloadAction<FavoriteItem>) => {
-      // Kiểm tra xem đã có trong danh sách chưa
-      const exists = state.items.some((item) => item.id === action.payload.id);
-      if (!exists) {
-        state.items.push(action.payload);
-        state.lastUpdated = new Date().toISOString();
-      }
-    },
-
-    // Xóa một mục khỏi danh sách yêu thích
-    removeFavorite: (state, action: PayloadAction<string>) => {
-      state.items = state.items.filter((item) => item.id !== action.payload);
-      state.lastUpdated = new Date().toISOString();
-    },
-
-    // Xóa tất cả mục trong danh sách yêu thích
+    // Clear all favorites
     clearFavorites: (state) => {
       state.items = [];
-      state.lastUpdated = new Date().toISOString();
+      state.error = null;
+    },
+    // Clear error
+    clearError: (state) => {
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
+      // Fetch favorites
       .addCase(fetchFavoritesAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -177,69 +164,79 @@ const favoritesSlice = createSlice({
       .addCase(fetchFavoritesAsync.fulfilled, (state, action) => {
         state.isLoading = false;
         state.items = action.payload;
-        state.lastUpdated = new Date().toISOString();
         state.error = null;
       })
       .addCase(fetchFavoritesAsync.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
-      });
-    // Xử lý remove favorite
-    builder
-      .addCase(removeFavoriteAsync.pending, (state) => {
-        state.isLoading = true;
+        state.error = action.payload as string;
       })
-      .addCase(removeFavoriteAsync.fulfilled, (state, action) => {
-        state.isLoading = false;
-        // Cập nhật state sau khi xóa thành công
-        state.items = state.items.filter(
-          (item) => item.id !== action.payload.itemId
-        );
+      // Toggle favorite
+      .addCase(toggleFavoriteAsync.pending, (state) => {
+        state.isLoading = true;
         state.error = null;
       })
-      .addCase(removeFavoriteAsync.rejected, (state, action) => {
+      .addCase(toggleFavoriteAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
-      })
-      // Handle add favorite
-      .addCase(addFavoriteAsync.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(addFavoriteAsync.fulfilled, (state, action) => {
-        state.isLoading = false;
+        const { action: actionType, itemId } = action.payload;
 
-        // Check if the item already exists
-        const exists = state.items.some(
-          (item) => item.id === action.payload.favorite.id
-        );
-        if (!exists) {
-          // Convert API response to FavoriteItem format
-          const newFavorite: FavoriteItem = {
-            id: action.payload.favorite.id,
-            type: "property",
-            title: action.payload.favorite.title,
-            price: action.payload.favorite.price,
-            location: action.payload.favorite.location,
-            image: action.payload.favorite.image,
-            slug: action.payload.favorite.slug,
-            area: action.payload.favorite.area,
-            bedrooms: action.payload.favorite.bedrooms,
-            bathrooms: action.payload.favorite.bathrooms,
-            propertyType: action.payload.favorite.propertyType,
-            addedAt: new Date().toISOString(), // Use current date if not available
-          };
-          state.items.push(newFavorite);
+        if (actionType === "removed") {
+          // Remove item from favorites immediately
+          state.items = state.items.filter((item) => item.id !== itemId);
+        } else if (actionType === "added") {
+          // Add item to favorites immediately with minimal data
+          // Check if item already exists to avoid duplicates
+          const exists = state.items.some((item) => item.id === itemId);
+          if (!exists) {
+            // Create a minimal favorite item - will be updated with full data later
+            const placeholderItem = {
+              id: itemId,
+              type: "property" as const,
+              title: "Đang tải...",
+              price: undefined,
+              location: "Đang cập nhật...",
+              image: "/placeholder.jpg",
+              slug: itemId,
+              addedAt: new Date().toISOString(),
+            };
+            state.items.push(placeholderItem);
+          }
+        } else if (actionType === "already_exists") {
+          // Item already exists - ensure it's in the state
+          const exists = state.items.some((item) => item.id === itemId);
+          if (!exists) {
+            // Add placeholder if somehow missing from state
+            const placeholderItem = {
+              id: itemId,
+              type: "property" as const,
+              title: "Đang tải...",
+              price: undefined,
+              location: "Đang tải...",
+              image: "/placeholder.jpg",
+              slug: itemId,
+              addedAt: new Date().toISOString(),
+            };
+            state.items.push(placeholderItem);
+          }
         }
         state.error = null;
       })
-      .addCase(addFavoriteAsync.rejected, (state, action) => {
+      .addCase(toggleFavoriteAsync.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { addFavorite, removeFavorite, clearFavorites } =
-  favoritesSlice.actions;
-
+export const { clearFavorites, clearError } = favoritesSlice.actions;
 export default favoritesSlice.reducer;
+
+// Selectors
+export const selectFavorites = (state: { favorites: FavoritesState }) =>
+  state.favorites.items;
+export const selectFavoritesLoading = (state: { favorites: FavoritesState }) =>
+  state.favorites.isLoading;
+export const selectFavoritesError = (state: { favorites: FavoritesState }) =>
+  state.favorites.error;
+export const selectIsFavorited =
+  (itemId: string) => (state: { favorites: FavoritesState }) =>
+    state.favorites.items.some((item) => item.id === itemId);

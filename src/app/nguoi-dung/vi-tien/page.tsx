@@ -7,6 +7,12 @@ import {
   broadcastWalletUpdate,
 } from "@/hooks/useWallet";
 import { useState, useEffect } from "react";
+// TEMP: Removed useNotifications to prevent infinite loop
+// import { useNotifications } from "@/hooks/useNotifications";
+import {
+  triggerNotificationRefresh,
+  useNotificationRefresh,
+} from "@/hooks/useNotificationRefresh";
 import {
   WalletIcon,
   PlusIcon,
@@ -26,6 +32,9 @@ interface ExtendedWalletTransaction extends WalletTransaction {
 
 export default function ViTienPage() {
   const { isAuthenticated } = useAuth();
+  // Initialize notification refresh hook for auto-refresh on wallet events
+  useNotificationRefresh();
+
   const {
     balance,
     totalIncome,
@@ -57,9 +66,17 @@ export default function ViTienPage() {
 
   // Auto refresh wallet when page becomes visible
   useEffect(() => {
+    console.log(
+      "🔍 Vi-tien page useEffect triggered, isAuthenticated:",
+      isAuthenticated
+    );
+
     const handleVisibilityChange = () => {
       if (!document.hidden && isAuthenticated) {
+        console.log("📱 Page visibility changed - refreshing");
         refresh();
+        // Only trigger notification refresh when page becomes visible, not on every wallet action
+        triggerNotificationRefresh();
         broadcastWalletUpdate();
       }
     };
@@ -68,13 +85,41 @@ export default function ViTienPage() {
 
     // Initial refresh when component mounts
     if (isAuthenticated) {
+      console.log("🚀 Initial refresh on page load");
       refresh();
+      // Initial notification refresh when page loads
+      triggerNotificationRefresh();
+
+      // Also check if we just came from a payment - check URL referrer or localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromPayment =
+        urlParams.get("from") === "payment" ||
+        sessionStorage.getItem("justCompletedPayment") === "true";
+
+      console.log("🔍 Checking payment return:", {
+        fromParam: urlParams.get("from"),
+        sessionFlag: sessionStorage.getItem("justCompletedPayment"),
+        fromPayment,
+      });
+
+      if (fromPayment) {
+        console.log(
+          "🎯 Detected return from payment - forcing notification refresh"
+        );
+        // Clear the flag
+        sessionStorage.removeItem("justCompletedPayment");
+        // Force notification refresh with a slight delay to ensure backend has processed
+        setTimeout(() => {
+          console.log("⏰ Delayed notification refresh after payment");
+          triggerNotificationRefresh();
+        }, 1000);
+      }
     }
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isAuthenticated, refresh]);
+  }, [isAuthenticated, refresh]); // Removed forceRefreshNotifications from deps
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {

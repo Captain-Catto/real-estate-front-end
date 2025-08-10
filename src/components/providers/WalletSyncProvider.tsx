@@ -62,21 +62,20 @@ export function WalletSyncProvider({
         event.key === "wallet_updated" ||
         event.key === "wallet_updated_trigger"
       ) {
-        // EMERGENCY FIX: Disable console.log to prevent infinite logging
-        // console.log("[WalletSync] Detected wallet update via localStorage");
-        syncWallet();
+        // EMERGENCY FIX: Temporarily disable to prevent infinite loop
+        console.log(
+          "[WalletSync] DISABLED - Would have synced on storage change"
+        );
+        // syncWallet();
       }
     };
 
     // Xử lý sự kiện từ BroadcastChannel
     const handleBroadcastMessage = (event: MessageEvent) => {
       if (event.data?.type === "refresh") {
-        // EMERGENCY FIX: Disable console.log to prevent infinite logging
-        // console.log(
-        //   "[WalletSync] Received wallet update broadcast",
-        //   event.data
-        // );
-        syncWallet();
+        // EMERGENCY FIX: Temporarily disable to prevent infinite loop
+        console.log("[WalletSync] DISABLED - Would have synced on broadcast");
+        // syncWallet();
       }
     };
 
@@ -110,9 +109,9 @@ export function WalletSyncProvider({
 
     // Xử lý focus vào tab
     const handleFocus = () => {
-      // EMERGENCY FIX: Disable console.log to prevent infinite logging
-      // console.log("[WalletSync] Window focused, checking for wallet updates");
-      syncWallet();
+      // EMERGENCY FIX: Temporarily disable to prevent infinite loop
+      console.log("[WalletSync] DISABLED - Would have synced on focus");
+      // syncWallet();
     };
     window.addEventListener("focus", handleFocus);
 
