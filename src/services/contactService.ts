@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -72,7 +74,7 @@ class ContactService {
   // Admin methods - require authentication
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
 
       const response = await fetch(url, {
         ...options,

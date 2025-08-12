@@ -1,15 +1,14 @@
 "use client";
 
+import { getAccessToken } from "./authService";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 // Helper function to get auth token
 const getAuthToken = () => {
   if (typeof window !== "undefined") {
-    return (
-      localStorage.getItem("accessToken") ||
-      sessionStorage.getItem("accessToken")
-    );
+    return getAccessToken();
   }
   return null;
 };

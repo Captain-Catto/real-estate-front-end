@@ -441,6 +441,35 @@ export default function PostsTable({
     window.location.href = `/admin/quan-ly-tin-dang/${post._id}`;
   }, []);
 
+  // Helper function to check if post was recently updated by user
+  const isRecentlyUpdated = (post: Post) => {
+    if (!post.updatedAt || !post.createdAt) return false;
+
+    const created = new Date(post.createdAt);
+    const updated = new Date(post.updatedAt);
+    const timeDiff = updated.getTime() - created.getTime();
+
+    // Consider as "updated" if updatedAt is more than 1 minute after createdAt
+    // and status is pending (indicating user made changes)
+    return timeDiff > 60000 && post.status === "pending";
+  };
+
+  // Helper function to format time difference
+  const getTimeSinceUpdate = (post: Post) => {
+    if (!post.updatedAt) return null;
+
+    const now = new Date();
+    const updated = new Date(post.updatedAt);
+    const diffMs = now.getTime() - updated.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    return `${diffDays} ngày trước`;
+  };
+
   // Memoize table header to prevent unnecessary re-renders
   const tableHeader = useMemo(
     () => (
@@ -463,6 +492,9 @@ export default function PostsTable({
           </th>
           <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
             Ngày tạo
+          </th>
+          <th className="w-40 px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Cập nhật
           </th>
           <th className="w-32 px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
             Thao tác
@@ -542,192 +574,219 @@ export default function PostsTable({
           <table className="min-w-full divide-y divide-gray-200 table-fixed">
             {tableHeader}
             <tbody className="bg-white divide-y divide-gray-200">
-              {posts.map((post) => (
-                <tr key={post._id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 w-12 h-12">
-                        {post.images && post.images.length > 0 ? (
-                          <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden relative">
-                            <Image
-                              src={post.images[0]}
-                              alt={post.title}
-                              fill
-                              className="object-cover"
-                              sizes="48px"
-                            />
+              {posts.map((post) => {
+                const isUpdated = isRecentlyUpdated(post);
+                return (
+                  <tr
+                    key={post._id}
+                    className={`hover:bg-gray-50 ${
+                      isUpdated
+                        ? "bg-yellow-50 border-l-4 border-l-yellow-400"
+                        : ""
+                    }`}
+                  >
+                    <td className="px-3 py-3">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 w-12 h-12">
+                          {post.images && post.images.length > 0 ? (
+                            <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden relative">
+                              <Image
+                                src={post.images[0]}
+                                alt={post.title}
+                                fill
+                                className="object-cover"
+                                sizes="48px"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">IMG</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-3">
+                          <div className="flex items-center gap-1 flex-wrap mb-1">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getTypeBadge(
+                                post.type
+                              )}`}
+                              title={getTypeName(post.type)}
+                            >
+                              {getTypeName(post.type)}
+                            </span>
+                            {getCategoryBadge(post.category)}
+                            {getPackageBadge(post.package)}
+                            {getProjectBadge(post)}
                           </div>
-                        ) : (
-                          <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <span className="text-gray-500 text-xs">IMG</span>
+                          <div className="mt-1">
+                            <Link
+                              href={`/admin/quan-ly-tin-dang/${post._id}`}
+                              className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate max-w-xs cursor-pointer transition-colors"
+                              title={post.title}
+                            >
+                              {post.title}
+                            </Link>
                           </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="text-sm text-gray-900">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="font-medium truncate">
+                            {formatPrice(post.price)}{" "}
+                            {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          {post.area}m²
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {post.views.toLocaleString()} lượt xem
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="text-sm text-gray-900">
+                        {(() => {
+                          const locationDisplay = getLocationDisplayName(post);
+                          const fullAddress = [
+                            locationDisplay.street,
+                            locationDisplay.ward,
+                            locationDisplay.province,
+                          ]
+                            .filter(Boolean)
+                            .join(", ");
+
+                          return (
+                            <>
+                              {locationDisplay.street && (
+                                <div
+                                  className="text-sm truncate"
+                                  title={locationDisplay.street}
+                                >
+                                  {locationDisplay.street}
+                                </div>
+                              )}
+                              <div
+                                className={`${
+                                  locationDisplay.street ? "text-xs" : "text-sm"
+                                } truncate`}
+                                title={locationDisplay.ward}
+                              >
+                                {locationDisplay.ward}
+                              </div>
+                              <div
+                                className="text-xs text-gray-500 truncate"
+                                title={fullAddress}
+                              >
+                                {locationDisplay.province}
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="text-sm text-gray-900">
+                        <Link
+                          href={`/admin/quan-ly-nguoi-dung/${post.author._id}`}
+                          className="font-medium truncate text-blue-600 hover:text-blue-800 cursor-pointer transition-colors"
+                          title={post.author.username}
+                        >
+                          {post.author.username}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getStatusBadge(
+                          post.status
+                        )}`}
+                      >
+                        {getStatusText(post.status)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-500">
+                      {formatDate(post.createdAt)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-500">
+                      <div className="flex flex-col">
+                        <span>{formatDate(post.updatedAt)}</span>
+                        {isUpdated && (
+                          <span className="text-xs text-yellow-600 font-medium">
+                            User đã sửa
+                          </span>
+                        )}
+                        {getTimeSinceUpdate(post) && (
+                          <span className="text-xs text-gray-400">
+                            {getTimeSinceUpdate(post)}
+                          </span>
                         )}
                       </div>
-                      <div className="ml-3">
-                        <div className="flex items-center gap-1 flex-wrap mb-1">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getTypeBadge(
-                              post.type
-                            )}`}
-                            title={getTypeName(post.type)}
-                          >
-                            {getTypeName(post.type)}
-                          </span>
-                          {getCategoryBadge(post.category)}
-                          {getPackageBadge(post.package)}
-                          {getProjectBadge(post)}
-                        </div>
-                        <div className="mt-1">
-                          <Link
-                            href={`/admin/quan-ly-tin-dang/${post._id}`}
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate max-w-xs cursor-pointer transition-colors"
-                            title={post.title}
-                          >
-                            {post.title}
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="font-medium truncate">
-                          {formatPrice(post.price)}{" "}
-                          {post.type === "ban" ? "VNĐ" : "VNĐ/tháng"}
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {post.area}m²
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {post.views.toLocaleString()} lượt xem
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900">
-                      {(() => {
-                        const locationDisplay = getLocationDisplayName(post);
-                        const fullAddress = [
-                          locationDisplay.street,
-                          locationDisplay.ward,
-                          locationDisplay.province,
-                        ]
-                          .filter(Boolean)
-                          .join(", ");
-
-                        return (
-                          <>
-                            {locationDisplay.street && (
-                              <div
-                                className="text-sm truncate"
-                                title={locationDisplay.street}
-                              >
-                                {locationDisplay.street}
-                              </div>
-                            )}
-                            <div
-                              className={`${
-                                locationDisplay.street ? "text-xs" : "text-sm"
-                              } truncate`}
-                              title={locationDisplay.ward}
-                            >
-                              {locationDisplay.ward}
-                            </div>
-                            <div
-                              className="text-xs text-gray-500 truncate"
-                              title={fullAddress}
-                            >
-                              {locationDisplay.province}
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900">
-                      <Link
-                        href={`/admin/quan-ly-nguoi-dung/${post.author._id}`}
-                        className="font-medium truncate text-blue-600 hover:text-blue-800 cursor-pointer transition-colors"
-                        title={post.author.username}
-                      >
-                        {post.author.username}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full min-w-[60px] justify-center ${getStatusBadge(
-                        post.status
-                      )}`}
-                    >
-                      {getStatusText(post.status)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-xs text-gray-500">
-                    {formatDate(post.createdAt)}
-                  </td>
-                  <td className="px-3 py-3 text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      {/* View Button */}
-                      <button
-                        onClick={() => handleViewClick(post)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                        title="Xem chi tiết"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                      </button>
-
-                      {/* Approve Button - only for pending posts */}
-                      {post.status === "pending" && (
-                        <PermissionGuard permission={PERMISSIONS.POST.APPROVE}>
-                          <button
-                            onClick={() => onApprove(post._id)}
-                            className="text-green-600 hover:text-green-900 transition-colors"
-                            title="Duyệt tin"
-                          >
-                            <CheckIcon className="w-4 h-4" />
-                          </button>
-                        </PermissionGuard>
-                      )}
-
-                      {/* Reject Button - only for pending posts */}
-                      {post.status === "pending" && (
-                        <PermissionGuard permission={PERMISSIONS.POST.REJECT}>
-                          <button
-                            onClick={() => handleReject(post._id)}
-                            className="text-red-600 hover:text-red-900 transition-colors"
-                            title="Từ chối"
-                          >
-                            <XMarkIcon className="w-4 h-4" />
-                          </button>
-                        </PermissionGuard>
-                      )}
-
-                      {/* Delete Button - Soft delete for non-deleted posts, hard delete for deleted posts */}
-                      <PermissionGuard permission={PERMISSIONS.POST.DELETE}>
+                    </td>
+                    <td className="px-3 py-3 text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        {/* View Button */}
                         <button
-                          onClick={() => onDelete(post._id, post.status)}
-                          className={`transition-colors ${
-                            post.status === "deleted"
-                              ? "text-red-600 hover:text-red-900"
-                              : "text-orange-600 hover:text-orange-900"
-                          }`}
-                          title={
-                            post.status === "deleted"
-                              ? "Xóa vĩnh viễn"
-                              : "Chuyển vào thùng rác"
-                          }
+                          onClick={() => handleViewClick(post)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Xem chi tiết"
                         >
-                          <TrashIcon className="w-4 h-4" />
+                          <EyeIcon className="w-4 h-4" />
                         </button>
-                      </PermissionGuard>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+
+                        {/* Approve Button - only for pending posts */}
+                        {post.status === "pending" && (
+                          <PermissionGuard
+                            permission={PERMISSIONS.POST.APPROVE}
+                          >
+                            <button
+                              onClick={() => onApprove(post._id)}
+                              className="text-green-600 hover:text-green-900 transition-colors"
+                              title="Duyệt tin"
+                            >
+                              <CheckIcon className="w-4 h-4" />
+                            </button>
+                          </PermissionGuard>
+                        )}
+
+                        {/* Reject Button - only for pending posts */}
+                        {post.status === "pending" && (
+                          <PermissionGuard permission={PERMISSIONS.POST.REJECT}>
+                            <button
+                              onClick={() => handleReject(post._id)}
+                              className="text-red-600 hover:text-red-900 transition-colors"
+                              title="Từ chối"
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                          </PermissionGuard>
+                        )}
+
+                        {/* Delete Button - Soft delete for non-deleted posts, hard delete for deleted posts */}
+                        <PermissionGuard permission={PERMISSIONS.POST.DELETE}>
+                          <button
+                            onClick={() => onDelete(post._id, post.status)}
+                            className={`transition-colors ${
+                              post.status === "deleted"
+                                ? "text-red-600 hover:text-red-900"
+                                : "text-orange-600 hover:text-orange-900"
+                            }`}
+                            title={
+                              post.status === "deleted"
+                                ? "Xóa vĩnh viễn"
+                                : "Chuyển vào thùng rác"
+                            }
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </PermissionGuard>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

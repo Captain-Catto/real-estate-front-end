@@ -27,14 +27,14 @@ export default function AdminGuard({
   requireAllPermissions = true,
   redirectToHome = false,
 }: AdminGuardProps) {
-  const { user, isAuthenticated, isInitialized } = useAuth();
+  const { user, isAuthenticated, isInitialized, loading } = useAuth();
   const { can, isLoading: permissionsLoading } = usePermissions();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     // Đợi auth và permissions khởi tạo xong
-    if (!isInitialized || permissionsLoading) {
+    if (!isInitialized || permissionsLoading || loading) {
       return;
     }
 
@@ -75,6 +75,7 @@ export default function AdminGuard({
     user,
     isAuthenticated,
     isInitialized,
+    loading,
     permissionsLoading,
     permissions,
     requireAllPermissions,
@@ -84,7 +85,7 @@ export default function AdminGuard({
   ]);
 
   // Hiển thị loading khi đang kiểm tra
-  if (isChecking || !isInitialized || permissionsLoading) {
+  if (isChecking || !isInitialized || permissionsLoading || loading) {
     return (
       <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 flex items-center space-x-3">

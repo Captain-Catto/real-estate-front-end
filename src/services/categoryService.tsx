@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -50,7 +52,8 @@ export const categoryService = {
    */
   getAll: async (): Promise<Category[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`, {
+      // Use limit=all to get all categories without pagination
+      const response = await fetch(`${API_BASE_URL}/categories?limit=all`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -135,7 +138,7 @@ export const categoryService = {
      */
     getAll: async (page = 1, limit = 20): Promise<CategoryResponse> => {
       try {
-        const token = localStorage.getItem("accessToken");
+        const token = getAccessToken();
         const response = await fetch(
           `${API_BASE_URL}/admin/categories?page=${page}&limit=${limit}`,
           {
@@ -165,7 +168,7 @@ export const categoryService = {
      */
     create: async (data: CreateCategoryData): Promise<Category> => {
       try {
-        const token = localStorage.getItem("accessToken");
+        const token = getAccessToken();
         const response = await fetch(`${API_BASE_URL}/admin/categories`, {
           method: "POST",
           headers: {
@@ -192,7 +195,7 @@ export const categoryService = {
      */
     update: async (id: string, data: UpdateCategoryData): Promise<Category> => {
       try {
-        const token = localStorage.getItem("accessToken");
+        const token = getAccessToken();
         const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
           method: "PUT",
           headers: {
@@ -219,7 +222,7 @@ export const categoryService = {
      */
     delete: async (id: string): Promise<void> => {
       try {
-        const token = localStorage.getItem("accessToken");
+        const token = getAccessToken();
         const response = await fetch(`${API_BASE_URL}/admin/categories/${id}`, {
           method: "DELETE",
           headers: {
@@ -243,7 +246,7 @@ export const categoryService = {
       orders: { id: string; order: number }[]
     ): Promise<void> => {
       try {
-        const token = localStorage.getItem("accessToken");
+        const token = getAccessToken();
         const response = await fetch(`${API_BASE_URL}/admin/categories/order`, {
           method: "PUT",
           headers: {

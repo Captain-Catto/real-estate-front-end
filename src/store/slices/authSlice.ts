@@ -5,6 +5,9 @@ import {
   RegisterRequest,
 } from "@/services/authService";
 
+// API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 // Types
 export type UserRole = "admin" | "employee" | "user";
 
@@ -22,6 +25,7 @@ export interface User {
 
 export interface AuthState {
   user: User | null;
+  accessToken: string | null; // Lưu access token trong Redux memory
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -33,6 +37,7 @@ export interface AuthState {
 // Initial state
 const initialState: AuthState = {
   user: null,
+  accessToken: null, // Token chỉ lưu trong memory
   isAuthenticated: false,
   loading: false,
   error: null,
@@ -40,6 +45,71 @@ const initialState: AuthState = {
   isInitialized: false,
   sessionExpired: false,
 };
+
+// Restore authentication from refresh token (for app initialization)
+export const restoreAuthAsync = createAsyncThunk(
+  "auth/restoreAuth",
+  async (_, { rejectWithValue }) => {
+    try {
+      // Try to refresh the access token using the HTTP-only cookie
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        // Refresh token is invalid or expired
+        return rejectWithValue("No valid refresh token found");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.data?.accessToken) {
+        // Get user profile with the new access token directly
+        // We'll set both token and user in the reducer, not here
+        try {
+          // Use fetchWithAuth from authService but with the new token directly
+          const profileResponse = await fetch(
+            `${API_BASE_URL}/api/auth/profile`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${data.data.accessToken}`,
+              },
+              credentials: "include",
+            }
+          );
+
+          if (!profileResponse.ok) {
+            return rejectWithValue("Failed to get user profile");
+          }
+
+          const profileData = await profileResponse.json();
+
+          if (profileData.success) {
+            return {
+              accessToken: data.data.accessToken,
+              user: profileData.data.user,
+            };
+          } else {
+            return rejectWithValue("Failed to get user profile");
+          }
+        } catch {
+          return rejectWithValue("Failed to fetch user profile");
+        }
+      }
+      return rejectWithValue("Invalid refresh token response");
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to restore authentication";
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
 
 // Async thunks
 export const loginAsync = createAsyncThunk(
@@ -164,6 +234,7 @@ const authSlice = createSlice({
     // Reset auth state
     resetAuth: (state) => {
       state.user = null;
+      state.accessToken = null;
       state.isAuthenticated = false;
       state.loading = false;
       state.error = null;
@@ -206,29 +277,23 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
     },
 
+    // Set access token
+    setAccessToken: (state, action: PayloadAction<string | null>) => {
+      state.accessToken = action.payload;
+      state.isAuthenticated = !!action.payload;
+    },
+
     // Initialize auth from storage (for app startup)
     initializeAuth: (state) => {
-      // Kiểm tra môi trường browser
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("accessToken");
-        if (token) {
-          state.isAuthenticated = true;
-          state.loading = false;
-          state.isInitialized = true;
-          // User sẽ được load từ getProfileAsync
-        } else {
-          state.isAuthenticated = false;
-          state.loading = false;
-          state.user = null;
-          state.isInitialized = true;
-        }
-      } else {
-        // Server-side: không có token
-        state.isAuthenticated = false;
-        state.loading = false;
-        state.user = null;
-        state.isInitialized = true;
-      }
+      // Với memory-only tokens, chỉ khởi tạo trạng thái không xác thực
+      // Authentication sẽ được xác định qua refresh token trong HTTP-only cookie
+      state.isAuthenticated = false;
+      state.loading = true; // Set loading true để guards đợi
+      state.user = null;
+      state.accessToken = null;
+      state.isInitialized = false; // Chỉ set true khi restore hoàn thành
+      state.error = null;
+      console.log("🔑 Auth state initializing, waiting for restore...");
     },
   },
   extraReducers: (builder) => {
@@ -241,15 +306,19 @@ const authSlice = createSlice({
       .addCase(loginAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken || null;
         state.isAuthenticated = true;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+        state.isInitialized = true;
+        console.log("✅ Login successful, user authenticated");
       })
       .addCase(loginAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
         state.user = null;
+        state.accessToken = null;
       });
 
     // Register
@@ -261,15 +330,19 @@ const authSlice = createSlice({
       .addCase(registerAsync.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken || null;
         state.isAuthenticated = true;
         state.lastLoginTime = new Date().toISOString();
         state.error = null;
+        state.isInitialized = true;
+        console.log("✅ Registration successful, user authenticated");
       })
       .addCase(registerAsync.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
         state.user = null;
+        state.accessToken = null;
       });
 
     // Logout
@@ -280,6 +353,7 @@ const authSlice = createSlice({
       .addCase(logoutAsync.fulfilled, (state) => {
         state.loading = false;
         state.user = null;
+        state.accessToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.lastLoginTime = null;
@@ -288,6 +362,7 @@ const authSlice = createSlice({
         state.loading = false;
         // Vẫn logout local
         state.user = null;
+        state.accessToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.lastLoginTime = null;
@@ -301,6 +376,7 @@ const authSlice = createSlice({
       .addCase(logoutAllAsync.fulfilled, (state) => {
         state.loading = false;
         state.user = null;
+        state.accessToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.lastLoginTime = null;
@@ -309,9 +385,34 @@ const authSlice = createSlice({
         state.loading = false;
         // Vẫn logout local
         state.user = null;
+        state.accessToken = null;
         state.isAuthenticated = false;
         state.error = null;
         state.lastLoginTime = null;
+      });
+
+    // Restore Authentication
+    builder
+      .addCase(restoreAuthAsync.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(restoreAuthAsync.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user as User;
+        state.accessToken = action.payload.accessToken;
+        state.isAuthenticated = true;
+        state.error = null;
+        state.sessionExpired = false;
+        state.isInitialized = true;
+      })
+      .addCase(restoreAuthAsync.rejected, (state) => {
+        state.loading = false;
+        state.user = null;
+        state.accessToken = null;
+        state.isAuthenticated = false;
+        state.error = null;
+        state.isInitialized = true;
       });
 
     // Get Profile
@@ -336,12 +437,9 @@ const authSlice = createSlice({
           errorMessage?.includes("unauthorized")
         ) {
           state.user = null;
+          state.accessToken = null;
           state.isAuthenticated = false;
           state.sessionExpired = true;
-          // Xóa token từ localStorage an toàn
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("accessToken");
-          }
         }
       });
 
@@ -372,6 +470,7 @@ export const {
   setSessionExpired,
   setUserRole,
   setUser,
+  setAccessToken,
   initializeAuth,
 } = authSlice.actions;
 

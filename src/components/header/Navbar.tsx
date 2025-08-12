@@ -7,7 +7,7 @@ import {
 } from "@/services/headerSettingsService";
 import { newsService, NewsCategory } from "@/services/newsService";
 
-export function Navbar() {
+export const Navbar = React.memo(() => {
   const [headerMenus, setHeaderMenus] = useState<HeaderMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
@@ -36,119 +36,119 @@ export function Navbar() {
     []
   );
 
-  const loadNewsCategories = useCallback(async () => {
-    try {
-      const response = await newsService.getNewsCategories();
-      if (response.success && response.data) {
-        // Cập nhật menu tin tức trong headerMenus
-        updateNewsMenuInHeaderMenus(response.data);
-      }
-    } catch (error) {
-      console.error("Failed to load news categories:", error);
-      // Fallback to empty array - navbar will work without categories
-    }
-  }, [updateNewsMenuInHeaderMenus]);
-
-  const loadHeaderMenus = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await headerSettingsService.getPublicHeaderMenus();
-      if (response.success) {
-        console.log("Raw API response:", response.data);
-        // Only show active menus, sorted by order
-        const activeMenus = response.data
-          .filter((menu) => menu.isActive)
-          .sort((a, b) => a.order - b.order)
-          .map((menu: HeaderMenu, index) => ({
-            ...menu,
-            id: menu.id || `menu-${index}`,
-          }));
-        console.log("Processed activeMenus:", activeMenus);
-        setHeaderMenus(activeMenus);
-      }
-    } catch (error) {
-      console.error("Failed to load header menus:", error);
-      // Fallback to default menus - categories will be updated separately
-      const fallbackMenus = [
-        {
-          id: "1",
-          label: "Trang chủ",
-          href: "/",
-          order: 1,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "2",
-          label: "Mua bán",
-          href: "/mua-ban",
-          order: 2,
-          isActive: true,
-          hasDropdown: true,
-          dropdownItems: [
-            {
-              id: "2-1",
-              label: "Nhà riêng",
-              href: "/mua-ban/nha-rieng",
-              order: 1,
-              isActive: true,
-            },
-            {
-              id: "2-2",
-              label: "Chung cư",
-              href: "/mua-ban/chung-cu",
-              order: 2,
-              isActive: true,
-            },
-          ],
-        },
-        {
-          id: "3",
-          label: "Cho thuê",
-          href: "/cho-thue",
-          order: 3,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "4",
-          label: "Dự án",
-          href: "/du-an",
-          order: 4,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "5",
-          label: "Tin tức",
-          href: "/tin-tuc",
-          order: 5,
-          isActive: true,
-          hasDropdown: false, // Will be updated when categories load
-          dropdownItems: [], // Will be updated when categories load
-        },
-        {
-          id: "6",
-          label: "Liên hệ",
-          href: "/lien-he",
-          order: 6,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-      ];
-      console.log("Using fallback menus:", fallbackMenus);
-      setHeaderMenus(fallbackMenus);
-    } finally {
-      setLoading(false);
-    }
-  }, []); // Remove newsCategories dependency to avoid cycle
-
   // Load data on component mount
   useEffect(() => {
+    const loadNewsCategories = async () => {
+      try {
+        const response = await newsService.getNewsCategories();
+        if (response.success && response.data) {
+          // Cập nhật menu tin tức trong headerMenus
+          updateNewsMenuInHeaderMenus(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load news categories:", error);
+        // Fallback to empty array - navbar will work without categories
+      }
+    };
+
+    const loadHeaderMenus = async () => {
+      try {
+        setLoading(true);
+        const response = await headerSettingsService.getPublicHeaderMenus();
+        if (response.success) {
+          console.log("Raw API response:", response.data);
+          // Only show active menus, sorted by order
+          const activeMenus = response.data
+            .filter((menu) => menu.isActive)
+            .sort((a, b) => a.order - b.order)
+            .map((menu: HeaderMenu, index) => ({
+              ...menu,
+              id: menu.id || `menu-${index}`,
+            }));
+          console.log("Processed activeMenus:", activeMenus);
+          setHeaderMenus(activeMenus);
+        }
+      } catch (error) {
+        console.error("Failed to load header menus:", error);
+        // Fallback to default menus - categories will be updated separately
+        const fallbackMenus = [
+          {
+            id: "1",
+            label: "Trang chủ",
+            href: "/",
+            order: 1,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "2",
+            label: "Mua bán",
+            href: "/mua-ban",
+            order: 2,
+            isActive: true,
+            hasDropdown: true,
+            dropdownItems: [
+              {
+                id: "2-1",
+                label: "Nhà riêng",
+                href: "/mua-ban/nha-rieng",
+                order: 1,
+                isActive: true,
+              },
+              {
+                id: "2-2",
+                label: "Chung cư",
+                href: "/mua-ban/chung-cu",
+                order: 2,
+                isActive: true,
+              },
+            ],
+          },
+          {
+            id: "3",
+            label: "Cho thuê",
+            href: "/cho-thue",
+            order: 3,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "4",
+            label: "Dự án",
+            href: "/du-an",
+            order: 4,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "5",
+            label: "Tin tức",
+            href: "/tin-tuc",
+            order: 5,
+            isActive: true,
+            hasDropdown: false, // Will be updated when categories load
+            dropdownItems: [], // Will be updated when categories load
+          },
+          {
+            id: "6",
+            label: "Liên hệ",
+            href: "/lien-he",
+            order: 6,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+        ];
+        console.log("Using fallback menus:", fallbackMenus);
+        setHeaderMenus(fallbackMenus);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     const loadData = async () => {
       // Load header menus first
       await loadHeaderMenus();
@@ -157,7 +157,7 @@ export function Navbar() {
     };
 
     loadData();
-  }, [loadHeaderMenus, loadNewsCategories]);
+  }, [updateNewsMenuInHeaderMenus]); // Only depend on updateNewsMenuInHeaderMenus
 
   // Store timeout references
   const timeoutRefs = React.useRef<{ [key: string]: NodeJS.Timeout }>({});
@@ -299,4 +299,6 @@ export function Navbar() {
       ))}
     </ul>
   );
-}
+});
+
+Navbar.displayName = "Navbar";

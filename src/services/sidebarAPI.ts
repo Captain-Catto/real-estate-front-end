@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 // API service cho sidebar configuration
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
@@ -39,11 +41,7 @@ export interface ConfigListResponse {
 
 export class SidebarAPI {
   private static getAuthHeaders() {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("accessToken") ||
-          sessionStorage.getItem("accessToken")
-        : null;
+    const token = typeof window !== "undefined" ? getAccessToken() : null;
 
     return {
       "Content-Type": "application/json",
@@ -110,7 +108,9 @@ export class SidebarAPI {
   }
 
   // Tạo cấu hình mới (admin only)
-  static async createConfig(configData: Partial<SidebarConfig>): Promise<SidebarAPIResponse> {
+  static async createConfig(
+    configData: Partial<SidebarConfig>
+  ): Promise<SidebarAPIResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/sidebar/configs`, {
         method: "POST",
@@ -206,11 +206,14 @@ export class SidebarAPI {
   // Đặt cấu hình mặc định (admin only)
   static async setDefaultConfig(id: string): Promise<SidebarAPIResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sidebar/configs/${id}/default`, {
-        method: "PUT",
-        headers: this.getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/sidebar/configs/${id}/default`,
+        {
+          method: "PUT",
+          headers: this.getAuthHeaders(),
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -238,15 +241,18 @@ export class SidebarAPI {
   // Sắp xếp lại thứ tự items (admin only)
   static async reorderItems(
     configId: string,
-    itemOrders: Array<{id: string, order: number}>
+    itemOrders: Array<{ id: string; order: number }>
   ): Promise<SidebarAPIResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sidebar/configs/${configId}/reorder-items`, {
-        method: "PUT",
-        headers: this.getAuthHeaders(),
-        credentials: "include",
-        body: JSON.stringify({ itemOrders }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/sidebar/configs/${configId}/reorder-items`,
+        {
+          method: "PUT",
+          headers: this.getAuthHeaders(),
+          credentials: "include",
+          body: JSON.stringify({ itemOrders }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -277,12 +283,15 @@ export class SidebarAPI {
     itemData: Partial<SidebarMenuItem>
   ): Promise<SidebarAPIResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sidebar/configs/${configId}/items`, {
-        method: "POST",
-        headers: this.getAuthHeaders(),
-        credentials: "include",
-        body: JSON.stringify(itemData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/sidebar/configs/${configId}/items`,
+        {
+          method: "POST",
+          headers: this.getAuthHeaders(),
+          credentials: "include",
+          body: JSON.stringify(itemData),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -313,11 +322,14 @@ export class SidebarAPI {
     itemId: string
   ): Promise<SidebarAPIResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/sidebar/configs/${configId}/items/${itemId}`, {
-        method: "DELETE",
-        headers: this.getAuthHeaders(),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/sidebar/configs/${configId}/items/${itemId}`,
+        {
+          method: "DELETE",
+          headers: this.getAuthHeaders(),
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

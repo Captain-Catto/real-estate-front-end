@@ -7,6 +7,7 @@ import {
   broadcastWalletUpdate,
 } from "@/hooks/useWallet";
 import { useState, useEffect } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 // TEMP: Removed useNotifications to prevent infinite loop
 // import { useNotifications } from "@/hooks/useNotifications";
 import {
@@ -34,6 +35,8 @@ export default function ViTienPage() {
   const { isAuthenticated } = useAuth();
   // Initialize notification refresh hook for auto-refresh on wallet events
   useNotificationRefresh();
+
+  const isMobile = useIsMobile();
 
   const {
     balance,
@@ -125,7 +128,21 @@ export default function ViTienPage() {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(Math.abs(amount));
+  };
+
+  // Compact currency format for mobile
+  const formatCurrencyCompact = (amount: number) => {
+    const absAmount = Math.abs(amount);
+    if (absAmount >= 1000000) {
+      return `${(absAmount / 1000000).toFixed(1)}M ₫`;
+    } else if (absAmount >= 1000) {
+      return `${(absAmount / 1000).toFixed(0)}K ₫`;
+    } else {
+      return `${absAmount.toLocaleString("vi-VN")} ₫`;
+    }
   };
 
   const getTransactionIcon = (type: string) => {
@@ -281,57 +298,63 @@ export default function ViTienPage() {
 
       {/* Wallet Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="bg-green-100 p-3 rounded-lg">
-              <WalletIcon className="h-6 w-6 text-green-600" />
+            <div className="bg-green-100 p-2 sm:p-3 rounded-lg">
+              <WalletIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-600">Số dư khả dụng</p>
-              <p className="text-xl font-bold text-gray-900">
-                {formattedBalance}
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm text-gray-600">Số dư khả dụng</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">
+                {isMobile ? formatCurrencyCompact(balance) : formattedBalance}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <ArrowDownIcon className="h-6 w-6 text-blue-600" />
+            <div className="bg-blue-100 p-2 sm:p-3 rounded-lg">
+              <ArrowDownIcon className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-600">Tổng đã nạp</p>
-              <p className="text-xl font-bold text-gray-900">
-                {formattedIncome}
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm text-gray-600">Tổng đã nạp</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">
+                {isMobile
+                  ? formatCurrencyCompact(totalIncome)
+                  : formattedIncome}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="bg-red-100 p-3 rounded-lg">
-              <ArrowUpIcon className="h-6 w-6 text-red-600" />
+            <div className="bg-red-100 p-2 sm:p-3 rounded-lg">
+              <ArrowUpIcon className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-600">Tổng đã chi</p>
-              <p className="text-xl font-bold text-gray-900">
-                {formattedSpending}
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm text-gray-600">Tổng đã chi</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">
+                {isMobile
+                  ? formatCurrencyCompact(totalSpending)
+                  : formattedSpending}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center">
-            <div className="bg-yellow-100 p-3 rounded-lg">
-              <ClockIcon className="h-6 w-6 text-yellow-600" />
+            <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg">
+              <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
             </div>
-            <div className="ml-4">
-              <p className="text-sm text-gray-600">Bonus kiếm được</p>
-              <p className="text-xl font-bold text-gray-900">
-                {formattedBonus}
+            <div className="ml-3 sm:ml-4">
+              <p className="text-xs sm:text-sm text-gray-600">
+                Bonus kiếm được
+              </p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">
+                {isMobile ? formatCurrencyCompact(bonusEarned) : formattedBonus}
               </p>
             </div>
           </div>
@@ -439,22 +462,30 @@ export default function ViTienPage() {
                     {transactions.slice(0, 3).map((transaction, index) => (
                       <div
                         key={transaction.id || `recent-transaction-${index}`}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-gray-50 rounded-lg space-y-2 sm:space-y-0"
                       >
-                        <div className="flex items-center">
-                          {getTransactionIcon(transaction.type)}
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
+                        <div className="flex items-start sm:items-center">
+                          <div className="flex-shrink-0">
+                            {getTransactionIcon(transaction.type)}
+                          </div>
+                          <div className="ml-3 flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 break-words">
                               {transaction.description}
                             </div>
                             <div className="text-xs text-gray-600">
                               {new Date(
                                 transaction.createdAt
-                              ).toLocaleDateString("vi-VN")}
+                              ).toLocaleDateString("vi-VN", {
+                                year: "numeric",
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </div>
                             {(transaction as ExtendedWalletTransaction)
                               .orderId && (
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="text-xs text-gray-500 mt-1 break-all">
                                 Mã GD:{" "}
                                 {
                                   (transaction as ExtendedWalletTransaction)
@@ -464,17 +495,19 @@ export default function ViTienPage() {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex items-center justify-between sm:block sm:text-right flex-shrink-0">
                           <div
-                            className={`text-sm font-medium ${getTransactionColor(
+                            className={`text-sm sm:text-base font-medium ${getTransactionColor(
                               transaction.type,
                               transaction.amount
                             )}`}
                           >
                             {transaction.amount > 0 ? "+" : ""}
-                            {formatCurrency(transaction.amount)}
+                            {isMobile
+                              ? formatCurrencyCompact(transaction.amount)
+                              : formatCurrency(transaction.amount)}
                           </div>
-                          <div className="flex items-center">
+                          <div className="flex items-center sm:justify-end">
                             {getStatusIcon(transaction.status)}
                             <span className="text-xs text-gray-600 ml-1">
                               {getStatusText(transaction.status)}
@@ -497,14 +530,14 @@ export default function ViTienPage() {
 
           {activeTab === "history" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Lịch sử giao dịch ({filteredTransactions.length})
                 </h3>
                 <select
                   value={transactionFilter}
                   onChange={(e) => setTransactionFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
                   <option value="all">
                     Tất cả giao dịch ({transactions.length})
@@ -534,28 +567,37 @@ export default function ViTienPage() {
                 {filteredTransactions.map((transaction, index) => (
                   <div
                     key={transaction.id || `transaction-${index}`}
-                    className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors space-y-3 sm:space-y-0"
                   >
-                    <div className="flex items-center">
-                      {getTransactionIcon(transaction.type)}
-                      <div className="ml-4">
-                        <div className="font-medium text-gray-900">
+                    <div className="flex items-start sm:items-center flex-1 min-w-0">
+                      <div className="flex-shrink-0">
+                        {getTransactionIcon(transaction.type)}
+                      </div>
+                      <div className="ml-4 flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 break-words">
                           {transaction.description}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 mt-1">
                           {new Date(transaction.createdAt).toLocaleString(
-                            "vi-VN"
+                            "vi-VN",
+                            {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
                           )}
                         </div>
                         {(transaction as ExtendedWalletTransaction).orderId && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-gray-500 mt-1 break-all">
                             Mã giao dịch:{" "}
                             {(transaction as ExtendedWalletTransaction).orderId}
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="flex items-center justify-between sm:block sm:text-right sm:ml-4 flex-shrink-0">
                       <div
                         className={`text-lg font-semibold ${getTransactionColor(
                           transaction.type,
@@ -563,9 +605,11 @@ export default function ViTienPage() {
                         )}`}
                       >
                         {transaction.amount > 0 ? "+" : ""}
-                        {formatCurrency(transaction.amount)}
+                        {isMobile
+                          ? formatCurrencyCompact(transaction.amount)
+                          : formatCurrency(transaction.amount)}
                       </div>
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center sm:justify-end mt-1">
                         {getStatusIcon(transaction.status)}
                         <span className="text-sm text-gray-600 ml-1">
                           {getStatusText(transaction.status)}

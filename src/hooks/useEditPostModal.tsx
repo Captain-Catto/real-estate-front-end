@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useRef } from "react";
 import {
   postService,
@@ -91,7 +91,11 @@ interface Package {
 
 export function useEditPostModal() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
+
+  // Determine if we're in admin context based on URL
+  const isAdminContext = pathname?.includes("/admin/") || false;
 
   // EMERGENCY FIX: Disable useWallet in modals to prevent multiple instances causing infinite loops
   // const { balance, formattedBalance, refresh: refreshWallet } = useWallet();
@@ -152,6 +156,7 @@ export function useEditPostModal() {
         const activeCategories = result.filter(
           (cat: Category) => cat.isProject === false && cat.isActive !== false
         );
+        console.log("Active categories:", activeCategories);
         setCategories(activeCategories);
       } catch (error) {
         console.error("Error loading categories:", error);
@@ -472,8 +477,8 @@ export function useEditPostModal() {
       console.log("🔄 STARTING BASIC SUBMIT");
       console.log("📋 Current formData:", formData);
 
-      // Prepare update data
-      const updateData: Partial<CreatePostData> = {
+      // Prepare update data (force pending status for user dashboard edits)
+      const updateData = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
@@ -496,11 +501,12 @@ export function useEditPostModal() {
         balconyDirection: formData.balconyDirection,
         roadWidth: formData.roadWidth,
         frontWidth: formData.frontWidth,
+        status: "pending", // Force status to pending - requires admin/employee approval
       };
 
       // Add project if selected
       if (formData.location.project) {
-        updateData.project = formData.location.project;
+        (updateData as any).project = formData.location.project;
       }
 
       console.log("📦 Prepared updateData:");
@@ -520,7 +526,7 @@ export function useEditPostModal() {
         existingImages.length > 0 ? existingImages : editingPost.images || [];
       console.log("Including current images:", currentImages.length);
 
-      // Sử dụng adminPostsService cho admin, resubmitPost cho tin bị từ chối
+      // Sử dụng đúng service dựa vào context và trạng thái post
       const result =
         editingPost.status === "rejected"
           ? await postService.resubmitPost(
@@ -528,10 +534,16 @@ export function useEditPostModal() {
               updateData,
               currentImages
             )
-          : await adminPostsService.updateAdminPost(editingPost._id, {
+          : isAdminContext
+          ? await adminPostsService.updateAdminPost(editingPost._id, {
               ...updateData,
               images: currentImages,
-            });
+            })
+          : await postService.updatePost(
+              editingPost._id,
+              updateData,
+              currentImages
+            );
 
       if (result.success) {
         if (editingPost.status === "rejected") {
@@ -613,7 +625,7 @@ export function useEditPostModal() {
         console.log("📝 Updating post with images AND basic info...");
 
         // Prepare complete update data including basic info
-        const updateData: Partial<CreatePostData> = {
+        const updateData = {
           title: formData.title,
           description: formData.description,
           type: formData.type,
@@ -636,11 +648,12 @@ export function useEditPostModal() {
           balconyDirection: formData.balconyDirection,
           roadWidth: formData.roadWidth,
           frontWidth: formData.frontWidth,
+          status: "pending", // Force status to pending - requires admin/employee approval
         };
 
         // Add project if selected
         if (formData.location.project) {
-          updateData.project = formData.location.project;
+          (updateData as any).project = formData.location.project;
         }
 
         console.log("� Complete update data with basic info:");
@@ -650,13 +663,15 @@ export function useEditPostModal() {
         console.log("🏠 frontWidth:", updateData.frontWidth);
         console.log("🛏️ bedrooms:", updateData.bedrooms);
 
-        const updateResult = await adminPostsService.updateAdminPost(
-          editingPost._id,
-          {
-            ...updateData, // Send complete form data
-            images: finalImagesList, // Include images in the update data
-          }
-        );
+        const updateResult = await (isAdminContext
+          ? adminPostsService.updateAdminPost(editingPost._id, {
+              ...updateData, // Send complete form data
+              images: finalImagesList, // Include images in the update data
+            })
+          : postService.updatePost(editingPost._id, {
+              ...updateData, // Send complete form data
+              images: finalImagesList, // Include images in the update data
+            }));
 
         console.log("✅ Post images updated successfully:", updateResult);
 
@@ -730,9 +745,15 @@ export function useEditPostModal() {
           ? await postService.resubmitPost(editingPost._id, {
               packageId: selectedPackage._id,
             })
-          : await adminPostsService.updateAdminPost(editingPost._id, {
+          : isAdminContext
+          ? await adminPostsService.updateAdminPost(editingPost._id, {
               packageId: selectedPackage._id,
-            });
+              status: "pending", // Force status to pending - requires admin/employee approval
+            })
+          : await postService.updatePost(editingPost._id, {
+              packageId: selectedPackage._id,
+              status: "pending",
+            } as any);
 
       if (result.success) {
         if (editingPost.status === "rejected") {

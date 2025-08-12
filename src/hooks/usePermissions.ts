@@ -24,6 +24,7 @@ export function usePermissions() {
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const fetchingRef = useRef<boolean>(false); // Prevent multiple concurrent fetches
+  const lastUserRef = useRef<{ id?: string; role?: string }>({});
 
   // Thông tin trang hiện tại
   const currentPage = useMemo(() => {
@@ -35,9 +36,24 @@ export function usePermissions() {
 
   // Lấy danh sách quyền của người dùng từ API với caching
   useEffect(() => {
+    // Kiểm tra xem user có thay đổi thực sự không
+    const currentUserId = user?.id;
+    const currentUserRole = user?.role;
+
+    if (
+      lastUserRef.current.id === currentUserId &&
+      lastUserRef.current.role === currentUserRole
+    ) {
+      // User không thay đổi, không cần fetch lại
+      return;
+    }
+
+    // Cập nhật reference
+    lastUserRef.current = { id: currentUserId, role: currentUserRole };
+
     console.log("🔍 usePermissions useEffect:", {
-      user: user ? { id: user.id, role: user.role } : null,
-      isAdmin,
+      userId: currentUserId,
+      userRole: currentUserRole,
     });
 
     const fetchUserPermissions = async () => {
@@ -100,7 +116,7 @@ export function usePermissions() {
     };
 
     fetchUserPermissions();
-  }, [user, isAdmin]); // Include the full user object to satisfy lint
+  }, [user, isAdmin]); // Include full dependencies
 
   // Kiểm tra quyền truy cập trang
   const canAccessPage = useMemo(() => {

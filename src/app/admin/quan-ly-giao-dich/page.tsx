@@ -19,7 +19,7 @@ import {
 } from "@/services/adminTransactionService";
 import { toast } from "sonner";
 
-function AdminTransactionsPage() {
+function AdminTransactionsInternal() {
   const [transactions, setTransactions] = useState<AdminPayment[]>([]);
   const [stats, setStats] = useState<AdminPaymentStats | null>(null);
   const [filters, setFilters] = useState<AdminPaymentFilters>({
@@ -437,9 +437,7 @@ function AdminTransactionsPage() {
 // Wrap component with AdminGuard
 export default function ProtectedAdminTransactions() {
   return (
-    <AdminGuard 
-      permissions={[PERMISSIONS.TRANSACTION.VIEW]}
-    >
+    <AdminGuard permissions={[PERMISSIONS.TRANSACTION.VIEW]}>
       <AdminTransactionsInternal />
     </AdminGuard>
   );

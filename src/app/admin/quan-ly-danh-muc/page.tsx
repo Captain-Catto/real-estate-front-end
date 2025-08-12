@@ -53,9 +53,9 @@ function AdminCategoryPageInternal() {
   // State management for property categories
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<
-    "all" | "property" | "project"
-  >("all");
+  const [selectedFilter, setSelectedFilter] = useState<"property" | "project">(
+    "property"
+  );
 
   // State management for news categories
   const [newsCategories, setNewsCategories] = useState<NewsCategory[]>([]);
@@ -511,16 +511,6 @@ function AdminCategoryPageInternal() {
                 <div className="flex justify-between items-center">
                   <div className="flex space-x-4">
                     {/* Filter buttons */}
-                    <button
-                      onClick={() => setSelectedFilter("all")}
-                      className={`px-4 py-2 rounded-lg font-medium ${
-                        selectedFilter === "all"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      Tất cả ({categories.length})
-                    </button>
                     <button
                       onClick={() => setSelectedFilter("property")}
                       className={`px-4 py-2 rounded-lg font-medium ${

@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
@@ -49,7 +51,7 @@ class StatsService {
   private baseUrl = `${API_BASE_URL}/admin/stats`;
 
   private async apiRequest<T>(endpoint: string): Promise<T> {
-    const token = localStorage.getItem("token");
+    const token = getAccessToken();
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "GET",

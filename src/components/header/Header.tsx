@@ -5,7 +5,7 @@ import { Navbar } from "./Navbar";
 import { MobileSidebar } from "./MobileSideBar";
 import ActionButton from "./ActionButton";
 
-export default function Header() {
+const Header = React.memo(() => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -63,4 +63,7 @@ export default function Header() {
       />
     </>
   );
-}
+});
+
+Header.displayName = "Header";
+export default Header;

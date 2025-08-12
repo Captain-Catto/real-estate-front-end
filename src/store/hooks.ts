@@ -25,6 +25,7 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export const useAuth = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const loading = useAppSelector((state) => state.auth.loading);
   const isInitialized = useAppSelector((state) => state.auth.isInitialized);
@@ -38,6 +39,7 @@ export const useAuth = () => {
 
   return {
     user,
+    accessToken,
     isAuthenticated,
     loading,
     isInitialized,
@@ -55,15 +57,18 @@ export const useFavorites = () => {
   const error = useAppSelector((state) => state.favorites.error);
 
   // Fetch favorites from server
-  const fetchUserFavorites = useCallback(async () => {
-    try {
-      await dispatch(fetchFavoritesAsync()).unwrap();
-      return true;
-    } catch (err) {
-      console.error("Failed to fetch user favorites:", err);
-      return false;
-    }
-  }, [dispatch]);
+  const fetchUserFavorites = useCallback(
+    async (forceRefresh: boolean = false) => {
+      try {
+        await dispatch(fetchFavoritesAsync(forceRefresh)).unwrap();
+        return true;
+      } catch (err) {
+        console.error("Failed to fetch user favorites:", err);
+        return false;
+      }
+    },
+    [dispatch]
+  );
 
   // Check if an item is favorited
   const isFavorite = useCallback(

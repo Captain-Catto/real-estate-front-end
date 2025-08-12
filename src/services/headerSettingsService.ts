@@ -45,11 +45,14 @@ class HeaderSettingsService {
   // Public method - no authentication required
   async getPublicHeaderMenus(): Promise<HeaderSettingsResponse> {
     try {
-      const response = await fetch(`${this.publicUrl}/menus`, {
+      // Add cache-busting parameter to ensure fresh data
+      const timestamp = Date.now();
+      const response = await fetch(`${this.publicUrl}/menus?_t=${timestamp}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
+        cache: "no-cache", // Prevent caching
       });
 
       if (!response.ok) {

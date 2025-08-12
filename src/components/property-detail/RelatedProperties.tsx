@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { formatPriceByType } from "@/utils/format";
+import { createPostSlug } from "@/utils/postSlug";
 import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
 
 interface Property {
@@ -18,6 +19,12 @@ interface Property {
   bathrooms: number;
   propertyType: string;
   postedDate: string;
+  type?: string; // "ban" | "cho-thue"
+  locationCode?: {
+    province?: string;
+    ward?: string;
+    district?: string;
+  };
 }
 
 interface RelatedPropertiesProps {
@@ -121,7 +128,17 @@ export function RelatedProperties({
         </div>
 
         <div className="p-4">
-          <Link href={`/mua-ban/ha-noi/${property.slug}`}>
+          <Link
+            href={createPostSlug({
+              _id: property.id,
+              title: property.title,
+              type: property.type || "ban",
+              location: {
+                province: property.locationCode?.province,
+                ward: property.locationCode?.ward,
+              },
+            })}
+          >
             <h3 className="font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2 mb-2">
               {property.title}
             </h3>

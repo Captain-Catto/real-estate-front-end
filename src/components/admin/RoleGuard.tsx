@@ -34,12 +34,12 @@ export default function RoleGuard({
   fallback,
   showToast = true,
 }: RoleGuardProps) {
-  const { isAuthenticated, isInitialized, hasRole } = useAuth();
+  const { isAuthenticated, isInitialized, hasRole, loading } = useAuth();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || loading) return;
 
     // If not authenticated, redirect to login
     if (!isAuthenticated) {
@@ -63,6 +63,7 @@ export default function RoleGuard({
   }, [
     isAuthenticated,
     isInitialized,
+    loading,
     hasRole,
     allowedRoles,
     redirectTo,
@@ -71,7 +72,7 @@ export default function RoleGuard({
   ]);
 
   // Show loading while checking
-  if (!isInitialized || isChecking) {
+  if (!isInitialized || loading || isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

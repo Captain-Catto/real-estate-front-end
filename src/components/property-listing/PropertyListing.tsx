@@ -1,7 +1,7 @@
 // Component mới để hiển thị danh sách bất động sản theo địa điểm
 
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import Image from "next/image";
@@ -12,6 +12,7 @@ import SearchSection from "@/components/home/SearchSection";
 import { locationService } from "@/services/locationService";
 import { PropertyData } from "@/types/property";
 import { formatPriceByType } from "@/utils/format";
+import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
 import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
 
 interface PropertyListingProps {
@@ -25,6 +26,7 @@ interface PropertyListingProps {
   level: "city" | "district" | "ward";
   searchParams?: {
     city?: string;
+    province?: string; // Add support for province parameter
     districts?: string;
     ward?: string;
     category?: string;
@@ -43,6 +45,10 @@ export function PropertyListing({
 }: PropertyListingProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Ref for articles section to scroll to
+  const articlesRef = useRef<HTMLDivElement>(null);
+
   // Sử dụng interface Location từ locationService
   interface BasicLocation {
     code: string;
@@ -105,6 +111,7 @@ export function PropertyListing({
                 (p) =>
                   p.slug === citySlug ||
                   p.codename === searchParams.city ||
+                  p.codename === searchParams.province || // Support province param
                   p.name
                     .toLowerCase()
                     .normalize("NFD")
@@ -267,7 +274,7 @@ export function PropertyListing({
 
   // Helper function để tạo URL - được sử dụng trong PropertyCard
 
-  // Generate breadcrumb items
+  // Generate breadcrumb items following new URL structure: /type/province/ward/postid-title
   const breadcrumbItems: BreadcrumbItem[] = [
     { label: "Trang chủ", href: "/" },
     {
@@ -281,43 +288,20 @@ export function PropertyListing({
       label: location.city,
       href: `/${transactionType}/${createSlug(location.city)}`,
       isActive: level === "city",
-      useQueryParams: true, // Use query params instead of path segments
     });
   }
 
-  // Only add district if it exists and is not empty
-  if (location.district && location.district.trim() !== "") {
-    breadcrumbItems.push({
-      label: location.district,
-      href: `/${transactionType}/${createSlug(location.city)}/${createSlug(
-        location.district
-      )}`,
-      isActive: level === "district",
-      useQueryParams: true, // Use query params instead of path segments
-    });
-  }
-
+  // Skip district level according to new URL structure
   // Only add ward if it exists and is not empty
   if (location.ward && location.ward.trim() !== "") {
-    // Determine the correct URL structure based on whether we have a valid district
-    let wardUrl;
-
-    if (location.district && location.district.trim() !== "") {
-      // If we have a valid district, include it in the path
-      wardUrl = `/${transactionType}/${createSlug(location.city)}/${createSlug(
-        location.district
-      )}/${createSlug(location.ward)}`;
-    } else {
-      // If no valid district, go directly from province to ward
-      wardUrl = `/${transactionType}/${createSlug(location.city)}/${createSlug(
-        location.ward
-      )}`;
-    }
+    // New URL structure: /type/province/ward (skip district)
+    const wardUrl = `/${transactionType}/${createSlug(
+      location.city
+    )}/${createSlug(location.ward)}`;
 
     // Log the URL being created for debugging
     console.log("Creating ward URL:", {
       city: location.city,
-      district: location.district,
       ward: location.ward,
       result: wardUrl,
     });
@@ -326,7 +310,6 @@ export function PropertyListing({
       label: location.ward,
       href: wardUrl,
       isActive: level === "ward",
-      useQueryParams: true, // Use query params instead of path segments
     });
   }
 
@@ -339,6 +322,22 @@ export function PropertyListing({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentProperties = propertiesArray.slice(startIndex, endIndex);
+
+  // Handle page change with scroll to articles section
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+
+    // Scroll to articles section instead of top of page
+    if (articlesRef.current) {
+      articlesRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    } else {
+      // Fallback to top if ref not available
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   // Generate page title
   const getPageTitle = () => {
@@ -380,8 +379,17 @@ export function PropertyListing({
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
           <SearchSection
             searchType={transactionType === "mua-ban" ? "buy" : "rent"}
-            initialProvince={searchParams.province as string}
-            initialWard={searchParams.ward as string}
+            initialSearch={searchParams.search as string}
+            initialProvince={
+              // Priority: searchParams > URL location > empty
+              ((searchParams.province || searchParams.city) as string) ||
+              createSlug(location.city) ||
+              ""
+            }
+            initialWard={
+              // Priority: searchParams > URL location > empty
+              (searchParams.ward as string) || createSlug(location.ward) || ""
+            }
             initialCategory={searchParams.category as string}
             initialPrice={searchParams.price as string}
             initialArea={searchParams.area as string}
@@ -441,7 +449,10 @@ export function PropertyListing({
             </div>
 
             {/* Properties Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            <div
+              ref={articlesRef}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8"
+            >
               {currentProperties.map((property: PropertyData) => (
                 <PropertyCard
                   key={property._id}
@@ -459,7 +470,7 @@ export function PropertyListing({
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    onPageChange={setCurrentPage}
+                    onPageChange={handlePageChange}
                   />
                 </div>
               </div>
@@ -540,6 +551,8 @@ const PropertyCard = React.memo(
           : (property.category as string) || "",
     };
 
+    console.log("property.description:", property.description);
+
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
         <div className="relative">
@@ -559,10 +572,14 @@ const PropertyCard = React.memo(
           <div className="absolute top-2 right-2">
             <FavoriteButton item={favoriteItem} />
           </div>
-          {property.packageId && (
+          {shouldShowBadge(property.packageId) && (
             <div className="absolute top-2 left-2">
-              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
-                VIP
+              <span
+                className={`text-xs px-2 py-1 rounded ${
+                  getPackageBadge(property.packageId).className
+                }`}
+              >
+                {getPackageBadge(property.packageId).text}
               </span>
             </div>
           )}
@@ -592,52 +609,56 @@ const PropertyCard = React.memo(
             })()}
           </div>
 
-          <div className="flex items-center text-gray-600 text-sm mb-3">
-            <MdLocationOn className="w-4 h-4 mr-1 flex-shrink-0" />
-            <span className="line-clamp-1">
-              {[
-                property.location?.ward,
-                property.location?.district,
-                property.location?.province,
-              ]
-                .filter(Boolean)
-                .join(", ")}
-            </span>
-          </div>
+          {/* Địa chỉ và thông tin căn bản cùng hàng */}
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+            <div className="flex items-center flex-1 min-w-0">
+              <MdLocationOn className="w-4 h-4 mr-1 flex-shrink-0" />
+              <span className="line-clamp-1 flex-1">
+                {[
+                  property.location?.ward,
+                  property.location?.district,
+                  property.location?.province,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+              </span>
+            </div>
 
-          <div className="flex justify-between gap-4 text-sm text-gray-600">
-            {property.area && (
-              <div className="text-center">
-                <div className="font-medium flex items-center justify-center">
-                  <MdSquareFoot className="w-4 h-4 mr-1" />
-                  <span className="text-base font-semibold">
-                    {property.area}
-                  </span>
+            {/* Thông tin area, bed, bath */}
+            <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+              {property.area && (
+                <div className="hidden sm:flex items-center gap-1">
+                  <i className="fas fa-ruler-combined text-xs"></i>
+                  <span className="text-xs font-medium">{property.area}</span>
                 </div>
-              </div>
-            )}
-            {property.bedrooms !== undefined && property.bedrooms !== null && (
-              <div className="text-center">
-                <div className="font-medium flex items-center justify-center">
-                  <MdBed className="w-4 h-4 mr-1" />
-                  <span className="text-base font-semibold">
-                    {property.bedrooms}
-                  </span>
-                </div>
-              </div>
-            )}
-            {property.bathrooms !== undefined &&
-              property.bathrooms !== null && (
-                <div className="text-center">
-                  <div className="font-medium flex items-center justify-center">
-                    <MdBathtub className="w-4 h-4 mr-1" />
-                    <span className="text-base font-semibold">
+              )}
+              {property.bedrooms !== undefined &&
+                property.bedrooms !== null && (
+                  <div className="flex items-center gap-1">
+                    <i className="fas fa-bed text-xs"></i>
+                    <span className="text-xs font-medium">
+                      {property.bedrooms}
+                    </span>
+                  </div>
+                )}
+              {property.bathrooms !== undefined &&
+                property.bathrooms !== null && (
+                  <div className="flex items-center gap-1">
+                    <i className="fas fa-bath text-xs"></i>
+                    <span className="text-xs font-medium">
                       {property.bathrooms}
                     </span>
                   </div>
-                </div>
-              )}
+                )}
+            </div>
           </div>
+
+          {/* Description */}
+          {property.description && (
+            <div className="text-sm text-gray-500 line-clamp-2 mb-2">
+              {property.description}
+            </div>
+          )}
         </div>
       </div>
     );

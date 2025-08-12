@@ -16,11 +16,12 @@ import { ProjectService } from "@/services/projectService";
 import { UploadService } from "@/services/uploadService";
 import { DeveloperService } from "@/services/developerService";
 import AdminGuard from "@/components/auth/AdminGuard";
+import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 import { Project } from "@/types/project";
 import { DeveloperForSelection } from "@/types/developer";
 
-function AdminProjectEditPageInternalInternal() {
+function AdminProjectEditPageInternal() {
   const params = useParams();
   const router = useRouter();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -512,6 +513,10 @@ function AdminProjectEditPageInternalInternal() {
         ...project,
         id,
         developer: selectedDeveloperId, // Send developer ID instead of object
+        category:
+          typeof project.category === "object"
+            ? project.category._id
+            : project.category, // Send category ID
       });
       alert("Đã lưu thay đổi!");
     } catch (error) {
@@ -1883,9 +1888,7 @@ function AdminProjectEditPageInternalInternal() {
 // Wrap component with AdminGuard
 export default function AdminProjectEditPage() {
   return (
-    <AdminGuard 
-      permissions={[PERMISSIONS.PROJECT.VIEW]}
-    >
+    <AdminGuard permissions={[PERMISSIONS.PROJECT.VIEW]}>
       <AdminProjectEditPageInternal />
     </AdminGuard>
   );

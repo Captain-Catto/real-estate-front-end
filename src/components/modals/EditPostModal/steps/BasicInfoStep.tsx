@@ -554,7 +554,7 @@ export default function BasicInfoStep({
             </label>
             <select
               id="category"
-              value={formData.category}
+              value={formData.category || ""}
               onChange={(e) => updateFormData({ category: e.target.value })}
               className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
                 selectedProject ? "bg-gray-100 cursor-not-allowed" : ""
@@ -569,7 +569,7 @@ export default function BasicInfoStep({
                   : "Chọn loại BĐS"}
               </option>
               {categories.map((category) => (
-                <option key={category._id} value={category.name}>
+                <option key={category._id} value={category._id}>
                   {category.name}
                 </option>
               ))}

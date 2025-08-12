@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Disclosure, Transition } from "@headlessui/react";
 import {
   headerSettingsService,
   HeaderMenu,
 } from "@/services/headerSettingsService";
+import { newsService, NewsCategory } from "@/services/newsService";
 import ActionButton from "./ActionButton";
 
 interface MobileSidebarProps {
@@ -17,100 +18,193 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const [headerMenus, setHeaderMenus] = useState<HeaderMenu[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const updateNewsMenuInHeaderMenus = useCallback(
+    (categories: NewsCategory[]) => {
+      setHeaderMenus((prevMenus) => {
+        return prevMenus.map((menu) => {
+          if (menu.id === "5" || menu.label === "Tin tức") {
+            return {
+              ...menu,
+              hasDropdown: categories.length > 0,
+              dropdownItems: categories.map((category) => ({
+                id: `news-${category.slug}`,
+                label: category.name,
+                href: `/tin-tuc/${category.slug}`,
+                order: 1,
+                isActive: true,
+              })),
+            };
+          }
+          return menu;
+        });
+      });
+    },
+    []
+  );
+
   // Load header menus on component mount
   useEffect(() => {
-    loadHeaderMenus();
-  }, []);
-
-  const loadHeaderMenus = async () => {
-    try {
-      setLoading(true);
-      const response = await headerSettingsService.getPublicHeaderMenus();
-      if (response.success) {
-        // Only show active menus, sorted by order
-        const activeMenus = response.data
-          .filter((menu) => menu.isActive)
-          .sort((a, b) => a.order - b.order);
-        setHeaderMenus(activeMenus);
+    const loadNewsCategories = async () => {
+      try {
+        const response = await newsService.getNewsCategories();
+        if (response.success && response.data) {
+          // Cập nhật menu tin tức trong headerMenus
+          updateNewsMenuInHeaderMenus(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load news categories:", error);
+        // Fallback to empty array - sidebar will work without categories
       }
-    } catch (error) {
-      console.error("Failed to load header menus:", error);
-      // Fallback to default menus
-      setHeaderMenus([
-        {
-          id: "1",
-          label: "Trang chủ",
-          href: "/",
-          order: 1,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "2",
-          label: "Mua bán",
-          href: "/mua-ban",
-          order: 2,
-          isActive: true,
-          hasDropdown: true,
-          dropdownItems: [
-            {
-              id: "2-1",
-              label: "Nhà riêng",
-              href: "/mua-ban/nha-rieng",
-              order: 1,
-              isActive: true,
-            },
-            {
-              id: "2-2",
-              label: "Chung cư",
-              href: "/mua-ban/chung-cu",
-              order: 2,
-              isActive: true,
-            },
-          ],
-        },
-        {
-          id: "3",
-          label: "Cho thuê",
-          href: "/cho-thue",
-          order: 3,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "4",
-          label: "Dự án",
-          href: "/du-an",
-          order: 4,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "5",
-          label: "Tin tức",
-          href: "/tin-tuc",
-          order: 5,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-        {
-          id: "6",
-          label: "Liên hệ",
-          href: "/lien-he",
-          order: 6,
-          isActive: true,
-          hasDropdown: false,
-          dropdownItems: [],
-        },
-      ]);
-    } finally {
-      setLoading(false);
+    };
+
+    const loadHeaderMenus = async () => {
+      try {
+        setLoading(true);
+        const response = await headerSettingsService.getPublicHeaderMenus();
+        if (response.success) {
+          // Only show active menus, sorted by order
+          const activeMenus = response.data
+            .filter((menu) => menu.isActive)
+            .sort((a, b) => a.order - b.order)
+            .map((menu: HeaderMenu, index) => ({
+              ...menu,
+              id: menu.id || `menu-${index}`,
+            }));
+          setHeaderMenus(activeMenus);
+        }
+      } catch (error) {
+        console.error("Failed to load header menus:", error);
+        // Fallback to default menus - categories will be updated separately
+        const fallbackMenus = [
+          {
+            id: "1",
+            label: "Trang chủ",
+            href: "/",
+            order: 1,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "2",
+            label: "Mua bán",
+            href: "/mua-ban",
+            order: 2,
+            isActive: true,
+            hasDropdown: true,
+            dropdownItems: [
+              {
+                id: "2-1",
+                label: "Nhà riêng",
+                href: "/mua-ban/nha-rieng",
+                order: 1,
+                isActive: true,
+              },
+              {
+                id: "2-2",
+                label: "Chung cư",
+                href: "/mua-ban/chung-cu",
+                order: 2,
+                isActive: true,
+              },
+            ],
+          },
+          {
+            id: "3",
+            label: "Cho thuê",
+            href: "/cho-thue",
+            order: 3,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "4",
+            label: "Dự án",
+            href: "/du-an",
+            order: 4,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+          {
+            id: "5",
+            label: "Tin tức",
+            href: "/tin-tuc",
+            order: 5,
+            isActive: true,
+            hasDropdown: false, // Will be updated when categories load
+            dropdownItems: [], // Will be updated when categories load
+          },
+          {
+            id: "6",
+            label: "Liên hệ",
+            href: "/lien-he",
+            order: 6,
+            isActive: true,
+            hasDropdown: false,
+            dropdownItems: [],
+          },
+        ];
+        setHeaderMenus(fallbackMenus);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const loadData = async () => {
+      // Load header menus first
+      await loadHeaderMenus();
+      // Then load news categories to update the news menu
+      await loadNewsCategories();
+    };
+
+    loadData();
+  }, [updateNewsMenuInHeaderMenus]);
+
+  // Force reload header menus when component becomes visible
+  useEffect(() => {
+    if (isOpen) {
+      const loadData = async () => {
+        const loadNewsCategories = async () => {
+          try {
+            const response = await newsService.getNewsCategories();
+            if (response.success && response.data) {
+              updateNewsMenuInHeaderMenus(response.data);
+            }
+          } catch (error) {
+            console.error("Failed to load news categories:", error);
+          }
+        };
+
+        const loadHeaderMenus = async () => {
+          try {
+            setLoading(true);
+            const response = await headerSettingsService.getPublicHeaderMenus();
+            if (response.success) {
+              const activeMenus = response.data
+                .filter((menu) => menu.isActive)
+                .sort((a, b) => a.order - b.order)
+                .map((menu: HeaderMenu, index) => ({
+                  ...menu,
+                  id: menu.id || `menu-${index}`,
+                }));
+              setHeaderMenus(activeMenus);
+            }
+          } catch (error) {
+            console.error("Failed to load header menus:", error);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        await loadHeaderMenus();
+        await loadNewsCategories();
+      };
+
+      loadData();
     }
-  };
+  }, [isOpen, updateNewsMenuInHeaderMenus]);
 
   // If not open, don't render
   if (!isOpen) return null;
@@ -158,10 +252,22 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             {loading ? (
               <div className="py-3">
                 <div className="space-y-6">
-                  <div className="animate-pulse bg-gray-200 h-8 w-40 rounded"></div>
-                  <div className="animate-pulse bg-gray-200 h-8 w-36 rounded"></div>
-                  <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
-                  <div className="animate-pulse bg-gray-200 h-8 w-28 rounded"></div>
+                  <div
+                    key="skeleton-1"
+                    className="animate-pulse bg-gray-200 h-8 w-40 rounded"
+                  ></div>
+                  <div
+                    key="skeleton-2"
+                    className="animate-pulse bg-gray-200 h-8 w-36 rounded"
+                  ></div>
+                  <div
+                    key="skeleton-3"
+                    className="animate-pulse bg-gray-200 h-8 w-32 rounded"
+                  ></div>
+                  <div
+                    key="skeleton-4"
+                    className="animate-pulse bg-gray-200 h-8 w-28 rounded"
+                  ></div>
                 </div>
               </div>
             ) : (

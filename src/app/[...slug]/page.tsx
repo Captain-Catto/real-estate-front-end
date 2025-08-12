@@ -26,30 +26,7 @@ interface DynamicPageProps {
 function parseUrl(slug: string[]) {
   console.log("Parsing URL slug:", slug);
 
-  // URL chi tiết: /mua-ban/ha-noi/dich-vong/12345-chung-cu-cao-cap
-  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 4) {
-    const idSlug = slug[3];
-    const id = idSlug.split("-")[0];
-
-    // Thêm kiểm tra để đảm bảo id là một chuỗi hợp lệ (hỗ trợ cả số thuần và MongoDB ObjectID)
-    if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
-      console.log("Invalid ID in URL:", idSlug);
-      return null;
-    }
-
-    return {
-      type: "property-detail",
-      id,
-      transactionType: slug[0],
-      location: {
-        city: slug[1],
-        ward: slug[2],
-      },
-      isSeoUrl: true,
-    };
-  }
-
-  // URL chi tiết fallback: /mua-ban/chi-tiet/12345-title (khi không có đủ thông tin location)
+  // Priority 1: Fallback format: /mua-ban/chi-tiet/id-title or /cho-thue/chi-tiet/id-title
   if (
     (slug[0] === "mua-ban" || slug[0] === "cho-thue") &&
     slug.length === 3 &&
@@ -58,7 +35,6 @@ function parseUrl(slug: string[]) {
     const idSlug = slug[2];
     const id = idSlug.split("-")[0];
 
-    // Thêm kiểm tra để đảm bảo ID hợp lệ (tương tự như property detail)
     if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
       console.log("Invalid ID in fallback URL:", idSlug);
       return null;
@@ -72,39 +48,91 @@ function parseUrl(slug: string[]) {
     };
   }
 
-  // URL listing theo khu vực: /mua-ban/tinh-lang-son/xa-huu-kien
+  // Priority 2: New format: /mua-ban/province/ward/id-title or /cho-thue/province/ward/id-title
+  if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 4) {
+    const idSlug = slug[3];
+    const id = idSlug.split("-")[0];
+
+    // Validate ID (MongoDB ObjectID or numeric)
+    if (id && !/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id)) {
+      // If not a valid ID, this is a listing URL with 4 segments
+      console.log("Not a valid ID, treating as listing URL");
+      return {
+        type: "property-listing",
+        transactionType: slug[0],
+        location: {
+          province: slug[1],
+          ward: slug[2],
+          category: slug[3], // This could be a category filter
+        },
+        level: "ward-category",
+      };
+    }
+
+    if (!id) {
+      console.log("No ID found in 4-segment URL, treating as listing");
+      return {
+        type: "property-listing",
+        transactionType: slug[0],
+        location: {
+          province: slug[1],
+          ward: slug[2],
+        },
+        level: "ward",
+      };
+    }
+
+    return {
+      type: "property-detail",
+      id,
+      transactionType: slug[0],
+      location: {
+        province: slug[1],
+        ward: slug[2],
+      },
+      isSeoUrl: true,
+      format: "new", // New /mua-ban/province/ward/id-title format
+    };
+  }
+
+  // Priority 3: Ward-level listing: /mua-ban/province/ward
   if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 3) {
-    console.log("Detected ward-level URL:", {
-      city: slug[1],
+    console.log("Detected ward-level listing:", {
+      province: slug[1],
       ward: slug[2],
     });
-
-    // Kiểm tra nếu slug[1] không chứa "tinh-" hoặc "thanh-pho-" thì thêm vào
-    let citySlug = slug[1];
-    if (!citySlug.startsWith("tinh-") && !citySlug.startsWith("thanh-pho-")) {
-      console.log("Adding prefix to city slug for better matching");
-      // Thêm prefix cho đúng định dạng API
-      if (
-        citySlug === "ha-noi" ||
-        citySlug === "ho-chi-minh" ||
-        citySlug === "da-nang" ||
-        citySlug === "can-tho" ||
-        citySlug === "hai-phong"
-      ) {
-        citySlug = `thanh-pho-${citySlug}`;
-      } else {
-        citySlug = `tinh-${citySlug}`;
-      }
-    }
 
     return {
       type: "property-listing",
       transactionType: slug[0],
       location: {
-        city: citySlug,
+        province: slug[1],
         ward: slug[2],
       },
       level: "ward", // Listing theo phường/xã
+    };
+  }
+
+  // Priority 4: Old format support: /province/ward/id-title (backward compatibility)
+  if (slug.length === 3) {
+    const idSlug = slug[2];
+    const id = idSlug.split("-")[0];
+
+    // Validate ID (MongoDB ObjectID or numeric)
+    if (!id || (!/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id))) {
+      console.log("Invalid ID in old format URL:", idSlug);
+      return null;
+    }
+
+    return {
+      type: "property-detail",
+      id,
+      location: {
+        province: slug[0],
+        ward: slug[1],
+      },
+      isSeoUrl: true,
+      format: "old", // Old /province/ward/id-title format
     };
   }
 
@@ -114,25 +142,25 @@ function parseUrl(slug: string[]) {
     console.log("Parsing province-level URL:", slug[1]);
 
     // Đảm bảo chúng ta lưu đúng slug gốc từ URL
-    const citySlug = slug[1];
+    const provinceSlug = slug[1];
 
     return {
       type: "property-listing",
       transactionType: slug[0],
       location: {
-        city: citySlug,
+        province: provinceSlug,
       },
-      level: "city", // Listing theo tỉnh/thành
+      level: "province", // Listing theo tỉnh/thành
     };
   }
 
-  // URL listing với query parameters: /mua-ban?city=...&districts=...&ward=...
+  // URL listing với query parameters: /mua-ban?province=...&districts=...&ward=...
   if ((slug[0] === "mua-ban" || slug[0] === "cho-thue") && slug.length === 1) {
     return {
       type: "property-listing",
       transactionType: slug[0],
       location: {}, // Location sẽ được lấy từ searchParams
-      level: "query", // Listing với query parameters
+      level: "base", // Base listing page
     };
   }
 
@@ -277,7 +305,7 @@ export default async function DynamicPage({
         try {
           // Sử dụng API đã được cải tiến để lấy tên tiếng Việt đầy đủ
           const locationNames = await locationService.getBreadcrumbFromSlug(
-            urlData.location.city || "",
+            urlData.location.province || "", // Fixed: use province instead of city
             null, // District is null in new structure
             urlData.location.ward || ""
           );
@@ -290,7 +318,7 @@ export default async function DynamicPage({
           // Chỉ sử dụng kết quả API nếu có dữ liệu
           if (locationNames) {
             breadcrumbData = {
-              city: locationNames.city || "",
+              city: locationNames.city || "", // API returns city name for province
               district: "", // Không còn sử dụng district trong cấu trúc mới
               ward: locationNames.ward || "",
             };
@@ -300,7 +328,7 @@ export default async function DynamicPage({
           // Fallback đơn giản với URL slugs
           breadcrumbData = {
             city:
-              urlData.location.city
+              urlData.location.province // Fixed: use province instead of city
                 ?.replace(/^tinh-/, "")
                 ?.replace(/^thanh-pho-/, "")
                 ?.replace(/-/g, " ")
@@ -372,8 +400,9 @@ export default async function DynamicPage({
         provinceParam = resolvedSearchParams.city as string;
       } else if (resolvedSearchParams.province) {
         provinceParam = resolvedSearchParams.province as string;
-      } else if (urlData.location?.city) {
-        provinceParam = urlData.location.city;
+      } else if (urlData.location?.province) {
+        // Fixed: use province instead of city
+        provinceParam = urlData.location.province;
       }
 
       // Xử lý đặc biệt cho province để loại bỏ tiền tố
@@ -414,10 +443,11 @@ export default async function DynamicPage({
 
       // Add other search parameters that might be in the query string
       // Đã đảm bảo resolvedSearchParams được await ở trên
-      ["price", "area", "bedrooms", "bathrooms", "category"].forEach(
+      ["search", "price", "area", "bedrooms", "bathrooms", "category"].forEach(
         (param) => {
           if (resolvedSearchParams[param]) {
             searchFilters[param] = resolvedSearchParams[param] as string;
+            console.log(`${param} filter set to:`, resolvedSearchParams[param]);
           }
         }
       );
@@ -429,14 +459,14 @@ export default async function DynamicPage({
 
       // Debug log để kiểm tra location parsing
       console.log("URL Location details:", {
-        city: urlData.location?.city,
+        province: urlData.location?.province, // Fixed: use province instead of city
         ward: urlData.location?.ward,
         level: urlData.level,
       });
 
       // Debug log để kiểm tra query parameters và slug xử lý
       console.log("Location parameters processing:", {
-        originalProvince: urlData.location?.city,
+        originalProvince: urlData.location?.province, // Fixed: use province instead of city
         processedProvince: searchFilters.province,
         originalWard: urlData.location?.ward,
         processedWard: searchFilters.wards,
@@ -494,6 +524,7 @@ export default async function DynamicPage({
                 id: response.data.posts[0]._id,
                 title: response.data.posts[0].title,
                 province: response.data.posts[0].location?.province,
+                description: response.data.posts[0].description,
               });
             }
           }
@@ -560,8 +591,8 @@ export default async function DynamicPage({
           resolvedSearchParams.city) as string;
       }
       // 2. Lấy từ urlData nếu không có trong query params
-      else if (urlData.location?.city) {
-        provinceSlug = urlData.location.city;
+      else if (urlData.location?.province) {
+        provinceSlug = urlData.location.province;
       }
 
       // Xử lý đặc biệt cho provinceSlug để loại bỏ tiền tố

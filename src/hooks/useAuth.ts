@@ -6,9 +6,7 @@ import {
   registerAsync,
   logoutAsync,
   logoutAllAsync,
-  getProfileAsync,
   updateProfileAsync,
-  initializeAuth,
   clearError,
   type UserRole,
 } from "@/store/slices/authSlice";
@@ -17,53 +15,20 @@ import { toast } from "sonner";
 
 /**
  * Enhanced authentication hook that provides complete auth functionality
+ * Note: Authentication initialization is handled by ReduxProvider
  */
 export const useAuth = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
 
-  // Local initialization state
-  const [isInitializing, setIsInitializing] = useState(true);
-
   // Get auth state from Redux store
   const user = useAppSelector((state) => state.auth.user);
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const loading = useAppSelector((state) => state.auth.loading);
   const error = useAppSelector((state) => state.auth.error);
-
-  // Initialize authentication state - optimized to prevent flash redirects
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem("accessToken");
-
-      if (token) {
-        try {
-          // If we have a token, try to get user profile first
-          await dispatch(getProfileAsync()).unwrap();
-        } catch (error) {
-          console.error(
-            "Failed to fetch user profile during initialization:",
-            error
-          );
-          // If profile fetch fails, clear the invalid token
-          localStorage.removeItem("accessToken");
-        }
-      }
-
-      // Always dispatch initializeAuth to set the initial state
-      dispatch(initializeAuth());
-      setIsInitializing(false);
-    };
-
-    initAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove dispatch from dependencies to prevent infinite loop
-
-  // Simplified and more reliable loading state
-  const isLoading = isInitializing || loading;
-
-  // Authentication is ready when initialization is complete and not loading
-  const isInitialized = !isInitializing;
+  const isInitialized = useAppSelector((state) => state.auth.isInitialized);
+  const sessionExpired = useAppSelector((state) => state.auth.sessionExpired);
 
   // Login handler
   const login = useCallback(
@@ -205,10 +170,12 @@ export const useAuth = () => {
 
   return {
     user,
+    accessToken,
     isAuthenticated,
-    loading: isLoading,
+    loading,
     error,
     isInitialized,
+    sessionExpired,
     login,
     register,
     logout,

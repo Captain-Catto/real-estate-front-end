@@ -1,6 +1,9 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
+import { store } from "@/store";
+import { setAccessToken } from "@/store/slices/authSlice";
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -36,18 +39,25 @@ export interface ProfileResponse {
   };
 }
 
+// Helper function để lấy access token từ Redux store
+export const getAccessToken = (): string | null => {
+  const state = store.getState();
+  return state.auth.accessToken;
+};
+
 // Helper function để handle API calls với token refresh
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   try {
-    // Kiểm tra xem đang ở môi trường browser hay server
-    const isServer = typeof window === "undefined";
-    const token = isServer ? null : localStorage.getItem("accessToken");
+    // Lấy token từ Redux store thay vì localStorage
+    const token = getAccessToken();
 
-    console.log(
-      `Fetching ${url.split("/").slice(-2).join("/")} (token ${
-        token ? "exists" : "missing"
-      }, environment: ${isServer ? "server" : "client"})`
-    );
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `Fetching ${url.split("/").slice(-2).join("/")} (token ${
+          token ? "exists" : "missing"
+        })`
+      );
+    }
 
     // Handle Content-Type properly - don't set for FormData
     const isFormData = options.body instanceof FormData;
@@ -63,6 +73,10 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     // Add Authorization if token exists
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`🔒 Token being sent: ${token.substring(0, 20)}...`);
+      }
     }
 
     // Merge with user-provided headers, but prioritize auth headers
@@ -86,8 +100,8 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
         const refreshed = await refreshToken();
 
         if (refreshed) {
-          // Get new token and retry with updated Authorization header
-          const newToken = localStorage.getItem("accessToken");
+          // Get new token from Redux store and retry
+          const newToken = getAccessToken();
 
           if (newToken) {
             const newHeaders = {
@@ -102,7 +116,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
           }
         } else {
           // Clear token on failed refresh
-          localStorage.removeItem("accessToken");
+          store.dispatch(setAccessToken(null));
 
           // Only redirect from browser context and for non-admin API calls
           if (typeof window !== "undefined" && !url.includes("/admin/")) {
@@ -145,27 +159,29 @@ export const refreshToken = async (): Promise<boolean> => {
     });
 
     if (!response.ok) {
-      // Only log error if it's not a 401 (which is expected when refresh token expires)
-      if (response.status !== 401) {
+      // Don't log errors for 401 or 403 status - these are expected when user is not logged in
+      // or refresh token is expired/invalid
+      if (response.status !== 401 && response.status !== 403) {
         console.error(`Refresh token failed with status: ${response.status}`);
       }
-      localStorage.removeItem("accessToken");
+      store.dispatch(setAccessToken(null));
       return false;
     }
 
     const data = await response.json();
 
     if (data.success && data.data?.accessToken) {
-      localStorage.setItem("accessToken", data.data.accessToken);
+      // Lưu token mới vào Redux store
+      store.dispatch(setAccessToken(data.data.accessToken));
       return true;
     }
 
-    localStorage.removeItem("accessToken");
+    store.dispatch(setAccessToken(null));
     return false;
   } catch (error) {
     // Only log unexpected errors (not 401s)
     console.error("Refresh token error:", error);
-    localStorage.removeItem("accessToken");
+    store.dispatch(setAccessToken(null));
     return false;
   }
 };
@@ -197,18 +213,22 @@ export const authService = {
       const data = await response.json();
 
       if (data.success && data.data.accessToken) {
-        // Lưu access token vào localStorage
-        localStorage.setItem("accessToken", data.data.accessToken);
+        // Không lưu access token vào localStorage - sẽ được lưu trong Redux thông qua loginAsync
 
-        // Lấy thông tin user ngay sau khi login
-        const profileResponse = await this.getProfile();
+        // Lấy thông tin user ngay sau khi login - pass token trực tiếp
+        const profileResponse = await this.getProfileWithToken(
+          data.data.accessToken
+        );
 
         return {
           success: true,
           message: data.message,
           data: {
             accessToken: data.data.accessToken,
-            user: profileResponse.success ? profileResponse.data.user : null,
+            user:
+              profileResponse.success && profileResponse.data
+                ? profileResponse.data.user
+                : null,
           },
         };
       }
@@ -236,8 +256,7 @@ export const authService = {
       const data = await response.json();
 
       if (data.success && data.data.accessToken) {
-        // Lưu access token vào localStorage
-        localStorage.setItem("accessToken", data.data.accessToken);
+        // Không lưu access token vào localStorage - sẽ được lưu trong Redux thông qua registerAsync
 
         // Lấy thông tin user ngay sau khi register
         const profileResponse = await this.getProfile();
@@ -273,18 +292,18 @@ export const authService = {
 
       const data = await response.json();
 
-      // Luôn clear localStorage, bất kể API response
-      localStorage.removeItem("accessToken");
+      // Luôn clear localStorage và Redux store
+      store.dispatch(setAccessToken(null));
 
       // Clear cache
       profileCache = null;
 
       return data;
     } catch (error: any) {
-      // Also clear cache on error
+      // Clear cache
       profileCache = null;
-      // Vẫn clear localStorage nếu có lỗi
-      localStorage.removeItem("accessToken");
+      // Vẫn clear Redux store nếu có lỗi
+      store.dispatch(setAccessToken(null));
       return {
         success: true,
         message: "Đăng xuất thành công",
@@ -304,16 +323,16 @@ export const authService = {
 
       const data = await response.json();
 
-      // Luôn clear localStorage
-      localStorage.removeItem("accessToken");
+      // Luôn clear Redux store
+      store.dispatch(setAccessToken(null));
 
       // Clear cache
       profileCache = null;
 
       return data;
     } catch (error: any) {
-      // Vẫn clear localStorage nếu có lỗi
-      localStorage.removeItem("accessToken");
+      // Vẫn clear Redux store nếu có lỗi
+      store.dispatch(setAccessToken(null));
       return {
         success: true,
         message: "Đăng xuất khỏi tất cả thiết bị thành công",
@@ -351,7 +370,9 @@ export const authService = {
       // Set fetching flag
       isProfileFetching = true;
 
-      console.log("Fetching fresh profile data");
+      if (process.env.NODE_ENV === "development") {
+        console.log("Fetching fresh profile data");
+      }
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`);
       const data = await response.json();
 
@@ -370,6 +391,34 @@ export const authService = {
       throw new Error(error.message || "Lỗi khi lấy thông tin profile");
     } finally {
       isProfileFetching = false;
+    }
+  },
+
+  // Get profile với token được pass trực tiếp (dùng trong login flow)
+  async getProfileWithToken(token: string): Promise<AuthResponse> {
+    try {
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔄 Fetching fresh profile data with provided token");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to get profile");
+      }
+
+      return data;
+    } catch (error: any) {
+      throw new Error(error.message || "Lỗi khi lấy thông tin profile");
     }
   },
 
@@ -442,7 +491,7 @@ export const authService = {
       }
 
       // Clear localStorage sau khi xóa tài khoản
-      localStorage.removeItem("accessToken");
+      store.dispatch(setAccessToken(null));
 
       return data;
     } catch (error: any) {

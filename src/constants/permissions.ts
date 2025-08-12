@@ -80,6 +80,15 @@ export const PERMISSIONS = {
     MANAGE_AREAS: "manage_areas",
     MANAGE_PRICES: "manage_prices",
   },
+
+  // Quản lý liên hệ khách hàng
+  CONTACT: {
+    VIEW: "view_contacts",
+    EDIT: "edit_contacts",
+    DELETE: "delete_contacts",
+    VIEW_ALL: "view_all_contacts", // Admin có thể xem tất cả contacts
+    HARD_DELETE: "hard_delete_contacts", // Admin có thể xóa vĩnh viễn
+  },
 };
 
 /**
@@ -96,6 +105,7 @@ export const PERMISSION_GROUPS = {
   dashboard: Object.values(PERMISSIONS.DASHBOARD),
   settings: Object.values(PERMISSIONS.SETTINGS),
   locations: Object.values(PERMISSIONS.LOCATION),
+  contacts: Object.values(PERMISSIONS.CONTACT),
 };
 
 /**

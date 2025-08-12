@@ -17,7 +17,7 @@ import { Pagination } from "@/components/common/Pagination";
 import { toast } from "sonner";
 
 export default function YeuThichPage() {
-  const { user } = useAuth();
+  const { user, accessToken, isAuthenticated } = useAuth();
   const { favorites, loading, removeFavorite, fetchUserFavorites } =
     useFavorites();
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,10 +83,10 @@ export default function YeuThichPage() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated && accessToken && user) {
       fetchUserFavorites();
     }
-  }, [user, fetchUserFavorites]);
+  }, [isAuthenticated, accessToken, user, fetchUserFavorites]);
 
   console.log("Favorites data:", {
     favorites,
@@ -311,33 +311,61 @@ export default function YeuThichPage() {
                 </div>
 
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">
+                  <h3
+                    className="font-semibold text-gray-900 mb-2 group-hover:text-red-600 transition-colors overflow-hidden"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
                     {property.title}
                   </h3>
 
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <MapPinIcon className="h-4 w-4 mr-1" />
-                    <span className="text-sm">{property.location}</span>
+                  {/* Location and Property specs responsive layout */}
+                  <div className="mb-2">
+                    {/* Location */}
+                    <div className="flex items-center text-sm text-gray-600 mb-1">
+                      <MapPinIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="text-sm truncate">
+                        {property.location}
+                      </span>
+                    </div>
+
+                    {/* Property specs - below location on mobile, inline on larger screens */}
+                    <div className="flex items-center space-x-3 text-sm text-gray-600">
+                      <span className="flex items-center">
+                        <i className="fas fa-ruler-combined mr-1"></i>
+                        {property.area}
+                      </span>
+                      <span className="flex items-center">
+                        <i className="fas fa-bed mr-1"></i>
+                        {property.bedrooms || 0} PN
+                      </span>
+                      <span className="flex items-center">
+                        <i className="fas fa-bath mr-1"></i>
+                        {property.bathrooms || 0} WC
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Description */}
+                  {property.description && (
+                    <p
+                      className="text-sm text-gray-600 mb-3 overflow-hidden"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {property.description}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-lg font-bold text-red-600">
                       {formatPrice(property.price || "Liên hệ")}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                    <span className="flex items-center">
-                      <i className="fas fa-ruler-combined mr-1"></i>{" "}
-                      {property.area}
-                    </span>
-                    <span className="flex items-center">
-                      <i className="fas fa-bed mr-1"></i>{" "}
-                      {property.bedrooms || 0} PN
-                    </span>
-                    <span className="flex items-center">
-                      <i className="fas fa-bath mr-1"></i>{" "}
-                      {property.bathrooms || 0} WC
                     </span>
                   </div>
 

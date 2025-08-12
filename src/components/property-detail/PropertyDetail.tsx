@@ -12,6 +12,8 @@ import { Developer } from "@/types/developer";
 import { DisplayMap } from "./DisplayMap";
 import SimilarPosts from "./SimilarPosts";
 import { formatPriceByType } from "@/utils/format";
+import { createListingSlug } from "@/utils/postSlug";
+import CallBackButton from "../CallBackButton";
 
 interface PropertyDetailProps {
   property: {
@@ -88,6 +90,7 @@ export function PropertyDetail({
   console.log("breadcrumbData:", breadcrumbData);
   console.log("transactionType:", transactionType);
   console.log("property.project:", property.project);
+  console.log("property.id:", property.id);
 
   // State for fetched project data
   const [fetchedProject, setFetchedProject] = useState<Project | null>(null);
@@ -246,20 +249,6 @@ export function PropertyDetail({
   const shouldShowProject =
     Boolean(property.project) && (populatedProject || projectLoading);
 
-  // Utility function để tạo slug
-  const createSlug = (text: string): string => {
-    if (!text) return "";
-    return text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[đĐ]/g, "d")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
   // ⭐ Tạo breadcrumb từ breadcrumbData hoặc fallback từ property.locationCode
   const createBreadcrumbFromProperty = () => {
     if (
@@ -298,33 +287,28 @@ export function PropertyDetail({
     propertyType: property.propertyType,
   };
 
-  // Generate breadcrumb items
+  // Generate breadcrumb items - following new URL structure: /type/province/ward/postid-title
   const breadcrumbItems = finalBreadcrumbData
     ? [
         { label: "Trang chủ", href: "/" },
         {
           label: finalTransactionType === "mua-ban" ? "Mua bán" : "Cho thuê",
-          href: `/${finalTransactionType}`,
+          href: createListingSlug(finalTransactionType),
         },
         {
-          label: finalBreadcrumbData.city,
-          href: `/${finalTransactionType}/${createSlug(
+          label: finalBreadcrumbData.city, // Province level
+          href: createListingSlug(
+            finalTransactionType,
             finalBreadcrumbData.city
-          )}`,
+          ),
         },
         {
-          label: finalBreadcrumbData.district,
-          href: `/${finalTransactionType}/${createSlug(
-            finalBreadcrumbData.city
-          )}/${createSlug(finalBreadcrumbData.district)}`,
-        },
-        {
-          label: finalBreadcrumbData.ward,
-          href: `/${finalTransactionType}/${createSlug(
-            finalBreadcrumbData.city
-          )}/${createSlug(finalBreadcrumbData.district)}/${createSlug(
+          label: finalBreadcrumbData.ward, // Ward level (skip district according to new structure)
+          href: createListingSlug(
+            finalTransactionType,
+            finalBreadcrumbData.city,
             finalBreadcrumbData.ward
-          )}`,
+          ),
         },
         { label: property.title, href: "#", isActive: true },
       ]
@@ -810,10 +794,11 @@ export function PropertyDetail({
                   <i className="fas fa-phone mr-2"></i>
                   Gọi điện tư vấn
                 </a>
-                <button className="w-full bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors">
-                  <i className="fas fa-share mr-2"></i>
-                  Chia sẻ
-                </button>
+                <CallBackButton
+                  postId={property.id}
+                  postTitle={property.title}
+                  className="w-full"
+                />
               </div>
             </div>
           </div>

@@ -95,13 +95,13 @@ export function FavoriteButton({
             duration: 3000,
           });
           // Fetch full favorites data to update the placeholder with real data
-          dispatch(fetchFavoritesAsync());
+          dispatch(fetchFavoritesAsync(true)); // Force refresh after adding
         } else if (action === "already_exists") {
           toast.info("Tin này đã có trong danh sách yêu thích", {
             duration: 3000,
           });
           // Also fetch to ensure we have the complete data
-          dispatch(fetchFavoritesAsync());
+          dispatch(fetchFavoritesAsync(false)); // Don't force refresh if already exists
         }
       } else {
         // Handle error

@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -72,7 +74,7 @@ export const AdminTransactionService = {
     filters: AdminPaymentFilters = {}
   ): Promise<AdminPaymentResponse> => {
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       if (!token) {
         throw new Error("No access token found");
       }
@@ -139,7 +141,7 @@ export const AdminTransactionService = {
   // Export payments to CSV
   exportPayments: async (filters: AdminPaymentFilters = {}): Promise<Blob> => {
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       if (!token) {
         throw new Error("No access token found");
       }

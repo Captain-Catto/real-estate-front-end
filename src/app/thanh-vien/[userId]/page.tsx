@@ -8,6 +8,7 @@ import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { formatPriceByType, formatArea } from "@/utils/format";
+import { createPostSlug } from "@/utils/postSlug";
 
 interface PublicUser {
   id: string;
@@ -482,7 +483,12 @@ export default function UserDetailPage() {
                               location:
                                 post.location?.address || "Không xác định",
                               image: post.images[0] || "/default-property.jpg",
-                              slug: post.slug,
+                              slug: createPostSlug({
+                                _id: post._id,
+                                title: post.title,
+                                type: post.type,
+                                location: post.location,
+                              }),
                               area: formatArea(post.area),
                               bedrooms: post.bedrooms,
                               bathrooms: post.bathrooms,
@@ -502,11 +508,12 @@ export default function UserDetailPage() {
                       {/* Content */}
                       <div className="p-4">
                         <Link
-                          href={`/${
-                            post.type === "ban" ? "mua-ban" : "cho-thue"
-                          }/chi-tiet/${post.id}-${encodeURIComponent(
-                            post.title.toLowerCase().replace(/\s+/g, "-")
-                          )}`}
+                          href={createPostSlug({
+                            _id: post._id,
+                            title: post.title,
+                            type: post.type,
+                            location: post.location,
+                          })}
                           className="text-lg font-semibold text-gray-900 hover:text-blue-600 line-clamp-2 mb-2 block"
                         >
                           {post.title}

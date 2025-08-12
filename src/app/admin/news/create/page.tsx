@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import NewsEditor from "@/components/admin/NewsEditor";
 import { UploadService } from "@/services/uploadService";
 import { toast } from "sonner";
@@ -106,6 +107,7 @@ function CreateNewsPage() {
 
       // Gọi API để tạo bài viết
       // const result = await newsService.createNews(createNewsData);
+      console.log("Creating news with data:", createNewsData);
 
       // Giả lập thành công
       toast.success("Tạo bài viết thành công!");
@@ -167,9 +169,11 @@ function CreateNewsPage() {
 
           {coverImagePreview && (
             <div className="mt-2 relative">
-              <img
+              <Image
                 src={coverImagePreview}
                 alt="Preview"
+                width={320}
+                height={160}
                 className="h-40 object-cover rounded"
               />
               <button
@@ -277,10 +281,8 @@ function CreateNewsPage() {
 // Wrap component with AdminGuard
 export default function ProtectedCreateNewsPage() {
   return (
-    <AdminGuard 
-      permissions={[PERMISSIONS.DASHBOARD.VIEW]}
-    >
-      <CreateNewsPageInternal />
+    <AdminGuard permissions={[PERMISSIONS.DASHBOARD.VIEW]}>
+      <CreateNewsPage />
     </AdminGuard>
   );
 }

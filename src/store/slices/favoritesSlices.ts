@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { favoriteService } from "@/services/favoriteService";
 import { locationService } from "@/services/locationService";
+import type { RootState } from "../index";
 
 // Types
 export interface FavoriteItem {
@@ -15,6 +16,7 @@ export interface FavoriteItem {
   bedrooms?: number;
   bathrooms?: number;
   propertyType?: string;
+  description?: string;
   addedAt: string;
 }
 
@@ -22,6 +24,7 @@ export interface FavoritesState {
   items: FavoriteItem[];
   isLoading: boolean;
   error: string | null;
+  lastFetched: number | null;
 }
 
 // Initial state
@@ -29,13 +32,29 @@ const initialState: FavoritesState = {
   items: [],
   isLoading: false,
   error: null,
+  lastFetched: null,
 };
 
 // Async thunks
 export const fetchFavoritesAsync = createAsyncThunk(
   "favorites/fetchFavorites",
-  async (_, { rejectWithValue }) => {
+  async (forceRefresh: boolean = false, { getState, rejectWithValue }) => {
     try {
+      const state = getState() as RootState;
+
+      // Check if user is authenticated first
+      if (!state.auth.isAuthenticated || !state.auth.accessToken) {
+        return rejectWithValue("User not authenticated");
+      }
+
+      const lastFetched = state.favorites.lastFetched;
+      const now = Date.now();
+
+      // Skip if fetched within last 30 seconds unless forced
+      if (!forceRefresh && lastFetched && now - lastFetched < 30000) {
+        return state.favorites.items;
+      }
+
       const response = await favoriteService.getFavorites();
 
       if (response.success && response.data.favorites) {
@@ -82,6 +101,7 @@ export const fetchFavoritesAsync = createAsyncThunk(
                   typeof fav.post.category === "object"
                     ? fav.post.category?.name
                     : fav.post.category,
+                description: fav.post.description,
                 addedAt: fav.createdAt,
               };
             })
@@ -103,9 +123,15 @@ export const toggleFavoriteAsync = createAsyncThunk(
   "favorites/toggleFavorite",
   async (itemId: string, { getState, rejectWithValue }) => {
     try {
-      const state = getState() as { favorites: FavoritesState };
+      const state = getState() as RootState;
+
+      // Check if user is authenticated first
+      if (!state.auth.isAuthenticated || !state.auth.accessToken) {
+        return rejectWithValue("User not authenticated");
+      }
+
       const isCurrentlyFavorited = state.favorites.items.some(
-        (item) => item.id === itemId
+        (item: FavoriteItem) => item.id === itemId
       );
 
       if (isCurrentlyFavorited) {
@@ -165,6 +191,7 @@ const favoritesSlice = createSlice({
         state.isLoading = false;
         state.items = action.payload;
         state.error = null;
+        state.lastFetched = Date.now();
       })
       .addCase(fetchFavoritesAsync.rejected, (state, action) => {
         state.isLoading = false;

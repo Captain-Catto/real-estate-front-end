@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPageClient() {
   const router = useRouter();
-  const { login, loading, error, isAuthenticated, clearError } = useAuth();
+  const { login, loading, error, isAuthenticated, isInitialized, clearError } =
+    useAuth();
 
   // State cho form đăng nhập
   const [email, setEmail] = useState("");
@@ -22,12 +23,13 @@ export default function LoginPageClient() {
     };
   }, [clearError]);
 
-  // Redirect nếu đã đăng nhập
+  // Redirect nếu đã đăng nhập - chỉ redirect khi đã initialized
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isInitialized && isAuthenticated) {
+      console.log("🚀 User authenticated, redirecting to home");
       router.push("/");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isInitialized, router]);
 
   // Xử lý đăng nhập
   const handleLogin = async (e: React.FormEvent) => {

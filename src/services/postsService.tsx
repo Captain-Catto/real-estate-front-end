@@ -1,4 +1,4 @@
-import { refreshToken } from "./authService";
+import { refreshToken, getAccessToken } from "./authService";
 import { categoryService } from "./categoryService";
 import { toast } from "sonner";
 
@@ -181,18 +181,65 @@ class PostService {
 
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
     try {
-      const token = localStorage.getItem("accessToken");
+      // Lấy token từ Redux store thay vì localStorage
+      const token = getAccessToken();
 
       console.log(`Fetching ${url} with method ${options.method || "GET"}`);
 
-      const response = await fetch(url, {
+      // Handle Content-Type properly - don't set for FormData
+      const isFormData = options.body instanceof FormData;
+
+      // Build headers carefully
+      const headers: HeadersInit = {};
+
+      // Only add Content-Type for JSON requests
+      if (!isFormData) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      // Add Authorization if token exists
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // Merge with user-provided headers, but prioritize auth headers
+      const mergedHeaders = {
+        ...options.headers,
+        ...headers,
+      };
+
+      // Create the request config
+      const requestConfig: RequestInit = {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...options.headers,
-        },
-      });
+        headers: mergedHeaders,
+        credentials: "include",
+      };
+
+      const response = await fetch(url, requestConfig);
+
+      // Handle 401 Unauthorized error
+      if (response.status === 401) {
+        try {
+          const refreshed = await refreshToken();
+          if (refreshed) {
+            // Retry with new token
+            const newToken = getAccessToken();
+            const newHeaders = {
+              ...mergedHeaders,
+              ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+            };
+
+            return await fetch(url, {
+              ...requestConfig,
+              headers: newHeaders,
+            });
+          }
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
+          // Don't redirect here, let the calling component handle it
+          return response;
+        }
+      }
 
       return response;
     } catch (error) {
@@ -267,7 +314,7 @@ class PostService {
       for (const file of imageFiles) {
         formData.append("images", file);
       }
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       return fetch(`${API_BASE_URL}/posts`, {
         method: "POST",
         body: formData,
@@ -1166,7 +1213,7 @@ export const postService = new PostService();
 // Admin Posts Service
 export class AdminPostsService {
   private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    const token = localStorage.getItem("accessToken");
+    const token = getAccessToken();
 
     const response = await fetch(url, {
       ...options,
@@ -1181,7 +1228,7 @@ export class AdminPostsService {
     if (response.status === 401) {
       const refreshed = await refreshToken();
       if (refreshed) {
-        const newToken = localStorage.getItem("accessToken");
+        const newToken = getAccessToken();
         return fetch(url, {
           ...options,
           headers: {

@@ -1395,15 +1395,19 @@ export const locationService = {
         const cached = windowGlobal.locationCache?.[cacheKey];
         if (cached && Date.now() - cached.timestamp < 300000) {
           // 5 phút cache
-          console.log("🔄 Using cached location names for:", cacheKey);
+          if (process.env.NODE_ENV === "development") {
+            console.log("🔄 Using cached location names for:", cacheKey);
+          }
           return cached.data;
         }
       }
 
-      console.log("🔍 Fetching location names with:", {
-        provinceCode,
-        wardCode,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔍 Fetching location names with:", {
+          provinceCode,
+          wardCode,
+        });
+      }
 
       const params = new URLSearchParams();
       params.append("provinceCode", provinceCode);
@@ -1432,7 +1436,9 @@ export const locationService = {
         return {};
       }
 
-      console.log("📍 Successfully fetched location names:", result.data);
+      if (process.env.NODE_ENV === "development") {
+        console.log("📍 Successfully fetched location names:", result.data);
+      }
 
       // Cache result
       if (typeof window !== "undefined") {

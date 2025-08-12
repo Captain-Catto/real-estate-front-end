@@ -1,15 +1,13 @@
-// Cải thiện component hiện tại
+// Updated breadcrumb component following new URL structure: /type/province/ward/postid-title
 
 "use client";
 import React, { useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 export interface BreadcrumbItem {
   label: string;
   href: string;
   isActive?: boolean;
-  useQueryParams?: boolean;
 }
 
 interface BreadcrumbProps {
@@ -17,52 +15,6 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
-  const searchParams = useSearchParams();
-
-  // Function to create URL with query params for location links (province, district, ward)
-  const createUrlWithQueryParams = (baseHref: string, item: BreadcrumbItem) => {
-    // Only modify links if specified to use query params
-    if (!item.useQueryParams) {
-      return item.href;
-    }
-
-    // For location links, we want to use query param format
-    if (baseHref.includes("/mua-ban/") || baseHref.includes("/cho-thue/")) {
-      const segments = baseHref.split("/").filter((segment) => segment); // Remove empty segments
-      // Get the transaction type (mua-ban or cho-thue)
-      const transactionType = segments[1]; // 'mua-ban' or 'cho-thue'
-
-      // Build URL based on how many segments we have (province, ward or province, district, ward)
-      if (segments.length >= 3) {
-        const provinceSlug = segments[2]; // The province slug
-
-        // Check if this is a province-ward structure (no district)
-        if (segments.length === 4) {
-          // This is likely a province-ward structure
-          const wardSlug = segments[3]; // The ward slug
-          return `/${transactionType}?province=${provinceSlug}&ward=${wardSlug}`;
-        }
-
-        // Handle province-district-ward structure
-        if (segments.length >= 4) {
-          const districtSlug = segments[3]; // The district slug
-
-          if (segments.length >= 5) {
-            const wardSlug = segments[4]; // The ward slug
-            return `/${transactionType}?province=${provinceSlug}&district=${districtSlug}&ward=${wardSlug}`;
-          }
-
-          return `/${transactionType}?province=${provinceSlug}&district=${districtSlug}`;
-        }
-
-        // Just province
-        return `/${transactionType}?province=${provinceSlug}`;
-      }
-    }
-
-    return baseHref;
-  };
-
   // Filter out any items with empty labels and fix any double slashes in URLs
   const validItems = items
     .filter((item) => item.label.trim() !== "")
@@ -93,7 +45,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
     return () => {
       document.head.removeChild(script);
     };
-  }, [validItems]); // Use validItems as dependency
+  }, [validItems]);
 
   return (
     <nav className="flex items-start text-sm" aria-label="Breadcrumb">
@@ -115,11 +67,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
               </span>
             ) : (
               <Link
-                href={
-                  item.useQueryParams
-                    ? createUrlWithQueryParams(item.href, item)
-                    : item.href
-                }
+                href={item.href}
                 className="text-blue-600 hover:text-blue-700 hover:underline transition-colors leading-tight"
               >
                 {item.label}

@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import UserSidebar from "@/components/user/UserSidebar";
 import Footer from "@/components/footer/Footer";
 import { useCreatePostModal } from "@/hooks/useCreatePostModal";
 import CreatePostModal from "@/components/modals/CreatePostModal/CreatePostModal";
 import BasicInfoStep from "@/components/posting/BasicInfoStep";
 import ImageUploadStep from "@/components/modals/EditPostModal/steps/ImageUploadStep";
 import PackageSelectionStep from "@/components/modals/EditPostModal/steps/PackageSelectionStep";
-import UserHeader from "@/components/user/UserHeader";
 import { useAuth } from "@/hooks/useAuth"; // Update to use enhanced hook
 import { useRouter } from "next/navigation";
 import { locationService, Location } from "@/services/locationService";

@@ -31,7 +31,8 @@ export default function UserLayout({
   }
 
   // Default avatar URL
-  const DEFAULT_AVATAR_URL = "https://datlqt-real-estate.s3.ap-southeast-2.amazonaws.com/uploads/4b3fd577-logo_placeholder.jpg";
+  const DEFAULT_AVATAR_URL =
+    "https://datlqt-real-estate.s3.ap-southeast-2.amazonaws.com/uploads/4b3fd577-logo_placeholder.jpg";
 
   // User data for UserHeader component
   const userData = {
@@ -51,23 +52,21 @@ export default function UserLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <UserHeader 
+      <UserHeader
         userData={userData}
         showNotificationButton={true}
         showWalletButton={true}
       />
-      
+
       <div className="flex">
         {/* Sidebar */}
-        <div className="md:w-24 bg-white border-b border-gray-2004 bg-white shadow-sm">
+        <div className="lg:w-24 bg-white border-b border-gray-2004 bg-white shadow-sm">
           <UserSidebar />
         </div>
-        
+
         {/* Main content */}
         <div className="flex-1 p-6">
-          <Suspense fallback={<UserLayoutLoading />}>
-            {children}
-          </Suspense>
+          <Suspense fallback={<UserLayoutLoading />}>{children}</Suspense>
         </div>
       </div>
     </div>

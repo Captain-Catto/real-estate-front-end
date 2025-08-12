@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { getAccessToken } from "@/services/authService";
 
 interface User {
   _id: string;
@@ -62,7 +63,7 @@ export default function SystemNotificationManager() {
 
     setPreviewLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       if (!token) {
         toast.error("Vui lòng đăng nhập lại");
         return;
@@ -112,7 +113,7 @@ export default function SystemNotificationManager() {
 
     setSearchLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       if (!token) {
         toast.error("Vui lòng đăng nhập lại");
         return;
@@ -181,7 +182,7 @@ export default function SystemNotificationManager() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
+      const token = getAccessToken();
       if (!token) {
         toast.error("Vui lòng đăng nhập lại");
         return;

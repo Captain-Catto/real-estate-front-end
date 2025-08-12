@@ -92,7 +92,7 @@ export default function UserSidebar() {
     },
     {
       id: "customers",
-      href: "/sellernet/quan-ly-khach-hang",
+      href: "/nguoi-dung/quan-ly-khach-hang",
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path
@@ -137,7 +137,6 @@ export default function UserSidebar() {
         </svg>
       ),
       title: "Ví tiền",
-      badge: "-39%",
       desktopOnly: true,
     },
     {
@@ -293,11 +292,6 @@ export default function UserSidebar() {
                     </div>
                   ) : (
                     item.icon
-                  )}
-                  {item.badge && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-xs font-bold px-1 py-0.5 rounded text-[8px] leading-none shadow-sm">
-                      {item.badge}
-                    </span>
                   )}
                 </div>
                 <span className="text-center leading-tight">{item.title}</span>

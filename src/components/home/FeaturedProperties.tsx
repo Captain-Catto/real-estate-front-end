@@ -9,6 +9,8 @@ import {
 } from "@/components/common/FavoriteButton";
 import testCardImg from "@/assets/images/card-img.jpg";
 import { formatPriceByType } from "@/utils/format";
+import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
+import { createPostSlug } from "@/utils/postSlug";
 
 interface FeaturedProperty {
   id: string;
@@ -77,24 +79,17 @@ export function FeaturedProperties() {
 
               // Generate slug and URL
               const titleSlug = generateSlug(post._id, post.title);
-              const transactionType =
-                post.type === "cho-thue" ? "cho-thue" : "mua-ban";
 
-              // Create full URL based on location data availability
-              let propertyUrl = "";
-              if (provinceName && wardName) {
-                // Full SEO URL: /mua-ban/province/ward/id-title
-                propertyUrl = `/${transactionType}/${createSlug(
-                  provinceName
-                )}/${createSlug(wardName)}/${post._id}-${createSlug(
-                  post.title
-                )}`;
-              } else {
-                // Fallback URL: /mua-ban/chi-tiet/id-title
-                propertyUrl = `/${transactionType}/chi-tiet/${
-                  post._id
-                }-${createSlug(post.title)}`;
-              }
+              // Create full URL using createPostSlug utility
+              const propertyUrl = createPostSlug({
+                _id: post._id,
+                title: post.title,
+                type: post.type,
+                location: {
+                  province: provinceName,
+                  ward: wardName,
+                },
+              });
 
               // Create favorite item data
               const favoriteItem: FavoriteItem = {
@@ -104,7 +99,7 @@ export function FeaturedProperties() {
                 price: formatPrice(
                   post.price,
                   post.currency || "VND",
-                  transactionType || "ban"
+                  post.type || "ban"
                 ),
                 location: locationName,
                 image:
@@ -118,8 +113,7 @@ export function FeaturedProperties() {
                     : post.area?.toString() || "",
                 bedrooms: post.bedrooms || 0,
                 bathrooms: post.bathrooms || 0,
-                propertyType:
-                  transactionType === "cho-thue" ? "Cho thuê" : "Bán",
+                propertyType: post.type === "cho-thue" ? "Cho thuê" : "Bán",
               };
 
               return {
@@ -128,7 +122,7 @@ export function FeaturedProperties() {
                 price: formatPrice(
                   post.price,
                   post.currency || "VND",
-                  transactionType || "ban"
+                  post.type || "ban"
                 ),
                 location: locationName,
                 bedrooms: post.bedrooms || 0,
@@ -192,33 +186,9 @@ export function FeaturedProperties() {
     return `${titleSlug}-${id}`;
   };
 
-  // Helper function to create URL-friendly slug
-  const createSlug = (text: string): string => {
-    return text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[đĐ]/g, "d")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
-  // Helper function to get VIP badge based on priority/package
-  const getVipBadge = (priority: string, packageType: string) => {
-    if (priority === "vip" || packageType === "vip") {
-      return {
-        text: "VIP",
-        className: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
-      };
-    } else if (priority === "premium" || packageType === "premium") {
-      return {
-        text: "Premium",
-        className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
-      };
-    }
-    return { text: "VIP", className: "bg-red-500 text-white" };
+  // Helper function to get badge based on packageId (using utility function)
+  const getBadgeInfo = (packageId?: string | null) => {
+    return getPackageBadge(packageId);
   };
 
   // Function để tính thời gian đăng
@@ -337,16 +307,17 @@ export function FeaturedProperties() {
                     className="object-cover"
                     sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                   />
-                  <div className="absolute top-2 md:top-3 left-2 md:left-3">
-                    <span
-                      className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs font-medium ${
-                        getVipBadge(property.priority, property.package)
-                          .className
-                      }`}
-                    >
-                      {getVipBadge(property.priority, property.package).text}
-                    </span>
-                  </div>
+                  {shouldShowBadge(property.package) && (
+                    <div className="absolute top-2 md:top-3 left-2 md:left-3">
+                      <span
+                        className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs font-medium ${
+                          getPackageBadge(property.package).className
+                        }`}
+                      >
+                        {getPackageBadge(property.package).text}
+                      </span>
+                    </div>
+                  )}
                   <div className="absolute top-2 md:top-3 right-2 md:right-3">
                     <div
                       onClick={(e) => {
@@ -411,57 +382,21 @@ export function FeaturedProperties() {
                   <div className="flex gap-4 text-xs md:text-sm text-gray-500 border-t pt-2 md:pt-3">
                     {property.bedrooms !== undefined &&
                       property.bedrooms !== null && (
-                        <span className="flex items-center">
-                          <svg
-                            className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
-                            />
-                          </svg>
+                        <span className="flex items-center gap-1">
+                          <i className="fas fa-bed"></i>
                           {property.bedrooms} PN
                         </span>
                       )}
                     {property.bathrooms !== undefined &&
                       property.bathrooms !== null && (
-                        <span className="flex items-center">
-                          <svg
-                            className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
-                            />
-                          </svg>
+                        <span className="flex items-center gap-1">
+                          <i className="fas fa-bath"></i>
                           {property.bathrooms} WC
                         </span>
                       )}
                     {property.area && (
-                      <span className="flex items-center">
-                        <svg
-                          className="w-3 h-3 md:w-4 md:h-4 mr-0.5 md:mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                          />
-                        </svg>
+                      <span className="flex items-center gap-1">
+                        <i className="fas fa-ruler-combined"></i>
                         {property.area}m²
                       </span>
                     )}

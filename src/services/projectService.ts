@@ -158,13 +158,16 @@ export const ProjectService = {
     }
   },
 
-  // Get all projects (for admin listing)
+  // Get all projects (for public use - no admin required)
   getProjects: async (): Promise<ProjectListItem[]> => {
     try {
-      // Set a high limit to get all projects for admin management
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/projects/admin/list?limit=1000`
-      );
+      // Use public API endpoint without authentication
+      const response = await fetch(`${API_BASE_URL}/projects`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

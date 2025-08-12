@@ -36,6 +36,7 @@ import { locationService } from "@/services/locationService";
 import AdminGuard from "@/components/auth/AdminGuard";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import UserContactTab from "@/components/admin/UserContactTab";
 
 // Trang chi tiết người dùng với kiểm tra quyền truy cập
 function UserDetailPage() {
@@ -51,9 +52,9 @@ function UserDetailPage() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"posts" | "transactions" | "logs">(
-    "posts"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "posts" | "transactions" | "logs" | "contacts"
+  >("posts");
 
   // Location names cache
   const [locationNames, setLocationNames] = useState<Map<string, string>>(
@@ -737,6 +738,7 @@ function UserDetailPage() {
                 icon: CurrencyDollarIcon,
               },
               { key: "logs", label: "Lịch sử", icon: DocumentTextIcon },
+              { key: "contacts", label: "Lịch sử liên hệ", icon: PhoneIcon },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -1090,6 +1092,13 @@ function UserDetailPage() {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Contacts Tab */}
+          {activeTab === "contacts" && (
+            <div>
+              <UserContactTab userId={userId} username={user?.username} />
             </div>
           )}
         </div>

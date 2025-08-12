@@ -1,3 +1,5 @@
+import { getAccessToken } from "./authService";
+
 // API Base URL
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -5,7 +7,7 @@ const API_BASE_URL =
 // Helper function to get auth token
 const getAuthToken = () => {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken");
+    return getAccessToken();
   }
   return null;
 };

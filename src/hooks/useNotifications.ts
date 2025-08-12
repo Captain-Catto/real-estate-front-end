@@ -14,9 +14,11 @@ import {
   clearError,
   Notification,
 } from "@/store/slices/notificationSlice";
+import { useAuth } from "@/store/hooks";
 
 export function useNotifications() {
   const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated, accessToken, isInitialized } = useAuth();
   const lastForceRefreshRef = useRef<number>(0);
   const THROTTLE_DELAY = 2000; // 2 seconds throttle
 
@@ -73,11 +75,16 @@ export function useNotifications() {
 
   // Auto-fetch on mount if needed
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (token && shouldFetch) {
+    if (isInitialized && isAuthenticated && accessToken && shouldFetch) {
       fetchNotificationsAction();
     }
-  }, [fetchNotificationsAction, shouldFetch]);
+  }, [
+    isInitialized,
+    isAuthenticated,
+    accessToken,
+    fetchNotificationsAction,
+    shouldFetch,
+  ]);
 
   return {
     // Data

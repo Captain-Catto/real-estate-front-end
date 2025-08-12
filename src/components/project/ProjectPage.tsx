@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Breadcrumb } from "@/components/property-detail/Breadcrumb";
 import { Pagination } from "@/components/common/Pagination";
@@ -42,6 +42,9 @@ export function ProjectPage({
 }: ProjectPageProps) {
   const [currentSortBy, setCurrentSortBy] = useState(initialSortBy || "newest");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Ref for articles section to scroll to
+  const articlesRef = useRef<HTMLDivElement>(null);
 
   // State for developer information
   const [developer, setDeveloper] = useState<Developer | null>(null);
@@ -125,6 +128,20 @@ export function ProjectPage({
     setCurrentPage(1); // Reset to first page when sort changes
     console.log("SortBy synced from URL:", initialSortBy);
   }, [initialSortBy]);
+
+  // Reset to first page when search or filter parameters change
+  useEffect(() => {
+    setCurrentPage(1);
+    console.log("Reset to page 1 due to parameter change:", {
+      search,
+      province,
+      ward,
+      category,
+      priceRange,
+      areaRange,
+      status,
+    });
+  }, [search, province, ward, category, priceRange, areaRange, status]);
 
   const itemsPerPage = 10;
 
@@ -251,7 +268,17 @@ export function ProjectPage({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    
+    // Scroll to articles section instead of top of page
+    if (articlesRef.current) {
+      articlesRef.current.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" 
+      });
+    } else {
+      // Fallback to top if ref not available
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
@@ -292,7 +319,7 @@ export function ProjectPage({
           {/* Main Content */}
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Project Listings */}
-            <div className="flex-1">
+            <div ref={articlesRef} className="flex-1">
               {/* Breadcrumb */}
               <div className="mb-4">
                 <Breadcrumb items={breadcrumbItems} />

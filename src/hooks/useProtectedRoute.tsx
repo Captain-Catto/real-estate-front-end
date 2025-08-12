@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/hooks";
 
 export const useProtectedRoute = (redirectTo: string = "/dang-nhap") => {
-  const { isAuthenticated, isInitialized, sessionExpired } = useAuth();
+  const { isAuthenticated, isInitialized, sessionExpired, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // Chỉ redirect khi đã initialized
-    if (isInitialized) {
+    // Chỉ redirect khi đã initialized VÀ không còn loading
+    if (isInitialized && !loading) {
       if (sessionExpired) {
         // Session expired, redirect to login with message
         router.push(`${redirectTo}?expired=true`);
@@ -19,10 +19,17 @@ export const useProtectedRoute = (redirectTo: string = "/dang-nhap") => {
         router.push(redirectTo);
       }
     }
-  }, [isAuthenticated, isInitialized, sessionExpired, router, redirectTo]);
+  }, [
+    isAuthenticated,
+    isInitialized,
+    sessionExpired,
+    loading,
+    router,
+    redirectTo,
+  ]);
 
   return {
-    isLoading: !isInitialized,
+    isLoading: !isInitialized || loading,
     isAuthenticated,
     sessionExpired,
   };

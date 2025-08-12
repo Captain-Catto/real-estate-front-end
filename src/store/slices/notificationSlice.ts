@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
+import type { RootState } from "../index";
 
 // Types
 export interface NotificationData {
@@ -15,7 +16,14 @@ export interface Notification {
   _id: string;
   title: string;
   message: string;
-  type: "PAYMENT" | "ORDER" | "SYSTEM" | "PROMOTION" | "ACCOUNT";
+  type:
+    | "PAYMENT"
+    | "ORDER"
+    | "SYSTEM"
+    | "PROMOTION"
+    | "ACCOUNT"
+    | "POST_APPROVED"
+    | "POST_REJECTED";
   read: boolean;
   createdAt: string;
   userId: string;
@@ -43,12 +51,21 @@ const API_BASE_URL =
 const CACHE_TIME = 5000; // 5 seconds
 
 // Helper function for authenticated requests
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("accessToken");
+async function fetchWithAuth(
+  url: string,
+  options: RequestInit = {},
+  getState: any
+) {
+  const state = getState() as RootState;
+  const token = state.auth.accessToken;
+
+  if (!token) {
+    throw new Error("Access denied. No token provided.");
+  }
 
   const headers = {
     "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
+    Authorization: `Bearer ${token}`,
     ...options.headers,
   };
 
@@ -71,29 +88,48 @@ export const fetchNotifications = createAsyncThunk(
   "notifications/fetchNotifications",
   async (forceRefresh: boolean = false, { getState, rejectWithValue }) => {
     try {
-      const state = getState() as { notifications: NotificationState };
+      const state = getState() as RootState;
+
+      // Check if user is authenticated first
+      if (!state.auth.isAuthenticated || !state.auth.accessToken) {
+        return rejectWithValue("User not authenticated");
+      }
+
       const now = Date.now();
 
-      console.log("🔍 Fetch notifications called:", {
-        forceRefresh,
-        lastFetch: state.notifications.lastFetch,
-        timeDiff: now - state.notifications.lastFetch,
-      });
+      // Only log in development mode
+      if (process.env.NODE_ENV === "development") {
+        console.log("🔍 Fetch notifications called:", {
+          forceRefresh,
+          lastFetch: state.notifications.lastFetch,
+          timeDiff: now - state.notifications.lastFetch,
+        });
+      }
 
       // Check cache only if not forcing refresh
       if (!forceRefresh && now - state.notifications.lastFetch < CACHE_TIME) {
-        console.log("📋 Using cached notifications");
+        if (process.env.NODE_ENV === "development") {
+          console.log("📋 Using cached notifications");
+        }
         return {
           notifications: state.notifications.notifications,
           unreadCount: state.notifications.unreadCount,
         };
       }
 
-      console.log("🌐 Fetching fresh notifications from API");
-      const response = await fetchWithAuth(`${API_BASE_URL}/notifications`);
+      if (process.env.NODE_ENV === "development") {
+        console.log("🌐 Fetching fresh notifications from API");
+      }
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/notifications`,
+        {},
+        getState
+      );
       const data = await response.json();
 
-      console.log("📧 Notification API response:", data);
+      if (process.env.NODE_ENV === "development") {
+        console.log("📧 Notification API response:", data);
+      }
 
       // Return structured data
       const result = {
@@ -101,7 +137,9 @@ export const fetchNotifications = createAsyncThunk(
         unreadCount: data.data?.unreadCount || 0,
       };
 
-      console.log("📝 Processed notification result:", result);
+      if (process.env.NODE_ENV === "development") {
+        console.log("📝 Processed notification result:", result);
+      }
       return result;
     } catch (error) {
       console.error("❌ Failed to fetch notifications:", error);
@@ -114,13 +152,21 @@ export const fetchNotifications = createAsyncThunk(
 
 export const markNotificationAsRead = createAsyncThunk(
   "notifications/markAsRead",
-  async (notificationId: string, { rejectWithValue }) => {
+  async (notificationId: string, { getState, rejectWithValue }) => {
     try {
+      const state = getState() as RootState;
+
+      // Check if user is authenticated first
+      if (!state.auth.isAuthenticated || !state.auth.accessToken) {
+        return rejectWithValue("User not authenticated");
+      }
+
       await fetchWithAuth(
         `${API_BASE_URL}/notifications/${notificationId}/read`,
         {
           method: "PUT",
-        }
+        },
+        getState
       );
       return notificationId;
     } catch (error) {
@@ -135,11 +181,22 @@ export const markNotificationAsRead = createAsyncThunk(
 
 export const markAllNotificationsAsRead = createAsyncThunk(
   "notifications/markAllAsRead",
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      await fetchWithAuth(`${API_BASE_URL}/notifications/read-all`, {
-        method: "PUT",
-      });
+      const state = getState() as RootState;
+
+      // Check if user is authenticated first
+      if (!state.auth.isAuthenticated || !state.auth.accessToken) {
+        return rejectWithValue("User not authenticated");
+      }
+
+      await fetchWithAuth(
+        `${API_BASE_URL}/notifications/read-all`,
+        {
+          method: "PUT",
+        },
+        getState
+      );
       return true;
     } catch (error) {
       return rejectWithValue(
@@ -191,7 +248,9 @@ const notificationSlice = createSlice({
         state.loading = false;
         const payload = action.payload;
 
-        console.log("📧 Processing notification payload:", payload);
+        if (process.env.NODE_ENV === "development") {
+          console.log("📧 Processing notification payload:", payload);
+        }
 
         // Handle structured response from our async thunk
         if (payload && payload.notifications) {
@@ -210,10 +269,12 @@ const notificationSlice = createSlice({
             }
           );
 
-          console.log("🔄 Setting notifications:", {
-            original: newNotifications.length,
-            unique: uniqueNotifications.length,
-          });
+          if (process.env.NODE_ENV === "development") {
+            console.log("🔄 Setting notifications:", {
+              original: newNotifications.length,
+              unique: uniqueNotifications.length,
+            });
+          }
 
           state.notifications = uniqueNotifications;
           state.unreadCount =

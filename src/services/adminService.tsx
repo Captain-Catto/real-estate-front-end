@@ -1,4 +1,4 @@
-import { refreshToken } from "./authService";
+import { refreshToken, getAccessToken } from "./authService";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -53,7 +53,7 @@ export interface TopPostsResponse {
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
   return {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),

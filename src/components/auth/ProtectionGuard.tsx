@@ -86,7 +86,7 @@ export default function ProtectionGuard({
   fallback = null,
   isPageGuard = false,
 }: ProtectionGuardProps) {
-  const { user, isAuthenticated, isInitialized } = useAuth();
+  const { user, isAuthenticated, isInitialized, loading } = useAuth();
   const {
     canAll,
     canAny,
@@ -103,7 +103,7 @@ export default function ProtectionGuard({
   // Timeout safeguard to prevent infinite initialization loops
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (!isInitialized || permissionsLoading) {
+      if (!isInitialized || permissionsLoading || loading) {
         console.warn(
           "⚠️ Initialization timeout - forcing completion to prevent infinite loop"
         );
@@ -112,13 +112,13 @@ export default function ProtectionGuard({
     }, 10000); // 10 second timeout
 
     // Clear timeout when properly initialized
-    if (isInitialized && !permissionsLoading) {
+    if (isInitialized && !permissionsLoading && !loading) {
       clearTimeout(timeout);
       setInitializationTimeout(false);
     }
 
     return () => clearTimeout(timeout);
-  }, [isInitialized, permissionsLoading]);
+  }, [isInitialized, permissionsLoading, loading]);
 
   useEffect(() => {
     // Debug logging
@@ -133,10 +133,14 @@ export default function ProtectionGuard({
     });
 
     // Wait for auth and permissions to be initialized (with timeout safeguard)
-    if ((!isInitialized || permissionsLoading) && !initializationTimeout) {
+    if (
+      (!isInitialized || permissionsLoading || loading) &&
+      !initializationTimeout
+    ) {
       console.log("⏳ Waiting for initialization...", {
         isInitialized,
         permissionsLoading,
+        loading,
       });
       return;
     }
@@ -311,6 +315,7 @@ export default function ProtectionGuard({
   }, [
     isAuthenticated,
     isInitialized,
+    loading,
     permissionsLoading,
     user?.email,
     user?.role,
@@ -324,7 +329,7 @@ export default function ProtectionGuard({
 
   // Show loading while checking (unless timeout occurred)
   if (
-    (!isInitialized || permissionsLoading || isChecking) &&
+    (!isInitialized || permissionsLoading || loading || isChecking) &&
     !initializationTimeout
   ) {
     if (isPageGuard) {

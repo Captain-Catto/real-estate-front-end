@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { Favorites } from "@/components/favorites/Favorites";
-import { UserSidebar } from "@/components/user/UserSidebar";
+import UserSidebar from "@/components/user/UserSidebar";
 
 export const metadata: Metadata = {
   title: "Danh sách yêu thích | Tài khoản",

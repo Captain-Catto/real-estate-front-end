@@ -1,4 +1,4 @@
-import { refreshToken } from "./authService";
+import { refreshToken, getAccessToken } from "./authService";
 
 const API_BASE_URL =
   typeof window !== "undefined"
@@ -172,7 +172,7 @@ async function fetchWithAuth(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = localStorage.getItem("accessToken");
+  const token = getAccessToken();
 
   const config: RequestInit = {
     ...options,

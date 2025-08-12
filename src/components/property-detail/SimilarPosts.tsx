@@ -6,6 +6,7 @@ import Image from "next/image";
 import { postService } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
 import { formatPriceByType } from "@/utils/format";
+import { createPostSlug } from "@/utils/postSlug";
 
 interface SimilarPost {
   _id: string;
@@ -153,20 +154,6 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
     return `${area} m²`;
   };
 
-  // Utility function to create SEO-friendly slugs
-  const createSlug = (text: string): string => {
-    if (!text) return "";
-    return text
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[đĐ]/g, "d")
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mt-6">
@@ -246,40 +233,18 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {similarPosts.map((post) => {
-          // Generate SEO-friendly URL if location data is available
-          let href = "";
-          const transactionType =
-            post.type === "cho-thue" ? "cho-thue" : "mua-ban";
+          // Generate href using createPostSlug utility
+          const href = createPostSlug({
+            _id: post._id,
+            title: post.title,
+            type: post.type,
+            location: {
+              province: post.locationNames?.provinceName,
+              ward: post.locationNames?.wardName,
+            },
+          });
 
-          // Check if we have both province and ward for full SEO URL
-          if (
-            post.locationNames?.provinceName &&
-            post.locationNames?.wardName
-          ) {
-            // Full SEO URL: /mua-ban/province/ward/id-title
-            href = `/${transactionType}/${createSlug(
-              post.locationNames.provinceName
-            )}/${createSlug(post.locationNames.wardName)}/${
-              post._id
-            }-${createSlug(post.title)}`;
-            console.log("Created full SEO URL:", href, "for post:", post._id);
-          } else {
-            // Fallback to simplified URL when missing location data: /mua-ban/chi-tiet/id-title
-            href = `/${transactionType}/chi-tiet/${post._id}-${createSlug(
-              post.title
-            )}`;
-            console.log(
-              "Created fallback URL:",
-              href,
-              "for post:",
-              post._id,
-              "missing location:",
-              {
-                provinceName: post.locationNames?.provinceName,
-                wardName: post.locationNames?.wardName,
-              }
-            );
-          }
+          console.log("Generated href:", href, "for post:", post._id);
 
           return (
             <Link

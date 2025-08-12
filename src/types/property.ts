@@ -15,6 +15,7 @@ export interface PropertyData {
   bedrooms?: number;
   bathrooms?: number;
   category?: string | { name: string };
+  description?: string;
   packageId?: string;
   createdAt?: string;
 }
