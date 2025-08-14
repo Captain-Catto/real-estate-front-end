@@ -10,7 +10,6 @@ interface ProjectDetailInfoProps {
 export function ProjectDetailInfo({ project }: ProjectDetailInfoProps) {
   const { locationNames, loading: locationLoading } = useLocationNames(
     project.location?.provinceCode,
-    project.location?.districtCode,
     project.location?.wardCode
   );
 

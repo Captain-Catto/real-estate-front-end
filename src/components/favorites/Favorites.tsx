@@ -9,14 +9,10 @@ import React, {
 import Link from "next/link";
 import Image from "next/image";
 import { useFavorites } from "@/store/hooks";
-import { clearFavorites, fetchFavorites } from "@/store/slices/favoritesSlices";
 import { FavoriteButton } from "@/components/common/FavoriteButton";
 import { Pagination } from "@/components/common/Pagination";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Menu, Transition, Dialog, Tab } from "@headlessui/react";
-import { toast } from "sonner";
-import { useAppDispatch } from "@/store/hooks";
-import UserHeader from "../user/UserHeader";
+import { Menu, Transition, Tab } from "@headlessui/react";
 
 // Sort options
 const sortOptions = [
@@ -38,20 +34,12 @@ interface FavoritesWithSortProps {
 export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dispatch = useAppDispatch();
 
-  const { favorites, loading, fetchUserFavorites, removeFavorite } =
-    useFavorites();
+  const { favorites, loading, fetchUserFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState<"all" | "property" | "project">(
     "all"
   );
   const [sortBy, setSortBy] = useState(initialSort);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-  const [confirmMessage, setConfirmMessage] = useState({
-    title: "",
-    description: "",
-  });
   // Add a flag to prevent excessive API calls
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
@@ -80,36 +68,6 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, sortBy]);
-
-  // Update URL when sort or tab changes - using a memoized function
-  const updateURL = useCallback(
-    (newSort: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (newSort !== "newest") {
-        params.set("sort", newSort);
-      } else {
-        params.delete("sort");
-      }
-
-      // Set tab in URL
-      if (activeTab !== "all") {
-        params.set("tab", activeTab);
-      } else {
-        params.delete("tab");
-      }
-
-      // Add page to URL if not on first page
-      if (currentPage > 1) {
-        params.set("page", currentPage.toString());
-      } else {
-        params.delete("page");
-      }
-
-      const newURL = params.toString() ? `?${params.toString()}` : "";
-      router.push(`/nguoi-dung/yeu-thich${newURL}`, { scroll: false });
-    },
-    [activeTab, router, searchParams, currentPage]
-  );
 
   // Kiểm tra tab từ URL khi component mount
   useEffect(() => {
@@ -266,43 +224,6 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
     [activeTab, router, searchParams, sortBy]
   );
 
-  const handleClearAll = useCallback(() => {
-    setConfirmMessage({
-      title: "Xóa tất cả mục yêu thích",
-      description:
-        "Bạn có chắc chắn muốn xóa tất cả mục yêu thích? Hành động này không thể hoàn tác.",
-    });
-    setConfirmAction(() => () => {
-      dispatch(clearFavorites());
-      toast.success("Đã xóa tất cả mục yêu thích", {
-        description: "Danh sách yêu thích của bạn đã được xóa.",
-      });
-    });
-    setConfirmDialogOpen(true);
-  }, [dispatch]);
-
-  const handleClearByType = useCallback(
-    (type: "property" | "project") => {
-      const typeText = type === "property" ? "bất động sản" : "dự án";
-      setConfirmMessage({
-        title: `Xóa tất cả ${typeText} yêu thích`,
-        description: `Bạn có chắc chắn muốn xóa tất cả ${typeText} khỏi danh sách yêu thích? Hành động này không thể hoàn tác.`,
-      });
-      setConfirmAction(() => () => {
-        // Lọc ra các item thuộc type cần xóa và thực hiện xóa lần lượt
-        const itemsToRemove = favorites.filter((item) => item.type === type);
-        itemsToRemove.forEach((item) => {
-          removeFavorite(item.id);
-        });
-        toast.success(`Đã xóa tất cả ${typeText}`, {
-          description: `${typeText} đã được xóa khỏi danh sách yêu thích của bạn.`,
-        });
-      });
-      setConfirmDialogOpen(true);
-    },
-    [favorites, removeFavorite]
-  );
-
   const selectedSortOption = useMemo(
     () => sortOptions.find((option) => option.value === sortBy),
     [sortBy]
@@ -410,81 +331,6 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
         ) : (
           <FavoritesContent items={[]} isEmpty={true} type={activeTab} />
         )}
-
-        {/* Confirm Dialog - Headless UI */}
-        <Transition show={confirmDialogOpen} as={Fragment}>
-          <Dialog
-            as="div"
-            className="fixed inset-0 z-50 overflow-y-auto"
-            onClose={() => setConfirmDialogOpen(false)}
-          >
-            <div className="min-h-screen px-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-              </Transition.Child>
-
-              {/* This element is to trick the browser into centering the modal contents. */}
-              <span
-                className="inline-block h-screen align-middle"
-                aria-hidden="true"
-              >
-                &#8203;
-              </span>
-
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
-              >
-                <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                  <Dialog.Title
-                    as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900"
-                  >
-                    {confirmMessage.title}
-                  </Dialog.Title>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      {confirmMessage.description}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      onClick={() => setConfirmDialogOpen(false)}
-                    >
-                      Hủy
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      onClick={() => {
-                        confirmAction();
-                        setConfirmDialogOpen(false);
-                      }}
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                </div>
-              </Transition.Child>
-            </div>
-          </Dialog>
-        </Transition>
       </Tab.Group>
     </div>
   );

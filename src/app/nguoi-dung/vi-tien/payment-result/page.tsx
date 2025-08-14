@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { paymentService } from "@/services/paymentService";
+import { paymentService, VNPayData } from "@/services/paymentService";
 import { useWallet } from "@/hooks/useWallet";
 import { triggerNotificationRefresh } from "@/hooks/useNotificationRefresh";
 
-export default function PaymentResultPage() {
+function PaymentResultPageInternal() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [statusChecked, setStatusChecked] = useState(false);
 
@@ -326,7 +325,7 @@ export default function PaymentResultPage() {
           // Use the paymentService instead of direct fetch
           const updateResult = await paymentService.updatePaymentStatus(
             orderId,
-            vnpayData
+            vnpayData as unknown as VNPayData
           );
 
           console.log("Update result:", updateResult);
@@ -374,10 +373,7 @@ export default function PaymentResultPage() {
           // Use the paymentService instead of direct fetch
           const updateResponse = await paymentService.updatePaymentStatus(
             orderId,
-            {
-              ...vnpayData,
-              forceStatus: "failed", // Add a flag to force failed status
-            }
+            vnpayData as unknown as VNPayData
           );
 
           console.log("Update result:", updateResponse);
@@ -524,5 +520,13 @@ export default function PaymentResultPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PaymentResultPage() {
+  return (
+    <Suspense fallback={<div>Đang tải...</div>}>
+      <PaymentResultPageInternal />
+    </Suspense>
   );
 }

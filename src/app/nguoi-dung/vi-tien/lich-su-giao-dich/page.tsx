@@ -1,24 +1,38 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Footer from "@/components/footer/Footer";
 import Link from "next/link";
 import UserSidebar from "@/components/user/UserSidebar";
 import { Pagination } from "@/components/common/Pagination";
 import UserHeader from "@/components/user/UserHeader";
 import { useAuth } from "@/store/hooks";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  paymentService,
-  PaymentHistoryResponse,
-  PaymentFilterParams,
-} from "@/services/paymentService";
+import { useSearchParams } from "next/navigation";
+import { paymentService, PaymentFilterParams } from "@/services/paymentService";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-export default function LichSuGiaoDichPage() {
+interface Transaction {
+  _id: string;
+  userId: string;
+  postId?: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  status: string;
+  description: string;
+  createdAt: string;
+  completedAt?: string;
+  failedAt?: string;
+  type?: string;
+  packageId?: string;
+  packageName?: string;
+}
+import "react-datepicker/dist/react-datepicker.css";
+
+function LichSuGiaoDichPageInternal() {
   const { user, isAuthenticated, loading } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Read initial filter values from URL
@@ -56,7 +70,7 @@ export default function LichSuGiaoDichPage() {
   });
 
   // API data state
-  const [apiTransactions, setApiTransactions] = useState<any[]>([]);
+  const [apiTransactions, setApiTransactions] = useState<Transaction[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
 
@@ -109,36 +123,39 @@ export default function LichSuGiaoDichPage() {
   };
 
   // Fetch transactions with filters
-  const fetchTransactions = async (filters: PaymentFilterParams) => {
-    if (!isAuthenticated) return;
+  const fetchTransactions = useCallback(
+    async (filters: PaymentFilterParams) => {
+      if (!isAuthenticated) return;
 
-    setIsLoadingTransactions(true);
-    setTransactionError(null);
+      setIsLoadingTransactions(true);
+      setTransactionError(null);
 
-    try {
-      // Apply filters to API call
-      const response = await paymentService.getPaymentHistory(filters);
+      try {
+        // Apply filters to API call
+        const response = await paymentService.getPaymentHistory(filters);
 
-      console.log("Fetched transactions:", response);
+        console.log("Fetched transactions:", response);
 
-      if (response.success && response.data) {
-        setApiTransactions(response.data.payments);
-        setTotalItems(response.data.pagination.totalItems);
-        setTotalPages(response.data.pagination.totalPages);
-      } else {
-        setTransactionError("Không thể tải dữ liệu giao dịch");
+        if (response.success && response.data) {
+          setApiTransactions(response.data.payments);
+          setTotalItems(response.data.pagination.totalItems);
+          setTotalPages(response.data.pagination.totalPages);
+        } else {
+          setTransactionError("Không thể tải dữ liệu giao dịch");
+        }
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        setTransactionError("Lỗi khi tải dữ liệu giao dịch");
+        setApiTransactions([]);
+      } finally {
+        setIsLoadingTransactions(false);
       }
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
-      setTransactionError("Lỗi khi tải dữ liệu giao dịch");
-      setApiTransactions([]);
-    } finally {
-      setIsLoadingTransactions(false);
-    }
-  };
+    },
+    [isAuthenticated]
+  );
 
   // Build filter object from current filter state
-  const buildFilters = (): PaymentFilterParams => {
+  const buildFilters = useCallback((): PaymentFilterParams => {
     const filters: PaymentFilterParams = {
       page: currentPage,
       limit: itemsPerPage,
@@ -160,7 +177,14 @@ export default function LichSuGiaoDichPage() {
     }
 
     return filters;
-  };
+  }, [
+    currentPage,
+    searchQuery,
+    statusFilter,
+    typeFilter,
+    dateFilter,
+    customDateRange,
+  ]);
 
   // Apply filters and fetch data
   const applyFilters = () => {
@@ -174,7 +198,7 @@ export default function LichSuGiaoDichPage() {
     const filters = buildFilters();
     fetchTransactions(filters);
     // Don't update URL here to avoid loops
-  }, [isAuthenticated, currentPage]);
+  }, [isAuthenticated, currentPage, buildFilters, fetchTransactions]);
 
   // Handle manual filter application
   const handleFilterSubmit = (e: React.FormEvent) => {
@@ -259,7 +283,7 @@ export default function LichSuGiaoDichPage() {
   };
 
   // Determine transaction type from description or amount
-  const determineTransactionType = (transaction: any) => {
+  const determineTransactionType = (transaction: Transaction) => {
     const desc = transaction.description.toLowerCase();
     if (desc.includes("nap") || desc.includes("nạp")) return "topup";
     if (
@@ -522,7 +546,7 @@ export default function LichSuGiaoDichPage() {
                             }
                             dateFormat="dd/MM/yyyy"
                             placeholderText="Chọn ngày kết thúc"
-                            minDate={customDateRange.fromDate}
+                            minDate={customDateRange.fromDate || undefined}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
                         </div>
@@ -796,5 +820,13 @@ export default function LichSuGiaoDichPage() {
         <Footer />
       </div>
     </>
+  );
+}
+
+export default function LichSuGiaoDichPage() {
+  return (
+    <Suspense fallback={<div>Đang tải...</div>}>
+      <LichSuGiaoDichPageInternal />
+    </Suspense>
   );
 }

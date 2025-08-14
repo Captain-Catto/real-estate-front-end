@@ -98,9 +98,27 @@ export const fetchTransactions = createAsyncThunk(
       });
 
       if (response.success) {
+        const transactions = (response.data.payments || []).map((payment) => ({
+          id: payment._id,
+          amount: Math.abs(payment.amount),
+          type: (payment.amount > 0 ? "DEPOSIT" : "PAYMENT") as
+            | "DEPOSIT"
+            | "WITHDRAWAL"
+            | "PAYMENT"
+            | "REFUND"
+            | "BONUS",
+          description: payment.description,
+          status: payment.status as
+            | "PENDING"
+            | "COMPLETED"
+            | "FAILED"
+            | "CANCELLED",
+          createdAt: payment.createdAt,
+        }));
+
         return {
-          transactions: response.data.transactions || [],
-          hasMore: (response.data.transactions || []).length >= limit,
+          transactions,
+          hasMore: transactions.length >= limit,
           page,
           reset,
         };

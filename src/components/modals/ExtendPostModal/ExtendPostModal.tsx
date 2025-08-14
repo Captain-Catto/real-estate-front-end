@@ -62,16 +62,19 @@ export default function ExtendPostModal({
 
       // Handle packages response - check if it's direct array or wrapped
       if (packagesResponse) {
-        let packagesData;
+        let packagesData: Array<{
+          _id: string;
+          name: string;
+          price: number;
+          duration: number;
+          features: string[];
+          type: string;
+          status?: string;
+        }> = [];
         if (Array.isArray(packagesResponse)) {
           packagesData = packagesResponse;
         } else if (
           packagesResponse.success &&
-          packagesResponse.data &&
-          packagesResponse.data.packages
-        ) {
-          packagesData = packagesResponse.data.packages;
-        } else if (
           packagesResponse.data &&
           Array.isArray(packagesResponse.data)
         ) {
@@ -81,9 +84,17 @@ export default function ExtendPostModal({
         }
 
         // All packages from API should already be active, but filter just in case
-        const activePackages = packagesData.filter(
-          (pkg: Package) => pkg.isActive !== false
-        );
+        const activePackages = packagesData
+          .filter((pkg) => pkg.status !== "inactive")
+          .map((pkg) => ({
+            _id: pkg._id,
+            name: pkg.name,
+            price: pkg.price,
+            duration: pkg.duration,
+            features: pkg.features,
+            isActive: pkg.status !== "inactive",
+          }));
+
         setPackages(activePackages);
         // Auto-select first package
         if (activePackages.length > 0) {

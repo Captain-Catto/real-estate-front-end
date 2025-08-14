@@ -13,7 +13,7 @@ import { locationService } from "@/services/locationService";
 import { PropertyData } from "@/types/property";
 import { formatPriceByType } from "@/utils/format";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
-import { MdLocationOn, MdSquareFoot, MdBed, MdBathtub } from "react-icons/md";
+import { MdLocationOn } from "react-icons/md";
 
 interface PropertyListingProps {
   properties: PropertyData[];

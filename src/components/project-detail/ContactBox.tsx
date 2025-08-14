@@ -15,13 +15,11 @@ interface Developer {
 
 interface ContactBoxProps {
   developer: Developer;
-  projectId: string;
   projectName: string;
 }
 
 export default function ContactBox({
   developer,
-  projectId,
   projectName,
 }: ContactBoxProps) {
   const [formData, setFormData] = useState({

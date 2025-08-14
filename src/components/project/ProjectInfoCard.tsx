@@ -19,7 +19,6 @@ export function ProjectInfoCard({
   // Use location names hook to get readable location names
   const { locationNames, loading: locationLoading } = useLocationNames(
     project.location?.provinceCode,
-    project.location?.districtCode,
     project.location?.wardCode
   );
 

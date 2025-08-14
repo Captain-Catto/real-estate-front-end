@@ -257,10 +257,16 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
 
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId);
-    document.getElementById(tabId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    const element = document.getElementById(tabId);
+    if (element) {
+      const elementPosition = element.offsetTop;
+      const offsetPosition = elementPosition - 120; // Offset 120px về phía trên
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    }
   };
 
   return (
@@ -346,7 +352,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
         </div>
 
         {/* Sticky Navigation */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 z-30">
+        <div className="sticky top-16 bg-white border-b border-gray-200 z-30">
           <div className="container mx-auto px-4">
             <nav className="flex space-x-8 overflow-x-auto">
               {[
@@ -455,7 +461,6 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
               <div className="sticky top-20 space-y-6">
                 <ContactBox
                   developer={project.developer}
-                  projectId={project.id}
                   projectName={project.name}
                 />
               </div>

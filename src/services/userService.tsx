@@ -1,4 +1,4 @@
-import { refreshToken, getAccessToken } from "./authService";
+import { fetchWithAuth } from "./authService";
 
 const API_BASE_URL =
   typeof window !== "undefined"
@@ -165,48 +165,6 @@ export interface LogsResponse {
     };
   };
   message?: string;
-}
-
-// Utility function to make authenticated API calls
-async function fetchWithAuth(
-  url: string,
-  options: RequestInit = {}
-): Promise<Response> {
-  const token = getAccessToken();
-
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-  };
-
-  let response = await fetch(url, config);
-
-  // If token expired, try to refresh
-  if (response.status === 401) {
-    try {
-      const newToken = await refreshToken();
-      if (newToken) {
-        // Retry with new token
-        response = await fetch(url, {
-          ...config,
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${newToken}`,
-          },
-        });
-      }
-    } catch {
-      // Refresh failed, redirect to login
-      window.location.href = "/dang-nhap";
-      throw new Error("Authentication failed");
-    }
-  }
-
-  return response;
 }
 
 // Get all users with filters
@@ -541,6 +499,33 @@ export async function getUserLogs(
         error instanceof Error
           ? error.message
           : "Có lỗi xảy ra khi lấy lịch sử thay đổi",
+    };
+  }
+}
+
+// Get public user info (for user profile page)
+export async function getPublicUser(userId: string): Promise<{
+  success: boolean;
+  user?: User;
+  message?: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/public/${userId}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching public user:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra khi lấy thông tin người dùng",
     };
   }
 }

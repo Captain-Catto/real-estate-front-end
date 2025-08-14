@@ -10,16 +10,16 @@ import Footer from "@/components/footer/Footer";
 import { PropertyData } from "@/types/property";
 
 interface DynamicPageProps {
-  params: {
+  params: Promise<{
     slug: string[];
-  };
-  searchParams?: {
+  }>;
+  searchParams?: Promise<{
     city?: string;
     province?: string;
     ward?: string;
     wards?: string;
     [key: string]: string | string[] | undefined;
-  };
+  }>;
 }
 
 // Parse URL để xác định type và extract data
@@ -53,6 +53,12 @@ function parseUrl(slug: string[]) {
     const idSlug = slug[3];
     const id = idSlug.split("-")[0];
 
+    console.log("🔍 4-segment URL debug:");
+    console.log("idSlug:", idSlug);
+    console.log("extracted id:", id);
+    console.log("id validation - numeric test:", /^\d+$/.test(id));
+    console.log("id validation - mongodb test:", /^[0-9a-fA-F]{24}$/.test(id));
+
     // Validate ID (MongoDB ObjectID or numeric)
     if (id && !/^\d+$/.test(id) && !/^[0-9a-fA-F]{24}$/.test(id)) {
       // If not a valid ID, this is a listing URL with 4 segments
@@ -81,6 +87,12 @@ function parseUrl(slug: string[]) {
         level: "ward",
       };
     }
+
+    console.log("✅ Valid ID found, returning property-detail config:", {
+      type: "property-detail",
+      id,
+      transactionType: slug[0],
+    });
 
     return {
       type: "property-detail",
@@ -203,11 +215,18 @@ function parseUrl(slug: string[]) {
 
 export default async function DynamicPage({
   params,
-  searchParams = {},
+  searchParams,
 }: DynamicPageProps) {
   // Đảm bảo chờ đợi params và searchParams
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
+  const resolvedSearchParams = (await (searchParams ||
+    Promise.resolve({}))) as {
+    city?: string;
+    province?: string;
+    ward?: string;
+    wards?: string;
+    [key: string]: string | string[] | undefined;
+  };
   const { slug } = resolvedParams;
   const urlData = parseUrl(slug);
 
@@ -223,20 +242,23 @@ export default async function DynamicPage({
     console.log("===== PROCESSING URL TYPE:", urlData.type, "=====");
     // Xử lý trang chi tiết property
     if (urlData.type === "property-detail") {
-      console.log("Fetching property with ID:", urlData.id);
+      console.log("🏠 Fetching property with ID:", urlData.id);
+      console.log("🔍 URL data structure:", JSON.stringify(urlData, null, 2));
 
       if (!urlData.id) {
-        console.log("No ID found in URL");
+        console.log("❌ No ID found in URL");
         return notFound();
       }
 
-      const post = await postService.getPostById(urlData.id);
-      console.log("Fetched post data:", post ? "Success" : "Not found");
+      const response = await postService.getPostById(urlData.id);
+      console.log("📊 Fetched post data:", response ? "Success" : "Not found");
 
-      if (!post) {
-        console.log("Property not found for ID:", urlData.id);
+      if (!response || !response.success || !response.data.post) {
+        console.log("❌ Property not found for ID:", urlData.id);
         return notFound();
       }
+
+      const post = response.data.post;
 
       // Increment view count on server side to avoid multiple calls
       try {
@@ -250,27 +272,32 @@ export default async function DynamicPage({
       const propertyData = {
         id: post._id,
         title: post.title,
-        price: post.price || "Thỏa thuận",
+        price: post.price?.toString() || "Thỏa thuận",
         currency: post.currency || "VND",
-        location: post.location?.district
-          ? `${post.location.district}, ${post.location.province}`
+        location: post.location?.ward
+          ? `${post.location.ward}, ${post.location.province}`
           : post.location?.province || "",
         fullLocation: [
           post.location?.street,
           post.location?.ward,
-          post.location?.district,
           post.location?.province,
         ]
           .filter(Boolean)
           .join(", "),
-        locationCode: post.location,
+        locationCode: {
+          province: post.location?.province || "",
+          district: "", // No district in new structure
+          ward: post.location?.ward || "",
+          street: post.location?.street,
+          project: post.location?.project,
+        },
         images: post.images || [],
-        slug: post.slug || "",
+        slug: "", // post.slug || "",
         area: post.area ? `${post.area} m²` : "",
         bedrooms: post.bedrooms,
         bathrooms: post.bathrooms,
         floors: post.floors,
-        propertyType: post.category?.name || post.category || "Chưa xác định",
+        propertyType: post.category || "Chưa xác định", // post.category?.name || post.category || "Chưa xác định",
         legalDocs: post.legalDocs || "",
         furniture: post.furniture || "",
         houseDirection: post.houseDirection || "",
@@ -279,19 +306,20 @@ export default async function DynamicPage({
         frontWidth: post.frontWidth || "",
         description: post.description || "",
         author: {
-          id: post.author?._id || post.author?.id || undefined,
-          username: post.contactName || post.author?.username || "Không rõ",
-          phone: post.phone || post.author?.phoneNumber || "Không rõ",
-          email: post.email || post.author?.email || "Không rõ",
+          id: post.author?._id || undefined, // post.author?._id || post.author?.id || undefined,
+          username: post.author?.username || "Không rõ", // post.contactName || post.author?.username || "Không rõ",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          phoneNumber: (post.author as any)?.phoneNumber || "Không rõ", // Backend populates with phoneNumber
+          email: post.author?.email || "Không rõ", // post.email || post.author?.email || "Không rõ",
           avatar: post.author?.avatar || "/default-avatar.png",
         },
         postedDate: post.createdAt
           ? new Date(post.createdAt).toLocaleDateString("vi-VN")
           : "Chưa xác định",
         postType: post.packageId || "Chưa xác định",
-        project: post.project || null, // Add project field
-        latitude: post.latitude || undefined,
-        longitude: post.longitude || undefined,
+        project: post.project, // Let PropertyDetail component handle project object serialization
+        latitude: undefined, // post.latitude || undefined,
+        longitude: undefined, // post.longitude || undefined,
       };
 
       // Fetch proper Vietnamese location names for breadcrumb
@@ -355,7 +383,7 @@ export default async function DynamicPage({
         // Fallback to post location data if available
         breadcrumbData = {
           city: post.location.province,
-          district: post.location.district || "",
+          district: "", // post.location.district || "",
           ward: post.location.ward,
         };
       }
@@ -530,12 +558,12 @@ export default async function DynamicPage({
           }
 
           // Kiểm tra xem có thông tin searchCriteria không
-          if (response.data.searchCriteria) {
-            console.log(
-              "Search criteria used by API:",
-              response.data.searchCriteria
-            );
-          }
+          // if (response.data.searchCriteria) {
+          //   console.log(
+          //     "Search criteria used by API:",
+          //     response.data.searchCriteria
+          //   );
+          // }
         } else {
           console.log("Non-array data:", response.data);
         }

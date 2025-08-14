@@ -28,7 +28,7 @@ interface PropertyDetailProps {
     bedrooms?: number;
     bathrooms?: number;
     floors?: number;
-    propertyType?: string;
+    propertyType?: string | { _id: string; name: string; slug: string };
     legalDocs?: string;
     furniture?: string;
     houseDirection?: string;
@@ -50,7 +50,7 @@ interface PropertyDetailProps {
       id?: string;
       username: string;
       email: string;
-      phone: string;
+      phoneNumber: string;
       avatar?: string;
     };
     project?:
@@ -86,10 +86,13 @@ export function PropertyDetail({
   breadcrumbData,
   transactionType,
 }: PropertyDetailProps) {
-  console.log("Rendering PropertyDetail with property:", property);
+  console.log(
+    "Rendering PropertyDetail with property:",
+    JSON.stringify(property, null, 2)
+  );
   console.log("breadcrumbData:", breadcrumbData);
   console.log("transactionType:", transactionType);
-  console.log("property.project:", property.project);
+  console.log("property.project:", JSON.stringify(property.project, null, 2));
   console.log("property.id:", property.id);
 
   // State for fetched project data
@@ -284,7 +287,10 @@ export function PropertyDetail({
     area: property.area,
     bedrooms: property.bedrooms,
     bathrooms: property.bathrooms,
-    propertyType: property.propertyType,
+    propertyType:
+      typeof property.propertyType === "object"
+        ? property.propertyType?.name
+        : property.propertyType,
   };
 
   // Generate breadcrumb items - following new URL structure: /type/province/ward/postid-title
@@ -457,7 +463,11 @@ export function PropertyDetail({
                 {property.propertyType && (
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Loại hình:</span>
-                    <span className="font-medium">{property.propertyType}</span>
+                    <span className="font-medium">
+                      {typeof property.propertyType === "object"
+                        ? (property.propertyType as { name: string }).name
+                        : property.propertyType}
+                    </span>
                   </div>
                 )}
                 {property.legalDocs && (
@@ -761,14 +771,14 @@ export function PropertyDetail({
 
               {/* Contact Details */}
               <div className="space-y-3">
-                {property.author?.phone && (
+                {property.author?.phoneNumber && (
                   <div className="flex items-center">
                     <i className="fas fa-phone text-gray-400 w-5"></i>
                     <a
-                      href={`tel:${property.author.phone}`}
+                      href={`tel:${property.author.phoneNumber}`}
                       className="ml-3 text-blue-600 hover:text-blue-700"
                     >
-                      {property.author.phone}
+                      {property.author.phoneNumber}
                     </a>
                   </div>
                 )}
@@ -788,7 +798,7 @@ export function PropertyDetail({
               {/* Action Buttons */}
               <div className="mt-6 space-y-3">
                 <a
-                  href={`tel:${property.author?.phone || ""}`}
+                  href={`tel:${property.author?.phoneNumber || ""}`}
                   className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors block text-center"
                 >
                   <i className="fas fa-phone mr-2"></i>
@@ -830,7 +840,7 @@ export function PropertyDetail({
 
           {/* Call Button */}
           <a
-            href={`tel:${property.author?.phone || ""}`}
+            href={`tel:${property.author?.phoneNumber || ""}`}
             className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium text-center"
           >
             <i className="fas fa-phone mr-2"></i>

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { postService, CreatePostData } from "@/services/postsService";
 import { useAuth } from "@/store/hooks";
-import { useWallet } from "./useWallet";
 import { paymentService } from "@/services/paymentService";
 import { categoryService, Category } from "@/services/categoryService";
 import { toast } from "sonner";
@@ -285,7 +284,7 @@ export function useCreatePostModal() {
         try {
           const paymentResult = await paymentService.deductForPost({
             amount: selectedPackage.price,
-            postId: result.data.post._id,
+            postId: result.data._id,
             packageId: selectedPackage.id,
             description: `Thanh toán đăng tin: ${formData.title}`,
           });

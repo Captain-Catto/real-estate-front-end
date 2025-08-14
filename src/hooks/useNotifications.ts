@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useCallback, useEffect, useRef } from "react";
-import { AppDispatch, RootState } from "@/store";
+import { AppDispatch } from "@/store";
 import {
   fetchNotifications,
   markNotificationAsRead,
@@ -12,7 +12,6 @@ import {
   selectUnreadNotifications,
   selectShouldFetch,
   clearError,
-  Notification,
 } from "@/store/slices/notificationSlice";
 import { useAuth } from "@/store/hooks";
 

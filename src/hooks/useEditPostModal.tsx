@@ -1,11 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useRef } from "react";
-import {
-  postService,
-  adminPostsService,
-  CreatePostData,
-} from "@/services/postsService";
+import { postService, adminPostsService } from "@/services/postsService";
 import { UploadService } from "@/services/uploadService";
 import { useAuth } from "@/store/hooks";
 import { paymentService } from "@/services/paymentService";

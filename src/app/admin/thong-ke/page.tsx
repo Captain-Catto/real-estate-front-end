@@ -73,7 +73,7 @@ function StatsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [timeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [timeFilter]);
 
   const fetchData = async () => {
     try {

@@ -4,9 +4,8 @@ import { useCallback } from "react";
 
 // Import all slices
 import {
-  addFavoriteAsync,
-  removeFavoriteAsync,
-  fetchFavorites,
+  toggleFavoriteAsync,
+  fetchFavoritesAsync,
 } from "./slices/favoritesSlices";
 import { clearError as clearAuthError } from "./slices/authSlice";
 import {
@@ -29,6 +28,7 @@ import {
   fetchSidebarConfig,
   updateSidebarItem,
   addSidebarItem,
+  deleteSidebarItem,
   reorderSidebarItems,
   clearError as clearSidebarError,
 } from "./slices/sidebarSlice";
@@ -95,7 +95,7 @@ export const useStore = () => {
     }
 
     try {
-      await dispatch(fetchFavorites()).unwrap();
+      await dispatch(fetchFavoritesAsync(true)).unwrap();
       return { success: true };
     } catch (err) {
       console.error("Failed to fetch user favorites:", err);
@@ -115,7 +115,7 @@ export const useStore = () => {
       }
 
       try {
-        await dispatch(addFavoriteAsync(propertyId)).unwrap();
+        await dispatch(toggleFavoriteAsync(propertyId)).unwrap();
         return true;
       } catch (err) {
         console.error("Failed to add property to favorites:", err);
@@ -132,7 +132,7 @@ export const useStore = () => {
       }
 
       try {
-        await dispatch(removeFavoriteAsync(propertyId)).unwrap();
+        await dispatch(toggleFavoriteAsync(propertyId)).unwrap();
         return true;
       } catch (err) {
         console.error("Failed to remove property from favorites:", err);
@@ -186,15 +186,13 @@ export const useStore = () => {
   );
 
   const depositToWalletAction = useCallback(
-    async (amount: number, method: string, description?: string) => {
+    async (amount: number, _method: string, _description?: string) => {
       if (!isAuthenticated) {
         return { success: false };
       }
 
       try {
-        const result = await dispatch(
-          depositToWallet({ amount, method, description })
-        ).unwrap();
+        const result = await dispatch(depositToWallet({ amount })).unwrap();
         return { success: true, data: result };
       } catch (err) {
         console.error("Failed to deposit to wallet:", err);
@@ -264,7 +262,9 @@ export const useStore = () => {
       }
 
       try {
-        await dispatch(markNotificationAsRead(notificationId)).unwrap();
+        await (dispatch as any)(
+          markNotificationAsRead(notificationId)
+        ).unwrap();
         return true;
       } catch (err) {
         console.error("Failed to mark notification as read:", err);
@@ -280,7 +280,7 @@ export const useStore = () => {
     }
 
     try {
-      await dispatch(markAllNotificationsAsRead()).unwrap();
+      await (dispatch as any)(markAllNotificationsAsRead()).unwrap();
       return true;
     } catch (err) {
       console.error("Failed to mark all notifications as read:", err);
@@ -314,7 +314,9 @@ export const useStore = () => {
       }
 
       try {
-        await dispatch(updateSidebarItem({ itemId, updates })).unwrap();
+        await dispatch(
+          updateSidebarItem({ itemId, itemData: updates })
+        ).unwrap();
         return true;
       } catch (err) {
         console.error("Failed to update sidebar item:", err);
@@ -348,7 +350,7 @@ export const useStore = () => {
       }
 
       try {
-        await dispatch(removeSidebarItem(itemId)).unwrap();
+        await dispatch(deleteSidebarItem(itemId)).unwrap();
         return true;
       } catch (err) {
         console.error("Failed to remove sidebar item:", err);
@@ -423,13 +425,13 @@ export const useStore = () => {
     fetchNotifications: fetchNotificationsAction,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    deleteNotification: deleteNotificationAction,
+    // deleteNotification: deleteNotificationAction,
     clearNotificationError: clearNotificationErrorAction,
 
     // Sidebar
     sidebarConfig,
-    processedGroups,
-    flatMenuItems,
+    // processedGroups,
+    // flatMenuItems,
     sidebarLoading,
     sidebarError,
     fetchSidebarConfig: fetchSidebarConfigAction,
@@ -499,7 +501,7 @@ export const useNotifications = () => {
     fetchNotifications: store.fetchNotifications,
     markAsRead: store.markNotificationAsRead,
     markAllAsRead: store.markAllNotificationsAsRead,
-    deleteNotification: store.deleteNotification,
+    // deleteNotification: store.deleteNotification,
     clearError: store.clearNotificationError,
   };
 };
@@ -508,8 +510,8 @@ export const useSidebar = () => {
   const store = useStore();
   return {
     config: store.sidebarConfig,
-    processedGroups: store.processedGroups,
-    flatMenuItems: store.flatMenuItems,
+    // processedGroups: store.processedGroups,
+    // flatMenuItems: store.flatMenuItems,
     loading: store.sidebarLoading,
     error: store.sidebarError,
     fetchSidebarConfig: store.fetchSidebarConfig,

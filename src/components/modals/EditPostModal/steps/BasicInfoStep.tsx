@@ -179,11 +179,19 @@ export default function BasicInfoStep({
           );
 
           console.log(
-            `✅ Loaded ${projects.length} projects:`,
-            projects.map((p) => p.name)
+            `✅ Loaded ${
+              Array.isArray(projects)
+                ? projects.length
+                : projects.projects.length
+            } projects:`,
+            Array.isArray(projects)
+              ? projects.map((p) => p.name)
+              : projects.projects.map((p) => p.name)
           );
 
-          setAvailableProjects(projects);
+          setAvailableProjects(
+            Array.isArray(projects) ? projects : projects.projects
+          );
           isInitialProjectLoad.current = false; // Mark as no longer initial load
         } catch (error) {
           console.error("❌ Error loading projects:", error);

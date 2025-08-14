@@ -15,12 +15,23 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  permissions?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   message: string;
   data?: {
     accessToken: string;
-    user?: any;
+    user?: User;
   };
 }
 
@@ -37,6 +48,24 @@ export interface ProfileResponse {
       updatedAt: string;
     };
   };
+}
+
+export interface UpdateProfileResponse {
+  success: boolean;
+  data: {
+    user: User;
+  };
+  message: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface DeleteAccountResponse {
+  success: boolean;
+  message: string;
 }
 
 // Helper function để lấy access token từ Redux store
@@ -188,7 +217,7 @@ export const refreshToken = async (): Promise<boolean> => {
 
 // Add profile caching to prevent infinite API calls
 let profileCache: {
-  data: any;
+  data: ProfileResponse;
   timestamp: number;
 } | null = null;
 
@@ -228,16 +257,16 @@ export const authService = {
             user:
               profileResponse.success && profileResponse.data
                 ? profileResponse.data.user
-                : null,
+                : undefined,
           },
         };
       }
 
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        message: error.message || "Đăng nhập thất bại",
+        message: error instanceof Error ? error.message : "Đăng nhập thất bại",
       };
     }
   },
@@ -266,16 +295,18 @@ export const authService = {
           message: data.message,
           data: {
             accessToken: data.data.accessToken,
-            user: profileResponse.success ? profileResponse.data.user : null,
+            user: profileResponse.success
+              ? profileResponse.data.user
+              : undefined,
           },
         };
       }
 
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        message: error.message || "Đăng ký thất bại",
+        message: error instanceof Error ? error.message : "Đăng ký thất bại",
       };
     }
   },
@@ -299,7 +330,7 @@ export const authService = {
       profileCache = null;
 
       return data;
-    } catch (error: any) {
+    } catch {
       // Clear cache
       profileCache = null;
       // Vẫn clear Redux store nếu có lỗi
@@ -330,7 +361,7 @@ export const authService = {
       profileCache = null;
 
       return data;
-    } catch (error: any) {
+    } catch {
       // Vẫn clear Redux store nếu có lỗi
       store.dispatch(setAccessToken(null));
       return {
@@ -387,8 +418,10 @@ export const authService = {
       };
 
       return data;
-    } catch (error: any) {
-      throw new Error(error.message || "Lỗi khi lấy thông tin profile");
+    } catch (error: unknown) {
+      throw new Error(
+        error instanceof Error ? error.message : "Lỗi khi lấy thông tin profile"
+      );
     } finally {
       isProfileFetching = false;
     }
@@ -417,8 +450,10 @@ export const authService = {
       }
 
       return data;
-    } catch (error: any) {
-      throw new Error(error.message || "Lỗi khi lấy thông tin profile");
+    } catch (error: unknown) {
+      throw new Error(
+        error instanceof Error ? error.message : "Lỗi khi lấy thông tin profile"
+      );
     }
   },
 
@@ -427,7 +462,7 @@ export const authService = {
     username?: string;
     phoneNumber?: string;
     avatar?: string;
-  }): Promise<any> {
+  }): Promise<UpdateProfileResponse> {
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
         method: "PUT",
@@ -444,15 +479,17 @@ export const authService = {
       profileCache = null;
 
       return data;
-    } catch (error: any) {
-      throw new Error(error.message || "Cập nhật profile thất bại");
+    } catch (error: unknown) {
+      throw new Error(
+        error instanceof Error ? error.message : "Cập nhật profile thất bại"
+      );
     }
   },
 
   async changePassword(passwordData: {
     currentPassword: string;
     newPassword: string;
-  }): Promise<any> {
+  }): Promise<ChangePasswordResponse> {
     try {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/auth/change-password`,
@@ -469,12 +506,14 @@ export const authService = {
       }
 
       return data;
-    } catch (error: any) {
-      throw new Error(error.message || "Đổi mật khẩu thất bại");
+    } catch (error: unknown) {
+      throw new Error(
+        error instanceof Error ? error.message : "Đổi mật khẩu thất bại"
+      );
     }
   },
 
-  async deleteAccount(password: string): Promise<any> {
+  async deleteAccount(password: string): Promise<DeleteAccountResponse> {
     try {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/auth/delete-account`,
@@ -494,8 +533,10 @@ export const authService = {
       store.dispatch(setAccessToken(null));
 
       return data;
-    } catch (error: any) {
-      throw new Error(error.message || "Xóa tài khoản thất bại");
+    } catch (error: unknown) {
+      throw new Error(
+        error instanceof Error ? error.message : "Xóa tài khoản thất bại"
+      );
     }
   },
 };

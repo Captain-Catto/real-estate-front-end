@@ -1,9 +1,19 @@
-import { authService } from "./authService";
-
 export interface NotificationResponse {
   success: boolean;
   message?: string;
-  data?: any[];
+  data?: ServiceNotification[];
+}
+
+export interface ServiceNotification {
+  _id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  isRead: boolean;
+  createdAt: string;
+  userId: string;
+  data: Record<string, unknown>;
 }
 
 export interface MarkAsReadResponse {
@@ -19,10 +29,11 @@ export const notificationService = {
         success: true,
         data: [],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        message: error.message || "Lỗi khi tải thông báo",
+        message:
+          error instanceof Error ? error.message : "Lỗi khi tải thông báo",
         data: [],
       };
     }
@@ -31,14 +42,16 @@ export const notificationService = {
   async markAsRead(notificationId: string): Promise<MarkAsReadResponse> {
     try {
       // Mock response since we don't have the actual endpoint
+      console.log("Mark notification as read:", notificationId);
       return {
         success: true,
         message: "Đã đánh dấu đọc thành công",
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
-        message: error.message || "Lỗi khi đánh dấu đã đọc",
+        message:
+          error instanceof Error ? error.message : "Lỗi khi đánh dấu đã đọc",
       };
     }
   },

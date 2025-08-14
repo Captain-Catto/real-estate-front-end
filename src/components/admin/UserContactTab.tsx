@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   customerContactService,
@@ -32,7 +32,7 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
   };
 
   // Load user's contact requests (both sent and received)
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -55,24 +55,19 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     loadContacts();
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, loadContacts]);
 
   // Update contact status
-  const updateContactStatus = async (
-    contactId: string,
-    status: string,
-    notes?: string
-  ) => {
+  const updateContactStatus = async (contactId: string, status: string) => {
     try {
       setUpdating(contactId);
       const response = await customerContactService.updateContactStatus(
         contactId,
-        status,
-        notes
+        status
       );
 
       if (response.success) {

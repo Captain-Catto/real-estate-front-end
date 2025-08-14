@@ -52,13 +52,16 @@ export const categoryService = {
    */
   getAll: async (): Promise<Category[]> => {
     try {
-      // Use limit=all to get all categories without pagination
-      const response = await fetch(`${API_BASE_URL}/categories?limit=all`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      // Use limit=all to get all categories without pagination, only active ones
+      const response = await fetch(
+        `${API_BASE_URL}/categories?limit=all&status=active`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Error fetching categories: ${response.status}`);
@@ -81,7 +84,7 @@ export const categoryService = {
   getByProjectType: async (isProject: boolean): Promise<Category[]> => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/categories/isProject/${isProject}`,
+        `${API_BASE_URL}/categories/isProject/${isProject}?status=active`,
         {
           method: "GET",
           headers: {

@@ -192,11 +192,19 @@ export default function BasicInfoStep({
           );
 
           console.log(
-            `✅ Loaded ${projects.length} projects:`,
-            projects.map((p: Project) => p.name)
+            `✅ Loaded ${
+              Array.isArray(projects)
+                ? projects.length
+                : projects.projects.length
+            } projects:`,
+            Array.isArray(projects)
+              ? projects.map((p: Project) => p.name)
+              : projects.projects.map((p: Project) => p.name)
           );
 
-          setAvailableProjects(projects);
+          setAvailableProjects(
+            Array.isArray(projects) ? projects : projects.projects
+          );
           isInitialProjectLoad.current = false; // Mark as no longer initial load
         } catch (error) {
           console.error("❌ Error loading projects:", error);
@@ -240,8 +248,6 @@ export default function BasicInfoStep({
               isProject: project.category.isProject,
               isActive: true,
               order: 0,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
             };
             setCategories([projectCategory]);
           } else {

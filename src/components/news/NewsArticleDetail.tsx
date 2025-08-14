@@ -3,8 +3,6 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import parse from "html-react-parser";
-import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
 
 interface Author {
   name: string;
@@ -118,7 +116,7 @@ export function NewsArticleDetail({
                       <div className="text-sm text-gray-600">
                         <span>Được đăng bởi </span>
                         <Link
-                          href={`/wiki/tac-gia/${article.author.slug}`}
+                          href={`/thanh-vien/${article.author.slug}`}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           {article.author.name}

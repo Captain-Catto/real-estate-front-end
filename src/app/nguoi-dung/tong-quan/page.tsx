@@ -314,7 +314,7 @@ export default function TongQuanPage() {
           {
             title: "Kiểm tra tin đăng",
             description: "Duyệt và quản lý các tin đăng",
-            href: "/admin/kiem-tra-tin-dang",
+            href: "/admin/quan-ly-tin-dang",
             icon: ClipboardDocumentCheckIcon,
             color: "bg-orange-600 hover:bg-orange-700",
           },

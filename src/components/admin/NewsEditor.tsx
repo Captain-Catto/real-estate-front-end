@@ -21,11 +21,10 @@ interface PendingImageInfo {
   previewUrl: string;
 }
 
-export default function NewsEditor({
-  initialContent = "",
-  onChange,
-  onImageFilesChange,
-}: NewsEditorProps) {
+export default React.forwardRef<any, NewsEditorProps>(function NewsEditor(
+  { initialContent = "", onChange, onImageFilesChange },
+  ref
+) {
   const [editorContent, setEditorContent] = useState(initialContent);
   const [pendingImages, setPendingImages] = useState<PendingImageInfo[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -178,4 +177,4 @@ export default function NewsEditor({
       )}
     </div>
   );
-}
+});

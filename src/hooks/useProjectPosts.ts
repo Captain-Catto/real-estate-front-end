@@ -105,7 +105,6 @@ export function useProjectPosts(
 
   useEffect(() => {
     fetchPosts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     projectId,
     filters.type,

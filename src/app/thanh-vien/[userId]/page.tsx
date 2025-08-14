@@ -6,9 +6,16 @@ import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
-import { FavoriteButton } from "@/components/common/FavoriteButton";
+import {
+  FavoriteButton,
+  FavoriteItem,
+} from "@/components/common/FavoriteButton";
 import { formatPriceByType, formatArea } from "@/utils/format";
-import { createPostSlug } from "@/utils/postSlug";
+import { generatePostSlug, convertBackendTransactionType } from "@/utils/slugUtils";
+import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
+import { adminPostsService, Post } from "@/services/postsService";
+import { getPublicUser } from "@/services/userService";
+import { locationService } from "@/services/locationService";
 
 interface PublicUser {
   id: string;
@@ -17,28 +24,6 @@ interface PublicUser {
   phoneNumber?: string;
   createdAt: string;
   status: string;
-}
-
-interface UserPost {
-  _id: string;
-  id: string;
-  title: string;
-  type: "ban" | "cho-thue";
-  price: number;
-  area: number;
-  bedrooms?: number;
-  bathrooms?: number;
-  images: string[];
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  location?: {
-    address?: string;
-    province?: string;
-    district?: string;
-    ward?: string;
-  };
-  slug: string;
 }
 
 interface UserStats {
@@ -52,7 +37,8 @@ export default function UserDetailPage() {
   const userId = params?.userId as string;
 
   const [user, setUser] = useState<PublicUser | null>(null);
-  const [posts, setPosts] = useState<UserPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsWithFullData, setPostsWithFullData] = useState<(Post & { fullAddress?: string; fullSlug?: string })[]>([]);
   const [stats, setStats] = useState<UserStats>({
     totalPosts: 0,
     sellPosts: 0,
@@ -76,6 +62,101 @@ export default function UserDetailPage() {
       month: "long",
       day: "numeric",
     });
+  };
+
+  // Function để tính thời gian đăng (giống FeaturedProperties)
+  const getTimeAgo = (createdAt: string): string => {
+    const now = new Date();
+    const createdDate = new Date(createdAt);
+    const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return "Đăng hôm nay";
+    } else if (diffDays === 1) {
+      return "Đăng hôm qua";
+    } else if (diffDays < 7) {
+      return `Đăng ${diffDays} ngày trước`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? "Đăng 1 tuần trước" : `Đăng ${weeks} tuần trước`;
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+      return months === 1 ? "Đăng 1 tháng trước" : `Đăng ${months} tháng trước`;
+    } else {
+      const years = Math.floor(diffDays / 365);
+      return years === 1 ? "Đăng 1 năm trước" : `Đăng ${years} năm trước`;
+    }
+  };
+
+  // Helper function để tạo địa chỉ đầy đủ từ location
+  const getFullAddress = async (post: Post): Promise<string> => {
+    try {
+      let fullAddress = "";
+      let provinceName = "";
+      let wardName = "";
+
+      // Lấy tên province và ward nếu có
+      if (post.location?.province && post.location?.ward) {
+        const locationNames = await locationService.getLocationNames(
+          post.location.province,
+          post.location.ward
+        );
+        provinceName = locationNames.provinceName || "";
+        wardName = locationNames.wardName || "";
+      }
+
+      // Kết hợp street + ward + province
+      const addressParts = [];
+      
+      if (post.location?.street) {
+        addressParts.push(post.location.street);
+      }
+      
+      if (wardName) {
+        addressParts.push(wardName);
+      }
+      
+      if (provinceName) {
+        addressParts.push(provinceName);
+      }
+
+      fullAddress = addressParts.join(", ");
+
+      return fullAddress || "Không xác định";
+    } catch (error) {
+      console.error("Error getting location names:", error);
+      return post.location?.street || post.location?.province || "Không xác định";
+    }
+  };
+
+  // Helper function để tạo slug với location names đầy đủ
+  const createFullPostSlug = async (post: Post): Promise<string> => {
+    try {
+      let provinceName = "";
+      let wardName = "";
+
+      if (post.location?.province && post.location?.ward) {
+        const locationNames = await locationService.getLocationNames(
+          post.location.province,
+          post.location.ward
+        );
+        provinceName = locationNames.provinceName || post.location.province;
+        wardName = locationNames.wardName || post.location.ward;
+      }
+
+      return generatePostSlug({
+        type: convertBackendTransactionType(post.type),
+        province: provinceName,
+        ward: wardName,
+        postId: post._id,
+        title: post.title,
+      });
+    } catch (error) {
+      console.error("Error creating post slug:", error);
+      // Fallback to simple format
+      return `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}-${post.title.toLowerCase().replace(/\s+/g, "-")}`;
+    }
   };
 
   // Handle phone button click
@@ -111,20 +192,12 @@ export default function UserDetailPage() {
 
       try {
         setLoading(true);
-        const API_BASE_URL =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-        const response = await fetch(`${API_BASE_URL}/users/public/${userId}`);
+        const response = await getPublicUser(userId);
 
-        if (!response.ok) {
-          throw new Error("Không thể tải thông tin người dùng");
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          setUser(data.user);
+        if (response.success && response.user) {
+          setUser(response.user);
         } else {
-          throw new Error(data.message || "Có lỗi xảy ra");
+          throw new Error(response.message || "Có lỗi xảy ra");
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
@@ -143,20 +216,14 @@ export default function UserDetailPage() {
 
       try {
         setPostsLoading(currentPage === 1);
-        const API_BASE_URL =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-        const response = await fetch(
-          `${API_BASE_URL}/posts/public/user/${userId}?page=${currentPage}&limit=${itemsPerPage}&status=active`
-        );
+        const response = await adminPostsService.getPublicUserPosts(userId, {
+          page: currentPage,
+          limit: itemsPerPage,
+          status: "active",
+        });
 
-        if (!response.ok) {
-          throw new Error("Không thể tải danh sách bài viết");
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          const newPosts = data.data.posts || [];
+        if (response.success) {
+          const newPosts = response.data.posts || [];
 
           if (currentPage === 1) {
             setPosts(newPosts);
@@ -164,19 +231,19 @@ export default function UserDetailPage() {
             setPosts((prev) => [...prev, ...newPosts]);
           }
 
-          setTotalPages(data.data.pagination?.totalPages || 1);
+          setTotalPages(response.data.pagination?.totalPages || 1);
 
           // Calculate stats for first page
           if (currentPage === 1) {
-            const totalItems = data.data.pagination?.totalItems || 0;
+            const totalItems = response.data.pagination?.totalItems || 0;
             const activePosts = newPosts.filter(
-              (p: UserPost) => p.status === "active"
+              (p: Post) => p.status === "active"
             );
             const sellPosts = activePosts.filter(
-              (p: UserPost) => p.type === "ban"
+              (p: Post) => p.type === "ban"
             );
             const rentPosts = activePosts.filter(
-              (p: UserPost) => p.type === "cho-thue"
+              (p: Post) => p.type === "cho-thue"
             );
 
             setStats({
@@ -197,7 +264,37 @@ export default function UserDetailPage() {
     fetchPosts();
   }, [userId, currentPage]);
 
-  const filteredPosts = posts.filter((post) => {
+  // Transform posts to include full address and full slug
+  useEffect(() => {
+    const transformPosts = async () => {
+      if (posts.length === 0) {
+        setPostsWithFullData([]);
+        return;
+      }
+
+      const postsWithData = await Promise.all(
+        posts.map(async (post) => {
+          const fullAddress = await getFullAddress(post);
+          const fullSlug = await createFullPostSlug(post);
+          console.log(`Post ${post._id} data:`, {
+            title: post.title,
+            street: post.location?.street,
+            province: post.location?.province,
+            ward: post.location?.ward,
+            fullAddress,
+            fullSlug
+          });
+          return { ...post, fullAddress, fullSlug };
+        })
+      );
+
+      setPostsWithFullData(postsWithData);
+    };
+
+    transformPosts();
+  }, [posts]);
+
+  const filteredPosts = postsWithFullData.filter((post) => {
     if (activeTab === "all") return true;
     return post.type === activeTab;
   });
@@ -425,13 +522,24 @@ export default function UserDetailPage() {
 
             {/* Posts Grid */}
             {postsLoading && currentPage === 1 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <div
+                    key={i}
+                    className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+                  >
+                    <div className="h-32 md:h-48 bg-gray-300"></div>
+                    <div className="p-3 md:p-4">
+                      <div className="h-3 md:h-4 bg-gray-300 rounded mb-2"></div>
+                      <div className="h-3 md:h-4 bg-gray-300 rounded mb-2 w-3/4"></div>
+                      <div className="h-4 md:h-6 bg-gray-300 rounded mb-2 w-1/2"></div>
+                      <div className="h-3 md:h-4 bg-gray-300 rounded mb-3 w-2/3"></div>
+                      <div className="flex justify-between pt-2 md:pt-3 border-t">
+                        <div className="h-3 md:h-4 bg-gray-300 rounded w-8 md:w-12"></div>
+                        <div className="h-3 md:h-4 bg-gray-300 rounded w-8 md:w-12"></div>
+                        <div className="h-3 md:h-4 bg-gray-300 rounded w-8 md:w-12"></div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -448,111 +556,139 @@ export default function UserDetailPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredPosts.map((post) => (
-                    <div
-                      key={post._id}
-                      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      {/* Image */}
-                      <div className="relative h-48">
-                        <Image
-                          src={post.images[0] || "/default-property.jpg"}
-                          alt={post.title}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute top-2 left-2">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded ${
-                              post.type === "ban"
-                                ? "bg-red-100 text-red-600"
-                                : "bg-blue-100 text-blue-600"
-                            }`}
-                          >
-                            {post.type === "ban" ? "Bán" : "Cho thuê"}
-                          </span>
-                        </div>
-                        <div className="absolute top-2 right-2">
-                          <FavoriteButton
-                            item={{
-                              id: post._id,
-                              type: "property",
-                              title: post.title,
-                              price: formatPriceByType(post.price, post.type),
-                              location:
-                                post.location?.address || "Không xác định",
-                              image: post.images[0] || "/default-property.jpg",
-                              slug: createPostSlug({
-                                _id: post._id,
-                                title: post.title,
-                                type: post.type,
-                                location: post.location,
-                              }),
-                              area: formatArea(post.area),
-                              bedrooms: post.bedrooms,
-                              bathrooms: post.bathrooms,
-                              propertyType:
-                                post.type === "ban" ? "Bán" : "Cho thuê",
-                            }}
-                            size="sm"
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+                  {filteredPosts.map((post) => {
+                    // Create favorite item data (giống FeaturedProperties)
+                    const favoriteItem: FavoriteItem = {
+                      id: post._id,
+                      type: "property",
+                      title: post.title,
+                      price: formatPriceByType(post.price, post.type),
+                      location: post.fullAddress || "Không xác định",
+                      image: post.images[0] || "/default-property.jpg",
+                      slug: post.fullSlug || `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}`,
+                      area: formatArea(post.area),
+                      bedrooms: post.bedrooms,
+                      bathrooms: post.bathrooms,
+                      propertyType: post.type === "ban" ? "Bán" : "Cho thuê",
+                    };
+
+                    return (
+                      <Link
+                        key={post._id}
+                        href={post.fullSlug || `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}`}
+                        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
+                      >
+                        {/* Image */}
+                        <div className="relative h-32 md:h-48">
+                          <Image
+                            src={post.images[0] || "/default-property.jpg"}
+                            alt={post.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                           />
-                        </div>
-                        {post.images.length > 1 && (
-                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                            +{post.images.length - 1}
+                          {/* Package Badge */}
+                          {shouldShowBadge(post.package || "free") && (
+                            <div className="absolute top-2 md:top-3 left-2 md:left-3">
+                              <span
+                                className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded text-xs font-medium ${
+                                  getPackageBadge(post.package || "free")
+                                    .className
+                                }`}
+                              >
+                                {getPackageBadge(post.package || "free").text}
+                              </span>
+                            </div>
+                          )}
+                          {/* Favorite Button */}
+                          <div className="absolute top-2 md:top-3 right-2 md:right-3">
+                            <div
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                              }}
+                              className="inline-block"
+                            >
+                              <FavoriteButton
+                                item={favoriteItem}
+                                className="backdrop-blur-sm shadow-md"
+                                size="sm"
+                              />
+                            </div>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <Link
-                          href={createPostSlug({
-                            _id: post._id,
-                            title: post.title,
-                            type: post.type,
-                            location: post.location,
-                          })}
-                          className="text-lg font-semibold text-gray-900 hover:text-blue-600 line-clamp-2 mb-2 block"
-                        >
-                          {post.title}
-                        </Link>
-
-                        <div className="flex items-center text-xs text-gray-600 mb-3 space-x-3">
-                          {post.bedrooms && <span>{post.bedrooms} PN</span>}
-                          {post.bathrooms && <span>{post.bathrooms} WC</span>}
-                          <span>{formatArea(post.area)}</span>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="text-lg font-bold text-red-600">
+                        {/* Content */}
+                        <div className="p-3 md:p-4">
+                          <h3 className="font-semibold text-sm md:text-base mb-1 md:mb-2 line-clamp-2 min-h-[2rem] md:min-h-[3rem]">
+                            {post.title}
+                          </h3>
+                          <div className="text-lg md:text-xl font-bold text-red-600 mb-1 md:mb-2">
                             {formatPriceByType(post.price, post.type)}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {formatDate(post.updatedAt)}
-                          </div>
-                        </div>
-
-                        {post.location?.address && (
-                          <div className="mt-2 text-xs text-gray-600 line-clamp-1">
+                          <div className="flex items-start text-gray-600 mb-2 md:mb-3">
                             <svg
-                              className="w-3 h-3 inline mr-1"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
+                              className="w-3 h-3 md:w-4 md:h-4 mr-1 flex-shrink-0 mt-0.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
                               <path
-                                fillRule="evenodd"
-                                d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                                clipRule="evenodd"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                               />
                             </svg>
-                            {post.location.address}
+                            <span className="text-xs md:text-sm leading-4 line-clamp-2">
+                              {post.fullAddress || "Không xác định"}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+
+                          {/* Time ago */}
+                          <div className="mb-2 md:mb-3">
+                            <span className="text-xs md:text-sm text-gray-500">
+                              {getTimeAgo(post.createdAt)}
+                            </span>
+                          </div>
+
+                          {/* Property details */}
+                          <div className="flex gap-4 text-xs md:text-sm text-gray-500 border-t pt-2 md:pt-3">
+                            {post.bedrooms !== undefined &&
+                              post.bedrooms !== null && (
+                                <span className="flex items-center gap-1">
+                                  <i className="fas fa-bed"></i>
+                                  {post.bedrooms} PN
+                                </span>
+                              )}
+                            {post.bathrooms !== undefined &&
+                              post.bathrooms !== null && (
+                                <span className="flex items-center gap-1">
+                                  <i className="fas fa-bath"></i>
+                                  {post.bathrooms} WC
+                                </span>
+                              )}
+                            {post.area && (
+                              <span className="flex items-center gap-1">
+                                <i className="fas fa-ruler-combined"></i>
+                                {formatArea(post.area)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
 
                 {/* Load More Button */}

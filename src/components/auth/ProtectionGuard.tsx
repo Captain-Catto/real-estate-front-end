@@ -311,7 +311,6 @@ export default function ProtectionGuard({
       hasAccess: accessGranted,
       isChecking: false,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
     isInitialized,

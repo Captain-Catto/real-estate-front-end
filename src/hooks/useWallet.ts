@@ -23,7 +23,6 @@ export interface WalletInfo {
 
 // Tạo một phiên bản global của broadcastChannel để tái sử dụng
 let globalBroadcastChannel: BroadcastChannel | null = null;
-let globalPollingActive = false; // Flag để tránh multiple polling
 if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
   try {
     globalBroadcastChannel = new BroadcastChannel("wallet_updates");
@@ -77,12 +76,9 @@ export const useWallet = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now());
 
   // References for polling and focus tracking
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  // Tăng thời gian tối thiểu giữa các lần refresh để giảm tải server
-  const minRefreshInterval = 30000; // Minimum time between refreshes (30 seconds)
 
   // Format shortcuts
   const formattedBalance = formatPrice(walletInfo.balance);
@@ -113,9 +109,6 @@ export const useWallet = () => {
           lastTransaction: response.data.lastTransaction || null,
         });
 
-        // Update the last refresh time
-        setLastRefreshTime(Date.now());
-
         return response.data;
       } else {
         // Handle error with a generic message since response might not have message property
@@ -143,13 +136,35 @@ export const useWallet = () => {
 
       try {
         // Fixed: Using the correct function name from paymentService
-        const response = await paymentService.getTransactionHistory({
+        const response = await paymentService.getPaymentHistory({
           page: pageNum,
           limit: 10,
         });
 
+        console.log("Fetched transactions:", response);
+
         if (response.success) {
-          const newTransactions = response.data.transactions || [];
+          const newTransactions = (response.data.payments || []).map(
+            (payment) => ({
+              id: payment._id,
+              _id: payment._id,
+              type:
+                payment.amount > 0
+                  ? ("DEPOSIT" as const)
+                  : ("PAYMENT" as const),
+              amount: Math.abs(payment.amount),
+              description: payment.description,
+              date: payment.createdAt,
+              createdAt: payment.createdAt,
+              status: payment.status as
+                | "PENDING"
+                | "COMPLETED"
+                | "FAILED"
+                | "CANCELLED",
+              orderId: payment.orderId,
+              paymentMethod: payment.paymentMethod,
+            })
+          );
 
           if (reset) {
             setTransactions(newTransactions);
@@ -160,7 +175,7 @@ export const useWallet = () => {
           setHasMore(newTransactions.length > 0);
           setPage(pageNum);
         } else {
-          toast.error(response.message || "Không thể tải lịch sử giao dịch");
+          toast.error("Không thể tải lịch sử giao dịch");
         }
       } catch (err) {
         console.error("Error fetching transactions:", err);
@@ -177,7 +192,7 @@ export const useWallet = () => {
     if (!transactionsLoading && hasMore) {
       fetchTransactions(page + 1);
     }
-  }, [page, transactionsLoading, hasMore]);
+  }, [page, transactionsLoading, hasMore, fetchTransactions]);
 
   // Deposit money to wallet
   const deposit = useCallback(
@@ -262,7 +277,7 @@ export const useWallet = () => {
         return { success: false, error: errorMessage };
       }
     },
-    [isAuthenticated, formatPrice]
+    [isAuthenticated, formatPrice, fetchWalletInfo]
   );
 
   // Get transaction details
@@ -304,14 +319,13 @@ export const useWallet = () => {
       setPage(1);
       setHasMore(true);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchTransactions, fetchWalletInfo]);
 
   // Set up window focus event listener and polling mechanism
   useEffect(() => {
     // EMERGENCY FIX: Temporarily disable all polling to stop infinite loops
     // Only allow initial data fetch, no continuous polling
-    console.log("Wallet polling disabled to prevent infinite loops");
-    
+
     // Skip if not authenticated
     if (!isAuthenticated) return;
 
@@ -321,7 +335,6 @@ export const useWallet = () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
-        globalPollingActive = false;
       }
     };
   }, [isAuthenticated]);

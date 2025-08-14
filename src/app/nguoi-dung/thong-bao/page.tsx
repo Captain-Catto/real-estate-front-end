@@ -60,7 +60,23 @@ export default function NotificationsPage() {
       setLoading(true);
       const response = await notificationService.getUserNotifications();
       if (response.success) {
-        setNotifications(response.data || []);
+        // Convert ServiceNotification to Notification format
+        const convertedNotifications = (response.data || []).map((item) => ({
+          _id: item._id,
+          title: item.title,
+          message: item.message,
+          type: item.type as
+            | "PAYMENT"
+            | "ORDER"
+            | "SYSTEM"
+            | "PROMOTION"
+            | "ACCOUNT",
+          read: item.read || item.isRead || false,
+          createdAt: item.createdAt,
+          userId: item.userId || "",
+          data: item.data || {},
+        }));
+        setNotifications(convertedNotifications);
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);

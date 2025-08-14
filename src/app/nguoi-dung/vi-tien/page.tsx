@@ -52,12 +52,11 @@ export default function ViTienPage() {
     loadMoreTransactions,
     loading,
     transactionsLoading,
-    error,
     refresh,
-    refreshTransactions,
     deposit,
-    getTransactionDetails,
   } = useWallet();
+
+  console.log("transactions", transactions);
 
   const [activeTab, setActiveTab] = useState<"overview" | "history">(
     "overview"

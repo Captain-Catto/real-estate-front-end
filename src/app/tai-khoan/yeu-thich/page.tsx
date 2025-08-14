@@ -7,13 +7,13 @@ export const metadata: Metadata = {
   description: "Quản lý các bất động sản và dự án bạn quan tâm",
 };
 
-export default function UserFavoritesPage({
+export default async function UserFavoritesPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const sortBy =
-    typeof searchParams.sort === "string" ? searchParams.sort : "newest";
+  const params = await searchParams;
+  const sortBy = typeof params.sort === "string" ? params.sort : "newest";
 
   return (
     <div className="min-h-screen bg-gray-50">

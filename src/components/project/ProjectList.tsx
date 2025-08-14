@@ -103,7 +103,6 @@ export function ProjectList({
     // Use location names hook to get readable location names if structured location is available
     const { locationNames, loading: locationLoading } = useLocationNames(
       project.locationObj?.provinceCode,
-      project.locationObj?.districtCode,
       project.locationObj?.wardCode
     );
 

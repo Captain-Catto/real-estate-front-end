@@ -10,7 +10,6 @@ interface ProjectLocationInfoProps {
 export function ProjectLocationInfo({ project }: ProjectLocationInfoProps) {
   const { locationNames, loading: locationLoading } = useLocationNames(
     project.location?.provinceCode,
-    project.location?.districtCode,
     project.location?.wardCode
   );
 
@@ -46,10 +45,10 @@ export function ProjectLocationInfo({ project }: ProjectLocationInfoProps) {
 
     // Show location codes if available (for debugging)
     if (project.location) {
-      const { provinceCode, districtCode, wardCode } = project.location;
+      const { provinceCode, wardCode } = project.location;
       return `Mã vị trí: ${wardCode ? `${wardCode}, ` : ""}${
-        districtCode ? `${districtCode}, ` : ""
-      }${provinceCode || "N/A"}`;
+        provinceCode || "N/A"
+      }`;
     }
 
     return "Thông tin vị trí chưa được cập nhật";

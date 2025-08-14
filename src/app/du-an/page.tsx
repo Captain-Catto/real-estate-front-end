@@ -1,9 +1,9 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProjectPage } from "@/components/project/ProjectPage";
 
-export default function DuAnPage() {
+function DuAnPageInternal() {
   const searchParams = useSearchParams();
 
   // Sử dụng slug thay vì code
@@ -30,5 +30,13 @@ export default function DuAnPage() {
       sortBy={sortBy}
       developerId={developerId}
     />
+  );
+}
+
+export default function DuAnPage() {
+  return (
+    <Suspense fallback={<div>Đang tải...</div>}>
+      <DuAnPageInternal />
+    </Suspense>
   );
 }

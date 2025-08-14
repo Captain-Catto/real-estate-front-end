@@ -6,7 +6,6 @@ import { locationService, Location } from "@/services/locationService";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
-import { normalizeForSearch } from "@/utils/textUtils";
 
 // Search tabs configuration
 const SEARCH_TABS = [
@@ -59,7 +58,7 @@ export default function SearchSectionMain() {
   >([{ value: "", label: "Tất cả mức giá" }]);
   const [areaOptions, setAreaOptions] = useState<
     { value: string; label: string }[]
-  >([{ value: "", label: "Tất cả diện tích" }]);
+  >([]);
 
   // Load initial data
   useEffect(() => {
@@ -109,7 +108,6 @@ export default function SearchSectionMain() {
         const areaType = searchType === "project" ? "project" : "property";
         const areaRanges = await areaService.getByType(areaType);
         const areaOptionsList = [
-          { value: "", label: "Tất cả diện tích" },
           ...areaRanges.map((range: AreaRange) => ({
             value: range.slug || range.id,
             label: range.name,
@@ -382,6 +380,7 @@ export default function SearchSectionMain() {
                 onChange={(e) => setSelectedArea(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white text-gray-900"
               >
+                <option value="">Chọn diện tích</option>
                 {areaOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}

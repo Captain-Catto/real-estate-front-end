@@ -204,10 +204,16 @@ export default function NewsSection({
                       <div className="absolute top-4 left-4">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            categoryColors[news.category]
+                            categoryColors[
+                              news.category as keyof typeof categoryColors
+                            ]
                           }`}
                         >
-                          {categoryNames[news.category]}
+                          {
+                            categoryNames[
+                              news.category as keyof typeof categoryNames
+                            ]
+                          }
                         </span>
                       </div>
                       {news.isHot && (
@@ -301,10 +307,16 @@ export default function NewsSection({
                           <div className="absolute top-4 left-4">
                             <span
                               className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                                categoryColors[news.category]
+                                categoryColors[
+                                  news.category as keyof typeof categoryColors
+                                ]
                               }`}
                             >
-                              {categoryNames[news.category]}
+                              {
+                                categoryNames[
+                                  news.category as keyof typeof categoryNames
+                                ]
+                              }
                             </span>
                           </div>
                           <div className="absolute top-4 right-4 flex gap-1">

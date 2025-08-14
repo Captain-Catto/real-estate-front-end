@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useEffect } from "react";
-import { useWallet } from "@/hooks/useWallet";
 import { packageService, Package } from "@/services/packageService";
 
 interface PackageSelectionStepProps {

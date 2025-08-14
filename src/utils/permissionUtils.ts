@@ -1,7 +1,6 @@
 "use client";
 
 import { usePermissions } from "@/hooks/usePermissions";
-import { PERMISSIONS } from "@/constants/permissions";
 import { useMemo } from "react";
 
 /**

@@ -162,7 +162,6 @@ export default function SystemNotificationManager() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.targetType, formData.targetUsers, formData.userRole]);
 
   // Send notification

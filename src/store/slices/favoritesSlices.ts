@@ -58,7 +58,6 @@ export const fetchFavoritesAsync = createAsyncThunk(
       const response = await favoriteService.getFavorites();
 
       if (response.success && response.data.favorites) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawFavorites: any[] = response.data.favorites;
 
         // Transform to FavoriteItem format with location names

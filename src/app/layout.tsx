@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { usePathname, useSearchParams } from "next/navigation";
 
 import { ReduxProvider } from "@/store/provider";
-import { trackPageView } from "@/services/trackingService";
+import PageTracker from "@/components/PageTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,21 +28,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  // Track page views
-  useEffect(() => {
-    // Get full path including query parameters
-    const fullPath =
-      searchParams.size > 0
-        ? `${pathname}?${searchParams.toString()}`
-        : pathname;
-
-    // Track the page view
-    trackPageView(fullPath);
-  }, [pathname, searchParams]);
-
   return (
     <html lang="vi">
       <head>
@@ -57,7 +41,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider>
+          <Suspense fallback={<div>Loading...</div>}>
+            <PageTracker />
+          </Suspense>
+          {children}
+        </ReduxProvider>
       </body>
     </html>
   );

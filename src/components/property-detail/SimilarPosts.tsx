@@ -3,10 +3,16 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { postService } from "@/services/postsService";
+import { postService, type Post } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
 import { formatPriceByType } from "@/utils/format";
 import { createPostSlug } from "@/utils/postSlug";
+
+interface LocationNames {
+  provinceName?: string;
+  districtName?: string;
+  wardName?: string;
+}
 
 interface SimilarPost {
   _id: string;
@@ -16,30 +22,23 @@ interface SimilarPost {
   area: number;
   location: {
     province?: string;
-    district?: string;
     ward?: string;
     street?: string;
   };
-  locationNames?: {
-    provinceName?: string;
-    districtName?: string;
-    wardName?: string;
-  };
+  category: string | { _id: string; name: string; slug: string }; // Change from object to string or object
   images: string[];
-  type: string;
-  category?: {
-    _id: string;
-    name: string;
-    slug: string;
-  };
-  project?: {
-    _id: string;
-    name: string;
-    slug: string;
-  };
+  type: "ban" | "cho-thue";
+  views: number;
   createdAt: string;
-  package?: "free" | "basic" | "premium" | "vip";
-  priority?: "normal" | "premium" | "vip";
+  author: {
+    _id: string;
+    username: string;
+    email: string;
+    avatar?: string;
+  };
+  package?: string;
+  project?: string | { _id: string; name: string; slug: string };
+  locationNames?: LocationNames;
 }
 
 interface SimilarPostsProps {
@@ -51,7 +50,7 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
   const [similarPosts, setSimilarPosts] = useState<SimilarPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [criteria, setCriteria] = useState<{
+  const [criteria, _setCriteria] = useState<{
     searchMethod?: string;
     hasProject?: boolean;
     ward?: string;
@@ -67,20 +66,26 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
   useEffect(() => {
     const fetchSimilarPosts = async () => {
       try {
+        console.log(
+          "🔍 Starting to fetch similar posts for postId:",
+          postId,
+          "with limit:",
+          limit
+        );
         setLoading(true);
         setError(null);
 
         const response = await postService.getSimilarPosts(postId, limit);
 
+        console.log("API Response:", response);
+
         // Lấy thông tin tên địa chỉ cho mỗi bài đăng
         const postsWithLocationNames = await Promise.all(
-          (response.posts || []).map(async (post: SimilarPost) => {
+          (response.data?.posts || []).map(async (post: Post) => {
             if (
               post.location &&
               ((typeof post.location.province === "string" &&
                 !isNaN(Number(post.location.province))) ||
-                (typeof post.location.district === "string" &&
-                  !isNaN(Number(post.location.district))) ||
                 (typeof post.location.ward === "string" &&
                   !isNaN(Number(post.location.ward))))
             ) {
@@ -109,7 +114,7 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
         );
 
         setSimilarPosts(postsWithLocationNames);
-        setCriteria(response.criteria || null);
+        // setCriteria(response.criteria || null);
 
         console.log("🔍 Similar posts loaded:", postsWithLocationNames);
       } catch (err) {
@@ -350,14 +355,21 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
                       <div className="flex items-start">
                         <i className="fas fa-building mr-1 text-gray-400 mt-1 flex-shrink-0"></i>
                         <span className="line-clamp-1">
-                          {post.project.name}
+                          {typeof post.project === "object" &&
+                          post.project?.name
+                            ? post.project.name
+                            : String(post.project || "Không xác định")}
                         </span>
                       </div>
                     )}
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
-                    <span>{post.category?.name || "Chưa phân loại"}</span>
+                    <span>
+                      {typeof post.category === "object" && post.category?.name
+                        ? post.category.name
+                        : String(post.category || "Chưa phân loại")}
+                    </span>
                     <span>
                       {new Date(post.createdAt).toLocaleDateString("vi-VN")}
                     </span>

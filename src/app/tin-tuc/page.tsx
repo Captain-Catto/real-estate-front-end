@@ -8,8 +8,7 @@ export default async function NewsPage() {
   try {
     // Replace with your actual API endpoint
     const response = await fetch("http://localhost:3000/api/news", {
-      cache: "no-store", // For dynamic data
-      // or cache: 'force-cache' for static data
+      next: { revalidate: 60 }, // Revalidate every 60 seconds
     });
 
     if (response.ok) {

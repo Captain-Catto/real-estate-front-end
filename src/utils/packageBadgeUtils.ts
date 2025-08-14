@@ -18,14 +18,14 @@ export const getPackageBadge = (
     case "vip":
       return {
         text: "VIP",
-        className: "bg-red-500 text-white",
+        className:
+          "bg-red-500 text-white relative overflow-hidden premium-shimmer",
         priority: 4,
       };
     case "premium":
       return {
         text: "Premium",
-        className:
-          "bg-red-500 text-white relative overflow-hidden premium-shimmer",
+        className: "bg-red-500 text-white ",
         priority: 3,
       };
     default:

@@ -3,8 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useWallet } from "@/hooks/useWallet";
-import { useRouter } from "next/navigation";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import NotificationDropdown from "@/components/notifications/NotificationDropdown";
 
 interface UserData {
   name: string;
@@ -25,8 +24,6 @@ const UserHeader: React.FC<UserHeaderProps> = ({
   showNotificationButton = false,
   showWalletButton = false,
 }) => {
-  const router = useRouter();
-
   // Wallet hook with real-time balance updates
   const { formattedBalance, loading: walletLoading } = useWallet();
 

@@ -16,17 +16,14 @@ interface ContactBoxProps {
     email?: string;
     totalListings?: number;
   };
-  propertyId: string;
   propertyTitle?: string;
 }
 
 export function ContactBox({
   author,
-  propertyId,
   propertyTitle,
 }: {
   author: ContactBoxProps["author"];
-  propertyId: string;
   propertyTitle?: string;
 }) {
   console.log("ContactBox rendered with author:", author);

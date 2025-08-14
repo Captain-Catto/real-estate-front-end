@@ -1,4 +1,4 @@
-import { refreshToken, getAccessToken } from "./authService";
+import { fetchWithAuth } from "./authService";
 import { categoryService } from "./categoryService";
 import { toast } from "sonner";
 
@@ -124,7 +124,14 @@ export interface FeaturedPropertiesResponse {
   message?: string;
   data: {
     posts: Post[];
-    pagination?: any;
+    pagination?: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
   };
 }
 
@@ -140,6 +147,78 @@ export interface PostSearchFilters {
   bathrooms?: number;
   sortBy?: string;
   [key: string]: string | number | undefined;
+}
+
+// Interface for update post response
+export interface UpdatePostResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    post: Post;
+  };
+}
+
+// Interface for delete post response
+export interface DeletePostResponse {
+  success: boolean;
+  message: string;
+}
+
+// Interface for extend post response
+export interface ExtendPostResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    post: Post;
+  };
+}
+
+// Interface for packages response
+export interface PackagesResponse {
+  success: boolean;
+  data: Array<{
+    _id: string;
+    name: string;
+    price: number;
+    duration: number;
+    features: string[];
+    type: string;
+  }>;
+}
+
+// Interface for post detail response
+export interface PostDetailResponse {
+  success: boolean;
+  data: {
+    post: Post;
+  };
+}
+
+// Interface for similar posts response
+export interface SimilarPostsResponse {
+  success: boolean;
+  data: {
+    posts: Post[];
+    total: number;
+    criteria?: any;
+  };
+}
+
+// Interface for search results response
+export interface SearchPostsResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    posts: Post[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
 }
 
 export interface PostsStats {
@@ -160,6 +239,78 @@ export interface UploadImageResponse {
   message?: string;
 }
 
+// Add response interfaces for various API calls
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
+export interface PostResponse {
+  success: boolean;
+  data: Post;
+  message?: string;
+}
+
+export interface PostsResponse {
+  success: boolean;
+  data: {
+    posts: Post[];
+    pagination?: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+  message?: string;
+}
+
+export interface PackageResponse {
+  success: boolean;
+  data: {
+    packages: Array<{
+      _id: string;
+      name: string;
+      duration: number;
+      price: number;
+      description: string;
+      features: string[];
+    }>;
+  };
+  message?: string;
+}
+
+export interface PostUpdateData {
+  type?: "ban" | "cho-thue";
+  category?: string;
+  title?: string;
+  description?: string;
+  area?: string;
+  price?: string;
+  currency?: string;
+  location?: {
+    province: string;
+    district: string;
+    ward: string;
+    street: string;
+  };
+  project?: string;
+  legalDocs?: string;
+  furniture?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  floors?: number;
+  houseDirection?: string;
+  balconyDirection?: string;
+  roadWidth?: string;
+  frontWidth?: string;
+  packageId?: string;
+  [key: string]: unknown;
+}
+
 class PostService {
   // Helper function để handle response và hiển thị toast
   private handleResponse(
@@ -177,76 +328,6 @@ class PostService {
     }
 
     return response;
-  }
-
-  private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    try {
-      // Lấy token từ Redux store thay vì localStorage
-      const token = getAccessToken();
-
-      console.log(`Fetching ${url} with method ${options.method || "GET"}`);
-
-      // Handle Content-Type properly - don't set for FormData
-      const isFormData = options.body instanceof FormData;
-
-      // Build headers carefully
-      const headers: HeadersInit = {};
-
-      // Only add Content-Type for JSON requests
-      if (!isFormData) {
-        headers["Content-Type"] = "application/json";
-      }
-
-      // Add Authorization if token exists
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      // Merge with user-provided headers, but prioritize auth headers
-      const mergedHeaders = {
-        ...options.headers,
-        ...headers,
-      };
-
-      // Create the request config
-      const requestConfig: RequestInit = {
-        ...options,
-        headers: mergedHeaders,
-        credentials: "include",
-      };
-
-      const response = await fetch(url, requestConfig);
-
-      // Handle 401 Unauthorized error
-      if (response.status === 401) {
-        try {
-          const refreshed = await refreshToken();
-          if (refreshed) {
-            // Retry with new token
-            const newToken = getAccessToken();
-            const newHeaders = {
-              ...mergedHeaders,
-              ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
-            };
-
-            return await fetch(url, {
-              ...requestConfig,
-              headers: newHeaders,
-            });
-          }
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          // Don't redirect here, let the calling component handle it
-          return response;
-        }
-      }
-
-      return response;
-    } catch (error) {
-      console.error(`Network error when fetching ${url}:`, error);
-      toast.error("Đã xảy ra lỗi kết nối mạng");
-      return null;
-    }
   }
 
   // async uploadImages(images: File[]): Promise<string[]> {
@@ -282,8 +363,11 @@ class PostService {
   //   return uploadedUrls;
   // }
 
-  async createPost(postData: CreatePostData, imageFiles: File[]): Promise<any> {
-    const makeRequest = async () => {
+  async createPost(
+    postData: CreatePostData,
+    imageFiles: File[]
+  ): Promise<PostResponse> {
+    try {
       const formData = new FormData();
       console.log("Creating post with data:", postData);
 
@@ -311,43 +395,30 @@ class PostService {
           }
         }
       });
+
       for (const file of imageFiles) {
         formData.append("images", file);
       }
-      const token = getAccessToken();
-      return fetch(`${API_BASE_URL}/posts`, {
+
+      const response = await fetchWithAuth(`${API_BASE_URL}/posts`, {
         method: "POST",
         body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
       });
-    };
 
-    let response = await makeRequest();
-
-    // Nếu token hết hạn, thử refresh
-    if (response.status === 401) {
-      const refreshed = await refreshToken(); // Hàm này gọi API /auth/refresh và lưu accessToken mới vào localStorage
-      if (refreshed) {
-        response = await makeRequest();
-      } else {
-        // Nếu refresh cũng fail, logout
-        localStorage.removeItem("accessToken");
-        window.location.href = "/dang-nhap";
-        toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
-        return null;
+      if (!response || !response.ok) {
+        const error = response
+          ? await response.json()
+          : { message: "Lỗi kết nối mạng" };
+        toast.error(error.message || "Tạo tin đăng thất bại");
+        throw new Error(error.message || "Failed to create post");
       }
-    }
 
-    if (!response.ok) {
-      const error = await response.json();
-      toast.error(error.message || "Tạo tin đăng thất bại");
-      return null;
+      return await response.json();
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Tạo tin đăng thất bại");
+      throw error;
     }
-
-    return await response.json();
   }
 
   async getUserPosts(
@@ -361,7 +432,7 @@ class PostService {
       startDate?: string;
       endDate?: string;
     } = {}
-  ): Promise<any> {
+  ): Promise<PostsResponse> {
     try {
       // Đặt giá trị mặc định
       const page = params.page || 1;
@@ -378,18 +449,18 @@ class PostService {
       if (params.startDate) queryParams += `&startDate=${params.startDate}`;
       if (params.endDate) queryParams += `&endDate=${params.endDate}`;
 
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/posts/my?${queryParams}`
       );
 
       if (!response) {
         toast.error("Không thể kết nối đến server");
-        return null;
+        throw new Error("Cannot connect to server");
       }
 
       if (!response.ok) {
         toast.error("Lấy danh sách tin đăng thất bại");
-        return null;
+        throw new Error("Failed to fetch user posts");
       }
       const result = await response.json();
       console.log("getuserpost result", result);
@@ -398,7 +469,7 @@ class PostService {
     } catch (error) {
       console.error("Error fetching user posts:", error);
       toast.error("Đã xảy ra lỗi khi lấy danh sách tin đăng");
-      return null;
+      throw error;
     }
   }
 
@@ -406,9 +477,11 @@ class PostService {
     postId: string,
     postData: Partial<CreatePostData>,
     imageUrls?: string[]
-  ): Promise<any> {
+  ): Promise<UpdatePostResponse> {
     try {
-      const updateData: any = { ...postData };
+      const updateData: Partial<CreatePostData> & { images?: string[] } = {
+        ...postData,
+      };
       if (imageUrls !== undefined) {
         updateData.images = imageUrls;
       }
@@ -434,17 +507,14 @@ class PostService {
         throw new Error("Invalid post ID");
       }
 
-      const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/posts/${postId}`,
-        {
-          method: "PUT",
-          body: JSON.stringify(updateData),
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/posts/${postId}`, {
+        method: "PUT",
+        body: JSON.stringify(updateData),
+      });
 
       if (!response) {
         toast.error("Không thể kết nối đến server");
-        return null;
+        return { success: false, message: "Không thể kết nối đến server" };
       }
 
       // Log full response for debugging
@@ -466,7 +536,7 @@ class PostService {
           console.error("Error parsing error response:", parseError);
         }
         toast.error(errorMessage);
-        return null;
+        return { success: false, message: errorMessage };
       }
 
       try {
@@ -480,7 +550,7 @@ class PostService {
     } catch (error) {
       console.error("Error updating post:", error);
       toast.error("Đã xảy ra lỗi khi cập nhật tin đăng");
-      return null;
+      return { success: false, message: "Đã xảy ra lỗi khi cập nhật tin đăng" };
     }
   }
 
@@ -488,9 +558,11 @@ class PostService {
     postId: string,
     postData: Partial<CreatePostData>,
     imageUrls?: string[]
-  ): Promise<any> {
+  ): Promise<UpdatePostResponse> {
     try {
-      const updateData: any = { ...postData };
+      const updateData: Partial<CreatePostData> & { images?: string[] } = {
+        ...postData,
+      };
       if (imageUrls !== undefined) {
         updateData.images = imageUrls;
       }
@@ -503,13 +575,17 @@ class PostService {
         throw new Error("Invalid post ID");
       }
 
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/posts/${postId}/resubmit`,
         {
           method: "PUT",
           body: JSON.stringify(updateData),
         }
       );
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       // Log full response for debugging
       console.log(`Resubmit response status: ${response.status}`);
@@ -546,35 +622,36 @@ class PostService {
     }
   }
 
-  async deletePost(postId: string): Promise<any> {
+  async deletePost(postId: string): Promise<DeletePostResponse> {
     try {
-      const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/posts/${postId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/posts/${postId}`, {
+        method: "DELETE",
+      });
 
       const validResponse = this.handleResponse(
         response,
         "Xóa tin đăng thất bại"
       );
-      if (!validResponse) return null;
+      if (!validResponse)
+        return { success: false, message: "Xóa tin đăng thất bại" };
 
       return await validResponse.json();
     } catch (error) {
       console.error("Error deleting post:", error);
       toast.error("Đã xảy ra lỗi khi xóa tin đăng");
-      return null;
+      return { success: false, message: "Đã xảy ra lỗi khi xóa tin đăng" };
     }
   }
 
   // Extend/renew post - change status from expired to active
-  async extendPost(postId: string, packageId: string): Promise<any> {
+  async extendPost(
+    postId: string,
+    packageId: string
+  ): Promise<ExtendPostResponse> {
     try {
       console.log("Extending post with ID:", postId, "Package ID:", packageId);
 
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/posts/${postId}/extend`,
         {
           method: "POST",
@@ -589,17 +666,18 @@ class PostService {
         response,
         "Gia hạn tin đăng thất bại"
       );
-      if (!validResponse) return null;
+      if (!validResponse)
+        return { success: false, message: "Gia hạn tin đăng thất bại" };
 
       return await validResponse.json();
     } catch (error) {
       console.error("Error extending post:", error);
       toast.error("Đã xảy ra lỗi khi gia hạn tin đăng");
-      return null;
+      return { success: false, message: "Đã xảy ra lỗi khi gia hạn tin đăng" };
     }
   }
 
-  async getPackages(): Promise<any> {
+  async getPackages(): Promise<PackagesResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/packages`);
 
@@ -614,7 +692,7 @@ class PostService {
     }
   }
   // getpostbyid
-  async getPostById(postId: string): Promise<any> {
+  async getPostById(postId: string): Promise<PostDetailResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/posts/${postId}`);
 
@@ -624,7 +702,7 @@ class PostService {
       }
       const data = await response.json();
       console.log("Fetched post data:", data);
-      return data.data.post;
+      return data;
     } catch (error) {
       console.error("Error fetching post by ID:", error);
       throw error;
@@ -632,7 +710,10 @@ class PostService {
   }
 
   // Get similar posts
-  async getSimilarPosts(postId: string, limit: number = 6): Promise<any> {
+  async getSimilarPosts(
+    postId: string,
+    limit: number = 6
+  ): Promise<SimilarPostsResponse> {
     try {
       const response = await fetch(
         `${API_BASE_URL}/posts/${postId}/similar?limit=${limit}`
@@ -645,7 +726,7 @@ class PostService {
 
       const data = await response.json();
       console.log("Fetched similar posts:", data);
-      return data.data;
+      return data;
     } catch (error) {
       console.error("Error fetching similar posts:", error);
       throw error;
@@ -672,7 +753,7 @@ class PostService {
   }
 
   // get posts by category (public)
-  async getPostByCategory(category: string): Promise<any> {
+  async getPostByCategory(category: string): Promise<SearchPostsResponse> {
     try {
       const response = await fetch(
         `${API_BASE_URL}/posts/category/${category}`
@@ -691,7 +772,11 @@ class PostService {
   }
 
   // tìm bài viết
-  async searchPosts(filters = {}, page = 1, limit = 20): Promise<any> {
+  async searchPosts(
+    filters: Record<string, unknown> = {},
+    page = 1,
+    limit = 20
+  ): Promise<SearchPostsResponse> {
     try {
       console.log("SearchPosts input filters:", filters);
       const queryParams = new URLSearchParams();
@@ -744,11 +829,26 @@ class PostService {
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
+        data: {
+          posts: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: 20,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        },
       };
     }
   }
 
-  async getPostsByFilter(filter: any = {}, page = 1, limit = 20): Promise<any> {
+  async getPostsByFilter(
+    filter: Record<string, unknown> = {},
+    page = 1,
+    limit = 20
+  ): Promise<SearchPostsResponse> {
     try {
       const queryParams = new URLSearchParams();
 
@@ -1203,7 +1303,17 @@ class PostService {
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
-        data: { posts: [] },
+        data: {
+          posts: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalItems: 0,
+            itemsPerPage: limit,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        },
       };
     }
   }
@@ -1212,41 +1322,6 @@ export const postService = new PostService();
 
 // Admin Posts Service
 export class AdminPostsService {
-  private async fetchWithAuth(url: string, options: RequestInit = {}) {
-    const token = getAccessToken();
-
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-
-    // Handle token refresh if needed
-    if (response.status === 401) {
-      const refreshed = await refreshToken();
-      if (refreshed) {
-        const newToken = getAccessToken();
-        return fetch(url, {
-          ...options,
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${newToken}`,
-            ...options.headers,
-          },
-        });
-      } else {
-        localStorage.removeItem("accessToken");
-        window.location.href = "/dang-nhap";
-        throw new Error("Phiên đăng nhập đã hết hạn");
-      }
-    }
-
-    return response;
-  }
-
   // Get all posts for admin with filters and pagination
   async getPosts(
     filters: Partial<PostFilters> = {},
@@ -1290,7 +1365,7 @@ export class AdminPostsService {
         queryParams.append("searchMode", filters.searchMode);
       }
 
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts?${queryParams.toString()}`
       );
 
@@ -1318,9 +1393,7 @@ export class AdminPostsService {
   // Get posts statistics for admin dashboard
   async getPostsStats(): Promise<PostsStats> {
     try {
-      const response = await this.fetchWithAuth(
-        `${API_BASE_URL}/admin/posts/stats`
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/admin/posts/stats`);
 
       if (!response.ok) {
         // If no specific stats endpoint, calculate from posts data
@@ -1358,7 +1431,7 @@ export class AdminPostsService {
   // Get single post by ID
   async getPostById(postId: string): Promise<Post> {
     try {
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}`
       );
 
@@ -1378,7 +1451,7 @@ export class AdminPostsService {
   async approvePost(postId: string) {
     try {
       console.log("Approving post with ID:", postId);
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}/approve`,
         {
           method: "PUT",
@@ -1401,7 +1474,7 @@ export class AdminPostsService {
   async rejectPost(postId: string, reason: string) {
     try {
       console.log("Rejecting post with ID:", postId);
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}/reject`,
         {
           method: "PUT",
@@ -1426,7 +1499,7 @@ export class AdminPostsService {
   // Delete post (admin only)
   async deletePost(postId: string) {
     try {
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}`,
         {
           method: "DELETE",
@@ -1454,7 +1527,7 @@ export class AdminPostsService {
       console.log("Updating admin post with ID:", postId);
       console.log("Update data:", JSON.stringify(postData, null, 2));
 
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}`,
         {
           method: "PUT",
@@ -1484,7 +1557,7 @@ export class AdminPostsService {
   // Update post status (admin only)
   async updatePostStatus(postId: string, status: string) {
     try {
-      const response = await this.fetchWithAuth(
+      const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/posts/${postId}`,
         {
           method: "PUT",
@@ -1520,6 +1593,40 @@ export class AdminPostsService {
       }
     } catch (error) {
       console.error("Error updating post status:", error);
+      throw error;
+    }
+  }
+
+  // Get public user posts (for user profile page)
+  async getPublicUserPosts(
+    userId: string,
+    params: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      type?: string;
+    } = {}
+  ): Promise<PostsResponse> {
+    try {
+      const page = params.page || 1;
+      const limit = params.limit || 12;
+      const status = params.status || "active";
+
+      let queryParams = `page=${page}&limit=${limit}&status=${status}`;
+      if (params.type) queryParams += `&type=${params.type}`;
+
+      const response = await fetch(
+        `${API_BASE_URL}/posts/public/user/${userId}?${queryParams}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching public user posts:", error);
       throw error;
     }
   }

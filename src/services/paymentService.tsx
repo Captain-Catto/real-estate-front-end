@@ -79,6 +79,90 @@ export interface PaymentFilterParams {
   toDate?: string;
 }
 
+// Add missing interfaces for API responses
+export interface PaymentStatusResponse {
+  success: boolean;
+  data: {
+    orderId: string;
+    status: string;
+    amount: number;
+    description: string;
+    createdAt: string;
+    completedAt?: string;
+    failedAt?: string;
+  };
+}
+
+export interface PaymentDetailsResponse {
+  success: boolean;
+  data: {
+    _id: string;
+    orderId: string;
+    userId: string;
+    amount: number;
+    status: string;
+    description: string;
+    paymentMethod: string;
+    vnpayData?: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+  };
+  message?: string;
+}
+
+export interface VNPayData {
+  vnp_Amount: string;
+  vnp_BankCode: string;
+  vnp_CardType: string;
+  vnp_OrderInfo: string;
+  vnp_PayDate: string;
+  vnp_ResponseCode: string;
+  vnp_TmnCode: string;
+  vnp_TransactionNo: string;
+  vnp_TransactionStatus: string;
+  vnp_TxnRef: string;
+  vnp_SecureHash: string;
+}
+
+export interface SyncWalletResponse {
+  success: boolean;
+  data: {
+    balance: number;
+    totalIncome: number;
+    totalSpending: number;
+    bonusEarned: number;
+    message: string;
+  };
+}
+
+export interface DeductResponse {
+  success: boolean;
+  message: string;
+  data: {
+    postId: string;
+    packageId: string;
+    amount: number;
+    balance?: number;
+  };
+}
+
+export interface WalletCacheData {
+  balance: number;
+  totalIncome: number;
+  totalSpending: number;
+  bonusEarned: number;
+  lastTransaction: string | null;
+  totalTransactions: number;
+  recentTransactions: Array<{
+    _id: string;
+    orderId: string;
+    amount: number;
+    status: string;
+    description: string;
+    createdAt: string;
+  }>;
+}
+
 // Helper function để xử lý response
 const handleResponse = async (response: Response) => {
   console.log("Response status:", response.status);
@@ -88,7 +172,7 @@ const handleResponse = async (response: Response) => {
 
     try {
       errorData = JSON.parse(errorText);
-    } catch (e) {
+    } catch {
       errorData = { message: errorText || "Network error" };
     }
 
@@ -106,7 +190,7 @@ const handleResponse = async (response: Response) => {
 
 // Improved cache mechanism to prevent excessive wallet info calls
 let walletInfoCache: {
-  data: any;
+  data: WalletInfoResponse;
   timestamp: number;
 } | null = null;
 
@@ -179,7 +263,7 @@ export const paymentService = {
   },
 
   // Kiểm tra trạng thái thanh toán
-  async checkPaymentStatus(orderId: string): Promise<any> {
+  async checkPaymentStatus(orderId: string): Promise<PaymentStatusResponse> {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/payments/check-status/${orderId}`
     );
@@ -188,7 +272,7 @@ export const paymentService = {
   },
 
   // Lấy chi tiết thanh toán
-  async getPaymentDetails(orderId: string): Promise<any> {
+  async getPaymentDetails(orderId: string): Promise<PaymentDetailsResponse> {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/payments/details/${orderId}`
     );
@@ -197,7 +281,10 @@ export const paymentService = {
   },
 
   // Cập nhật trạng thái thanh toán
-  async updatePaymentStatus(orderId: string, vnpayData: any): Promise<any> {
+  async updatePaymentStatus(
+    orderId: string,
+    vnpayData: VNPayData
+  ): Promise<PaymentDetailsResponse> {
     // Invalidate wallet cache to ensure fresh data after payment status update
     walletInfoCache = null;
 
@@ -284,7 +371,7 @@ export const paymentService = {
   },
 
   // Sync wallet with payment history
-  async syncWallet(): Promise<any> {
+  async syncWallet(): Promise<SyncWalletResponse> {
     // Invalidate wallet cache to ensure fresh data
     walletInfoCache = null;
 
@@ -316,7 +403,7 @@ export const paymentService = {
     amount: number;
     bonus?: number;
     type: "topup" | "spend";
-  }): Promise<any> {
+  }): Promise<SyncWalletResponse> {
     // Invalidate wallet cache
     walletInfoCache = null;
 
@@ -355,7 +442,7 @@ export const paymentService = {
       startDate?: string;
       endDate?: string;
     } = {}
-  ): Promise<any> {
+  ): Promise<PaymentHistoryResponse> {
     const queryParams = new URLSearchParams();
     if (filters.page) queryParams.append("page", filters.page.toString());
     if (filters.limit) queryParams.append("limit", filters.limit.toString());
@@ -379,7 +466,7 @@ export const paymentService = {
     postId: string;
     packageId: string;
     description?: string;
-  }): Promise<any> {
+  }): Promise<DeductResponse> {
     // Skip deduction for free packages
     if (data.amount === 0 || data.packageId === "free") {
       return {

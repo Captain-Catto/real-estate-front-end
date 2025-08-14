@@ -198,14 +198,14 @@ async function getArticlesByCategory(category: string) {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     slug: string[];
-  };
+  }>;
 }
 
 export default async function NewsSlugPage(props: PageProps) {
   // Chờ params.slug trước khi sử dụng để tránh lỗi
-  const { slug } = await Promise.resolve(props.params);
+  const { slug } = await props.params;
 
   // Case 1: Single slug - /tin-tuc/something
   if (slug.length === 1) {

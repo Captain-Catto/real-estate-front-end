@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import QuillEditor from "./QuillEditor";
+import ImprovedQuillEditor from "./ImprovedQuillEditor";
 
 interface ContactInfo {
   name: string;
@@ -97,9 +97,9 @@ export default function ContactBoxEditor({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Mô tả thêm
         </label>
-        <QuillEditor
+        <ImprovedQuillEditor
           value={contactInfo.description}
-          onChange={(value) => handleFieldChange("description", value)}
+          onChange={(value: string) => handleFieldChange("description", value)}
           placeholder="Nhập mô tả thêm về thông tin liên hệ..."
           height="200px"
           maxImageWidth={600}

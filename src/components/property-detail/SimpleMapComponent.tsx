@@ -15,7 +15,7 @@ const SimpleMapComponent: React.FC<SimpleMapComponentProps> = ({
   longitude,
   zoom = 15,
   title,
-  address,
+  address: _address,
 }) => {
   const [mapError, setMapError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

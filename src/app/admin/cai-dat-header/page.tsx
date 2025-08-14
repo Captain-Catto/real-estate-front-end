@@ -226,7 +226,7 @@ function HeaderSettingsManagementInternal() {
   // Load header menus data
   useEffect(() => {
     loadHeaderMenus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadHeaderMenus = async () => {
     try {

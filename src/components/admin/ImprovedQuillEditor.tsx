@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { nanoid } from "nanoid"; // Nếu không có, cần cài đặt: npm install nanoid
 
 interface QuillEditorProps {
@@ -32,7 +32,7 @@ export default function ImprovedQuillEditor({
   maxImageWidth = 800,
   imageQuality = 0.7,
   onImageAdd,
-  onImageRemove,
+  onImageRemove: _onImageRemove, // eslint-disable-line @typescript-eslint/no-unused-vars
   isSubmitting = false,
   deferImageUpload = true,
 }: QuillEditorProps) {
@@ -53,42 +53,44 @@ export default function ImprovedQuillEditor({
     if (!isInitialized && editorRef.current) {
       setIsInitialized(true);
 
+      // Store ref value for cleanup
+      const currentEditor = editorRef.current;
+
       // Đặt nội dung ban đầu nếu có
       if (value) {
-        editorRef.current.innerHTML = value;
+        currentEditor.innerHTML = value;
       }
 
       // Thêm sự kiện input để cập nhật khi người dùng chỉnh sửa
-      editorRef.current.addEventListener("input", handleInput);
+      currentEditor.addEventListener("input", handleInput);
 
       // Thêm sự kiện paste để xử lý hình ảnh được paste
-      editorRef.current.addEventListener("paste", handlePaste);
+      currentEditor.addEventListener("paste", handlePaste);
 
       // Thêm sự kiện keydown để xử lý tab và shift+tab
-      editorRef.current.addEventListener("keydown", handleKeyDown);
+      currentEditor.addEventListener("keydown", handleKeyDown);
 
       // Thiết lập placeholder nếu rỗng
       if (!value) {
-        editorRef.current.setAttribute("data-placeholder", placeholder);
+        currentEditor.setAttribute("data-placeholder", placeholder);
       }
-    }
 
-    // Cleanup khi component unmount
-    return () => {
-      if (editorRef.current) {
-        editorRef.current.removeEventListener("input", handleInput);
-        editorRef.current.removeEventListener("paste", handlePaste);
-        editorRef.current.removeEventListener("keydown", handleKeyDown);
-      }
-    };
+      // Cleanup khi component unmount
+      return () => {
+        currentEditor.removeEventListener("input", handleInput);
+        currentEditor.removeEventListener("paste", handlePaste);
+        currentEditor.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized, value, placeholder]);
 
   // Xử lý khi nội dung thay đổi
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     if (onChange && editorRef.current) {
       onChange(editorRef.current.innerHTML);
     }
-  };
+  }, [onChange]);
 
   // Xử lý khi nhấn phím tab
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -331,50 +333,60 @@ export default function ImprovedQuillEditor({
   };
 
   // Xử lý paste hình ảnh với resize
-  const handlePaste = async (event: ClipboardEvent) => {
-    const items = event.clipboardData?.items;
-    if (!items) return;
+  const handlePaste = useCallback(
+    async (event: ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        event.preventDefault();
-        const blob = items[i].getAsFile();
-        if (blob) {
-          try {
-            showLoadingElement();
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          event.preventDefault();
+          const blob = items[i].getAsFile();
+          if (blob) {
+            try {
+              showLoadingElement();
 
-            // Tạo ID duy nhất cho hình ảnh
-            const imageId = nanoid();
+              // Tạo ID duy nhất cho hình ảnh
+              const imageId = nanoid();
 
-            const compressedImageUrl = await resizeAndCompressImage(blob);
+              const compressedImageUrl = await resizeAndCompressImage(blob);
 
-            if (deferImageUpload && onImageAdd) {
-              // Thêm vào danh sách chờ nếu sử dụng chế độ defer upload
-              setPendingImages((prev) => [
-                ...prev,
-                {
-                  id: imageId,
-                  file: blob,
-                  previewUrl: compressedImageUrl,
-                },
-              ]);
+              if (deferImageUpload && onImageAdd) {
+                // Thêm vào danh sách chờ nếu sử dụng chế độ defer upload
+                setPendingImages((prev) => [
+                  ...prev,
+                  {
+                    id: imageId,
+                    file: blob,
+                    previewUrl: compressedImageUrl,
+                  },
+                ]);
 
-              // Thông báo cho component cha về hình ảnh mới
-              onImageAdd(blob, compressedImageUrl, imageId);
+                // Thông báo cho component cha về hình ảnh mới
+                onImageAdd(blob, compressedImageUrl, imageId);
+              }
+
+              removeLoadingElement();
+              insertImageIntoEditor(
+                compressedImageUrl,
+                "Pasted image",
+                imageId
+              );
+            } catch (error) {
+              console.error("Error processing pasted image:", error);
+              removeLoadingElement();
+              alert(
+                "Có lỗi xảy ra khi xử lý hình ảnh paste. Vui lòng thử lại!"
+              );
             }
-
-            removeLoadingElement();
-            insertImageIntoEditor(compressedImageUrl, "Pasted image", imageId);
-          } catch (error) {
-            console.error("Error processing pasted image:", error);
-            removeLoadingElement();
-            alert("Có lỗi xảy ra khi xử lý hình ảnh paste. Vui lòng thử lại!");
           }
+          break;
         }
-        break;
       }
-    }
-  };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [maxImageWidth, imageQuality, onImageAdd, deferImageUpload]
+  );
 
   // Xử lý khi component đang submit form
   useEffect(() => {

@@ -5,7 +5,6 @@ import { locationService, Location } from "@/services/locationService";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
-import { normalizeForSearch } from "@/utils/textUtils";
 
 interface SearchSectionOptimizedProps {
   searchType?: "buy" | "rent" | "project";
@@ -95,7 +94,7 @@ export default function SearchSection({
   >([{ value: "", label: "Tất cả mức giá" }]);
   const [areaOptions, setAreaOptions] = useState<
     { value: string; label: string }[]
-  >([{ value: "", label: "Tất cả diện tích" }]);
+  >([]);
 
   // Load initial data
   useEffect(() => {
@@ -156,7 +155,6 @@ export default function SearchSection({
           currentSearchType === "project" ? "project" : "property";
         const areaRanges = await areaService.getByType(areaType);
         const areaOptionsList = [
-          { value: "", label: "Tất cả diện tích" },
           ...areaRanges.map((range: AreaRange) => ({
             value: range.slug || range.id,
             label: range.name,

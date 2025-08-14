@@ -1,55 +1,55 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   headerSettingsService,
   HeaderMenu,
 } from "@/services/headerSettingsService";
-import { newsService, NewsCategory } from "@/services/newsService";
+// import { newsService, NewsCategory } from "@/services/newsService";
 
 export const Navbar = React.memo(() => {
   const [headerMenus, setHeaderMenus] = useState<HeaderMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({});
 
-  const updateNewsMenuInHeaderMenus = useCallback(
-    (categories: NewsCategory[]) => {
-      setHeaderMenus((prevMenus) => {
-        return prevMenus.map((menu) => {
-          if (menu.id === "5" || menu.label === "Tin tức") {
-            return {
-              ...menu,
-              hasDropdown: categories.length > 0,
-              dropdownItems: categories.map((category) => ({
-                id: `news-${category.slug}`,
-                label: category.name,
-                href: `/tin-tuc/${category.slug}`,
-                order: 1,
-                isActive: true,
-              })),
-            };
-          }
-          return menu;
-        });
-      });
-    },
-    []
-  );
+  // const updateNewsMenuInHeaderMenus = useCallback(
+  //   (categories: NewsCategory[]) => {
+  //     setHeaderMenus((prevMenus) => {
+  //       return prevMenus.map((menu) => {
+  //         if (menu.id === "5" || menu.label === "Tin tức") {
+  //           return {
+  //             ...menu,
+  //             hasDropdown: categories.length > 0,
+  //             dropdownItems: categories.map((category) => ({
+  //               id: `news-${category.slug}`,
+  //               label: category.name,
+  //               href: `/tin-tuc/${category.slug}`,
+  //               order: 1,
+  //               isActive: true,
+  //             })),
+  //           };
+  //         }
+  //         return menu;
+  //       });
+  //     });
+  //   },
+  //   []
+  // );
 
   // Load data on component mount
   useEffect(() => {
-    const loadNewsCategories = async () => {
-      try {
-        const response = await newsService.getNewsCategories();
-        if (response.success && response.data) {
-          // Cập nhật menu tin tức trong headerMenus
-          updateNewsMenuInHeaderMenus(response.data);
-        }
-      } catch (error) {
-        console.error("Failed to load news categories:", error);
-        // Fallback to empty array - navbar will work without categories
-      }
-    };
+    // const loadNewsCategories = async () => {
+    //   try {
+    //     const response = await newsService.getNewsCategories();
+    //     if (response.success && response.data) {
+    //       // Cập nhật menu tin tức trong headerMenus
+    //       updateNewsMenuInHeaderMenus(response.data);
+    //     }
+    //   } catch (error) {
+    //     console.error("Failed to load news categories:", error);
+    //     // Fallback to empty array - navbar will work without categories
+    //   }
+    // };
 
     const loadHeaderMenus = async () => {
       try {
@@ -152,12 +152,12 @@ export const Navbar = React.memo(() => {
     const loadData = async () => {
       // Load header menus first
       await loadHeaderMenus();
-      // Then load news categories to update the news menu
-      await loadNewsCategories();
+      // Disable auto-loading news categories to use header settings dropdown
+      // await loadNewsCategories();
     };
 
     loadData();
-  }, [updateNewsMenuInHeaderMenus]); // Only depend on updateNewsMenuInHeaderMenus
+  }, []); // No dependencies needed
 
   // Store timeout references
   const timeoutRefs = React.useRef<{ [key: string]: NodeJS.Timeout }>({});

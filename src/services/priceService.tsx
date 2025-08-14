@@ -35,11 +35,19 @@ export const priceRangeService = {
       const priceRanges = result.priceRanges || result.data?.priceRanges || [];
 
       // Transform the data to match the expected interface
-      return priceRanges.map((price) => ({
-        ...price,
-        value: price.slug, // Use slug as value for search params
-        label: price.name, // Use name as label
-      }));
+      return priceRanges.map(
+        (price: {
+          slug: string;
+          name: string;
+          _id: string;
+          minPrice?: number;
+          maxPrice?: number;
+        }) => ({
+          ...price,
+          value: price.slug, // Use slug as value for search params
+          label: price.name, // Use name as label
+        })
+      );
     } catch (error) {
       console.error("Error in priceRangeService.getAll:", error);
       return [];
@@ -77,11 +85,19 @@ export const priceRangeService = {
       const priceRanges = result.priceRanges || result.data?.priceRanges || [];
 
       // Transform the data to match the expected interface
-      return priceRanges.map((price) => ({
-        ...price,
-        value: price.slug, // Use slug as value for search params
-        label: price.name, // Use name as label
-      }));
+      return priceRanges.map(
+        (price: {
+          slug: string;
+          name: string;
+          _id: string;
+          minPrice?: number;
+          maxPrice?: number;
+        }) => ({
+          ...price,
+          value: price.slug, // Use slug as value for search params
+          label: price.name, // Use name as label
+        })
+      );
     } catch (error) {
       console.error("Error in priceRangeService.getByType:", error);
       return [];

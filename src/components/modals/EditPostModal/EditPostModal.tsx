@@ -1,6 +1,5 @@
 import React from "react";
 import { Dialog } from "@headlessui/react";
-import { useEditPostModal } from "@/hooks/useEditPostModal";
 import { EditPostForm } from "@/types/editPost";
 import BasicInfoStep from "./steps/BasicInfoStep";
 import ImageUploadStep from "./steps/ImageUploadStep";
@@ -27,8 +26,6 @@ interface EditPostModalProps {
   handlePackageSubmit: () => void;
   existingImages: string[];
   updateExistingImages: (images: string[]) => void;
-  categories: any[];
-  projects: any[];
   provinces: any[];
   wards: any[];
   locationLoading: boolean;
@@ -51,8 +48,6 @@ export default function EditPostModal({
   handlePackageSubmit,
   existingImages,
   updateExistingImages,
-  categories,
-  projects,
   provinces,
   wards,
   locationLoading,

@@ -186,11 +186,6 @@ export function FeaturedProperties() {
     return `${titleSlug}-${id}`;
   };
 
-  // Helper function to get badge based on packageId (using utility function)
-  const getBadgeInfo = (packageId?: string | null) => {
-    return getPackageBadge(packageId);
-  };
-
   // Function để tính thời gian đăng
   const getTimeAgo = (createdAt: string): string => {
     const now = new Date();

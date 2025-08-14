@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 // Service để gọi API
-import { createNews, uploadNewsImage } from "@/services/newsService";
+import { newsService } from "@/services/newsService";
 
 interface NewsFormProps {
   initialValues?: {
@@ -85,12 +85,12 @@ export default function NewsForm({ initialValues = {} }: NewsFormProps) {
           formData.append("image", file);
 
           // Gọi API upload ảnh
-          const response = await uploadNewsImage(formData);
+          const response = await newsService.uploadNewsImage(formData);
 
           // Trả về object chứa imageId và URL thật từ server
           return {
             imageId,
-            serverUrl: response.imageUrl,
+            serverUrl: response.data?.url || "",
           };
         }
       );
@@ -121,7 +121,7 @@ export default function NewsForm({ initialValues = {} }: NewsFormProps) {
       };
 
       // Gọi API tạo tin tức
-      await createNews(newsData);
+      await newsService.createNews(newsData);
 
       toast.success("Đăng tin thành công!");
       router.push("/admin/news");

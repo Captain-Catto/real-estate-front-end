@@ -11,7 +11,7 @@ interface QuillEditorProps {
 
 const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
   const quillRef = useRef<HTMLDivElement>(null);
-  const quillInstance = useRef<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const quillInstance = useRef<any>(null);
   const [editorReady, setEditorReady] = useState(false);
   const toolbarId = useRef(
     `toolbar-${Math.random().toString(36).substring(2, 11)}`
@@ -150,8 +150,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
         quillInstance.current.off("text-change");
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Only run once on mount, intentionally not including onChange and value
+  }, []); // Only run once on mount, intentionally not including onChange and value
 
   // Handle content updates
   useEffect(() => {

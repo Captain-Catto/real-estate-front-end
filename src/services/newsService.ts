@@ -546,6 +546,35 @@ export const newsService = {
     };
     return statusColors[status] || "bg-gray-100 text-gray-800";
   },
+
+  // Upload news image method
+  async uploadNewsImage(formData: FormData): Promise<{
+    success: boolean;
+    data?: { url: string; fileName: string };
+    message?: string;
+  }> {
+    try {
+      const response = await fetchWithAuth(
+        `${API_BASE_URL}/api/upload/news-image`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error uploading news image:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Upload failed",
+      };
+    }
+  },
 };
 
 // Export default để tương thích với code hiện tại

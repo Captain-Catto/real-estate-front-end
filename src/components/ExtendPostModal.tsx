@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { postsService } from "../services/postsService";
+import { postService } from "../services/postsService";
 import { paymentService } from "../services/paymentService";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 
 interface Package {
   id: string;
@@ -46,8 +46,16 @@ export default function ExtendPostModal({
         paymentService.getUserWalletInfo(),
       ]);
 
-      setPackages(packagesData || []);
-      setWalletBalance(walletData?.balance || 0);
+      setPackages(
+        packagesData?.data?.map((pkg) => ({
+          id: pkg._id,
+          name: pkg.name,
+          price: pkg.price,
+          duration: pkg.duration,
+          description: pkg.features?.join(", ") || "",
+        })) || []
+      );
+      setWalletBalance(walletData?.data?.balance || 0);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Không thể tải dữ liệu");
@@ -70,10 +78,7 @@ export default function ExtendPostModal({
     try {
       setExtending(true);
 
-      await postService.extendPost(post.id, {
-        packageId: selectedPackage.id,
-        duration: selectedPackage.duration,
-      });
+      await postService.extendPost(post.id, selectedPackage.id);
 
       toast.success("Gia hạn tin đăng thành công!");
       onSuccess();

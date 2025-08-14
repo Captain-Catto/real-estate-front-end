@@ -12,11 +12,7 @@ export function LocationNamesTest() {
     setLoading(true);
     try {
       // Test với data thực từ project Sunrise City View
-      const result = await locationService.getLocationNames(
-        "79",
-        "778",
-        "27475"
-      );
+      const result = await locationService.getLocationNames("79", "778");
       console.log("🧪 Test result:", result);
       setResult(result);
     } catch (error) {

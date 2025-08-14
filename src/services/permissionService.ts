@@ -59,6 +59,12 @@ export interface PermissionResponse {
   message: string;
 }
 
+export interface ApiErrorResponse {
+  message: string;
+  status?: number;
+  statusText?: string;
+}
+
 export const permissionService = {
   // Lấy danh sách quyền có sẵn
   async getAvailablePermissions(): Promise<PermissionResponse> {
@@ -77,7 +83,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching available permissions:", error);
       throw error;
     }
@@ -100,7 +106,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching users and permissions:", error);
       throw error;
     }
@@ -126,7 +132,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching user permissions:", error);
       throw error;
     }
@@ -156,7 +162,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating user permissions:", error);
       throw error;
     }
@@ -183,7 +189,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating user permissions:", error);
       throw error;
     }
@@ -209,7 +215,7 @@ export const permissionService = {
       }
 
       return await response.json();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting user permissions:", error);
       throw error;
     }

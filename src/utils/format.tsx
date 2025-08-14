@@ -54,8 +54,22 @@ export function formatPriceByType(price: number, type: string): string {
   }
 }
 
-export function formatArea(area: number): string {
-  return `${area}m²`;
+export function formatArea(area: number | string): string {
+  // Chuyển đổi thành số và xử lý trường hợp area là string với leading zeros
+  const numericArea = typeof area === "string" ? parseFloat(area) : area;
+
+  // Kiểm tra nếu không phải là số hợp lệ
+  if (isNaN(numericArea) || numericArea < 0) {
+    return "0m²";
+  }
+
+  // Format số với 2 chữ số thập phân (nếu cần) và loại bỏ trailing zeros
+  const formattedNumber =
+    numericArea % 1 === 0
+      ? numericArea.toString()
+      : numericArea.toFixed(2).replace(/\.?0+$/, "");
+
+  return `${formattedNumber}m²`;
 }
 
 export function formatDate(date: string): string {

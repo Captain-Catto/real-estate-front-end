@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -190,7 +190,9 @@ function AdminPostsPageInternal() {
 export default function ProtectedAdminPosts() {
   return (
     <AdminGuard permissions={[PERMISSIONS.POST.VIEW]}>
-      <AdminPostsPageInternal />
+      <Suspense fallback={<div>Đang tải...</div>}>
+        <AdminPostsPageInternal />
+      </Suspense>
     </AdminGuard>
   );
 }

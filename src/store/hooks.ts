@@ -12,9 +12,7 @@ import {
   depositToWallet,
   getTransactionDetails,
   clearError as clearWalletError,
-  setPage,
   resetTransactions,
-  updateLastRefreshTime,
 } from "./slices/walletSlice";
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`

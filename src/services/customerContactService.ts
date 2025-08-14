@@ -21,7 +21,7 @@ export interface CustomerContact {
     };
   };
   contactType: "interested" | "viewing" | "consultation" | "other";
-  status: "pending" | "contacted" | "completed" | "cancelled";
+  status: "pending" | "contacted" | "completed" | "cancelled" | "deleted";
   message?: string;
   notes?: string;
   isDeleted?: boolean;

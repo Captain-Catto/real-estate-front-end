@@ -41,7 +41,7 @@ export function ProjectListings({
   const [activeTab, setActiveTab] = useState<"all" | "ban" | "cho-thue">("all");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [_totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const itemsPerPage = 10;
 

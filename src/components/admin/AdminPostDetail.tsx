@@ -24,7 +24,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { locationService } from "@/services/locationService";
 import { postService } from "@/services/postsService";
-import { useAuth } from "@/hooks/useAuth";
 import { PermissionGuard } from "@/components/auth/ProtectionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -105,7 +104,6 @@ export default function AdminPostDetail({
   onDelete,
   onBack,
 }: AdminPostDetailProps) {
-  const { hasRole } = useAuth();
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");

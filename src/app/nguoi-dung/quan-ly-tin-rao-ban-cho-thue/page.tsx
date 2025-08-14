@@ -877,8 +877,6 @@ export default function QuanLyTinDangPage() {
         handlePackageSubmit={editPostModal.handlePackageSubmit}
         existingImages={editPostModal.existingImages}
         updateExistingImages={editPostModal.updateExistingImages}
-        categories={editPostModal.categories}
-        projects={editPostModal.projects}
         provinces={editPostModal.provinces}
         wards={editPostModal.wards}
         locationLoading={editPostModal.locationLoading}
