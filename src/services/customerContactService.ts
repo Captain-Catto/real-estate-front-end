@@ -87,7 +87,8 @@ class CustomerContactService {
     notes?: string
   ): Promise<SingleContactResponse> {
     try {
-      const response = await fetchWithAuth(`${this.baseUrl}/callback`, {
+      console.log("bắt đầu tạo contact gọi lại");
+      const response = await fetchWithAuth(`${this.baseUrl}/call-back`, {
         method: "POST",
         body: JSON.stringify({
           postId,

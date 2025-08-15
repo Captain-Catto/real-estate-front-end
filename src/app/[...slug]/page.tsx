@@ -505,7 +505,8 @@ export default async function DynamicPage({
         "Calling searchPosts with filters:",
         JSON.stringify(searchFilters)
       );
-      const response = await postService.searchPosts(searchFilters);
+      // Tăng limit để lấy nhiều bài viết hơn cho trang tìm kiếm
+      const response = await postService.searchPosts(searchFilters, 1, 100);
       console.log("Search response status:", response ? "Success" : "Failed");
       console.log("Search response data structure:", {
         success: response?.success,

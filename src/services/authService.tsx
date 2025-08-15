@@ -123,6 +123,8 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     const response = await fetch(url, requestConfig);
 
+    console.log("response trả về khi fetch:", response);
+
     // Handle 401 Unauthorized error
     if (response.status === 401) {
       try {

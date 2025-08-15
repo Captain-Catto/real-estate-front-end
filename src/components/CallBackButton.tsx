@@ -37,6 +37,8 @@ const CallBackButton: React.FC<CallBackButtonProps> = ({
         notes
       );
 
+      console.log("Response from createCallBackRequest:", response);
+
       if (response.success) {
         showMessage(
           "success",

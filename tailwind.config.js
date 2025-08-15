@@ -1,6 +1,5 @@
-import { Config } from "tailwindcss";
-
-export default {
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -16,8 +15,8 @@ export default {
     },
     extend: {
       spacing: {
-        "18": "4.5rem",
-        "88": "22rem",
+        18: "4.5rem",
+        88: "22rem",
       },
       colors: {
         primary: {
@@ -30,4 +29,4 @@ export default {
     },
   },
   plugins: [],
-} satisfies Config;
+};
