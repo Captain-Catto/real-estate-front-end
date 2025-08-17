@@ -39,9 +39,12 @@ export interface UpdateHeaderMenuRequest extends CreateHeaderMenuRequest {
   id: string;
 }
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
 class HeaderSettingsService {
-  private baseUrl = "http://localhost:8080/api/admin/header-settings";
-  private publicUrl = "http://localhost:8080/api/header";
+  private baseUrl = `${API_BASE_URL}/admin/header-settings`;
+  private publicUrl = `${API_BASE_URL}/header`;
 
   // Public method - no authentication required
   async getPublicHeaderMenus(): Promise<HeaderSettingsResponse> {

@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import PackageSelection from "../common/PackageSelection";
 import { toast } from "sonner";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+
 interface Post {
   _id: string;
   title: string;
@@ -15,7 +18,7 @@ interface Post {
   originalPackageDuration?: number;
 }
 
-const PostExpiryManagement = () => {
+function PostExpiryManagement() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [extendingPost, setExtendingPost] = useState<Post | null>(null);
@@ -24,12 +27,9 @@ const PostExpiryManagement = () => {
   // Fetch user's posts
   const fetchMyPosts = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/posts/my?status=all",
-        {
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/posts/my?status=all`, {
+        credentials: "include",
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -45,17 +45,14 @@ const PostExpiryManagement = () => {
   // Extend post expiry
   const extendPost = async (postId: string, packageId: string) => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/posts/${postId}/extend`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ packageId }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/posts/${postId}/extend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ packageId }),
+      });
 
       const data = await response.json();
 
@@ -384,6 +381,6 @@ const PostExpiryManagement = () => {
       </div>
     </div>
   );
-};
+}
 
 export default PostExpiryManagement;
