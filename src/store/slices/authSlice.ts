@@ -5,10 +5,7 @@ import {
   LoginRequest,
   RegisterRequest,
 } from "@/services/authService";
-
-// API Base URL
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+import { API_BASE_URL } from "@/services/authService";
 
 // Types
 export type UserRole = "admin" | "employee" | "user";

@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
 import { toast } from "sonner";
 import type { RootState } from "../index";
+import { API_BASE_URL } from "@/services/authService";
 
 // Types
 export interface NotificationData {
@@ -47,8 +48,6 @@ const initialState: NotificationState = {
   lastFetch: 0,
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 const CACHE_TIME = 5000; // 5 seconds
 
 // Helper function for authenticated requests

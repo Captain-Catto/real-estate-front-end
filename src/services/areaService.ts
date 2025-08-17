@@ -1,5 +1,6 @@
 import { getAccessToken } from "./authService";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/services/authService";
 
 export interface AreaRange {
   _id?: string;
@@ -56,9 +57,6 @@ export interface GetAreasParams {
   limit?: number;
   type?: "property" | "project";
 }
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 export const areaService = {
   // Get areas with pagination and filters (for admin)

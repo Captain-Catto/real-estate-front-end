@@ -7,10 +7,7 @@ import {
   UpdateDeveloperRequest,
   DeveloperListItem,
 } from "@/types/developer";
-
-// API Base URL
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+import { API_BASE_URL } from "@/services/authService";
 
 export const DeveloperService = {
   // Get all developers with filters and pagination (public access)

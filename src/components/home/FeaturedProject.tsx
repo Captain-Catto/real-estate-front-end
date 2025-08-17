@@ -4,14 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import Slider from "react-slick";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/services/authService";
 
 // Import slick styles
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-
-// API URL from environment
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 interface FeaturedProjectType {
   _id: string;

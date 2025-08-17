@@ -6,10 +6,7 @@ import {
 } from "@/types/project";
 import { fetchWithAuth } from "./authService";
 import { toast } from "sonner";
-
-// API Base URL
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+import { API_BASE_URL } from "@/services/authService";
 
 export const ProjectService = {
   // Get all projects with filters and pagination (public access)

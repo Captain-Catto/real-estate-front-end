@@ -1,9 +1,6 @@
 import { getAccessToken } from "./authService";
 import { toast } from "sonner";
-
-// API Base URL
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+import { API_BASE_URL } from "@/services/authService";
 
 // Helper function to get auth token
 const getAuthToken = () => {
