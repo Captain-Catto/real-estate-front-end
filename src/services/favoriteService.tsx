@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "@/services/authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -27,8 +28,8 @@ export const favoriteService = {
       }
 
       return data;
-    } catch (error) {
-      console.error("Error adding to favorites:", error);
+    } catch {
+      toast.error("Không thể thêm vào yêu thích");
       // Trả về response giả để UI có thể xử lý mà không bị crash
       return {
         success: false,
@@ -59,8 +60,8 @@ export const favoriteService = {
       }
 
       return data;
-    } catch (error) {
-      console.error("Error removing from favorites:", error);
+    } catch {
+      toast.error("Không thể bỏ yêu thích");
       return {
         success: false,
         message: "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
@@ -80,8 +81,8 @@ export const favoriteService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching favorites:", error);
+    } catch {
+      toast.error("Không thể tải danh sách yêu thích");
       return {
         success: false,
         data: {
@@ -105,8 +106,8 @@ export const favoriteService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error checking favorite status:", error);
+    } catch {
+      // Silent error for checking favorite status
       return {
         success: false,
         data: {
@@ -127,8 +128,8 @@ export const favoriteService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching favorite stats:", error);
+    } catch {
+      // Silent error for stats
       return {
         success: false,
         data: {

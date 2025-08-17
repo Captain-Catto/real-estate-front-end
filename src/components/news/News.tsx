@@ -6,6 +6,7 @@ import testImg from "@/assets/images/card-img.jpg";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
 import { newsService } from "@/services/newsService";
+import { toast } from "sonner";
 
 // Types
 interface Article {
@@ -203,8 +204,8 @@ export function News({ initialArticles = [] }: NewsProps) {
 
           setPopularArticles(transformedPopular);
         }
-      } catch (error) {
-        console.error("Error fetching articles:", error);
+      } catch {
+        toast.error("Không thể tải tin tức");
         // No fallback to mock data - just keep empty arrays
       } finally {
         setLoading(false);
@@ -249,8 +250,8 @@ export function News({ initialArticles = [] }: NewsProps) {
         setArticles((prev) => [...prev, ...newArticles]);
         setPage(nextPage);
       }
-    } catch (error) {
-      console.error("Error loading more articles:", error);
+    } catch {
+      toast.error("Không thể tải thêm tin tức");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { customerContactService } from "@/services/customerContactService";
 
 interface CallBackButtonProps {
@@ -19,15 +20,6 @@ const CallBackButton: React.FC<CallBackButtonProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [notes, setNotes] = useState("");
-  const [message, setMessage] = useState<{
-    type: "success" | "error" | "info";
-    text: string;
-  } | null>(null);
-
-  const showMessage = (type: "success" | "error" | "info", text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage(null), 5000);
-  };
 
   const handleCallBackRequest = async () => {
     setIsLoading(true);
@@ -40,33 +32,29 @@ const CallBackButton: React.FC<CallBackButtonProps> = ({
       console.log("Response from createCallBackRequest:", response);
 
       if (response.success) {
-        showMessage(
-          "success",
+        toast.success(
           "Yêu cầu liên hệ đã được gửi thành công! Chủ bài viết sẽ liên hệ với bạn sớm nhất."
         );
         setShowNoteModal(false);
         setNotes("");
       } else {
-        showMessage(
-          "error",
-          response.message || "Có lỗi xảy ra, vui lòng thử lại"
-        );
+        toast.error(response.message || "Có lỗi xảy ra, vui lòng thử lại");
       }
     } catch (error: unknown) {
-      console.error("Error creating call back request:", error);
+      // Log for debugging, but show user-friendly message via toast
+      console.log("Call back request error (logged for debugging):", error);
 
       if (error instanceof Error && error.message.includes("401")) {
-        showMessage("error", "Vui lòng đăng nhập để sử dụng tính năng này");
+        toast.error("Vui lòng đăng nhập để sử dụng tính năng này");
       } else if (
         error instanceof Error &&
         error.message.includes("already exists")
       ) {
-        showMessage(
-          "info",
+        toast.info(
           "Bạn đã gửi yêu cầu liên hệ cho bài viết này rồi. Chủ bài viết sẽ liên hệ với bạn sớm nhất!"
         );
       } else {
-        showMessage("error", "Có lỗi xảy ra, vui lòng thử lại");
+        toast.error("Có lỗi xảy ra, vui lòng thử lại");
       }
     } finally {
       setIsLoading(false);
@@ -84,41 +72,6 @@ const CallBackButton: React.FC<CallBackButtonProps> = ({
 
   return (
     <>
-      {/* Message Display */}
-      {message && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
-            message.type === "success"
-              ? "bg-green-100 border border-green-400 text-green-800"
-              : message.type === "error"
-              ? "bg-red-100 border border-red-400 text-red-800"
-              : "bg-blue-100 border border-blue-400 text-blue-800"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <p className="text-sm">{message.text}</p>
-            <button
-              onClick={() => setMessage(null)}
-              className="ml-2 text-gray-600 hover:text-gray-800"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Call Back Button */}
       <button
         onClick={openNoteModal}

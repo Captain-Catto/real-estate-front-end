@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ProjectService } from "@/services/projectService";
 import { Project } from "@/types/project";
+import { toast } from "sonner";
 
 interface RelatedProjectsProps {
   currentProjectId: string;
@@ -214,8 +215,8 @@ export function RelatedProjects({
               )
           ).length,
         });
-      } catch (error) {
-        console.error("💥 Error fetching related projects:", error);
+      } catch {
+        toast.error("Không thể tải dự án liên quan");
         setRelatedProjects([]);
       } finally {
         setLoading(false);
@@ -337,12 +338,8 @@ export function RelatedProjects({
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                   sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   onError={(e) => {
-                    console.error(
-                      `❌ Image failed to load for project: ${project.name}`,
-                      {
-                        originalSrc: (e.target as HTMLImageElement).src,
-                        projectImages: project.images,
-                      }
+                    toast.error(
+                      `Không thể tải hình ảnh dự án: ${project.name}`
                     );
                     const target = e.target as HTMLImageElement;
                     const seed = encodeURIComponent(project.name || "fallback");

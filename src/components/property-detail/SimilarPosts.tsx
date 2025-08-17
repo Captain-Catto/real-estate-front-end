@@ -7,6 +7,7 @@ import { postService, type Post } from "@/services/postsService";
 import { locationService } from "@/services/locationService";
 import { formatPriceByType } from "@/utils/format";
 import { createPostSlug } from "@/utils/postSlug";
+import { toast } from "sonner";
 
 interface LocationNames {
   provinceName?: string;
@@ -99,8 +100,8 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
                   ...post,
                   locationNames,
                 };
-              } catch (error) {
-                console.error("Error fetching location names:", error);
+              } catch {
+                toast.error("Không thể tải tên địa điểm");
                 return post;
               }
             }
@@ -117,8 +118,8 @@ const SimilarPosts: React.FC<SimilarPostsProps> = ({ postId, limit = 6 }) => {
         // setCriteria(response.criteria || null);
 
         console.log("🔍 Similar posts loaded:", postsWithLocationNames);
-      } catch (err) {
-        console.error("Error fetching similar posts:", err);
+      } catch {
+        toast.error("Không thể tải tin đăng tương tự");
         setError("Không thể tải tin đăng tương tự");
       } finally {
         setLoading(false);

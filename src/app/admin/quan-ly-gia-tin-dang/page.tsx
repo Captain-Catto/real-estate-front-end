@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-
+import { toast } from "sonner";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
@@ -42,8 +42,8 @@ function AdminPackagesPageInternalContent() {
       if (result.success) {
         setPackages(result.data.packages);
       }
-    } catch (err) {
-      console.error("Error fetching packages:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải gói dịch vụ");
     } finally {
       setLoading(false);
     }
@@ -64,9 +64,8 @@ function AdminPackagesPageInternalContent() {
       } else {
         alert(result.message || "Có lỗi xảy ra khi tạo gói dịch vụ!");
       }
-    } catch (err) {
-      console.error("Error creating package:", err);
-      alert("Có lỗi xảy ra khi tạo gói dịch vụ!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tạo gói dịch vụ!");
     }
   };
 
@@ -87,9 +86,8 @@ function AdminPackagesPageInternalContent() {
       } else {
         alert(result.message || "Có lỗi xảy ra khi cập nhật gói dịch vụ!");
       }
-    } catch (err) {
-      console.error("Error updating package:", err);
-      alert("Có lỗi xảy ra khi cập nhật gói dịch vụ!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật gói dịch vụ!");
     }
   };
 
@@ -101,11 +99,10 @@ function AdminPackagesPageInternalContent() {
           alert("Xóa gói dịch vụ thành công!");
           fetchPackages();
         } else {
-          alert(result.message || "Có lỗi xảy ra khi xóa gói dịch vụ!");
+          toast.error(result.message || "Có lỗi xảy ra khi xóa gói dịch vụ!");
         }
-      } catch (err) {
-        console.error("Error deleting package:", err);
-        alert("Có lỗi xảy ra khi xóa gói dịch vụ!");
+      } catch {
+        toast.error("Có lỗi xảy ra khi xóa gói dịch vụ!");
       }
     }
   };
@@ -153,9 +150,8 @@ function AdminPackagesPageInternalContent() {
       } else {
         alert(result.message || "Có lỗi xảy ra khi cập nhật trạng thái!");
       }
-    } catch (err) {
-      console.error("Error toggling package status:", err);
-      alert("Có lỗi xảy ra khi cập nhật trạng thái!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái!");
     }
   };
 

@@ -13,6 +13,7 @@ import { UploadService } from "@/services/uploadService";
 import dynamic from "next/dynamic";
 import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 
 // Dynamically import Quill editor to avoid SSR issues
 const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
@@ -83,8 +84,8 @@ function EditNewsPage() {
         if (response.success && response.data) {
           setCategories(response.data);
         }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi tải danh mục");
       } finally {
         setCategoriesLoading(false);
       }
@@ -126,13 +127,11 @@ function EditNewsPage() {
           isFeatured: newsData.isFeatured,
         });
       } else {
-        console.error("API Error:", response); // Debug log
-        alert("Không tìm thấy tin tức");
+        toast.error("Không tìm thấy tin tức");
         router.push("/admin/quan-ly-tin-tuc");
       }
-    } catch (error) {
-      console.error("Error fetching news:", error);
-      alert("Có lỗi xảy ra khi tải tin tức");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải tin tức");
       router.push("/admin/quan-ly-tin-tuc");
     } finally {
       setLoading(false);
@@ -204,9 +203,8 @@ function EditNewsPage() {
       } else {
         alert(response.message || "Có lỗi xảy ra");
       }
-    } catch (error) {
-      console.error("Error updating news:", error);
-      alert("Có lỗi xảy ra khi cập nhật tin tức");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật tin tức");
     } finally {
       setSaving(false);
     }
@@ -223,9 +221,8 @@ function EditNewsPage() {
       } else {
         alert(response.message || "Có lỗi xảy ra");
       }
-    } catch (error) {
-      console.error("Error deleting news:", error);
-      alert("Có lỗi xảy ra khi xóa tin tức");
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa tin tức");
     }
   };
 
@@ -452,10 +449,7 @@ function EditNewsPage() {
                             height={80}
                             className="w-32 h-20 object-cover rounded border"
                             onError={() => {
-                              console.error(
-                                "Blob URL không thể hiển thị:",
-                                formData.featuredImage
-                              );
+                              toast.error("Không thể hiển thị ảnh mới");
                             }}
                           />
                           <div className="flex items-center justify-between mt-1">
@@ -492,10 +486,7 @@ function EditNewsPage() {
                             height={80}
                             className="w-32 h-20 object-cover rounded border"
                             onError={() => {
-                              console.error(
-                                "Không thể tải ảnh từ URL:",
-                                formData.featuredImage
-                              );
+                              toast.error("Không thể tải ảnh từ URL");
                             }}
                           />
                           <div className="flex items-center justify-between mt-1">

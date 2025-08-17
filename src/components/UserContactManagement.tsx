@@ -9,6 +9,7 @@ import {
 import LocationDisplay from "@/components/LocationDisplay";
 import { createPostSlug } from "../utils/postSlug";
 import { useAuth } from "@/store/hooks";
+import { toast } from "sonner";
 
 interface ContactFilters {
   page: number;
@@ -94,7 +95,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         if (customerContactService.getUserContacts) {
           response = await customerContactService.getUserContacts(params);
         } else {
-          console.error("getUserContacts method not found");
+          toast.error("Có lỗi xảy ra khi lấy danh sách liên hệ");
           response = { success: false, data: { contacts: [], pagination: {} } };
         }
       }
@@ -112,8 +113,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         });
       }
     } catch (err) {
-      console.error("Error loading contacts:", err);
-      setError("Không thể tải danh sách liên hệ");
+      toast.error("Có lỗi xảy ra khi tải danh sách liên hệ");
     } finally {
       setLoading(false);
     }
@@ -159,8 +159,8 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
       if (response.success) {
         await loadContacts();
       }
-    } catch (err) {
-      console.error("Error updating contact status:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái liên hệ");
     }
   };
 
@@ -172,8 +172,8 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         setShowDeleteModal(false);
         setSelectedContact(null);
       }
-    } catch (err) {
-      console.error("Error deleting contact:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa liên hệ");
     }
   };
 

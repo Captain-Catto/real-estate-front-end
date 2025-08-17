@@ -1,7 +1,8 @@
 import { fetchWithAuth } from "@/services/authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 export interface NewsCategory {
   id: string;
@@ -123,9 +124,7 @@ export const newsService = {
   ): Promise<NewsListResponse> {
     try {
       const queryString = buildQueryString(params);
-      const url = `${API_BASE_URL}/api/news${
-        queryString ? `?${queryString}` : ""
-      }`;
+      const url = `${API_BASE_URL}/news${queryString ? `?${queryString}` : ""}`;
 
       const response = await fetch(url, {
         headers: {
@@ -139,7 +138,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching published news:", error);
+      toast.error("Lấy danh sách tin tức thất bại");
       return {
         success: false,
         data: {
@@ -160,7 +159,7 @@ export const newsService = {
   // Get single news by slug
   async getNewsBySlug(slug: string): Promise<NewsDetailResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/news/slug/${slug}`, {
+      const response = await fetch(`${API_BASE_URL}/news/slug/${slug}`, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -172,7 +171,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching news by slug:", error);
+      toast.error("Lấy tin tức theo slug thất bại");
       return {
         success: false,
         data: {
@@ -186,7 +185,7 @@ export const newsService = {
   // Get news categories with counts
   async getNewsCategories(): Promise<NewsCategoriesResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/news/categories`, {
+      const response = await fetch(`${API_BASE_URL}/news/categories`, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -198,7 +197,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching news categories:", error);
+      toast.error("Lấy danh mục tin tức thất bại");
       return {
         success: false,
         data: [],
@@ -213,7 +212,7 @@ export const newsService = {
     try {
       const queryString = buildQueryString({ limit });
       const response = await fetch(
-        `${API_BASE_URL}/api/news/featured?${queryString}`,
+        `${API_BASE_URL}/news/featured?${queryString}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -227,7 +226,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching featured news:", error);
+      toast.error("Lấy tin tức nổi bật thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -241,14 +240,11 @@ export const newsService = {
   ): Promise<{ success: boolean; data: { news: NewsItem[] } }> {
     try {
       const queryString = buildQueryString({ limit });
-      const response = await fetch(
-        `${API_BASE_URL}/api/news/hot?${queryString}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/news/hot?${queryString}`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -256,7 +252,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching hot news:", error);
+      toast.error("Lấy tin tức hot thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -297,7 +293,7 @@ export const newsService = {
   ): Promise<NewsListResponse> {
     try {
       const queryString = buildQueryString(params);
-      const url = `${API_BASE_URL}/api/news/admin${
+      const url = `${API_BASE_URL}/news/admin${
         queryString ? `?${queryString}` : ""
       }`;
 
@@ -313,7 +309,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching admin news:", error);
+      toast.error("Lấy danh sách tin tức admin thất bại");
       return {
         success: false,
         data: {
@@ -336,7 +332,7 @@ export const newsService = {
     data: CreateNewsData
   ): Promise<{ success: boolean; message: string; data: NewsItem }> {
     try {
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/news/admin`, {
+      const response = await fetchWithAuth(`${API_BASE_URL}/news/admin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -350,7 +346,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error creating news:", error);
+      toast.error("Tạo tin tức thất bại");
       return {
         success: false,
         message: "Không thể tạo tin tức. Vui lòng thử lại sau.",
@@ -362,14 +358,11 @@ export const newsService = {
   // Get single news for editing
   async getNewsById(id: string): Promise<{ success: boolean; data: NewsItem }> {
     try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/news/admin/${id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/news/admin/${id}`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -377,7 +370,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching news by id:", error);
+      toast.error("Lấy tin tức theo ID thất bại");
       return {
         success: false,
         data: {} as NewsItem,
@@ -391,16 +384,13 @@ export const newsService = {
     data: Partial<CreateNewsData>
   ): Promise<{ success: boolean; message: string; data: NewsItem }> {
     try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/news/admin/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/news/admin/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -408,7 +398,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error updating news:", error);
+      toast.error("Cập nhật tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật tin tức. Vui lòng thử lại sau.",
@@ -420,12 +410,9 @@ export const newsService = {
   // Delete news
   async deleteNews(id: string): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/news/admin/${id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/news/admin/${id}`, {
+        method: "DELETE",
+      });
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -433,7 +420,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error deleting news:", error);
+      toast.error("Xóa tin tức thất bại");
       return {
         success: false,
         message: "Không thể xóa tin tức. Vui lòng thử lại sau.",
@@ -448,7 +435,7 @@ export const newsService = {
   ): Promise<{ success: boolean; message: string; data: NewsItem }> {
     try {
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/news/admin/${id}/status`,
+        `${API_BASE_URL}/news/admin/${id}/status`,
         {
           method: "PUT",
           headers: {
@@ -464,7 +451,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error updating news status:", error);
+      toast.error("Cập nhật trạng thái tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật trạng thái tin tức. Vui lòng thử lại sau.",
@@ -476,14 +463,11 @@ export const newsService = {
   // Get news statistics (admin only)
   async getNewsStats(): Promise<NewsStatsResponse> {
     try {
-      const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/news/admin/stats`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/news/admin/stats`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -491,7 +475,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching news stats:", error);
+      toast.error("Lấy thống kê tin tức thất bại");
       return {
         success: false,
         data: {
@@ -555,7 +539,7 @@ export const newsService = {
   }> {
     try {
       const response = await fetchWithAuth(
-        `${API_BASE_URL}/api/upload/news-image`,
+        `${API_BASE_URL}/upload/news-image`,
         {
           method: "POST",
           body: formData,
@@ -568,7 +552,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error uploading news image:", error);
+      toast.error("Upload ảnh tin tức thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Upload failed",

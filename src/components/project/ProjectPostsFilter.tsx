@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { categoryService, Category } from "@/services/categoryService";
 import { ProjectPostFilters } from "@/hooks/useProjectPosts";
+import { toast } from "sonner";
 
 interface ProjectPostsFilterProps {
   currentFilters: ProjectPostFilters;
@@ -72,8 +73,8 @@ export default function ProjectPostsFilter({
         setCategories(propertyCategories);
 
         console.log("Loaded property categories:", propertyCategories.length);
-      } catch (error) {
-        console.error("Error loading initial data:", error);
+      } catch {
+        toast.error("Không thể tải danh sách loại bất động sản");
       }
     };
 

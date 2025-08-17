@@ -26,8 +26,8 @@ let globalBroadcastChannel: BroadcastChannel | null = null;
 if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
   try {
     globalBroadcastChannel = new BroadcastChannel("wallet_updates");
-  } catch (e) {
-    console.error("Could not initialize BroadcastChannel:", e);
+  } catch {
+    // Silently fail if BroadcastChannel is not supported
   }
 }
 
@@ -46,8 +46,8 @@ export const broadcastWalletUpdate = () => {
     }
 
     console.log("Wallet update broadcast sent");
-  } catch (e) {
-    console.error("Error broadcasting wallet update:", e);
+  } catch {
+    // Silently fail for broadcast errors
   }
 };
 
@@ -116,10 +116,8 @@ export const useWallet = () => {
         setError(errorMessage);
         toast.error(errorMessage);
       }
-    } catch (err) {
-      console.error("Error fetching wallet info:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Lỗi khi tải thông tin ví";
+    } catch {
+      const errorMessage = "Lỗi khi tải thông tin ví";
       setError(errorMessage);
       toast.error("Lỗi khi tải thông tin ví");
     } finally {
@@ -177,8 +175,7 @@ export const useWallet = () => {
         } else {
           toast.error("Không thể tải lịch sử giao dịch");
         }
-      } catch (err) {
-        console.error("Error fetching transactions:", err);
+      } catch {
         toast.error("Lỗi khi tải lịch sử giao dịch");
       } finally {
         setTransactionsLoading(false);
@@ -219,10 +216,8 @@ export const useWallet = () => {
           toast.error(response.message || "Không thể tạo giao dịch");
           return { success: false, error: response.message };
         }
-      } catch (err) {
-        console.error("Error depositing funds:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Lỗi khi nạp tiền vào ví";
+      } catch {
+        const errorMessage = "Lỗi khi nạp tiền vào ví";
         toast.error("Lỗi khi nạp tiền vào ví");
         return { success: false, error: errorMessage };
       }
@@ -269,10 +264,8 @@ export const useWallet = () => {
           toast.error(response.message || "Rút tiền không thành công");
           return { success: false, error: response.message };
         }
-      } catch (err) {
-        console.error("Error withdrawing funds:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Lỗi khi rút tiền từ ví";
+      } catch {
+        const errorMessage = "Lỗi khi rút tiền từ ví";
         toast.error("Lỗi khi rút tiền từ ví");
         return { success: false, error: errorMessage };
       }
@@ -292,10 +285,8 @@ export const useWallet = () => {
         toast.error(response.message || "Không thể lấy chi tiết giao dịch");
         return { success: false, error: response.message };
       }
-    } catch (err) {
-      console.error("Error getting transaction details:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Lỗi khi lấy chi tiết giao dịch";
+    } catch {
+      const errorMessage = "Lỗi khi lấy chi tiết giao dịch";
       toast.error("Lỗi khi lấy chi tiết giao dịch");
       return { success: false, error: errorMessage };
     }

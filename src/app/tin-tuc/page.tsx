@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { News } from "../../components/news/News";
 
 // Async server component
@@ -14,9 +15,8 @@ export default async function NewsPage() {
     if (response.ok) {
       articles = await response.json();
     }
-  } catch (error) {
-    console.error("Error fetching news articles:", error);
-    // Fallback to mock data or empty array
+  } catch {
+    toast.error("Có lỗi xảy ra khi lấy tin tức");
   }
 
   return <News initialArticles={articles} />;

@@ -20,6 +20,7 @@ import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 import { Project } from "@/types/project";
 import { DeveloperForSelection } from "@/types/developer";
+import { toast } from "sonner";
 
 function AdminProjectEditPageInternal() {
   const params = useParams();
@@ -83,8 +84,8 @@ function AdminProjectEditPageInternal() {
           await DeveloperService.getDevelopersForSelection();
         setDevelopers(developersData);
         setFilteredDevelopers(developersData);
-      } catch (error) {
-        console.error("Error fetching developers:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi lấy danh sách nhà phát triển");
       } finally {
         setDevelopersLoading(false);
       }
@@ -449,9 +450,8 @@ function AdminProjectEditPageInternal() {
           };
         });
       }
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      alert("Có lỗi xảy ra khi upload hình ảnh");
+    } catch {
+      toast.error("Có lỗi xảy ra khi upload hình ảnh");
     } finally {
       setUploading(false);
     }
@@ -518,10 +518,9 @@ function AdminProjectEditPageInternal() {
             ? project.category._id
             : project.category, // Send category ID
       });
-      alert("Đã lưu thay đổi!");
-    } catch (error) {
-      console.error("Error saving project:", error);
-      alert("Có lỗi xảy ra khi lưu!");
+      toast.success("Đã lưu thay đổi!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi lưu!");
     } finally {
       setSaving(false);
     }

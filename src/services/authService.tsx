@@ -3,6 +3,7 @@ export const API_BASE_URL =
 
 import { store } from "@/store";
 import { setAccessToken } from "@/store/slices/authSlice";
+import { toast } from "sonner";
 
 export interface LoginRequest {
   email: string;
@@ -156,14 +157,14 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
             }, 1000);
           }
         }
-      } catch (refreshError) {
-        console.error("Token refresh error:", refreshError);
+      } catch {
+        toast.error("Lỗi làm mới token đăng nhập");
       }
     }
 
     return response;
-  } catch (error) {
-    console.error("Network error in fetchWithAuth:", error);
+  } catch {
+    toast.error("Lỗi kết nối mạng");
 
     // Return a controlled error response
     return new Response(
@@ -193,7 +194,7 @@ export const refreshToken = async (): Promise<boolean> => {
       // Don't log errors for 401 or 403 status - these are expected when user is not logged in
       // or refresh token is expired/invalid
       if (response.status !== 401 && response.status !== 403) {
-        console.error(`Refresh token failed with status: ${response.status}`);
+        toast.error("Lỗi làm mới token đăng nhập");
       }
       store.dispatch(setAccessToken(null));
       return false;
@@ -209,9 +210,9 @@ export const refreshToken = async (): Promise<boolean> => {
 
     store.dispatch(setAccessToken(null));
     return false;
-  } catch (error) {
+  } catch {
     // Only log unexpected errors (not 401s)
-    console.error("Refresh token error:", error);
+    toast.error("Lỗi làm mới token đăng nhập");
     store.dispatch(setAccessToken(null));
     return false;
   }

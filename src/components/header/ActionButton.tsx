@@ -2,6 +2,7 @@
 import { useState, Fragment, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 import {
   Menu,
@@ -12,6 +13,7 @@ import {
 } from "@headlessui/react";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/store/hooks";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { toast } from "sonner";
 import { FavoriteItem } from "@/store/slices/favoritesSlices";
 import { formatPriceByType } from "@/utils/format";
@@ -20,6 +22,8 @@ import NotificationDropdown from "@/components/notifications/NotificationDropdow
 export default function ActionButton() {
   // Use our enhanced auth hook
   const { user, isAuthenticated, loading, logout, accessToken } = useAuth();
+  const router = useRouter();
+  const isMobile = useIsMobile();
 
   // Lấy danh sách yêu thích và các actions từ Redux store
   const {
@@ -48,6 +52,17 @@ export default function ActionButton() {
     }
   };
 
+  // Hàm xử lý click nút favorites
+  const handleFavoritesClick = () => {
+    if (isMobile) {
+      // Trên mobile, chuyển đến trang yêu thích
+      router.push("/nguoi-dung/yeu-thich");
+    } else {
+      // Trên desktop, toggle popup
+      setShowFavoritesPopup(!showFavoritesPopup);
+    }
+  };
+
   // Hàm xử lý xóa yêu thích
   const handleRemoveFavorite = async (itemId: string) => {
     try {
@@ -64,15 +79,17 @@ export default function ActionButton() {
         })
       );
     } catch (error) {
-      console.error("Error removing favorite:", error);
+      // Log for debugging, show user-friendly message via toast
+      console.log("Remove favorite error (logged for debugging):", error);
       toast.error("Có lỗi xảy ra khi xóa yêu thích");
     }
   };
 
-  // Handle click outside to close popups
+  // Handle click outside to close popups (chỉ trên desktop)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
+        !isMobile &&
         favoritesRef.current &&
         !favoritesRef.current.contains(event.target as Node)
       ) {
@@ -80,14 +97,14 @@ export default function ActionButton() {
       }
     };
 
-    if (showFavoritesPopup) {
+    if (!isMobile && showFavoritesPopup) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showFavoritesPopup]);
+  }, [showFavoritesPopup, isMobile]);
 
   if (loading) {
     return (
@@ -107,7 +124,7 @@ export default function ActionButton() {
       {isAuthenticated && user && (
         <div className="relative" ref={favoritesRef}>
           <button
-            onClick={() => setShowFavoritesPopup(!showFavoritesPopup)}
+            onClick={handleFavoritesClick}
             className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 group relative"
             title="Yêu thích"
           >
@@ -135,152 +152,155 @@ export default function ActionButton() {
             )}
           </button>
 
-          {/* Favorites Popup */}
-          <Transition
-            show={showFavoritesPopup}
-            as={Fragment}
-            enter="transition ease-out duration-200"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-150"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
-          >
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
-              <div className="p-3">
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                  Danh sách yêu thích ({favoriteItems.length})
-                </h3>
+          {/* Favorites Popup - Chỉ hiển thị trên desktop */}
+          {!isMobile && (
+            <Transition
+              show={showFavoritesPopup}
+              as={Fragment}
+              enter="transition ease-out duration-200"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-150"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-20">
+                <div className="p-3">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                    Danh sách yêu thích ({favoriteItems.length})
+                  </h3>
 
-                {favoritesLoading ? (
-                  <div className="flex justify-center items-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
-                  </div>
-                ) : favoriteItems.length === 0 ? (
-                  <div className="py-4 text-center text-gray-500">
-                    <Image
-                      src="/empty-favorites.svg"
-                      alt="No favorites"
-                      width={150}
-                      height={150}
-                      className="mx-auto mb-2"
-                    />
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {favoriteItems.map((item: FavoriteItem) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 group"
-                      >
-                        {/* Hình ảnh */}
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center">
-                          {item.image && item.image !== "/placeholder.jpg" ? (
-                            <Image
-                              src={
-                                Array.isArray(item.image)
-                                  ? item.image[0]
-                                  : item.image
-                              }
-                              alt={item.title}
-                              width={48}
-                              height={48}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = "none";
-                                // Show fallback icon
-                                const fallback =
-                                  target.parentElement?.querySelector(
-                                    ".fallback-icon"
-                                  ) as HTMLElement;
-                                if (fallback) {
-                                  fallback.style.display = "flex";
+                  {favoritesLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
+                    </div>
+                  ) : favoriteItems.length === 0 ? (
+                    <div className="py-4 text-center text-gray-500">
+                      <Image
+                        src="/empty-favorites.svg"
+                        alt="No favorites"
+                        width={150}
+                        height={150}
+                        className="mx-auto mb-2"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {favoriteItems.map((item: FavoriteItem) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 group"
+                        >
+                          {/* Hình ảnh */}
+                          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gray-200 flex items-center justify-center">
+                            {item.image && item.image !== "/placeholder.jpg" ? (
+                              <Image
+                                src={
+                                  Array.isArray(item.image)
+                                    ? item.image[0]
+                                    : item.image
                                 }
-                              }}
-                            />
-                          ) : null}
+                                alt={item.title}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  // Show fallback icon
+                                  const fallback =
+                                    target.parentElement?.querySelector(
+                                      ".fallback-icon"
+                                    ) as HTMLElement;
+                                  if (fallback) {
+                                    fallback.style.display = "flex";
+                                  }
+                                }}
+                              />
+                            ) : null}
 
-                          {/* Fallback icon */}
-                          <div
-                            className="fallback-icon w-full h-full flex items-center justify-center"
-                            style={{
-                              display:
-                                item.image && item.image !== "/placeholder.jpg"
-                                  ? "none"
-                                  : "flex",
-                            }}
+                            {/* Fallback icon */}
+                            <div
+                              className="fallback-icon w-full h-full flex items-center justify-center"
+                              style={{
+                                display:
+                                  item.image &&
+                                  item.image !== "/placeholder.jpg"
+                                    ? "none"
+                                    : "flex",
+                              }}
+                            >
+                              <svg
+                                className="w-6 h-6 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-800 line-clamp-1">
+                              {item.title}
+                            </h4>
+                            <p className="text-sm font-semibold text-red-600">
+                              {item.price && typeof item.price === "number"
+                                ? formatPriceByType(
+                                    item.price,
+                                    item.type === "property" ? "ban" : "project"
+                                  )
+                                : item.price || "Liên hệ"}
+                            </p>
+                            <p className="text-xs text-gray-500 line-clamp-1">
+                              {item.location}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFavorite(item.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-700 transition-all"
+                            title="Xóa khỏi yêu thích"
                           >
                             <svg
-                              className="w-6 h-6 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                              className="w-4 h-4"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
                             >
                               <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
                               />
                             </svg>
-                          </div>
+                          </button>
                         </div>
-
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-medium text-gray-800 line-clamp-1">
-                            {item.title}
-                          </h4>
-                          <p className="text-sm font-semibold text-red-600">
-                            {item.price && typeof item.price === "number"
-                              ? formatPriceByType(
-                                  item.price,
-                                  item.type === "property" ? "ban" : "project"
-                                )
-                              : item.price || "Liên hệ"}
-                          </p>
-                          <p className="text-xs text-gray-500 line-clamp-1">
-                            {item.location}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleRemoveFavorite(item.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-700 transition-all"
-                          title="Xóa khỏi yêu thích"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {favoriteItems.length > 0 && (
-                  <>
-                    <div className="border-t border-gray-200 mt-3 pt-3">
-                      <Link
-                        href="/nguoi-dung/yeu-thich"
-                        className="block w-full text-center text-sm text-blue-600 hover:text-blue-800 py-2"
-                        onClick={() => setShowFavoritesPopup(false)}
-                      >
-                        Xem tất cả yêu thích →
-                      </Link>
+                      ))}
                     </div>
-                  </>
-                )}
+                  )}
+
+                  {favoriteItems.length > 0 && (
+                    <>
+                      <div className="border-t border-gray-200 mt-3 pt-3">
+                        <Link
+                          href="/nguoi-dung/yeu-thich"
+                          className="block w-full text-center text-sm text-blue-600 hover:text-blue-800 py-2"
+                          onClick={() => setShowFavoritesPopup(false)}
+                        >
+                          Xem tất cả yêu thích →
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </Transition>
+            </Transition>
+          )}
         </div>
       )}
 

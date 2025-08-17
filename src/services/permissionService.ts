@@ -1,6 +1,7 @@
 "use client";
 
 import { getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -84,7 +85,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error fetching available permissions:", error);
+      toast.error("Lỗi khi tải danh sách quyền");
       throw error;
     }
   },
@@ -107,7 +108,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error fetching users and permissions:", error);
+      toast.error("Lỗi khi tải danh sách người dùng và quyền");
       throw error;
     }
   },
@@ -133,7 +134,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error fetching user permissions:", error);
+      toast.error("Lỗi khi tải quyền người dùng");
       throw error;
     }
   },
@@ -163,7 +164,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error updating user permissions:", error);
+      toast.error("Lỗi khi cập nhật quyền người dùng");
       throw error;
     }
   },
@@ -190,7 +191,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error creating user permissions:", error);
+      toast.error("Lỗi khi tạo quyền người dùng");
       throw error;
     }
   },
@@ -216,7 +217,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      console.error("Error deleting user permissions:", error);
+      toast.error("Lỗi khi xóa quyền người dùng");
       throw error;
     }
   },

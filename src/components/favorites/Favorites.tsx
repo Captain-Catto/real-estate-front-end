@@ -234,7 +234,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Filter Tabs - Using Headless UI Tab */}
       <Tab.Group
         selectedIndex={
@@ -246,7 +246,7 @@ export function Favorites({ initialSort = "newest" }: FavoritesWithSortProps) {
           )
         }
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 px-4 sm:px-0">
           <div className="text-sm text-gray-500 flex items-center">
             <span className="mr-2">
               Tổng số {allFilteredItems.length} tin đăng
@@ -341,7 +341,7 @@ const FavoritesContent = React.memo(
   ({ items, isEmpty, type }: FavoritesContentProps) => {
     if (isEmpty) {
       return (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm mx-4 sm:mx-0">
           <i className="far fa-heart text-gray-300 text-4xl mb-4 block"></i>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             {type === "all"
@@ -390,7 +390,7 @@ const FavoritesContent = React.memo(
 // Memoize the FavoriteCard component
 const FavoriteCard = React.memo(({ item }: { item: any }) => {
   return (
-    <div className="border-b border-gray-100 mb-4 pb-4">
+    <div className="border-b border-gray-100 mb-4 pb-4 px-4 sm:px-0">
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative w-full md:w-96 h-72 md:h-64">
           <Link
@@ -522,7 +522,7 @@ export function Skeleton({
 
 function FavoritesLoadingSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Title Skeleton */}
       <div className="text-center mb-8">
         <Skeleton className="h-8 w-64 mx-auto mb-2" />

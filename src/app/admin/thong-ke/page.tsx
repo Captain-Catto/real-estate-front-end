@@ -40,6 +40,7 @@ import {
   LineElement,
 } from "chart.js";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { toast } from "sonner";
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -102,9 +103,8 @@ function StatsPage() {
       setPropertyTypesChart(propertyTypesData);
       setTopLocations(locationsData);
       setUserRegistrationsChart(userRegistrationsData);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      setError("Không thể tải dữ liệu thống kê. Vui lòng thử lại.");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu thống kê");
     } finally {
       setLoading(false);
     }
@@ -166,10 +166,9 @@ function StatsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      alert("Xuất báo cáo thành công!");
-    } catch (error) {
-      console.error("Error exporting report:", error);
-      alert("Có lỗi xảy ra khi xuất báo cáo");
+      toast.success("Xuất báo cáo thành công!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi xuất báo cáo");
     } finally {
       setIsExporting(false);
     }
@@ -261,11 +260,8 @@ function StatsPage() {
       setPropertyTypesChart(propertyTypesData);
       setTopLocations(locationsData);
       setUserRegistrationsChart(userRegistrationsData);
-    } catch (error) {
-      console.error("Error fetching stats with date range:", error);
-      setError(
-        "Không thể tải dữ liệu thống kê cho khoảng thời gian đã chọn. Vui lòng thử lại."
-      );
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu thống kê");
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { paymentService } from "@/services/paymentService";
+import { toast } from "sonner";
 
 /**
  * Provider component that handles wallet synchronization across the app
@@ -49,8 +50,8 @@ export function WalletSyncProvider({
           // EMERGENCY FIX: Disable console.log to prevent infinite logging
           // console.log("[WalletSync] Wallet synced successfully");
         }
-      } catch (error) {
-        console.error("[WalletSync] Error syncing wallet:", error);
+      } catch {
+        toast.error("Lỗi đồng bộ ví điện tử");
       } finally {
         lastSyncTimeRef.current = Date.now();
       }
@@ -89,8 +90,8 @@ export function WalletSyncProvider({
         broadcastChannelRef.current.onmessage = handleBroadcastMessage;
         // EMERGENCY FIX: Disable console.log to prevent infinite logging
         // console.log("[WalletSync] BroadcastChannel initialized");
-      } catch (e) {
-        console.error("[WalletSync] Error setting up BroadcastChannel:", e);
+      } catch {
+        toast.error("Lỗi thiết lập đồng bộ ví điện tử");
       }
     }
 

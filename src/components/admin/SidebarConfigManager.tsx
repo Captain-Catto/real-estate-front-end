@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useSidebar, useSidebarManagement } from "@/hooks/useSidebar";
 import { type SidebarMenuItem } from "@/store/slices/sidebarSlice";
 import { AdminGuard } from "@/components/auth/ProtectionGuard";
+import { toast } from "sonner";
 
 interface EditingItem extends SidebarMenuItem {
   isEditing?: boolean;
@@ -119,9 +120,8 @@ const SidebarConfigManager: React.FC = () => {
       );
 
       setHasChanges(false);
-    } catch (error) {
-      console.error("Error saving item:", error);
-      // Error will be shown via managementError from Redux
+    } catch {
+      toast.error("Lỗi không lưu được mục");
     }
   };
 
@@ -164,7 +164,7 @@ const SidebarConfigManager: React.FC = () => {
         isGroup: false,
       });
     } catch (error) {
-      console.error("Error deleting item:", error);
+      toast.error("Xóa mục sidebar thất bại");
       // Error will be shown via managementError from Redux
     }
   };
@@ -200,7 +200,7 @@ const SidebarConfigManager: React.FC = () => {
     try {
       await addItem(newItem);
     } catch (error) {
-      console.error("Error adding item:", error);
+      toast.error("Thêm mục sidebar thất bại");
       // Error will be shown via managementError from Redux
     }
   };
@@ -290,7 +290,7 @@ const SidebarConfigManager: React.FC = () => {
     try {
       await reorderItems(reorderData);
     } catch (error) {
-      console.error("Error reordering items:", error);
+      toast.error("Sắp xếp lại mục sidebar thất bại");
       // Error will be shown via managementError from Redux
     }
   };

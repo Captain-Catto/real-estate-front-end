@@ -1,22 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { getAccessToken } from "@/services/authService";
-
-interface User {
-  _id: string;
-  username: string;
-  email: string;
-  fullName?: string;
-  role: string;
-  createdAt: string;
-}
-
-interface ActionButton {
-  text: string;
-  link: string;
-  style: "primary" | "secondary" | "success" | "warning" | "info" | "danger";
-}
+import {
+  notificationService,
+  type User,
+  type ActionButton,
+  type SystemNotificationPayload,
+} from "@/services/notificationService";
 
 interface NotificationFormData {
   title: string;
@@ -52,7 +42,7 @@ export default function SystemNotificationManager() {
   const [showActionButton, setShowActionButton] = useState(false);
 
   // Preview notification targets
-  const previewTargets = async () => {
+  const previewTargets = useCallback(async () => {
     if (
       formData.targetType === "specific" &&
       formData.targetUsers.length === 0
@@ -63,46 +53,24 @@ export default function SystemNotificationManager() {
 
     setPreviewLoading(true);
     try {
-      const token = getAccessToken();
-      if (!token) {
-        toast.error("Vui lòng đăng nhập lại");
-        return;
-      }
-
-      const params = new URLSearchParams({
-        targetType: formData.targetType,
-      });
-
-      if (formData.targetType === "specific") {
-        formData.targetUsers.forEach((userId) =>
-          params.append("targetUsers", userId)
-        );
-      } else if (formData.targetType === "role") {
-        params.append("userRole", formData.userRole);
-      }
-
-      const response = await fetch(
-        `http://localhost:8080/api/admin/notifications/preview?${params}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const result = await notificationService.admin.previewNotificationTargets(
+        formData.targetType,
+        formData.targetUsers,
+        formData.userRole
       );
 
-      const data = await response.json();
-      if (data.success) {
-        setPreviewData(data.data);
+      if (result.success) {
+        setPreviewData(result.data);
       } else {
-        toast.error(data.message || "Lỗi khi xem trước");
+        toast.error(result.message || "Lỗi khi xem trước");
       }
     } catch (error) {
-      console.error("Error previewing targets:", error);
+      // Silent error - đã có toast.error("Lỗi kết nối")
       toast.error("Lỗi kết nối");
     } finally {
       setPreviewLoading(false);
     }
-  };
+  }, [formData.targetType, formData.targetUsers, formData.userRole]);
 
   // Search users
   const searchUsers = async (query: string) => {
@@ -113,31 +81,15 @@ export default function SystemNotificationManager() {
 
     setSearchLoading(true);
     try {
-      const token = getAccessToken();
-      if (!token) {
-        toast.error("Vui lòng đăng nhập lại");
-        return;
-      }
+      const result = await notificationService.admin.searchUsers(query);
 
-      const response = await fetch(
-        `http://localhost:8080/api/admin/users/search?q=${encodeURIComponent(
-          query
-        )}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      if (data.success) {
-        setSearchResults(data.data);
+      if (result.success) {
+        setSearchResults(result.data);
       } else {
-        toast.error(data.message || "Lỗi tìm kiếm");
+        toast.error(result.message || "Lỗi tìm kiếm");
       }
     } catch (error) {
-      console.error("Error searching users:", error);
+      // Silent error - đã có toast.error("Lỗi kết nối")
       toast.error("Lỗi kết nối");
     } finally {
       setSearchLoading(false);
@@ -162,7 +114,7 @@ export default function SystemNotificationManager() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [formData.targetType, formData.targetUsers, formData.userRole]);
+  }, [previewTargets]);
 
   // Send notification
   const sendNotification = async () => {
@@ -181,13 +133,7 @@ export default function SystemNotificationManager() {
 
     setLoading(true);
     try {
-      const token = getAccessToken();
-      if (!token) {
-        toast.error("Vui lòng đăng nhập lại");
-        return;
-      }
-
-      const payload = {
+      const payload: SystemNotificationPayload = {
         title: formData.title.trim(),
         message: formData.message.trim(),
         targetType: formData.targetType,
@@ -196,21 +142,12 @@ export default function SystemNotificationManager() {
         actionButton: showActionButton ? formData.actionButton : undefined,
       };
 
-      const response = await fetch(
-        "http://localhost:8080/api/admin/notifications/system",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
+      const result = await notificationService.admin.sendSystemNotification(
+        payload
       );
 
-      const data = await response.json();
-      if (data.success) {
-        toast.success(data.message);
+      if (result.success) {
+        toast.success(result.message || "Gửi thông báo thành công");
         // Reset form
         setFormData({
           title: "",
@@ -223,10 +160,10 @@ export default function SystemNotificationManager() {
         setShowActionButton(false);
         setPreviewData(null);
       } else {
-        toast.error(data.message || "Lỗi khi gửi thông báo");
+        toast.error(result.message || "Lỗi khi gửi thông báo");
       }
     } catch (error) {
-      console.error("Error sending notification:", error);
+      // Silent error - đã có toast.error("Lỗi kết nối")
       toast.error("Lỗi kết nối");
     } finally {
       setLoading(false);

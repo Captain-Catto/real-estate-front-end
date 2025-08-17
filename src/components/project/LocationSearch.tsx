@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { locationService } from "@/services/locationService";
 import { Location } from "@/types/location";
+import { toast } from "sonner";
 
 interface LocationSearchProps {
   currentProvince?: string;
@@ -34,8 +35,8 @@ export function LocationSearch({
       try {
         const data = await locationService.getProvinces();
         setProvinces(data);
-      } catch (error) {
-        console.error("Error loading provinces:", error);
+      } catch {
+        toast.error("Không thể tải danh sách tỉnh/thành phố");
       }
     };
     loadProvinces();
@@ -48,8 +49,8 @@ export function LocationSearch({
         try {
           const data = await locationService.getDistricts(selectedProvince);
           setDistricts(data);
-        } catch (error) {
-          console.error("Error loading districts:", error);
+        } catch {
+          toast.error("Không thể tải danh sách quận/huyện");
         }
       };
       loadDistricts();
@@ -69,8 +70,8 @@ export function LocationSearch({
             selectedDistrict
           );
           setWards(data);
-        } catch (error) {
-          console.error("Error loading wards:", error);
+        } catch {
+          toast.error("Không thể tải danh sách phường/xã");
         }
       };
       loadWards();

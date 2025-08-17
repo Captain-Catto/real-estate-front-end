@@ -18,6 +18,7 @@ import {
   AdminProvince,
   AdminWard,
 } from "@/services/locationService";
+import { toast } from "sonner";
 
 type ModalType = "province" | "ward" | "delete" | null;
 type ActionType = "add" | "edit" | "delete";
@@ -81,10 +82,10 @@ function AdminLocationPageInternal() {
       if (result.success) {
         setProvinces(result.data);
       } else {
-        console.error("Failed to fetch provinces");
+        toast.error("Có lỗi xảy ra khi lấy danh sách tỉnh");
       }
-    } catch (error) {
-      console.error("Error fetching provinces:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách tỉnh");
     } finally {
       setLoading(false);
     }
@@ -225,9 +226,8 @@ function AdminLocationPageInternal() {
       } else {
         alert("Có lỗi xảy ra. Vui lòng thử lại.");
       }
-    } catch (error) {
-      console.error("Error saving:", error);
-      alert("Có lỗi xảy ra. Vui lòng thử lại.");
+    } catch {
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -267,9 +267,8 @@ function AdminLocationPageInternal() {
       } else {
         alert("Có lỗi xảy ra. Vui lòng thử lại.");
       }
-    } catch (error) {
-      console.error("Error deleting:", error);
-      alert("Có lỗi xảy ra. Vui lòng thử lại.");
+    } catch {
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }

@@ -10,7 +10,10 @@ import { DeveloperInfo } from "./DeveloperInfo";
 import { useProjects } from "@/hooks/useProjects";
 import { useLocationNames } from "@/hooks/useLocationNames";
 import { DeveloperService } from "@/services/developerService";
+import { locationService } from "@/services/locationService";
+import { categoryService } from "@/services/categoryService";
 import { Developer } from "@/types/developer";
+import { toast } from "sonner";
 import Header from "../header/Header";
 import { ActiveFilters } from "./ActiveFilters";
 import Footer from "../footer/Footer";
@@ -69,31 +72,20 @@ export function ProjectPage({
 
         // Convert province slug to code
         if (province) {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_BASE_URL ||
-              "http://localhost:8080/api"
-            }/locations/province/${province}`
+          const provinceData = await locationService.getProvinceWithSlug(
+            province
           );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setProvinceCode(data.data.code);
+          if (provinceData) {
+            setProvinceCode(provinceData.code);
 
-              // Convert ward slug to code if ward is provided
-              if (ward) {
-                const wardResponse = await fetch(
-                  `${
-                    process.env.NEXT_PUBLIC_API_BASE_URL ||
-                    "http://localhost:8080/api"
-                  }/locations/location-by-slug/${province}/${ward}`
-                );
-                if (wardResponse.ok) {
-                  const wardData = await wardResponse.json();
-                  if (wardData.success) {
-                    setWardCode(wardData.data.wardCode);
-                  }
-                }
+            // Convert ward slug to code if ward is provided
+            if (ward) {
+              const locationData = await locationService.getLocationBySlug(
+                province,
+                ward
+              );
+              if (locationData) {
+                setWardCode(locationData.wardCode);
               }
             }
           }
@@ -101,21 +93,13 @@ export function ProjectPage({
 
         // Convert category slug to ID
         if (category) {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_BASE_URL ||
-              "http://localhost:8080/api"
-            }/categories/${category}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setCategoryId(data.data._id);
-            }
+          const categoryData = await categoryService.getBySlug(category);
+          if (categoryData) {
+            setCategoryId(categoryData._id);
           }
         }
-      } catch (error) {
-        console.error("Error converting slugs to codes:", error);
+      } catch {
+        toast.error("Không thể chuyển đổi thông tin địa chỉ");
       }
     };
 
@@ -184,8 +168,8 @@ export function ProjectPage({
         );
         console.log("Fetched developer data:", developerData);
         setDeveloper(developerData);
-      } catch (error) {
-        console.error("Error fetching developer:", error);
+      } catch {
+        toast.error("Không thể tải thông tin chủ đầu tư");
         setDeveloperError("Không thể tải thông tin chủ đầu tư");
       } finally {
         setLoadingDeveloper(false);
@@ -268,12 +252,12 @@ export function ProjectPage({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    
+
     // Scroll to articles section instead of top of page
     if (articlesRef.current) {
-      articlesRef.current.scrollIntoView({ 
-        behavior: "smooth", 
-        block: "start" 
+      articlesRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
       });
     } else {
       // Fallback to top if ref not available

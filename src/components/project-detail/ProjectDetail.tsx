@@ -13,6 +13,7 @@ import { ProjectDetailInfo } from "./ProjectDetailInfo";
 import { ProjectLocationInfo } from "./ProjectLocationInfo";
 import { ProjectService } from "@/services/projectService";
 import { Project } from "@/types/project";
+import { toast } from "sonner";
 import { useLocationNames } from "@/hooks/useLocationNames";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
@@ -130,8 +131,8 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
           location: projectData.location,
           address: projectData.address,
         });
-      } catch (error) {
-        console.error("💥 Error fetching project:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi tải thông tin dự án");
         setError("Có lỗi xảy ra khi tải thông tin dự án");
       } finally {
         setLoading(false);

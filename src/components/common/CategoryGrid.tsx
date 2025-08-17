@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Category, categoryService } from "@/services/categoryService";
+import { toast } from "sonner";
 
 interface CategoryGridProps {
   type: "property" | "project";
@@ -33,7 +34,7 @@ export default function CategoryGrid({
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         setCategories(activeCategories);
       } catch (error) {
-        console.error("Error fetching categories:", error);
+        toast.error("Lấy danh sách danh mục thất bại");
       } finally {
         setLoading(false);
       }

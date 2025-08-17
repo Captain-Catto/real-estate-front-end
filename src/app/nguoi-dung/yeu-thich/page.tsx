@@ -134,7 +134,7 @@ export default function YeuThichPage() {
     } catch (error) {
       // Dismiss loading toast
       toast.dismiss(loadingToast);
-      console.error("Error removing favorite:", error);
+      console.log("Error removing favorite (logged for debugging):", error);
 
       // Thêm delay nhỏ cho error toast
       setTimeout(() => {

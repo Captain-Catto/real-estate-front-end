@@ -26,6 +26,7 @@ import { locationService } from "@/services/locationService";
 import { postService } from "@/services/postsService";
 import { PermissionGuard } from "@/components/auth/ProtectionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 
 interface AdminPostDetailProps {
   post: {
@@ -129,8 +130,8 @@ export default function AdminPostDetail({
           );
 
           setLocationName(name);
-        } catch (error) {
-          console.error("Error fetching location name:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
           // Fallback
           setLocationName(
             post.location.ward
@@ -157,8 +158,8 @@ export default function AdminPostDetail({
         try {
           const name = await postService.getCategoryName(post.category);
           setCategoryName(name);
-        } catch (error) {
-          console.error("Error fetching category name:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi lấy tên danh mục");
           setCategoryName("Không xác định");
         }
       }
@@ -202,8 +203,8 @@ export default function AdminPostDetail({
           if (typeof post.rejectedBy === "string" && post.rejectedBy) {
             setRejectedByName(userNames[post.rejectedBy] || "Không xác định");
           }
-        } catch (error) {
-          console.error("Error fetching user names:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi lấy tên người dùng");
           setAuthorName("Không xác định");
           setApprovedByName("Không xác định");
           setRejectedByName("Không xác định");

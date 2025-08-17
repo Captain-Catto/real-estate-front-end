@@ -6,15 +6,7 @@ import {
   Package,
   PackageFormData,
 } from "@/services/packageService";
-
-// Simple toast replacement
-const showToast = (message: string, type: "success" | "error" = "success") => {
-  if (type === "success") {
-    alert(`✅ ${message}`);
-  } else {
-    alert(`❌ ${message}`);
-  }
-};
+import { toast } from "sonner";
 
 const PackageManagement = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -48,11 +40,10 @@ const PackageManagement = () => {
       if (result.success) {
         setPackages(result.data.packages);
       } else {
-        showToast("Lỗi khi tải danh sách gói", "error");
+        toast.error("Lỗi khi tải danh sách gói");
       }
     } catch (error) {
-      console.error("Fetch packages error:", error);
-      showToast("Lỗi kết nối server", "error");
+      toast.error("Lỗi kết nối server");
     } finally {
       setLoading(false);
     }
@@ -64,16 +55,15 @@ const PackageManagement = () => {
       const result = await packageService.admin.createPackage(packageData);
 
       if (result.success) {
-        showToast("Tạo gói thành công!");
+        toast.success("Tạo gói thành công!");
         fetchPackages();
         setShowCreateForm(false);
         resetForm();
       } else {
-        showToast(result.message || "Lỗi khi tạo gói", "error");
+        toast.error(result.message || "Lỗi khi tạo gói");
       }
     } catch (error) {
-      showToast("Lỗi kết nối server", "error");
-      console.error("Create package error:", error);
+      toast.error("Lỗi kết nối server");
     }
   };
 
@@ -83,16 +73,15 @@ const PackageManagement = () => {
       const result = await packageService.admin.updatePackage(id, packageData);
 
       if (result.success) {
-        showToast("Cập nhật gói thành công!");
+        toast.success("Cập nhật gói thành công!");
         fetchPackages();
         setEditingPackage(null);
         resetForm();
       } else {
-        showToast(result.message || "Lỗi khi cập nhật gói", "error");
+        toast.error(result.message || "Lỗi khi cập nhật gói");
       }
     } catch (error) {
-      showToast("Lỗi kết nối server", "error");
-      console.error("Update package error:", error);
+      toast.error("Lỗi kết nối server");
     }
   };
 
@@ -104,14 +93,13 @@ const PackageManagement = () => {
       const result = await packageService.admin.deletePackage(id);
 
       if (result.success) {
-        showToast("Xóa gói thành công!");
+        toast.success("Xóa gói thành công!");
         fetchPackages();
       } else {
-        showToast(result.message || "Lỗi khi xóa gói", "error");
+        toast.error(result.message || "Lỗi khi xóa gói");
       }
     } catch (error) {
-      showToast("Lỗi kết nối server", "error");
-      console.error("Delete package error:", error);
+      toast.error("Lỗi kết nối server");
     }
   };
 

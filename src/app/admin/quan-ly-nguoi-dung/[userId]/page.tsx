@@ -100,8 +100,7 @@ function UserDetailPage() {
         toast.error("Không thể tải thông tin người dùng");
         router.push("/admin/quan-ly-nguoi-dung");
       }
-    } catch (error) {
-      console.error("Error fetching user:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi tải thông tin người dùng");
       router.push("/admin/quan-ly-nguoi-dung");
     } finally {
@@ -123,8 +122,8 @@ function UserDetailPage() {
         setPosts(response.data.posts);
         setPostsTotalPages(response.data.pagination?.totalPages || 1);
       }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải bài viết");
     } finally {
       setPostsLoading(false);
     }
@@ -144,8 +143,8 @@ function UserDetailPage() {
         setTransactions(response.data.payments);
         setTransactionsTotalPages(response.data.pagination?.totalPages || 1);
       }
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải giao dịch");
     } finally {
       setTransactionsLoading(false);
     }
@@ -162,8 +161,8 @@ function UserDetailPage() {
         setLogs(response.data.logs);
         setLogsTotalPages(response.data.pagination?.totalPages || 1);
       }
-    } catch (error) {
-      console.error("Error fetching logs:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải nhật ký");
     } finally {
       setLogsLoading(false);
     }
@@ -206,8 +205,8 @@ function UserDetailPage() {
         // Cache the result
         setLocationNames((prev) => new Map(prev.set(cacheKey, fullAddress)));
         return fullAddress;
-      } catch (error) {
-        console.error("Error fetching location name:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
         const fallback = `${wardCode || districtCode || provinceCode}`;
         setLocationNames((prev) => new Map(prev.set(cacheKey, fallback)));
         return fallback;
@@ -252,8 +251,7 @@ function UserDetailPage() {
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
-    } catch (error) {
-      console.error("Error updating user:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setIsProcessing(false);
@@ -276,8 +274,7 @@ function UserDetailPage() {
           response.message || "Có lỗi xảy ra khi cập nhật trạng thái"
         );
       }
-    } catch (error) {
-      console.error("Error updating status:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
     } finally {
       setIsProcessing(false);
@@ -405,8 +402,8 @@ function UserDetailPage() {
           }
 
           setDisplayName(fullAddress);
-        } catch (error) {
-          console.error("Error fetching location:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
           setDisplayName(fallback);
         } finally {
           setIsLoading(false);

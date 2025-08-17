@@ -17,6 +17,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/solid";
 import { Pagination } from "@/components/common/Pagination";
+import { toast } from "sonner";
 interface NewsItem {
   _id: string;
   title: string;
@@ -73,8 +74,8 @@ function NewsManagementPage() {
       if (response.success) {
         setCategories(response.data);
       }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải danh mục");
     } finally {
       setCategoriesLoading(false);
     }
@@ -105,8 +106,8 @@ function NewsManagementPage() {
         setNews(response.data.news);
         setTotalPages(response.data.pagination.totalPages);
       }
-    } catch (error) {
-      console.error("Error fetching news:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải tin tức");
     } finally {
       setLoading(false);
     }
@@ -128,9 +129,8 @@ function NewsManagementPage() {
       } else {
         alert(response.message || "Có lỗi xảy ra");
       }
-    } catch (error) {
-      console.error("Error deleting news:", error);
-      alert("Có lỗi xảy ra khi xóa tin tức");
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa tin tức");
     }
   };
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -146,9 +146,8 @@ function NewsManagementPage() {
       } else {
         alert(response.message || "Có lỗi xảy ra");
       }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      alert("Có lỗi xảy ra khi cập nhật trạng thái");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
     }
   };
 

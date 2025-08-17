@@ -4,22 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { fetchWithAuth } from "@/services/authService";
+import { areaService, type AreaRange } from "@/services/areaService";
 import { toast } from "sonner";
-
-interface Area {
-  _id: string;
-  id: string;
-  name: string;
-  slug: string;
-  type: "property" | "project";
-  minValue: number;
-  maxValue: number; // -1 means unlimited
-  order: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface PaginationInfo {
   page: number;
@@ -29,7 +15,7 @@ interface PaginationInfo {
 }
 
 function AreasManagementPageInternal() {
-  const [areas, setAreas] = useState<Area[]>([]);
+  const [areas, setAreas] = useState<AreaRange[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -42,7 +28,7 @@ function AreasManagementPageInternal() {
     "all" | "property" | "project"
   >("all");
   const [showForm, setShowForm] = useState(false);
-  const [editingArea, setEditingArea] = useState<Area | null>(null);
+  const [editingArea, setEditingArea] = useState<AreaRange | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
@@ -56,24 +42,15 @@ function AreasManagementPageInternal() {
   const fetchAreas = useCallback(async () => {
     setLoading(true);
     try {
-      const typeParam = selectedType === "all" ? "" : `&type=${selectedType}`;
-      const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/areas?page=${currentPage}&limit=10${typeParam}`
-      );
+      const data = await areaService.getAreas({
+        page: currentPage,
+        limit: 10,
+        type: selectedType === "all" ? undefined : selectedType,
+      });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAreas(data.data);
-          setPagination(data.pagination);
-        } else {
-          toast.error(data.message || "Lỗi khi tải danh sách khoảng diện tích");
-        }
-      } else {
-        toast.error("Lỗi kết nối server");
-      }
-    } catch (error) {
-      console.error("Error fetching areas:", error);
+      setAreas(data.data);
+      setPagination(data.pagination);
+    } catch {
       toast.error("Lỗi khi tải danh sách khoảng diện tích");
     } finally {
       setLoading(false);
@@ -89,36 +66,19 @@ function AreasManagementPageInternal() {
     e.preventDefault();
 
     try {
-      const url = editingArea
-        ? `http://localhost:8080/api/admin/areas/${editingArea._id}`
-        : "http://localhost:8080/api/admin/areas";
-
-      const method = editingArea ? "PUT" : "POST";
-
-      const response = await fetchWithAuth(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          toast.success(data.message);
-          setShowForm(false);
-          setEditingArea(null);
-          resetForm();
-          fetchAreas();
-        } else {
-          toast.error(data.message || "Có lỗi xảy ra");
-        }
+      if (editingArea && editingArea._id) {
+        await areaService.update(editingArea._id, formData);
+        toast.success("Cập nhật khoảng diện tích thành công!");
       } else {
-        toast.error("Lỗi kết nối server");
+        await areaService.create(formData);
+        toast.success("Tạo khoảng diện tích thành công!");
       }
-    } catch (error) {
-      console.error("Error saving area:", error);
+
+      setShowForm(false);
+      setEditingArea(null);
+      resetForm();
+      fetchAreas();
+    } catch {
       toast.error("Lỗi khi lưu khoảng diện tích");
     }
   };
@@ -136,21 +96,21 @@ function AreasManagementPageInternal() {
   };
 
   // Handle edit
-  const handleEdit = (area: Area) => {
+  const handleEdit = (area: AreaRange) => {
     setEditingArea(area);
     setFormData({
-      name: area.name,
-      slug: area.slug,
-      type: area.type,
-      minValue: area.minValue,
-      maxValue: area.maxValue,
-      order: area.order,
+      name: area.name || "",
+      slug: area.slug || "",
+      type: area.type || "property",
+      minValue: area.minValue || 0,
+      maxValue: area.maxValue || -1,
+      order: area.order || 0,
     });
     setShowForm(true);
   };
 
   // Handle delete
-  const handleDelete = async (area: Area) => {
+  const handleDelete = async (area: AreaRange) => {
     if (
       !confirm(`Bạn có chắc chắn muốn xóa khoảng diện tích "${area.name}"?`)
     ) {
@@ -158,63 +118,37 @@ function AreasManagementPageInternal() {
     }
 
     try {
-      const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/areas/${area._id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          toast.success(data.message);
-          fetchAreas();
-        } else {
-          toast.error(data.message || "Lỗi khi xóa");
-        }
-      } else {
-        toast.error("Lỗi kết nối server");
+      if (area._id) {
+        await areaService.delete(area._id);
+        toast.success("Xóa khoảng diện tích thành công!");
+        fetchAreas();
       }
-    } catch (error) {
-      console.error("Error deleting area:", error);
+    } catch {
       toast.error("Lỗi khi xóa khoảng diện tích");
     }
   };
 
   // Toggle status
-  const handleToggleStatus = async (area: Area) => {
+  const handleToggleStatus = async (area: AreaRange) => {
     try {
-      const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/areas/${area._id}/toggle-status`,
-        {
-          method: "PATCH",
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          toast.success(data.message);
-          fetchAreas();
-        } else {
-          toast.error(data.message || "Lỗi khi thay đổi trạng thái");
-        }
-      } else {
-        toast.error("Lỗi kết nối server");
+      if (area._id) {
+        await areaService.toggleStatus(area._id);
+        toast.success("Thay đổi trạng thái thành công!");
+        fetchAreas();
       }
-    } catch (error) {
-      console.error("Error toggling status:", error);
+    } catch {
       toast.error("Lỗi khi thay đổi trạng thái");
     }
   };
 
   // Format area range for display
-  const formatAreaRange = (area: Area) => {
+  const formatAreaRange = (area: AreaRange) => {
     if (area.maxValue === -1) {
-      return area.minValue > 0 ? `Trên ${area.minValue} m²` : "Không giới hạn";
+      return area.minValue && area.minValue > 0
+        ? `Trên ${area.minValue} m²`
+        : "Không giới hạn";
     }
-    return area.minValue > 0
+    return area.minValue && area.minValue > 0
       ? `${area.minValue} - ${area.maxValue} m²`
       : `Dưới ${area.maxValue} m²`;
   };

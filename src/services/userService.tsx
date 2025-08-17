@@ -1,8 +1,10 @@
 import { fetchWithAuth } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"
+    ? process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL
     : "http://localhost:8080/api";
 
 export interface User {
@@ -194,7 +196,7 @@ export async function getUsers(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching users:", error);
+    toast.error("Lỗi khi tải danh sách người dùng");
     return {
       success: false,
       data: { users: [] },
@@ -216,7 +218,7 @@ export async function getUserStats(): Promise<UserStatsResponse> {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching user stats:", error);
+    toast.error("Lỗi khi tải thống kê người dùng");
     return {
       success: false,
       data: {
@@ -245,7 +247,7 @@ export async function getUserById(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching user:", error);
+    toast.error("Lỗi khi tải thông tin người dùng");
     return {
       success: false,
       message: "Có lỗi xảy ra khi tải thông tin người dùng",
@@ -275,7 +277,7 @@ export async function updateUserStatus(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error updating user status:", error);
+    toast.error("Lỗi khi cập nhật trạng thái người dùng");
     return {
       success: false,
       message:
@@ -306,7 +308,7 @@ export async function deleteUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error deleting user:", error);
+    toast.error("Lỗi khi xóa người dùng");
     return {
       success: false,
       message:
@@ -339,7 +341,7 @@ export async function updateUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error updating user:", error);
+    toast.error("Lỗi khi cập nhật thông tin người dùng");
     return {
       success: false,
       message:
@@ -384,7 +386,7 @@ export async function getUserPosts(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching user posts:", error);
+    toast.error("Lỗi khi lấy danh sách tin đăng");
     return {
       success: false,
       data: {
@@ -435,7 +437,7 @@ export async function getUserPayments(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching user payments:", error);
+    toast.error("Lỗi khi lấy lịch sử giao dịch");
     return {
       success: false,
       data: {
@@ -483,7 +485,7 @@ export async function getUserLogs(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching user logs:", error);
+    toast.error("Lỗi khi lấy lịch sử thay đổi");
     return {
       success: false,
       data: {
@@ -519,7 +521,7 @@ export async function getPublicUser(userId: string): Promise<{
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error fetching public user:", error);
+    toast.error("Lỗi khi lấy thông tin người dùng");
     return {
       success: false,
       message:

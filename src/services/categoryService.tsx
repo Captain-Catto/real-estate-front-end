@@ -1,4 +1,5 @@
 import { getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -70,8 +71,8 @@ export const categoryService = {
       const result = await response.json();
       // Handle the nested structure
       return result.data?.categories || result.categories || [];
-    } catch (error) {
-      console.error("Error in categoryService.getAll:", error);
+    } catch {
+      toast.error("Không thể tải danh sách danh mục");
       return [];
     }
   },
@@ -102,8 +103,8 @@ export const categoryService = {
       const result = await response.json();
       // Handle the nested structure
       return result.data?.categories || result.categories || [];
-    } catch (error) {
-      console.error("Error in categoryService.getByProjectType:", error);
+    } catch {
+      toast.error("Không thể tải danh mục theo loại dự án");
       return [];
     }
   },
@@ -128,8 +129,34 @@ export const categoryService = {
 
       const result = await response.json();
       return result.data || null;
-    } catch (error) {
-      console.error("Error in categoryService.getById:", error);
+    } catch {
+      toast.error("Không thể tải thông tin danh mục");
+      return null;
+    }
+  },
+
+  /**
+   * Get a specific category by slug
+   * @param slug - Category slug
+   * @returns Promise with category details
+   */
+  getBySlug: async (slug: string): Promise<Category | null> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/categories/${slug}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error fetching category: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.data || null;
+    } catch {
+      toast.error("Không thể tải danh mục");
       return null;
     }
   },
@@ -160,9 +187,9 @@ export const categoryService = {
         }
 
         return await response.json();
-      } catch (error) {
-        console.error("Error in categoryService.admin.getAll:", error);
-        throw error;
+      } catch {
+        toast.error("Không thể tải danh sách danh mục admin");
+        throw new Error("Không thể tải danh sách danh mục admin");
       }
     },
 
@@ -187,9 +214,9 @@ export const categoryService = {
 
         const result = await response.json();
         return result.data;
-      } catch (error) {
-        console.error("Error in categoryService.admin.create:", error);
-        throw error;
+      } catch {
+        toast.error("Không thể tạo danh mục mới");
+        throw new Error("Không thể tạo danh mục mới");
       }
     },
 
@@ -214,9 +241,9 @@ export const categoryService = {
 
         const result = await response.json();
         return result.data;
-      } catch (error) {
-        console.error("Error in categoryService.admin.update:", error);
-        throw error;
+      } catch {
+        toast.error("Không thể cập nhật danh mục");
+        throw new Error("Không thể cập nhật danh mục");
       }
     },
 
@@ -236,9 +263,9 @@ export const categoryService = {
         if (!response.ok) {
           throw new Error(`Error deleting category: ${response.status}`);
         }
-      } catch (error) {
-        console.error("Error in categoryService.admin.delete:", error);
-        throw error;
+      } catch {
+        toast.error("Không thể xóa danh mục");
+        throw new Error("Không thể xóa danh mục");
       }
     },
 
@@ -264,9 +291,9 @@ export const categoryService = {
             `Error updating categories order: ${response.status}`
           );
         }
-      } catch (error) {
-        console.error("Error in categoryService.admin.updateOrder:", error);
-        throw error;
+      } catch {
+        toast.error("Không thể cập nhật thứ tự danh mục");
+        throw new Error("Không thể cập nhật thứ tự danh mục");
       }
     },
   },
@@ -296,8 +323,8 @@ export const categoryService = {
 
       // Filter only active categories
       return categories.filter((cat: Category) => cat.isActive !== false);
-    } catch (error) {
-      console.error("Error in categoryService.getAllActiveCategories:", error);
+    } catch {
+      toast.error("Không thể tải danh sách danh mục đang hoạt động");
       return [];
     }
   },

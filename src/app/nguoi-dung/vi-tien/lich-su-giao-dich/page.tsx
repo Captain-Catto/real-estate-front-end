@@ -11,6 +11,7 @@ import { useSearchParams } from "next/navigation";
 import { paymentService, PaymentFilterParams } from "@/services/paymentService";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { toast } from "sonner";
 
 interface Transaction {
   _id: string;
@@ -143,8 +144,8 @@ function LichSuGiaoDichPageInternal() {
         } else {
           setTransactionError("Không thể tải dữ liệu giao dịch");
         }
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
+      } catch {
+        toast.error("Lỗi khi tải dữ liệu giao dịch");
         setTransactionError("Lỗi khi tải dữ liệu giao dịch");
         setApiTransactions([]);
       } finally {

@@ -9,6 +9,7 @@ import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { DeveloperService } from "@/services/developerService";
+import { toast } from "sonner";
 import {
   DeveloperListItem,
   CreateDeveloperRequest,
@@ -104,7 +105,7 @@ function AdminDeveloperPage() {
       setDevelopers(data.developers);
       setFilteredDevelopers(data.developers);
     } catch (error) {
-      console.error("Error fetching developers:", error);
+      toast.error("Lỗi khi tải danh sách chủ đầu tư");
     } finally {
       setLoading(false);
     }
@@ -141,7 +142,7 @@ function AdminDeveloperPage() {
           });
         }
       } catch (error) {
-        console.error("Error fetching full developer data:", error);
+        toast.error("Lỗi khi tải thông tin chi tiết chủ đầu tư");
         // Fallback to limited data
         setForm({
           name: developer.name,
@@ -204,7 +205,7 @@ function AdminDeveloperPage() {
         }));
       }
     } catch (error) {
-      console.error("Error uploading logo:", error);
+      toast.error("Lỗi khi upload logo");
       alert("Có lỗi xảy ra khi upload logo");
     } finally {
       setUploading(false);
@@ -250,7 +251,7 @@ function AdminDeveloperPage() {
       handleCloseModal();
       fetchDevelopers();
     } catch (error) {
-      console.error("Error saving developer:", error);
+      toast.error("Lỗi khi lưu thông tin chủ đầu tư");
       alert("Có lỗi xảy ra khi lưu thông tin chủ đầu tư");
     }
   };
@@ -261,7 +262,7 @@ function AdminDeveloperPage() {
         await DeveloperService.deleteDeveloper(id);
         fetchDevelopers();
       } catch (error) {
-        console.error("Error deleting developer:", error);
+        toast.error("Lỗi khi xóa chủ đầu tư");
         alert("Có lỗi xảy ra khi xóa chủ đầu tư");
       }
     }

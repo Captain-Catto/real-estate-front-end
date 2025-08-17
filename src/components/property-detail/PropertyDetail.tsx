@@ -13,6 +13,7 @@ import { DisplayMap } from "./DisplayMap";
 import SimilarPosts from "./SimilarPosts";
 import { formatPriceByType } from "@/utils/format";
 import { createListingSlug } from "@/utils/postSlug";
+import { toast } from "sonner";
 import CallBackButton from "../CallBackButton";
 
 interface PropertyDetailProps {
@@ -145,8 +146,8 @@ export function PropertyDetail({
             setFetchedProject(projectData);
             console.log("Project data fetched:", projectData);
           }
-        } catch (error) {
-          console.error("Error fetching project data:", error);
+        } catch {
+          toast.error("Không thể tải thông tin dự án");
         } finally {
           setProjectLoading(false);
         }
@@ -182,8 +183,8 @@ export function PropertyDetail({
             setFetchedDeveloper(developerData);
             console.log("Developer data fetched:", developerData);
           }
-        } catch (error) {
-          console.error("Error fetching developer data:", error);
+        } catch {
+          toast.error("Không thể tải thông tin chủ đầu tư");
         } finally {
           setDeveloperLoading(false);
         }

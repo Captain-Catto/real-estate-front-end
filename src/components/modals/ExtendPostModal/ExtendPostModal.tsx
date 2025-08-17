@@ -105,8 +105,8 @@ export default function ExtendPostModal({
       if (walletResponse && walletResponse.success) {
         setWalletBalance(walletResponse.data.balance || 0);
       }
-    } catch (error) {
-      console.error("Error loading extend post data:", error);
+    } catch {
+      // Silent error for extend post data loading
       toast.error("Không thể tải thông tin gói dịch vụ");
     } finally {
       setFetchingData(false);
@@ -150,7 +150,7 @@ export default function ExtendPostModal({
         throw new Error(response.message || "Không thể gia hạn tin đăng");
       }
     } catch (error) {
-      console.error("Error extending post:", error);
+      // Error already handled by toast below
       toast.error(
         error instanceof Error ? error.message : "Không thể gia hạn tin đăng"
       );

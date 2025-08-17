@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "@/services/authService";
+import { toast } from "sonner";
 
 export interface DropdownItem {
   id: string;
@@ -61,7 +62,7 @@ class HeaderSettingsService {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching public header menus:", error);
+      toast.error("Lấy menu header công khai thất bại");
       throw error;
     }
   }
@@ -81,7 +82,7 @@ class HeaderSettingsService {
       // If fetchWithAuth already returns parsed data
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error fetching header menus:", error);
+      toast.error("Lấy menu header thất bại");
       throw error;
     }
   }
@@ -101,7 +102,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error creating header menu:", error);
+      toast.error("Tạo menu header thất bại");
       throw error;
     }
   }
@@ -121,7 +122,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error updating header menu:", error);
+      toast.error("Cập nhật menu header thất bại");
       throw error;
     }
   }
@@ -138,7 +139,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error deleting header menu:", error);
+      toast.error("Xóa menu header thất bại");
       throw error;
     }
   }
@@ -158,7 +159,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error updating menu order:", error);
+      toast.error("Cập nhật thứ tự menu thất bại");
       throw error;
     }
   }
@@ -179,7 +180,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error toggling menu status:", error);
+      toast.error("Chuyển trạng thái menu thất bại");
       throw error;
     }
   }
@@ -196,7 +197,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      console.error("Error resetting to default:", error);
+      toast.error("Khôi phục cài đặt mặc định thất bại");
       throw error;
     }
   }

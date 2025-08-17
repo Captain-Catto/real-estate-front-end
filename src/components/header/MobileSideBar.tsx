@@ -7,6 +7,7 @@ import {
   HeaderMenu,
 } from "@/services/headerSettingsService";
 import { newsService, NewsCategory } from "@/services/newsService";
+import { toast } from "sonner";
 import ActionButton from "./ActionButton";
 
 interface MobileSidebarProps {
@@ -51,9 +52,9 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
           // Cập nhật menu tin tức trong headerMenus
           updateNewsMenuInHeaderMenus(response.data);
         }
-      } catch (error) {
-        console.error("Failed to load news categories:", error);
-        // Fallback to empty array - sidebar will work without categories
+      } catch {
+        // Silent error for news categories - fallback to empty array
+        // Sidebar will work without categories
       }
     };
 
@@ -72,8 +73,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             }));
           setHeaderMenus(activeMenus);
         }
-      } catch (error) {
-        console.error("Failed to load header menus:", error);
+      } catch {
+        toast.error("Không thể tải menu header");
         // Fallback to default menus - categories will be updated separately
         const fallbackMenus = [
           {
@@ -172,8 +173,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
             if (response.success && response.data) {
               updateNewsMenuInHeaderMenus(response.data);
             }
-          } catch (error) {
-            console.error("Failed to load news categories:", error);
+          } catch {
+            // Silent error for news categories loading
           }
         };
 
@@ -191,8 +192,8 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 }));
               setHeaderMenus(activeMenus);
             }
-          } catch (error) {
-            console.error("Failed to load header menus:", error);
+          } catch {
+            // Silent error for header menus reload
           } finally {
             setLoading(false);
           }

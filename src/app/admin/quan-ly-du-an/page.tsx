@@ -27,6 +27,7 @@ import {
   CreateProjectRequest,
   UpdateProjectRequest,
 } from "@/types/project";
+import { toast } from "sonner";
 
 function AdminProjectPage() {
   const router = useRouter();
@@ -216,8 +217,8 @@ function AdminProjectPage() {
           `⚠️ ${projectsMissingWard.length} dự án thiếu thông tin phường/xã`
         );
       }
-    } catch (error) {
-      console.error("Error fetching projects:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách dự án");
     } finally {
       setLoading(false);
     }
@@ -228,8 +229,8 @@ function AdminProjectPage() {
     try {
       const data = await DeveloperService.getDevelopersForSelection();
       setDevelopers(data);
-    } catch (error) {
-      console.error("Error fetching developers:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách nhà phát triển");
     }
   };
 
@@ -238,8 +239,8 @@ function AdminProjectPage() {
     try {
       const data = await categoryService.getByProjectType(true); // Get project categories only
       setCategories(data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách danh mục");
     }
   };
 
@@ -249,8 +250,8 @@ function AdminProjectPage() {
     try {
       const data = await locationService.getProvinces();
       setProvinces(data);
-    } catch (error) {
-      console.error("Error fetching provinces:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách tỉnh");
     } finally {
       setLocationLoading((prev) => ({ ...prev, provinces: false }));
     }
@@ -262,8 +263,8 @@ function AdminProjectPage() {
     try {
       const data = await locationService.getWardsFromProvince(provinceCode);
       setWards(data);
-    } catch (error) {
-      console.error("Error fetching wards:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách quận/huyện");
     } finally {
       setLocationLoading((prev) => ({ ...prev, wards: false }));
     }
@@ -387,8 +388,8 @@ function AdminProjectPage() {
             await loadLocationData(fullProject);
           }
         }
-      } catch (error) {
-        console.error("Error fetching project details:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi lấy thông tin chi tiết dự án");
       } finally {
         setModalLoading(false);
       }
@@ -552,9 +553,8 @@ function AdminProjectPage() {
           images: [...(prev.images || []), ...successfulUploads],
         }));
       }
-    } catch (error) {
-      console.error("Error uploading images:", error);
-      alert("Có lỗi xảy ra khi upload ảnh");
+    } catch {
+      toast.error("Có lỗi xảy ra khi upload ảnh");
     } finally {
       setUploading(false);
     }
@@ -571,8 +571,8 @@ function AdminProjectPage() {
 
       // Try to delete from server (optional, don't block UI if fails)
       await UploadService.deleteImage(imageUrl);
-    } catch (error) {
-      console.error("Error deleting image:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa ảnh");
     }
   };
 
@@ -645,8 +645,8 @@ function AdminProjectPage() {
           router.push(`/admin/quan-ly-du-an/${result.data.id}`);
         }
       }
-    } catch (error) {
-      console.error("Error saving project:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lưu dự án");
     }
   };
 
@@ -655,8 +655,8 @@ function AdminProjectPage() {
       try {
         await ProjectService.deleteProject(id);
         fetchProjects();
-      } catch (error) {
-        console.error("Error deleting project:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi xóa dự án");
       }
     }
   };

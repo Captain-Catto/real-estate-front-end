@@ -5,6 +5,7 @@ import { locationService, Location } from "@/services/locationService";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
+import { toast } from "sonner";
 
 interface SearchSectionOptimizedProps {
   searchType?: "buy" | "rent" | "project";
@@ -115,8 +116,8 @@ export default function SearchSection({
         }
 
         console.log("Loaded provinces:", provincesData.length);
-      } catch (error) {
-        console.error("Error loading initial data:", error);
+      } catch {
+        toast.error("Không thể tải dữ liệu ban đầu");
       }
     };
     loadInitialData();
@@ -167,8 +168,8 @@ export default function SearchSection({
           priceRanges: priceRanges.length,
           areaRanges: areaRanges.length,
         });
-      } catch (error) {
-        console.error("Error loading search type data:", error);
+      } catch {
+        toast.error("Không thể tải dữ liệu loại tìm kiếm");
       }
     };
 
@@ -207,8 +208,8 @@ export default function SearchSection({
           }
 
           console.log("Loaded wards for province:", wardsData.length);
-        } catch (error) {
-          console.error("Error loading wards:", error);
+        } catch {
+          // Silent error for wards loading
           setWards([]);
         }
       };

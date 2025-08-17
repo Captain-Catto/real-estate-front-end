@@ -6,6 +6,7 @@ import PostsTable from "@/components/admin/PostsTable";
 import { Pagination } from "@/components/common/Pagination";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 import {
   adminPostsService,
   Post,
@@ -52,8 +53,8 @@ function PostApprovalPageInternal() {
       });
       setPosts(sortedPosts);
       setTotalPages(result.totalPages);
-    } catch (err) {
-      console.error("Error fetching pending posts:", err);
+    } catch {
+      toast.error("Lỗi khi tải danh sách tin đăng chờ duyệt");
     } finally {
       setLoading(false);
     }
@@ -63,8 +64,8 @@ function PostApprovalPageInternal() {
     try {
       const statsData = await adminPostsService.getPostsStats();
       setStats(statsData);
-    } catch (err) {
-      console.error("Error fetching stats:", err);
+    } catch {
+      toast.error("Lỗi khi tải thống kê tin đăng");
     }
   };
 
@@ -79,8 +80,8 @@ function PostApprovalPageInternal() {
       fetchPendingPosts();
       fetchStats();
       alert("Đã duyệt tin đăng thành công!");
-    } catch (err) {
-      console.error("Error approving post:", err);
+    } catch {
+      toast.error("Lỗi khi duyệt tin đăng");
       alert("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
@@ -91,8 +92,8 @@ function PostApprovalPageInternal() {
       fetchPendingPosts();
       fetchStats();
       alert("Đã từ chối tin đăng!");
-    } catch (err) {
-      console.error("Error rejecting post:", err);
+    } catch {
+      toast.error("Lỗi khi từ chối tin đăng");
       alert("Có lỗi xảy ra khi từ chối tin đăng!");
     }
   };
@@ -104,8 +105,8 @@ function PostApprovalPageInternal() {
         fetchPendingPosts();
         fetchStats();
         alert("Đã chuyển tin đăng vào thùng rác!");
-      } catch (err) {
-        console.error("Error deleting post:", err);
+      } catch {
+        toast.error("Lỗi khi chuyển tin đăng vào thùng rác");
         alert("Có lỗi xảy ra khi chuyển tin đăng vào thùng rác!");
       }
     }
@@ -125,8 +126,8 @@ function PostApprovalPageInternal() {
       fetchPendingPosts();
       fetchStats();
       alert(`Đã duyệt thành công ${posts.length} tin đăng!`);
-    } catch (err) {
-      console.error("Error bulk approving posts:", err);
+    } catch {
+      toast.error("Lỗi khi duyệt tin đăng hàng loạt");
       alert("Có lỗi xảy ra khi duyệt hàng loạt!");
     }
   };

@@ -79,8 +79,7 @@ export default function QuanLyTinDangPage() {
 
         const response = await postService.getUserPosts(params);
         setPosts(response.data?.posts || []);
-      } catch (error) {
-        console.error("Error loading posts:", error);
+      } catch {
         toast.error("Không thể tải danh sách tin đăng");
       } finally {
         setIsLoading(false);
@@ -109,8 +108,7 @@ export default function QuanLyTinDangPage() {
       toast.success("Đã xóa tin đăng thành công");
       // Reload page to refresh data
       window.location.reload();
-    } catch (error) {
-      console.error("Delete error:", error);
+    } catch {
       toast.error("Không thể xóa tin đăng");
     }
   };

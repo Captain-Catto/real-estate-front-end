@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { contactService, ContactMessage } from "../../services/contactService";
 import { useAuth } from "../../hooks/useAuth";
+import { toast } from "sonner";
 
 interface ContactStats {
   total: number;
@@ -81,8 +82,8 @@ const ContactManagement = () => {
       setContacts(response.messages);
       setTotal(response.pagination.totalItems);
       setTotalPages(response.pagination.totalPages);
-    } catch (error) {
-      console.error("Error fetching contacts:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy danh sách liên hệ");
     } finally {
       setLoading(false);
     }
@@ -92,8 +93,8 @@ const ContactManagement = () => {
     try {
       const stats = await contactService.getContactStats();
       setStats(stats);
-    } catch (error) {
-      console.error("Error fetching stats:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy thống kê liên hệ");
     }
   }, []);
 
@@ -160,8 +161,8 @@ const ContactManagement = () => {
           setShouldReopenDetailModal(false);
         }, 100);
       }
-    } catch (error) {
-      console.error("Error updating status:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật trạng thái liên hệ");
     } finally {
       setActionLoading(false);
     }
@@ -198,8 +199,8 @@ const ContactManagement = () => {
       console.log("Received logs:", logs);
       setContactLogs(logs);
       setShowLogsModal(true);
-    } catch (error) {
-      console.error("Error fetching logs:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy nhật ký liên hệ");
       setContactLogs([]);
       setShowLogsModal(true);
     }
@@ -233,8 +234,8 @@ const ContactManagement = () => {
 
       setEditingLogId(null);
       setEditingNote("");
-    } catch (error) {
-      console.error("Error updating note:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật ghi chú");
     } finally {
       setActionLoading(false);
     }
@@ -252,8 +253,8 @@ const ContactManagement = () => {
       if (selectedContact?._id === contactId) {
         setSelectedContact(null);
       }
-    } catch (error) {
-      console.error("Error deleting contact:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa tin nhắn");
     } finally {
       setActionLoading(false);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Location } from "@/types/location";
 import { ProjectService } from "@/services/projectService";
 import { categoryService, Category } from "@/services/categoryService";
+import { toast } from "sonner";
 
 interface CreatePostFormData {
   type: "ban" | "cho-thue";
@@ -206,8 +207,8 @@ export default function BasicInfoStep({
             Array.isArray(projects) ? projects : projects.projects
           );
           isInitialProjectLoad.current = false; // Mark as no longer initial load
-        } catch (error) {
-          console.error("❌ Error loading projects:", error);
+        } catch {
+          toast.error("Không thể tải danh sách dự án");
           setAvailableProjects([]);
         } finally {
           setProjectsLoading(false);
@@ -276,8 +277,8 @@ export default function BasicInfoStep({
             );
           setCategories(propertyCategories);
         }
-      } catch (error) {
-        console.error("Error fetching categories:", error);
+      } catch {
+        toast.error("Không thể tải danh mục");
         setCategories([]);
       } finally {
         setCategoriesLoading(false);

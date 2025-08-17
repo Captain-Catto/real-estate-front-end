@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { locationService } from "@/services/locationService";
 import { Location } from "@/types/location";
+import { toast } from "sonner";
 
 interface LocationFilterProps {
   onLocationChange?: (
@@ -39,8 +40,8 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
       try {
         const data = await locationService.getProvinces();
         setProvinces(data);
-      } catch (error) {
-        console.error("Error fetching provinces:", error);
+      } catch {
+        toast.error("Không thể tải danh sách tỉnh/thành phố");
       } finally {
         setLoading(false);
       }
@@ -60,8 +61,8 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
             const data = await locationService.getDistricts(province.code);
             setDistricts(data);
           }
-        } catch (error) {
-          console.error("Error fetching districts:", error);
+        } catch {
+          toast.error("Không thể tải danh sách quận/huyện");
         } finally {
           setLoading(false);
         }
@@ -89,8 +90,8 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
             );
             setWards(data);
           }
-        } catch (error) {
-          console.error("Error fetching wards:", error);
+        } catch {
+          toast.error("Không thể tải danh sách phường/xã");
         } finally {
           setLoading(false);
         }

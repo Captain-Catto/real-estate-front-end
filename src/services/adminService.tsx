@@ -1,4 +1,5 @@
 import { refreshToken, getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -124,8 +125,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching admin stats:", error);
+    } catch {
+      toast.error("Không thể tải thống kê admin");
       // Return default response instead of throwing
       return {
         success: false,
@@ -168,8 +169,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching recent activities:", error);
+    } catch {
+      toast.error("Không thể tải hoạt động gần đây");
       // Return default response instead of throwing
       return {
         success: false,
@@ -200,8 +201,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching top posts:", error);
+    } catch {
+      toast.error("Không thể tải bài đăng hàng đầu");
       // Return default response instead of throwing
       return {
         success: false,

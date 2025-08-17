@@ -5,6 +5,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AdminGuard from "@/components/auth/AdminGuard";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 import {
   PlusIcon,
   PencilIcon,
@@ -484,8 +485,8 @@ function HeaderSettingsManagementInternal() {
       } else {
         console.warn("Failed to update menu order:", response.message);
       }
-    } catch (error) {
-      console.error("Error updating menu order:", error);
+    } catch {
+      toast.error("Lỗi khi cập nhật thứ tự menu");
     }
   };
 
@@ -596,8 +597,8 @@ function HeaderSettingsManagementInternal() {
           alert("Đã thêm menu! (Chỉ cập nhật local, cần API để lưu vĩnh viễn)");
         }
       }
-    } catch (error) {
-      console.error("Error saving menu:", error);
+    } catch {
+      toast.error("Lỗi khi lưu menu");
       alert("Có lỗi xảy ra khi lưu menu");
     }
   };

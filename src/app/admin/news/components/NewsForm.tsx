@@ -125,9 +125,8 @@ export default function NewsForm({ initialValues = {} }: NewsFormProps) {
 
       toast.success("Đăng tin thành công!");
       router.push("/admin/news");
-    } catch (error) {
-      console.error("Lỗi khi đăng tin:", error);
-      toast.error("Có lỗi xảy ra khi đăng tin. Vui lòng thử lại!");
+    } catch {
+      toast.error("Lỗi khi đăng tin tức");
     } finally {
       setIsSubmitting(false);
     }

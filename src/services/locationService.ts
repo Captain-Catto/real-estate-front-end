@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "./authService";
+import { toast } from "sonner";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -94,7 +95,7 @@ export const locationService = {
       }
 
       if (!result.success || !Array.isArray(result.data)) {
-        console.error("Unexpected API response format:", result);
+        toast.error("Định dạng phản hồi API không mong đợi");
         return [];
       }
 
@@ -102,7 +103,7 @@ export const locationService = {
       console.log("Successfully fetched provinces", result.data.length);
       return result.data;
     } catch (error) {
-      console.error("Error fetching provinces:", error);
+      toast.error("Lấy danh sách tỉnh thành thất bại");
 
       // Chỉ retry trong trường hợp có lỗi mạng thực sự
       if (
@@ -116,8 +117,8 @@ export const locationService = {
       }
 
       // Nếu đã hết số lần thử hoặc không phải lỗi mạng, trả về mảng rỗng thay vì throw error
-      console.error(
-        "Max retries reached or non-network error. Returning empty array."
+      toast.error(
+        "Đã hết số lần thử hoặc lỗi không phải mạng. Trả về mảng rỗng."
       );
       return [];
     }
@@ -137,17 +138,17 @@ export const locationService = {
         }
       );
       if (!response.ok) {
-        console.error(`Failed to fetch province: ${response.status}`);
+        toast.error("Lấy thông tin tỉnh thành thất bại");
         return null;
       }
       const result: ApiResponse<Location> = await response.json();
       if (!result.success || !result.data) {
-        console.error("Unexpected API response format:", result);
+        toast.error("Định dạng phản hồi API không mong đợi");
         return null;
       }
       return result.data;
     } catch (error) {
-      console.error("Error fetching province with slug:", error);
+      toast.error("Lấy thông tin tỉnh thành theo slug thất bại");
       return null;
     }
   },
@@ -174,14 +175,14 @@ export const locationService = {
       );
 
       if (!response.ok) {
-        console.error(`Failed to fetch wards: ${response.status}`);
+        toast.error("Lấy danh sách phường/xã thất bại");
 
         // For debugging, try to get the error response body
         try {
           const errorBody = await response.text();
-          console.error("Error response:", errorBody);
+          // Silent error for debugging
         } catch {
-          console.error("Could not parse error response");
+          // Silent error for debugging
         }
 
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -190,13 +191,13 @@ export const locationService = {
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        console.error("Unexpected API response format:", result);
+        toast.error("Định dạng phản hồi API không mong đợi");
         return [];
       }
 
       return result.data;
     } catch (error) {
-      console.error("Error fetching wards:", error);
+      toast.error("Lấy danh sách phường/xã thất bại");
       if (retryCount > 0) {
         console.log(`Retrying getDistricts... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -222,7 +223,7 @@ export const locationService = {
         retryCount
       );
     } catch (error) {
-      console.error("Error in getWards:", error);
+      toast.error("Lỗi trong getWards");
       if (retryCount > 0) {
         console.log(`Retrying getWards... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -282,7 +283,7 @@ export const locationService = {
           );
           return result.data;
         } catch (error) {
-          console.error(`Error with endpoint ${endpoint}:`, error);
+          // Silent error for debugging
         }
       }
 
@@ -321,13 +322,10 @@ export const locationService = {
       }
 
       // Return empty array instead of throwing to avoid breaking SSR
-      console.error(
-        "All methods to fetch wards failed for province:",
-        provinceCode
-      );
+      toast.error("Tất cả phương thức lấy phường/xã đều thất bại");
       return [];
     } catch (error) {
-      console.error("Error in getWardsFromProvince:", error);
+      toast.error("Lỗi trong getWardsFromProvince");
       if (retryCount > 0) {
         console.log(`Retrying... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000)); // Đợi 1 giây
@@ -359,17 +357,14 @@ export const locationService = {
       );
 
       if (!provinceResponse.ok) {
-        console.error(`Failed to fetch province: ${provinceResponse.status}`);
+        toast.error("Lấy thông tin tỉnh thành thất bại");
         return null;
       }
 
       const provinceResult: ApiResponse<Location> =
         await provinceResponse.json();
       if (!provinceResult.success || !provinceResult.data) {
-        console.error(
-          "Unexpected province API response format:",
-          provinceResult
-        );
+        toast.error("Định dạng phản hồi API tỉnh thành không mong đợi");
         return null;
       }
 
@@ -387,13 +382,13 @@ export const locationService = {
       );
 
       if (!wardsResponse.ok) {
-        console.error(`Failed to fetch wards: ${wardsResponse.status}`);
+        toast.error("Lấy danh sách phường/xã thất bại");
         return null;
       }
 
       const wardsResult: ApiResponse<Location[]> = await wardsResponse.json();
       if (!wardsResult.success || !Array.isArray(wardsResult.data)) {
-        console.error("Unexpected wards API response format:", wardsResult);
+        toast.error("Định dạng phản hồi API phường/xã không mong đợi");
         return null;
       }
 
@@ -405,10 +400,7 @@ export const locationService = {
       // Return the ward as "district" for backward compatibility
       return ward || null;
     } catch (error) {
-      console.error(
-        "Error fetching ward with slug (via getDistrictWithSlug):",
-        error
-      );
+      toast.error("Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -439,13 +431,13 @@ export const locationService = {
       );
 
       if (!response.ok) {
-        console.error(`Failed to fetch wards: ${response.status}`);
+        toast.error("Lấy danh sách phường/xã thất bại");
         return null;
       }
 
       const result: ApiResponse<Location[]> = await response.json();
       if (!result.success || !Array.isArray(result.data)) {
-        console.error("Unexpected API response format:", result);
+        toast.error("Định dạng phản hồi API không mong đợi");
         return null;
       }
 
@@ -469,7 +461,7 @@ export const locationService = {
 
       return ward || null;
     } catch (error) {
-      console.error("Error fetching ward with slug:", error);
+      toast.error("Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -495,7 +487,7 @@ export const locationService = {
 
       return province ? province.name : provinceSlug.replace(/-/g, " ");
     } catch (error) {
-      console.error("Error getting province name from slug:", error);
+      toast.error("Lấy tên tỉnh thành theo slug thất bại");
       return provinceSlug.replace(/-/g, " ");
     }
   },
@@ -524,7 +516,7 @@ export const locationService = {
 
       return district ? district.name : districtSlug.replace(/-/g, " ");
     } catch (error) {
-      console.error("Error getting district name from slug:", error);
+      toast.error("Lấy tên quận/huyện theo slug thất bại");
       return districtSlug.replace(/-/g, " ");
     }
   },
@@ -579,7 +571,7 @@ export const locationService = {
 
       return ward ? ward.name : wardSlug.replace(/-/g, " ");
     } catch (error) {
-      console.error("Error getting ward name from slug:", error);
+      toast.error("Lấy tên phường/xã theo slug thất bại");
       return wardSlug.replace(/-/g, " ");
     }
   },
@@ -619,20 +611,20 @@ export const locationService = {
       });
 
       if (!response.ok) {
-        console.error(`Error fetching location by slug: ${response.status}`);
+        toast.error("Lấy địa chỉ theo slug thất bại");
         return null;
       }
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        console.error("Invalid response format or no data returned");
+        toast.error("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
         return null;
       }
 
       return result.data;
     } catch (error) {
-      console.error("Error in getLocationBySlug:", error);
+      toast.error("Lỗi trong getLocationBySlug");
       return null;
     }
   },
@@ -660,20 +652,20 @@ export const locationService = {
       });
 
       if (!response.ok) {
-        console.error(`Error fetching breadcrumb from API: ${response.status}`);
+        toast.error("Lấy breadcrumb từ API thất bại");
         return null;
       }
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        console.error("Invalid response format or no data returned");
+        toast.error("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
         return null;
       }
 
       return result.data;
     } catch (error) {
-      console.error("Error in getBreadcrumbFromSlugApi:", error);
+      toast.error("Lỗi trong getBreadcrumbFromSlugApi");
       return null;
     }
   },
@@ -719,10 +711,7 @@ export const locationService = {
         }
       }
     } catch (error) {
-      console.error(
-        "Error using new breadcrumb API, falling back to legacy method:",
-        error
-      );
+      // Silent error for debugging - sử dụng API fallback cũ
     }
     try {
       // Hàm chuẩn hóa các slug để so sánh chính xác hơn
@@ -884,7 +873,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          console.error("Lỗi khi lấy dữ liệu tỉnh/thành:", error);
+          toast.error("Lỗi khi lấy dữ liệu tỉnh/thành");
           // Fallback
           result.city = citySlug
             .replace(/^tinh-/, "")
@@ -1017,7 +1006,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          console.error("Lỗi khi lấy dữ liệu phường/xã:", error);
+          toast.error("Lỗi khi lấy dữ liệu phường/xã");
           // Fallback
           result.ward = wardSlug
             .replace(/^xa-/, "")
@@ -1042,7 +1031,7 @@ export const locationService = {
         district: result.district, // Luôn trống trong cấu trúc mới
       };
     } catch (error) {
-      console.error("Lỗi xử lý breadcrumb:", error);
+      toast.error("Lỗi xử lý breadcrumb");
 
       // Fallback an toàn
       const fallbackCity = citySlug
@@ -1087,7 +1076,7 @@ export const locationService = {
         const response = await fetchWithAuth(`${API_BASE_URL}/locations`);
         return await response.json();
       } catch (error) {
-        console.error("Error fetching provinces:", error);
+        toast.error("Lấy danh sách tỉnh thành thất bại");
         return { success: false, data: [] };
       }
     },
@@ -1121,7 +1110,7 @@ export const locationService = {
         });
         return await response.json();
       } catch (error) {
-        console.error("Error adding province:", error);
+        toast.error("Thêm tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1161,7 +1150,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error updating province:", error);
+        toast.error("Cập nhật tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1177,7 +1166,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error deleting province:", error);
+        toast.error("Xóa tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1203,7 +1192,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error adding district:", error);
+        toast.error("Thêm quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1230,7 +1219,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error updating district:", error);
+        toast.error("Cập nhật quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1249,7 +1238,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error deleting district:", error);
+        toast.error("Xóa quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1296,12 +1285,12 @@ export const locationService = {
         const result = await response.json();
 
         if (!response.ok) {
-          console.error("Backend error response:", result);
+          // Silent error for debugging backend response
         }
 
         return result;
       } catch (error) {
-        console.error("Error adding ward:", error);
+        toast.error("Thêm phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1345,7 +1334,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error updating ward:", error);
+        toast.error("Cập nhật phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1365,7 +1354,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        console.error("Error deleting ward:", error);
+        toast.error("Xóa phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1427,12 +1416,12 @@ export const locationService = {
       const result = await res.json();
 
       if (!res.ok) {
-        console.error("API error:", result);
+        // Silent error for debugging API response
         throw new Error(`HTTP error! status: ${res.status}`);
       }
 
       if (!result.success) {
-        console.error("API returned error:", result.message);
+        // Silent error for debugging API response
         return {};
       }
 
@@ -1459,7 +1448,7 @@ export const locationService = {
 
       return result.data;
     } catch (error) {
-      console.error("❌ Error fetching location names:", error);
+      // Silent error for debugging - getLocationNames có fallback
       return {};
     }
   },
@@ -1493,7 +1482,7 @@ export const locationService = {
       console.log("📍 Location name result:", fullAddress);
       return fullAddress;
     } catch (error) {
-      console.error("❌ Error getting location name:", error);
+      // Silent error for debugging - có fallback trả về code
       // Fallback: trả về code nếu không lấy được tên
       return wardCode ? `${wardCode}, ${provinceCode}` : provinceCode;
     }

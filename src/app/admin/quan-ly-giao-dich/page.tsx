@@ -60,11 +60,9 @@ function AdminTransactionsInternal() {
           );
         }
       } else {
-        console.error("Failed to fetch transactions");
         toast.error("Không thể tải danh sách giao dịch");
       }
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi tải giao dịch");
     } finally {
       setLoading(false);

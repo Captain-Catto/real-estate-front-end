@@ -6,6 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AdminGuard from "@/components/auth/AdminGuard";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 import {
   Category,
   categoryService,
@@ -102,8 +103,8 @@ function AdminCategoryPageInternal() {
       if (result.data?.categories) {
         setCategories(result.data.categories);
       }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+    } catch {
+      toast.error("Lỗi khi tải danh sách danh mục");
     } finally {
       setLoading(false);
     }
@@ -120,11 +121,11 @@ function AdminCategoryPageInternal() {
         );
         setNewsCategories(sortedCategories);
       } else {
-        console.error("Failed to fetch news categories:", result.message);
+        toast.error("Lỗi khi tải danh sách danh mục tin tức");
         setNewsCategories([]);
       }
-    } catch (error) {
-      console.error("Error fetching news categories:", error);
+    } catch {
+      toast.error("Lỗi khi tải danh sách danh mục tin tức");
       setNewsCategories([]);
     } finally {
       setLoading(false);
@@ -273,9 +274,8 @@ function AdminCategoryPageInternal() {
       }
 
       closeModal();
-    } catch (error) {
-      console.error("Error saving category:", error);
-      alert("Có lỗi xảy ra khi lưu danh mục");
+    } catch {
+      toast.error("Lỗi khi lưu danh mục");
     } finally {
       setSaving(false);
     }
@@ -290,9 +290,8 @@ function AdminCategoryPageInternal() {
     try {
       await categoryService.admin.delete(category._id);
       await fetchCategories();
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      alert("Có lỗi xảy ra khi xóa danh mục");
+    } catch {
+      toast.error("Lỗi khi xóa danh mục");
     }
   };
 
@@ -308,9 +307,8 @@ function AdminCategoryPageInternal() {
       const categoryId = category._id || category.id;
       await newsCategoryService.deleteNewsCategory(categoryId);
       await fetchNewsCategories();
-    } catch (error) {
-      console.error("Error deleting news category:", error);
-      alert("Có lỗi xảy ra khi xóa danh mục tin tức");
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa danh mục tin tức");
     }
   };
 
@@ -346,8 +344,7 @@ function AdminCategoryPageInternal() {
 
       await newsCategoryService.updateNewsCategoriesOrder(orders);
       await fetchNewsCategories();
-    } catch (error) {
-      console.error("Error updating news category order:", error);
+    } catch {
       alert("Có lỗi xảy ra khi thay đổi thứ tự danh mục tin tức");
     }
   };
@@ -378,9 +375,8 @@ function AdminCategoryPageInternal() {
 
       await categoryService.admin.updateOrder(orders);
       await fetchCategories();
-    } catch (error) {
-      console.error("Error updating category order:", error);
-      alert("Có lỗi xảy ra khi thay đổi thứ tự");
+    } catch {
+      toast.error("Có lỗi xảy ra khi thay đổi thứ tự");
     }
   };
 
@@ -413,10 +409,9 @@ function AdminCategoryPageInternal() {
               : cat
           )
         );
-        console.error("Failed to toggle news category status:", result.message);
-        alert("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
+        toast.error("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
       }
-    } catch (error) {
+    } catch {
       // Nếu có lỗi, revert lại trạng thái cũ
       setNewsCategories((prevCategories) =>
         prevCategories.map((cat) =>
@@ -425,8 +420,7 @@ function AdminCategoryPageInternal() {
             : cat
         )
       );
-      console.error("Error toggling news category status:", error);
-      alert("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
+      toast.error("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
     }
   };
 
@@ -445,7 +439,7 @@ function AdminCategoryPageInternal() {
       await categoryService.admin.update(category._id, {
         isActive: newActiveStatus,
       });
-    } catch (error) {
+    } catch {
       // Nếu có lỗi, revert lại trạng thái cũ
       setCategories((prevCategories) =>
         prevCategories.map((cat) =>
@@ -454,8 +448,7 @@ function AdminCategoryPageInternal() {
             : cat
         )
       );
-      console.error("Error toggling category status:", error);
-      alert("Có lỗi xảy ra khi thay đổi trạng thái");
+      toast.error("Có lỗi xảy ra khi thay đổi trạng thái");
     }
   };
 

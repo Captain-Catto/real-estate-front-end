@@ -154,8 +154,7 @@ export function useEditPostModal() {
         );
         console.log("Active categories:", activeCategories);
         setCategories(activeCategories);
-      } catch (error) {
-        console.error("Error loading categories:", error);
+      } catch {
         toast.error("Không thể tải danh sách loại bất động sản");
       }
     };
@@ -169,8 +168,8 @@ export function useEditPostModal() {
       try {
         const result = await ProjectService.getProjects();
         setProjects(result || []);
-      } catch (error) {
-        console.error("Error loading projects:", error);
+      } catch {
+        toast.error("Không thể tải danh sách dự án");
       }
     };
 
@@ -208,11 +207,10 @@ export function useEditPostModal() {
           );
           setProvinces(transformedProvinces);
         } else {
-          console.error("Invalid provinces data:", result);
+          toast.error("Dữ liệu tỉnh thành không hợp lệ");
           setProvinces([]);
         }
-      } catch (error) {
-        console.error("Error loading provinces:", error);
+      } catch {
         toast.error("Không thể tải danh sách tỉnh thành");
         setProvinces([]);
       } finally {
@@ -254,7 +252,7 @@ export function useEditPostModal() {
               province.code
             );
           } else {
-            console.error("Province not found by name:", provinceCode);
+            toast.error("Không tìm thấy tỉnh thành");
             setWards([]);
             setLocationLoading(false);
             return;
@@ -264,8 +262,8 @@ export function useEditPostModal() {
         // Load wards directly from province (no districts in 2-tier structure)
         const result = await locationService.getWardsFromProvince(provinceCode);
         setWards(result || []);
-      } catch (error) {
-        console.error("Error loading wards:", error);
+      } catch {
+        toast.error("Không thể tải danh sách phường xã");
         setWards([]);
       } finally {
         setLocationLoading(false);
@@ -557,8 +555,7 @@ export function useEditPostModal() {
           toast.error(result.message || "Có lỗi xảy ra khi cập nhật tin đăng");
         }
       }
-    } catch (error) {
-      console.error("Error updating post:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi cập nhật tin đăng");
     } finally {
       setIsSubmitting(false);
@@ -608,8 +605,7 @@ export function useEditPostModal() {
           } else {
             throw new Error("No images were uploaded successfully");
           }
-        } catch (uploadError) {
-          console.error("❌ Upload error:", uploadError);
+        } catch {
           toast.error("Không thể upload hình ảnh. Vui lòng thử lại.");
           return;
         }
@@ -675,8 +671,7 @@ export function useEditPostModal() {
         setExistingImages(finalImagesList);
 
         toast.success("Hình ảnh đã được cập nhật thành công!");
-      } catch (updateError) {
-        console.error("❌ Error updating post images:", updateError);
+      } catch {
         toast.error("Có lỗi khi cập nhật hình ảnh vào bài đăng.");
         return;
       }
@@ -696,8 +691,7 @@ export function useEditPostModal() {
           window.location.reload(); // Refresh to see updated images
         }, 1000);
       }
-    } catch (error) {
-      console.error("💥 Critical error in handleImageSubmit:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi xử lý hình ảnh");
     } finally {
       setIsSubmitting(false);
@@ -763,8 +757,7 @@ export function useEditPostModal() {
       } else {
         toast.error(result.message || "Có lỗi xảy ra khi cập nhật gói tin");
       }
-    } catch (error) {
-      console.error("Error updating package:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi cập nhật gói tin");
       setPaymentError("Có lỗi xảy ra khi thanh toán");
     } finally {

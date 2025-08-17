@@ -6,6 +6,8 @@ import { useLocationNames } from "@/hooks/useLocationNames";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
+import { locationService } from "@/services/locationService";
+import { toast } from "sonner";
 
 interface ActiveFiltersProps {
   province?: string;
@@ -58,8 +60,8 @@ export function ActiveFilters({
         setCategories(categoriesData);
         setPriceRanges(priceData);
         setAreaRanges(areaData);
-      } catch (error) {
-        console.error("Error loading filter data:", error);
+      } catch {
+        toast.error("Không thể tải dữ liệu bộ lọc");
       }
     };
     loadData();
@@ -70,36 +72,25 @@ export function ActiveFilters({
     const convertSlugs = async () => {
       try {
         if (province) {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_BASE_URL ||
-              "http://localhost:8080/api"
-            }/locations/province/${province}`
+          const provinceData = await locationService.getProvinceWithSlug(
+            province
           );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setProvinceCode(data.data.code);
-            }
+          if (provinceData) {
+            setProvinceCode(provinceData.code);
           }
         }
 
         if (ward && province) {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_BASE_URL ||
-              "http://localhost:8080/api"
-            }/locations/location-by-slug/${province}/${ward}`
+          const locationData = await locationService.getLocationBySlug(
+            province,
+            ward
           );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setWardCode(data.data.wardCode);
-            }
+          if (locationData) {
+            setWardCode(locationData.wardCode);
           }
         }
-      } catch (error) {
-        console.error("Error converting slugs:", error);
+      } catch {
+        toast.error("Không thể chuyển đổi địa chỉ");
       }
     };
 

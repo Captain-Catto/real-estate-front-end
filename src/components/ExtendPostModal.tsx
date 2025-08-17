@@ -56,8 +56,7 @@ export default function ExtendPostModal({
         })) || []
       );
       setWalletBalance(walletData?.data?.balance || 0);
-    } catch (error) {
-      console.error("Error loading data:", error);
+    } catch {
       toast.error("Không thể tải dữ liệu");
     } finally {
       setLoading(false);
@@ -83,8 +82,7 @@ export default function ExtendPostModal({
       toast.success("Gia hạn tin đăng thành công!");
       onSuccess();
       onClose();
-    } catch (error) {
-      console.error("Error extending post:", error);
+    } catch {
       toast.error("Có lỗi xảy ra khi gia hạn tin đăng");
     } finally {
       setExtending(false);

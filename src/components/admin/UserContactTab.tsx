@@ -50,7 +50,7 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
         showMessage("error", response.message || "Không thể tải dữ liệu");
       }
     } catch (error: unknown) {
-      console.error("Error loading contacts:", error);
+      // Silent error - đã có showMessage
       showMessage("error", "Không thể tải dữ liệu liên hệ");
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
         showMessage("error", response.message || "Có lỗi xảy ra");
       }
     } catch (error: unknown) {
-      console.error("Error updating status:", error);
+      // Silent error - đã có showMessage
       showMessage("error", "Không thể cập nhật trạng thái");
     } finally {
       setUpdating(null);
@@ -106,7 +106,7 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
         showMessage("error", "Có lỗi xảy ra khi xóa");
       }
     } catch (error: unknown) {
-      console.error("Error hard deleting contact:", error);
+      // Silent error - đã có showMessage
       showMessage("error", "Không thể xóa yêu cầu liên hệ");
     }
   };
@@ -127,7 +127,7 @@ const UserContactTab: React.FC<UserContactTabProps> = ({
         showMessage("error", response.message || "Có lỗi xảy ra khi khôi phục");
       }
     } catch (error: unknown) {
-      console.error("Error restoring contact:", error);
+      // Silent error - đã có showMessage
       showMessage("error", "Không thể khôi phục yêu cầu liên hệ");
     }
   };

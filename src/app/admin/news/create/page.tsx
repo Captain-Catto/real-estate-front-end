@@ -112,9 +112,8 @@ function CreateNewsPage() {
       // Giả lập thành công
       toast.success("Tạo bài viết thành công!");
       router.push("/admin/news");
-    } catch (error) {
-      console.error("Lỗi khi tạo bài viết:", error);
-      toast.error("Có lỗi xảy ra khi tạo bài viết");
+    } catch {
+      toast.error("Lỗi khi tạo bài viết mới");
     } finally {
       setIsSubmitting(false);
     }

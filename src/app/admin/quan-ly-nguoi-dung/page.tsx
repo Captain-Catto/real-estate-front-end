@@ -83,17 +83,17 @@ function UserManagementPage() {
           setTotalPages(usersResponse.data.pagination.totalPages);
         }
       } else {
-        console.error("Error fetching users:", usersResponse.message);
+        toast.error("Lỗi khi tải danh sách người dùng");
         setUsers([]);
       }
 
       if (statsResponse.success) {
         setStats(statsResponse.data);
       } else {
-        console.error("Error fetching stats:", statsResponse.message);
+        toast.error("Lỗi khi tải thống kê người dùng");
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch {
+      toast.error("Lỗi khi tải dữ liệu người dùng");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -126,9 +126,8 @@ function UserManagementPage() {
       } else {
         toast.error(result.message || "Có lỗi xảy ra khi cập nhật trạng thái");
       }
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
+    } catch {
+      toast.error("Lỗi khi cập nhật trạng thái người dùng");
     } finally {
       setIsProcessing(false);
     }
@@ -148,9 +147,8 @@ function UserManagementPage() {
       } else {
         toast.error(result.message || "Có lỗi xảy ra khi xóa người dùng");
       }
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Có lỗi xảy ra khi xóa người dùng");
+    } catch {
+      toast.error("Lỗi khi xóa người dùng");
     } finally {
       setIsProcessing(false);
       setShowDeleteModal(false);
@@ -196,9 +194,8 @@ function UserManagementPage() {
       } else {
         toast.error(result.message || "Có lỗi xảy ra khi cập nhật thông tin");
       }
-    } catch (error) {
-      console.error("Error updating user:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
+    } catch {
+      toast.error("Lỗi khi cập nhật thông tin người dùng");
     } finally {
       setIsProcessing(false);
     }

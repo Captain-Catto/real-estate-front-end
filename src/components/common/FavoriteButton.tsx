@@ -112,7 +112,7 @@ export function FavoriteButton({
         });
       }
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      // Silent error - đã có toast.error tương ứng
       toast.error("Không thể thực hiện thao tác", {
         description: "Đã xảy ra lỗi, vui lòng thử lại sau",
         duration: 3000,

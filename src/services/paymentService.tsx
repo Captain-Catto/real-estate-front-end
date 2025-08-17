@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -176,10 +177,7 @@ const handleResponse = async (response: Response) => {
       errorData = { message: errorText || "Network error" };
     }
 
-    console.error("API Error:", {
-      status: response.status,
-      error: errorData,
-    });
+    // Silent error for debugging API response
 
     throw new Error(
       errorData.message || `HTTP error! status: ${response.status}`
@@ -302,7 +300,7 @@ export const paymentService = {
         }
       }
     } catch (e) {
-      console.error("Error broadcasting wallet update:", e);
+      // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
     const response = await fetchWithAuth(
@@ -356,7 +354,7 @@ export const paymentService = {
 
       return data;
     } catch (error) {
-      console.error("Error fetching wallet info:", error);
+      toast.error("Lấy thông tin ví thất bại");
 
       // If we have old cached data, return it as fallback
       if (walletInfoCache) {
@@ -391,7 +389,7 @@ export const paymentService = {
         }
       }
     } catch (e) {
-      console.error("Error broadcasting wallet update:", e);
+      // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
     return handleResponse(response);
@@ -427,7 +425,7 @@ export const paymentService = {
         }
       }
     } catch (e) {
-      console.error("Error broadcasting wallet update:", e);
+      // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
     return handleResponse(response);
@@ -503,7 +501,7 @@ export const paymentService = {
         }
       }
     } catch (e) {
-      console.error("Error broadcasting wallet update:", e);
+      // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
     return handleResponse(response);

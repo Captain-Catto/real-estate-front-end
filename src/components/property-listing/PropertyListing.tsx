@@ -13,6 +13,7 @@ import { locationService } from "@/services/locationService";
 import { PropertyData } from "@/types/property";
 import { formatPriceByType } from "@/utils/format";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
+import { toast } from "sonner";
 import { MdLocationOn } from "react-icons/md";
 
 interface PropertyListingProps {
@@ -214,8 +215,8 @@ export function PropertyListing({
           initialDistricts: districtsData,
           initialWard: wardData,
         });
-      } catch (error) {
-        console.error("Error fetching location data:", error);
+      } catch {
+        toast.error("Không thể tải thông tin địa điểm");
         // Fallback to simple objects if API fails
         setLocationData({
           initialCity: location.city

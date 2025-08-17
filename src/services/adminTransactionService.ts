@@ -1,4 +1,5 @@
 import { getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -108,9 +109,9 @@ export const AdminTransactionService = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("Error fetching admin payments:", error);
-      throw error;
+    } catch {
+      toast.error("Không thể tải danh sách thanh toán");
+      throw new Error("Không thể tải danh sách thanh toán");
     }
   },
 
@@ -132,9 +133,9 @@ export const AdminTransactionService = {
       }
 
       return null;
-    } catch (error) {
-      console.error("Error fetching payment by orderId:", error);
-      throw error;
+    } catch {
+      toast.error("Không thể tải thông tin thanh toán");
+      throw new Error("Không thể tải thông tin thanh toán");
     }
   },
 
@@ -177,9 +178,9 @@ export const AdminTransactionService = {
         data.data.payments
       );
       return new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    } catch (error) {
-      console.error("Error exporting payments:", error);
-      throw error;
+    } catch {
+      toast.error("Không thể xuất file thanh toán");
+      throw new Error("Không thể xuất file thanh toán");
     }
   },
 

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { toast } from "sonner";
 
 // Import dynamic để tránh lỗi SSR
 const ImprovedQuillEditor = dynamic(
@@ -113,9 +114,10 @@ export default React.forwardRef<any, NewsEditorProps>(function NewsEditor(
             originalUrl: img.previewUrl,
             uploadedUrl,
           };
-        } catch (error) {
-          console.error(`Lỗi khi upload hình ảnh ${img.id}:`, error);
-          throw error;
+        } catch {
+          toast.error(
+            `Có lỗi xảy ra khi upload hình ảnh ${img.id}. Vui lòng thử lại!`
+          );
         }
       });
 
@@ -131,8 +133,8 @@ export default React.forwardRef<any, NewsEditorProps>(function NewsEditor(
         content: editorContent,
         uploadResults: results,
       };
-    } catch (error) {
-      console.error("Lỗi khi upload hình ảnh:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi upload hình ảnh. Vui lòng thử lại!");
       return {
         success: false,
         error: "Không thể upload hình ảnh",

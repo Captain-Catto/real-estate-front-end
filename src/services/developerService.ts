@@ -1,4 +1,5 @@
 import { fetchWithAuth } from "./authService";
+import { toast } from "sonner";
 import {
   Developer,
   DeveloperForSelection,
@@ -60,7 +61,7 @@ export const DeveloperService = {
         },
       };
     } catch (error) {
-      console.error("Error fetching developers:", error);
+      toast.error("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },
@@ -116,7 +117,7 @@ export const DeveloperService = {
         },
       };
     } catch (error) {
-      console.error("Error fetching admin developers:", error);
+      toast.error("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },
@@ -138,7 +139,7 @@ export const DeveloperService = {
 
       return null;
     } catch (error) {
-      console.error("Error fetching developer by ID:", error);
+      toast.error("Không thể tải thông tin chủ đầu tư");
       throw error;
     }
   },
@@ -161,7 +162,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to create developer");
       }
     } catch (error) {
-      console.error("Error creating developer:", error);
+      toast.error("Không thể tạo chủ đầu tư");
       throw error;
     }
   },
@@ -187,7 +188,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to update developer");
       }
     } catch (error) {
-      console.error("Error updating developer:", error);
+      toast.error("Không thể cập nhật chủ đầu tư");
       throw error;
     }
   },
@@ -207,7 +208,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to delete developer");
       }
     } catch (error) {
-      console.error("Error deleting developer:", error);
+      toast.error("Không thể xóa chủ đầu tư");
       throw error;
     }
   },
@@ -224,7 +225,7 @@ export const DeveloperService = {
       const developers = await response.json();
       return developers;
     } catch (error) {
-      console.error("Error fetching developers for selection:", error);
+      toast.error("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },

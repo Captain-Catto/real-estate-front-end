@@ -12,6 +12,7 @@ import {
   StarIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import { toast } from "sonner";
 
 const categoryNames = {
   "mua-ban": "Mua bán",
@@ -65,8 +66,8 @@ export default function NewsSection({
         setNewsList(response.data.news);
         setTotalPages(response.data.pagination.totalPages);
       }
-    } catch (error) {
-      console.error("Error fetching news:", error);
+    } catch {
+      toast.error("Không thể tải tin tức");
     } finally {
       setLoading(false);
     }
@@ -78,8 +79,8 @@ export default function NewsSection({
       if (response.success) {
         setFeaturedNews(response.data.news || []);
       }
-    } catch (error) {
-      console.error("Error fetching featured news:", error);
+    } catch {
+      toast.error("Không thể tải tin nổi bật");
     }
   }, []);
 
@@ -89,8 +90,8 @@ export default function NewsSection({
       if (response.success) {
         setHotNews(response.data.news || []);
       }
-    } catch (error) {
-      console.error("Error fetching hot news:", error);
+    } catch {
+      toast.error("Không thể tải tin hot");
     }
   }, []);
 

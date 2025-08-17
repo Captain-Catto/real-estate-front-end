@@ -26,7 +26,7 @@ export default function ImageUploadStep({
 
   // Handle image load error
   const handleImageError = (imageUrl: string) => {
-    console.error(`Failed to load image: ${imageUrl}`);
+    // Silent error for image loading failures
     setFailedImages((prev) => ({ ...prev, [imageUrl]: true }));
   };
 

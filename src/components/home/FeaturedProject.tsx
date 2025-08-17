@@ -3,13 +3,15 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Slider from "react-slick";
+import { toast } from "sonner";
 
 // Import slick styles
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 // API URL from environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 interface FeaturedProjectType {
   _id: string;
@@ -39,7 +41,7 @@ export function FeaturedProject() {
         setError(null);
 
         const response = await fetch(
-          `${API_BASE_URL}/api/projects/featured?limit=8`
+          `${API_BASE_URL}/projects/featured?limit=8`
         );
 
         if (!response.ok) {
@@ -53,8 +55,8 @@ export function FeaturedProject() {
         } else {
           throw new Error(data.message || "Không thể tải dữ liệu dự án");
         }
-      } catch (error) {
-        console.error("Error fetching featured projects:", error);
+      } catch {
+        toast.error("Không thể tải dữ liệu dự án nổi bật");
         setError("Không thể tải dữ liệu dự án nổi bật");
       } finally {
         setLoading(false);

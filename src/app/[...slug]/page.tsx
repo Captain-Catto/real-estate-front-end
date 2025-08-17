@@ -8,6 +8,7 @@ import { locationService } from "@/services/locationService";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
 import { PropertyData } from "@/types/property";
+import { toast } from "sonner";
 
 interface DynamicPageProps {
   params: Promise<{
@@ -264,8 +265,8 @@ export default async function DynamicPage({
       try {
         await postService.incrementViews(urlData.id);
         console.log("📊 View incremented for post:", urlData.id);
-      } catch (error) {
-        console.warn("Failed to increment view:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi tăng lượt xem!");
       }
 
       // Transform data như cũ
@@ -351,8 +352,8 @@ export default async function DynamicPage({
               ward: locationNames.ward || "",
             };
           }
-        } catch (error) {
-          console.error("Lỗi khi lấy thông tin địa điểm:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi lấy thông tin địa điểm!");
           // Fallback đơn giản với URL slugs
           breadcrumbData = {
             city:
@@ -574,7 +575,7 @@ export default async function DynamicPage({
       // Sử dụng PropertyData để có kiểu dữ liệu nhất quán với component
       let posts: PropertyData[] = [];
       if (!response || !response.success) {
-        console.error("Failed to fetch posts:", response);
+        toast.error("Có lỗi xảy ra khi lấy bài viết");
       } else {
         // Xử lý cả trường hợp data là mảng và object {posts: [...]}
         if (Array.isArray(response.data)) {
@@ -669,8 +670,8 @@ export default async function DynamicPage({
             ward: locationNames.ward || "",
           };
         }
-      } catch (error) {
-        console.error("Lỗi khi lấy dữ liệu địa điểm:", error);
+      } catch {
+        toast.error("Lỗi khi lấy dữ liệu địa điểm:");
 
         // Fallback đơn giản nếu API gặp lỗi
         breadcrumbData = {
@@ -736,26 +737,13 @@ export default async function DynamicPage({
         <h1 className="text-2xl font-bold mb-4">Đang tải...</h1>
       </div>
     );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack =
-      error instanceof Error ? error.stack : "No stack trace available";
-
-    console.error("===== ERROR FETCHING DATA =====");
-    console.error("Error message:", errorMessage);
-    console.error("Error details:", error);
-    console.error("URL data:", urlData);
-    console.error("Stack trace:", errorStack);
+  } catch {
+    toast.error("Có lỗi xảy ra");
 
     return (
       <div className="container mx-auto p-4 my-10 text-center">
         <h1 className="text-2xl font-bold mb-4">Có lỗi xảy ra</h1>
         <p>Không thể tải dữ liệu. Vui lòng thử lại sau.</p>
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-4 p-4 bg-gray-100 rounded text-left">
-            <p className="text-red-600 font-bold">Error: {errorMessage}</p>
-          </div>
-        )}
       </div>
     );
   }

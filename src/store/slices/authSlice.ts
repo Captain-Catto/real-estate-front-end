@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { toast } from "sonner";
 import {
   authService,
   LoginRequest,
@@ -6,7 +7,8 @@ import {
 } from "@/services/authService";
 
 // API Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 // Types
 export type UserRole = "admin" | "employee" | "user";
@@ -52,7 +54,7 @@ export const restoreAuthAsync = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       // Try to refresh the access token using the HTTP-only cookie
-      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -70,17 +72,14 @@ export const restoreAuthAsync = createAsyncThunk(
         // We'll set both token and user in the reducer, not here
         try {
           // Use fetchWithAuth from authService but with the new token directly
-          const profileResponse = await fetch(
-            `${API_BASE_URL}/api/auth/profile`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${data.data.accessToken}`,
-              },
-              credentials: "include",
-            }
-          );
+          const profileResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${data.data.accessToken}`,
+            },
+            credentials: "include",
+          });
 
           if (!profileResponse.ok) {
             return rejectWithValue("Failed to get user profile");
@@ -158,9 +157,9 @@ export const logoutAsync = createAsyncThunk("auth/logout", async () => {
   try {
     await authService.logout();
     return null;
-  } catch (error: unknown) {
+  } catch {
     // Vẫn logout local nếu có lỗi từ server
-    console.error("Logout error:", error);
+    toast.error("Có lỗi khi đăng xuất, nhưng đã đăng xuất khỏi thiết bị này");
     return null;
   }
 });
@@ -169,9 +168,11 @@ export const logoutAllAsync = createAsyncThunk("auth/logoutAll", async () => {
   try {
     await authService.logoutAll();
     return null;
-  } catch (error: unknown) {
+  } catch {
     // Vẫn logout local nếu có lỗi từ server
-    console.error("Logout all error:", error);
+    toast.error(
+      "Có lỗi khi đăng xuất tất cả thiết bị, nhưng đã đăng xuất khỏi thiết bị này"
+    );
     return null;
   }
 });

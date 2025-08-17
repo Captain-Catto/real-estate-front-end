@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useEffect } from "react";
 import { packageService, Package } from "@/services/packageService";
+import { toast } from "sonner";
 
 interface PackageSelectionStepProps {
   selectedPackage: Package | null;
@@ -36,7 +37,7 @@ export default function PackageSelectionStep({
           setError("Không thể tải danh sách gói. Vui lòng thử lại.");
         }
       } catch (err) {
-        console.error("Error fetching packages:", err);
+        toast.error("Có lỗi xảy ra khi tải danh sách gói");
         setError("Có lỗi xảy ra khi tải danh sách gói.");
       } finally {
         setPackagesLoading(false);

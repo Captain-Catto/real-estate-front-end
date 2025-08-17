@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -48,8 +50,8 @@ export const priceRangeService = {
           label: price.name, // Use name as label
         })
       );
-    } catch (error) {
-      console.error("Error in priceRangeService.getAll:", error);
+    } catch {
+      toast.error("Lỗi khi tải khoảng giá");
       return [];
     }
   },
@@ -98,8 +100,8 @@ export const priceRangeService = {
           label: price.name, // Use name as label
         })
       );
-    } catch (error) {
-      console.error("Error in priceRangeService.getByType:", error);
+    } catch {
+      toast.error("Lỗi khi tải khoảng giá theo loại");
       return [];
     }
   },
@@ -120,8 +122,8 @@ export const priceRangeService = {
         ranges.find((range) => range.slug === value || range.value === value) ||
         null
       );
-    } catch (error) {
-      console.error("Error in priceRangeService.getByValue:", error);
+    } catch {
+      toast.error("Lỗi khi tìm khoảng giá");
       return null;
     }
   },

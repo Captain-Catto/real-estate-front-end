@@ -1,4 +1,5 @@
 import { getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -97,7 +98,7 @@ export const packageService = {
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching active packages:", error);
+      toast.error("Lấy danh sách gói dịch vụ thất bại");
       return { success: false, data: { packages: [] } };
     }
   },
@@ -118,7 +119,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        console.error("Error fetching all packages:", error);
+        toast.error("Lấy tất cả gói dịch vụ thất bại");
         return { success: false, data: { packages: [] } };
       }
     },
@@ -139,7 +140,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        console.error("Error creating package:", error);
+        toast.error("Tạo gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -161,7 +162,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        console.error("Error updating package:", error);
+        toast.error("Cập nhật gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -177,7 +178,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        console.error("Error deleting package:", error);
+        toast.error("Xóa gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -199,7 +200,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        console.error("Error fetching package:", error);
+        toast.error("Lấy thông tin gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -227,7 +228,7 @@ export const packageService = {
       }
       return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
     } catch (error) {
-      console.error("Error fetching priority types:", error);
+      // Silent error - có fallback cho priority types
       return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
     }
   },

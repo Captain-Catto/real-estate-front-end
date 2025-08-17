@@ -10,6 +10,7 @@ import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 function AdminPostDetailPageInternalInternal() {
   const params = useParams();
   const router = useRouter();
@@ -37,9 +38,8 @@ function AdminPostDetailPageInternalInternal() {
       } else {
         setError("Không tìm thấy bài viết");
       }
-    } catch (err) {
-      console.error("Error fetching post:", err);
-      setError("Có lỗi xảy ra khi tải dữ liệu");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -49,10 +49,9 @@ function AdminPostDetailPageInternalInternal() {
     try {
       await adminPostsService.approvePost(postId);
       await fetchPost(postId);
-      alert("Đã duyệt tin đăng thành công!");
-    } catch (err) {
-      console.error("Error approving post:", err);
-      alert("Có lỗi xảy ra khi duyệt tin đăng!");
+      toast.success("Đã duyệt tin đăng thành công!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
 
@@ -64,13 +63,9 @@ function AdminPostDetailPageInternalInternal() {
 
       await adminPostsService.rejectPost(postId, reason);
       await fetchPost(postId);
-      alert("Đã từ chối tin đăng!");
-    } catch (err) {
-      console.error("Error rejecting post:", err);
-      alert(
-        "Có lỗi xảy ra khi từ chối tin đăng: " +
-          (err instanceof Error ? err.message : "Lỗi không xác định")
-      );
+      toast.success("Đã từ chối tin đăng!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi từ chối tin đăng!");
     }
   };
 
@@ -126,9 +121,8 @@ function AdminPostDetailPageInternalInternal() {
       }
 
       alert(message);
-    } catch (err) {
-      console.error("Error updating post status:", err);
-      alert("Có lỗi xảy ra khi thay đổi trạng thái tin đăng!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi thay đổi trạng thái tin đăng!");
     }
   };
 
@@ -142,9 +136,8 @@ function AdminPostDetailPageInternalInternal() {
         await adminPostsService.deletePost(postId);
         alert("Đã xóa vĩnh viễn tin đăng!");
         router.push("/admin/quan-ly-tin-dang");
-      } catch (err) {
-        console.error("Error deleting post:", err);
-        alert("Có lỗi xảy ra khi xóa tin đăng!");
+      } catch {
+        toast.error("Có lỗi xảy ra khi xóa tin đăng!");
       }
     }
   };

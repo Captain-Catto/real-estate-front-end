@@ -14,6 +14,7 @@ import { Developer, UpdateDeveloperRequest } from "@/types/developer";
 import { UploadService } from "@/services/uploadService";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 
 interface DeveloperDetailPageProps {
   params: Promise<{
@@ -62,8 +63,8 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
             isActive: data.isActive,
           });
         }
-      } catch (error) {
-        console.error("Error fetching developer:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi lấy thông tin chủ đầu tư");
         // If developer not found, redirect back
         router.push("/admin/quan-ly-chu-dau-tu");
       } finally {
@@ -105,9 +106,8 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
           logo: successfulUpload.data!.url,
         }));
       }
-    } catch (error) {
-      console.error("Error uploading logo:", error);
-      alert("Có lỗi xảy ra khi upload logo");
+    } catch {
+      toast.error("Có lỗi xảy ra khi upload logo");
     } finally {
       setUploading(false);
     }
@@ -128,10 +128,9 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
         setDeveloper(data);
       }
       setEditing(false);
-      alert("Cập nhật thông tin thành công!");
-    } catch (error) {
-      console.error("Error updating developer:", error);
-      alert("Có lỗi xảy ra khi cập nhật thông tin");
+      toast.success("Cập nhật thông tin thành công!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setSaving(false);
     }
@@ -144,9 +143,8 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
       try {
         await DeveloperService.deleteDeveloper(developer._id);
         router.push("/admin/quan-ly-chu-dau-tu");
-      } catch (error) {
-        console.error("Error deleting developer:", error);
-        alert("Có lỗi xảy ra khi xóa chủ đầu tư");
+      } catch {
+        toast.error("Có lỗi xảy ra khi xóa chủ đầu tư");
       }
     }
   };

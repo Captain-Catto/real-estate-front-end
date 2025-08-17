@@ -2,6 +2,8 @@
  * Utility functions for creating SEO-friendly post slugs
  */
 
+import { toast } from "sonner";
+
 // Interface for location data
 interface LocationData {
   name?: string;
@@ -104,8 +106,8 @@ export function createPostSlug(postData: PostSlugData): string {
         // Return full SEO URL: /mua-ban/province/ward/id-title or /cho-thue/province/ward/id-title
         return `/${transactionType}/${provinceSlug}/${wardSlug}/${idSlug}`;
       }
-    } catch (error) {
-      console.error("Error creating location-based slug:", error);
+    } catch {
+      toast.error("Lỗi không thể tạo slug cho bài viết");
     }
   }
 

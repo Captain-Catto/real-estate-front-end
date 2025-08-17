@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
@@ -30,8 +32,8 @@ class CategoryService {
 
       const data = await response.json();
       return data.data || [];
-    } catch (error) {
-      console.error("Error fetching categories:", error);
+    } catch {
+      toast.error("Lỗi khi tải danh mục");
       return [];
     }
   }
@@ -60,8 +62,8 @@ class CategoryService {
       const data = await response.json();
       console.log(`📋 API Response data:`, data);
       return data.data || data || null;
-    } catch (error) {
-      console.error("❌ Error fetching category by ID:", error);
+    } catch {
+      toast.error("Lỗi khi tải chi tiết danh mục");
       return null;
     }
   }
@@ -90,11 +92,8 @@ class CategoryService {
       const data = await response.json();
       console.log(`📋 API Response data for isProject=${isProject}:`, data);
       return data.data || [];
-    } catch (error) {
-      console.error(
-        `❌ Error fetching categories by isProject=${isProject}:`,
-        error
-      );
+    } catch {
+      toast.error("Lỗi khi tải danh mục theo loại dự án");
       return [];
     }
   }

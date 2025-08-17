@@ -15,6 +15,7 @@ import {
   PostFilters,
   PostsStats as StatsType,
 } from "@/services/postsService";
+import { toast } from "sonner";
 
 function AdminPostsPageInternal() {
   const searchParams = useSearchParams();
@@ -49,8 +50,8 @@ function AdminPostsPageInternal() {
       const result = await adminPostsService.getPosts(filters, currentPage, 10);
       setPosts(result.posts);
       setTotalPages(result.totalPages);
-    } catch (err) {
-      console.error("Error fetching posts:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải bài viết");
     } finally {
       setLoading(false);
     }
@@ -60,8 +61,8 @@ function AdminPostsPageInternal() {
     try {
       const statsData = await adminPostsService.getPostsStats();
       setStats(statsData);
-    } catch (err) {
-      console.error("Error fetching stats:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải thống kê bài viết");
     }
   };
 
@@ -80,10 +81,9 @@ function AdminPostsPageInternal() {
       await adminPostsService.approvePost(postId);
       fetchPosts();
       fetchStats();
-      alert("Đã duyệt tin đăng thành công!");
-    } catch (err) {
-      console.error("Error approving post:", err);
-      alert("Có lỗi xảy ra khi duyệt tin đăng!");
+      toast.success("Đã duyệt tin đăng thành công!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
 
@@ -92,10 +92,9 @@ function AdminPostsPageInternal() {
       await adminPostsService.rejectPost(postId, reason);
       fetchPosts();
       fetchStats();
-      alert("Đã từ chối tin đăng!");
-    } catch (err) {
-      console.error("Error rejecting post:", err);
-      alert("Có lỗi xảy ra khi từ chối tin đăng!");
+      toast.success("Đã từ chối tin đăng!");
+    } catch {
+      toast.error("Có lỗi xảy ra khi từ chối tin đăng!");
     }
   };
 
@@ -114,10 +113,9 @@ function AdminPostsPageInternal() {
           await adminPostsService.deletePost(postId);
           fetchPosts();
           fetchStats();
-          alert("Đã xóa vĩnh viễn tin đăng!");
-        } catch (err) {
-          console.error("Error permanently deleting post:", err);
-          alert("Có lỗi xảy ra khi xóa vĩnh viễn tin đăng!");
+          toast.success("Đã xóa vĩnh viễn tin đăng!");
+        } catch {
+          toast.error("Có lỗi xảy ra khi xóa vĩnh viễn tin đăng!");
         }
       }
     } else {
@@ -128,10 +126,9 @@ function AdminPostsPageInternal() {
           await adminPostsService.updatePostStatus(postId, "deleted");
           fetchPosts();
           fetchStats();
-          alert("Đã chuyển tin đăng vào thùng rác!");
-        } catch (err) {
-          console.error("Error soft deleting post:", err);
-          alert("Có lỗi xảy ra khi chuyển tin đăng vào thùng rác!");
+          toast.success("Đã chuyển tin đăng vào thùng rác!");
+        } catch {
+          toast.error("Có lỗi xảy ra khi chuyển tin đăng vào thùng rác!");
         }
       }
     }

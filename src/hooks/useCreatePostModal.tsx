@@ -107,8 +107,8 @@ export function useCreatePostModal() {
             category: firstCategory.id,
           }));
         }
-      } catch (error) {
-        console.error("Error loading categories:", error);
+      } catch {
+        toast.error("Không thể tải danh sách danh mục");
       }
     };
 
@@ -333,8 +333,7 @@ export function useCreatePostModal() {
             closeModal();
             router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
           }
-        } catch (error) {
-          console.error("Error processing payment:", error);
+        } catch {
           toast.error("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
           setPaymentError("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
 

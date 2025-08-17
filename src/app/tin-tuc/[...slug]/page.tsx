@@ -49,8 +49,8 @@ async function isValidCategory(category: string): Promise<boolean> {
     }
     // Fallback về static categories nếu API lỗi
     return staticValidCategories.includes(category);
-  } catch (error) {
-    console.error("Error checking category validity:", error);
+  } catch {
+    toast.error("Có lỗi xảy ra khi kiểm tra danh mục");
     // Fallback về static categories nếu API lỗi
     return staticValidCategories.includes(category);
   }
@@ -58,6 +58,7 @@ async function isValidCategory(category: string): Promise<boolean> {
 
 // Import type từ newsService
 import { NewsItem } from "@/services/newsService";
+import { toast } from "sonner";
 
 // Hàm chuyển đổi từ định dạng API sang định dạng hiển thị
 function transformNewsToArticle(news: NewsItem): NewsArticle {
@@ -121,8 +122,8 @@ async function getArticleBySlug(slug: string): Promise<NewsArticle | null> {
     }
     console.log("No article found with slug:", slug);
     return null;
-  } catch (error) {
-    console.error("Error fetching article by slug:", error);
+  } catch {
+    toast.error("Có lỗi xảy ra khi lấy bài viết");
     return null;
   }
 }
@@ -188,11 +189,8 @@ async function getArticlesByCategory(category: string) {
 
     console.log("No articles found for category:", category);
     return [];
-  } catch (error) {
-    console.error("Error fetching articles by category:", error);
-    if (error instanceof Error) {
-      console.error(error.stack || "No stack trace");
-    }
+  } catch {
+    toast.error("Có lỗi xảy ra khi lấy bài viết");
     return [];
   }
 }
@@ -342,8 +340,8 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             description: `${categoryName} mới nhất và cập nhật`,
           };
         }
-      } catch (error) {
-        console.error("Error getting category info for metadata:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi lấy thông tin danh mục");
       }
 
       // Fallback nếu không lấy được từ API

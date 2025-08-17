@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { postService } from "@/services/postsService";
+import { toast } from "sonner";
 
 export interface ProjectPostFilters {
   type?: "ban" | "cho-thue";
@@ -92,8 +93,8 @@ export function useProjectPosts(
         setTotalCount(0);
         setTotalPages(0);
       }
-    } catch (err) {
-      console.error("Error fetching project posts:", err);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải danh sách tin đăng");
       setError("Có lỗi xảy ra khi tải danh sách tin đăng");
       setPosts([]);
       setTotalCount(0);

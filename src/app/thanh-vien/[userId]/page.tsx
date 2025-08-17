@@ -11,11 +11,15 @@ import {
   FavoriteItem,
 } from "@/components/common/FavoriteButton";
 import { formatPriceByType, formatArea } from "@/utils/format";
-import { generatePostSlug, convertBackendTransactionType } from "@/utils/slugUtils";
+import {
+  generatePostSlug,
+  convertBackendTransactionType,
+} from "@/utils/slugUtils";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
 import { adminPostsService, Post } from "@/services/postsService";
 import { getPublicUser } from "@/services/userService";
 import { locationService } from "@/services/locationService";
+import { toast } from "sonner";
 
 interface PublicUser {
   id: string;
@@ -38,7 +42,9 @@ export default function UserDetailPage() {
 
   const [user, setUser] = useState<PublicUser | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [postsWithFullData, setPostsWithFullData] = useState<(Post & { fullAddress?: string; fullSlug?: string })[]>([]);
+  const [postsWithFullData, setPostsWithFullData] = useState<
+    (Post & { fullAddress?: string; fullSlug?: string })[]
+  >([]);
   const [stats, setStats] = useState<UserStats>({
     totalPosts: 0,
     sellPosts: 0,
@@ -108,15 +114,15 @@ export default function UserDetailPage() {
 
       // Kết hợp street + ward + province
       const addressParts = [];
-      
+
       if (post.location?.street) {
         addressParts.push(post.location.street);
       }
-      
+
       if (wardName) {
         addressParts.push(wardName);
       }
-      
+
       if (provinceName) {
         addressParts.push(provinceName);
       }
@@ -124,9 +130,11 @@ export default function UserDetailPage() {
       fullAddress = addressParts.join(", ");
 
       return fullAddress || "Không xác định";
-    } catch (error) {
-      console.error("Error getting location names:", error);
-      return post.location?.street || post.location?.province || "Không xác định";
+    } catch {
+      toast.error("Có lỗi xảy ra khi lấy địa chỉ đầy đủ");
+      return (
+        post.location?.street || post.location?.province || "Không xác định"
+      );
     }
   };
 
@@ -152,10 +160,12 @@ export default function UserDetailPage() {
         postId: post._id,
         title: post.title,
       });
-    } catch (error) {
-      console.error("Error creating post slug:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi tạo slug bài viết");
       // Fallback to simple format
-      return `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}-${post.title.toLowerCase().replace(/\s+/g, "-")}`;
+      return `/${convertBackendTransactionType(post.type)}/chi-tiet/${
+        post._id
+      }-${post.title.toLowerCase().replace(/\s+/g, "-")}`;
     }
   };
 
@@ -239,9 +249,7 @@ export default function UserDetailPage() {
             const activePosts = newPosts.filter(
               (p: Post) => p.status === "active"
             );
-            const sellPosts = activePosts.filter(
-              (p: Post) => p.type === "ban"
-            );
+            const sellPosts = activePosts.filter((p: Post) => p.type === "ban");
             const rentPosts = activePosts.filter(
               (p: Post) => p.type === "cho-thue"
             );
@@ -254,7 +262,7 @@ export default function UserDetailPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching posts:", err);
+        toast.error("Có lỗi xảy ra khi lấy bài viết");
       } finally {
         setPostsLoading(false);
         setLoadingMore(false);
@@ -282,7 +290,7 @@ export default function UserDetailPage() {
             province: post.location?.province,
             ward: post.location?.ward,
             fullAddress,
-            fullSlug
+            fullSlug,
           });
           return { ...post, fullAddress, fullSlug };
         })
@@ -566,7 +574,11 @@ export default function UserDetailPage() {
                       price: formatPriceByType(post.price, post.type),
                       location: post.fullAddress || "Không xác định",
                       image: post.images[0] || "/default-property.jpg",
-                      slug: post.fullSlug || `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}`,
+                      slug:
+                        post.fullSlug ||
+                        `/${convertBackendTransactionType(
+                          post.type
+                        )}/chi-tiet/${post._id}`,
                       area: formatArea(post.area),
                       bedrooms: post.bedrooms,
                       bathrooms: post.bathrooms,
@@ -576,7 +588,12 @@ export default function UserDetailPage() {
                     return (
                       <Link
                         key={post._id}
-                        href={post.fullSlug || `/${convertBackendTransactionType(post.type)}/chi-tiet/${post._id}`}
+                        href={
+                          post.fullSlug ||
+                          `/${convertBackendTransactionType(
+                            post.type
+                          )}/chi-tiet/${post._id}`
+                        }
                         className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
                       >
                         {/* Image */}

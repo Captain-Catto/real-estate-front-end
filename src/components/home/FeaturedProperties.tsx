@@ -7,6 +7,7 @@ import {
   FavoriteButton,
   FavoriteItem,
 } from "@/components/common/FavoriteButton";
+import { toast } from "sonner";
 import testCardImg from "@/assets/images/card-img.jpg";
 import { formatPriceByType } from "@/utils/format";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
@@ -68,8 +69,8 @@ export function FeaturedProperties() {
                   locationName = `${wardName || ""}, ${
                     provinceName || ""
                   }`.replace(/^,\s*/, "");
-                } catch (error) {
-                  console.error("Error getting location names:", error);
+                } catch {
+                  // Silent error for location names
                   locationName =
                     post.location.street ||
                     post.location.province ||
@@ -149,8 +150,8 @@ export function FeaturedProperties() {
 
           setFeaturedProperties(transformedProperties);
         }
-      } catch (error) {
-        console.error("Error fetching featured properties:", error);
+      } catch {
+        toast.error("Không thể tải dữ liệu bất động sản nổi bật");
         setError("Không thể tải dữ liệu bất động sản nổi bật");
       } finally {
         setLoading(false);

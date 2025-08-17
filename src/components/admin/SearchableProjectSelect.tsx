@@ -5,6 +5,7 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { ProjectService } from "@/services/projectService";
+import { toast } from "sonner";
 
 // Project selection type - matching what API returns for selection
 interface ProjectSelection {
@@ -125,8 +126,8 @@ export default function SearchableProjectSelect({
           setFilteredProjects(projectList);
           setHasMoreProjects(false);
         }
-      } catch (error) {
-        console.error("Error fetching initial projects:", error);
+      } catch {
+        toast.error("Lỗi không tải được dự án");
         setHasMoreProjects(false);
       } finally {
         setLoading(false);
@@ -164,8 +165,8 @@ export default function SearchableProjectSelect({
             const searchResults = response.projects;
             setFilteredProjects(searchResults);
           }
-        } catch (error) {
-          console.error("Error searching projects:", error);
+        } catch {
+          toast.error("Lỗi không tải được dự án");
           // Fallback to local search
           const localFiltered = projects.filter(
             (project) =>
@@ -246,8 +247,8 @@ export default function SearchableProjectSelect({
           newPage: pagination.currentPage,
         });
       }
-    } catch (error) {
-      console.error("❌ Error loading more projects:", error);
+    } catch {
+      toast.error("Lỗi không tải được dự án");
     } finally {
       setLoadingMore(false);
     }

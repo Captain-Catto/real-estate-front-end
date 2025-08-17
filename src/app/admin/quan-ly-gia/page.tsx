@@ -5,7 +5,7 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggablePriceTable from "@/components/admin/DraggablePriceTable";
 import { fetchWithAuth } from "@/services/authService";
-
+import { toast } from "sonner";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -61,12 +61,10 @@ function PricesManagementInternalContent() {
         setPrices(data.data);
         setTotalPages(data.pagination?.totalPages || 1);
       } else {
-        console.error("Error fetching prices:", data.message);
-        alert("Lỗi khi tải dữ liệu: " + data.message);
+        toast.error("Có lỗi xảy ra khi lấy danh sách khoảng giá");
       }
-    } catch (error) {
-      console.error("Error fetching prices:", error);
-      alert("Lỗi khi tải dữ liệu");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -106,9 +104,8 @@ function PricesManagementInternalContent() {
       } else {
         alert("Lỗi: " + data.message);
       }
-    } catch (error) {
-      console.error("Error creating price:", error);
-      alert("Lỗi khi tạo khoảng giá");
+    } catch {
+      toast.error("Có lỗi xảy ra khi tạo khoảng giá");
     }
   };
 
@@ -145,9 +142,8 @@ function PricesManagementInternalContent() {
       } else {
         alert("Lỗi: " + data.message);
       }
-    } catch (error) {
-      console.error("Error updating price:", error);
-      alert("Lỗi khi cập nhật khoảng giá");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật khoảng giá");
     }
   };
 
@@ -169,9 +165,8 @@ function PricesManagementInternalContent() {
       } else {
         alert("Lỗi: " + data.message);
       }
-    } catch (error) {
-      console.error("Error deleting price:", error);
-      alert("Lỗi khi xóa khoảng giá");
+    } catch {
+      toast.error("Có lỗi xảy ra khi xóa khoảng giá");
     }
   };
 
@@ -199,9 +194,8 @@ function PricesManagementInternalContent() {
       } else {
         alert("Lỗi: " + data.message);
       }
-    } catch (error) {
-      console.error("Error toggling price status:", error);
-      alert("Lỗi khi thay đổi trạng thái khoảng giá");
+    } catch {
+      toast.error("Có lỗi xảy ra khi thay đổi trạng thái khoảng giá");
     }
   };
 
@@ -238,9 +232,8 @@ function PricesManagementInternalContent() {
         alert("Lỗi khi cập nhật thứ tự: " + data.message);
         fetchPrices();
       }
-    } catch (error) {
-      console.error("Error updating order:", error);
-      alert("Lỗi khi cập nhật thứ tự");
+    } catch {
+      toast.error("Có lỗi xảy ra khi cập nhật thứ tự");
       fetchPrices();
     }
   };

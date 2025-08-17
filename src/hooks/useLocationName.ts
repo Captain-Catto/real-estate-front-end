@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { locationService } from "@/services/locationService";
+import { toast } from "sonner";
 
 interface LocationNameCache {
   [key: string]: string;
@@ -51,8 +52,8 @@ export const useLocationName = (provinceCode?: string, wardCode?: string) => {
         // Cache the result
         locationCache[cacheKey] = name;
         setLocationName(name);
-      } catch (error) {
-        console.error("Error fetching location name:", error);
+      } catch {
+        toast.error("Không thể tải tên địa điểm");
         // Fallback to codes
         const fallback = wardCode
           ? `${wardCode}, ${provinceCode}`

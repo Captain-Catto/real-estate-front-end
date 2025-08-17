@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import "quill/dist/quill.snow.css";
 // Thêm CSS tùy chỉnh cho QuillEditor
 import styles from "./QuillEditor.module.css";
+import { toast } from "sonner";
 
 interface QuillEditorProps {
   value: string;
@@ -73,7 +74,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                     );
                     quillInstance.current.setSelection(range.index + 1);
                   } else {
-                    console.error("Upload failed:", response);
+                    toast.error("Có lỗi xảy ra khi tải hình ảnh");
                     // Xóa placeholder loading text
                     quillInstance.current.deleteText(range.index, 20);
                     quillInstance.current.insertText(
@@ -82,8 +83,8 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                       { color: "#f44336", italic: true }
                     );
                   }
-                } catch (error) {
-                  console.error("Upload error:", error);
+                } catch {
+                  toast.error("Có lỗi xảy ra khi tải hình ảnh");
                   // Xóa placeholder loading text
                   quillInstance.current.deleteText(range.index, 20);
                   quillInstance.current.insertText(
@@ -92,8 +93,8 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                     { color: "#f44336", italic: true }
                   );
                 }
-              } catch (error) {
-                console.error("Image handling error:", error);
+              } catch {
+                toast.error("Có lỗi xảy ra khi xử lý hình ảnh");
               }
             }
           };
@@ -134,8 +135,8 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
               "Content after initial setting:",
               quillInstance.current.root.innerHTML
             );
-          } catch (error) {
-            console.error("Error setting content:", error);
+          } catch {
+            toast.error("Có lỗi xảy ra khi thiết lập nội dung");
           }
         }
 
@@ -172,8 +173,8 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
             "Content after update:",
             quillInstance.current.root.innerHTML
           );
-        } catch (error) {
-          console.error("Error updating content:", error);
+        } catch {
+          toast.error("Có lỗi xảy ra khi cập nhật nội dung");
         }
 
         // Khôi phục handler text-change sau khi cập nhật

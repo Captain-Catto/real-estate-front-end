@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PackageSelection from "../common/PackageSelection";
+import { toast } from "sonner";
 
 interface Post {
   _id: string;
@@ -34,8 +35,8 @@ const PostExpiryManagement = () => {
       if (data.success) {
         setPosts(data.data.posts);
       }
-    } catch (error) {
-      console.error("Fetch posts error:", error);
+    } catch {
+      toast.error("Không thể tải danh sách tin đăng");
     } finally {
       setLoading(false);
     }
@@ -66,9 +67,8 @@ const PostExpiryManagement = () => {
       } else {
         alert(`❌ ${data.message || "Lỗi khi gia hạn tin đăng"}`);
       }
-    } catch (error) {
-      alert("❌ Lỗi kết nối server");
-      console.error("Extend post error:", error);
+    } catch {
+      toast.error("Lỗi kết nối server");
     }
   };
 

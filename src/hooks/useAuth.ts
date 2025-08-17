@@ -66,8 +66,7 @@ export const useAuth = () => {
       await dispatch(logoutAsync()).unwrap();
       toast.success("Đăng xuất thành công");
       return true;
-    } catch (error) {
-      console.error("Logout error:", error);
+    } catch {
       toast.error("Đã xảy ra lỗi khi đăng xuất");
       return false;
     }
@@ -79,8 +78,7 @@ export const useAuth = () => {
       await dispatch(logoutAllAsync()).unwrap();
       toast.success("Đã đăng xuất khỏi tất cả thiết bị");
       return true;
-    } catch (error) {
-      console.error("Logout all error:", error);
+    } catch {
       toast.error("Đã xảy ra lỗi khi đăng xuất");
       return false;
     }

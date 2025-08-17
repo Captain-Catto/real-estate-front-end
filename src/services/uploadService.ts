@@ -1,4 +1,5 @@
 import { getAccessToken } from "./authService";
+import { toast } from "sonner";
 
 // API Base URL
 const API_BASE_URL =
@@ -68,7 +69,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to upload images");
       }
     } catch (error) {
-      console.error("Error uploading images:", error);
+      toast.error("Upload hình ảnh thất bại");
       return [
         {
           success: false,
@@ -108,7 +109,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to upload image");
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
+      toast.error("Upload hình ảnh thất bại");
       return {
         success: false,
         message:
@@ -141,7 +142,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to delete image");
       }
     } catch (error) {
-      console.error("Error deleting image:", error);
+      toast.error("Xóa hình ảnh thất bại");
       return {
         success: false,
         message:

@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 /**
  * Track a page view
@@ -12,7 +12,7 @@ export const trackPageView = async (path: string) => {
       return;
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/stats/track-view`, {
+    const response = await fetch(`${API_BASE_URL}/stats/track-view`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -23,10 +23,8 @@ export const trackPageView = async (path: string) => {
 
     if (!response.ok) {
       // Silent fail - don't interrupt user experience for tracking
-      console.error("Failed to track page view");
     }
-  } catch (error) {
-    // Silent fail - don't interrupt user experience
-    console.error("Error tracking page view:", error);
+  } catch {
+    // Silent fail - don't interrupt user experience for tracking
   }
 };

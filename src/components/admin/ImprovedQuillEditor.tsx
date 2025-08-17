@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { nanoid } from "nanoid"; // Nếu không có, cần cài đặt: npm install nanoid
+import { toast } from "sonner";
 
 interface QuillEditorProps {
   value?: string;
@@ -294,11 +295,10 @@ export default function ImprovedQuillEditor({
             imageDropdownContainer.classList.remove("pointer-events-none");
           }
         }, 2000);
-      } catch (error) {
-        console.error("Error processing image:", error);
+      } catch {
+        toast.error("Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
         removeLoadingElement();
         setImageDropdownActive(true);
-        alert("Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
       }
     }
 
@@ -372,10 +372,9 @@ export default function ImprovedQuillEditor({
                 "Pasted image",
                 imageId
               );
-            } catch (error) {
-              console.error("Error processing pasted image:", error);
+            } catch {
               removeLoadingElement();
-              alert(
+              toast.error(
                 "Có lỗi xảy ra khi xử lý hình ảnh paste. Vui lòng thử lại!"
               );
             }
@@ -383,7 +382,6 @@ export default function ImprovedQuillEditor({
           break;
         }
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [maxImageWidth, imageQuality, onImageAdd, deferImageUpload]
   );

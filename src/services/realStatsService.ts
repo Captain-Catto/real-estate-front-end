@@ -1,4 +1,5 @@
 import { fetchWithAuth, API_BASE_URL } from "@/services/authService";
+import { toast } from "sonner";
 
 export interface OverviewStats {
   totalUsers: number;
@@ -102,8 +103,8 @@ export const realStatsService = {
       };
 
       return { ...defaultStats, ...result.data };
-    } catch (error) {
-      console.error("Error fetching overview stats:", error);
+    } catch {
+      toast.error("Không thể tải thống kê tổng quan");
       // Return default values on error
       return {
         totalUsers: 0,
@@ -163,8 +164,8 @@ export const realStatsService = {
       };
 
       return { ...defaultStats, ...result.data };
-    } catch (error) {
-      console.error("Error fetching overview stats with date range:", error);
+    } catch {
+      toast.error("Không thể tải thống kê theo thời gian");
       // Return default values on error
       return {
         totalUsers: 0,

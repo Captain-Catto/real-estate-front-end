@@ -151,9 +151,8 @@ function EmployeePermissionManagement() {
           );
           setEmployees(employeeUsers);
         }
-      } catch (error) {
-        console.error("❌ Error fetching data:", error);
-        toast.error("Không thể tải dữ liệu");
+      } catch {
+        toast.error("Lỗi khi tải dữ liệu nhân viên");
         hasFetchedData.current = false;
       } finally {
         setIsLoading(false);
@@ -250,9 +249,8 @@ function EmployeePermissionManagement() {
       } else {
         toast.error("Lỗi khi cập nhật quyền: " + response.message);
       }
-    } catch (error) {
-      console.error("Error saving permissions:", error);
-      toast.error("Không thể lưu thay đổi");
+    } catch {
+      toast.error("Lỗi khi lưu quyền nhân viên");
     } finally {
       setIsSaving(false);
     }

@@ -5,6 +5,7 @@ import {
   contactService,
   CreateContactMessage,
 } from "@/services/contactService";
+import { toast } from "sonner";
 
 interface Developer {
   name: string;
@@ -62,8 +63,8 @@ export default function ContactBox({
       } else {
         setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
       }
-    } catch (error) {
-      console.error("Error sending contact message:", error);
+    } catch {
+      toast.error("Có lỗi xảy ra khi gửi thông tin liên hệ");
       setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
     } finally {
       setIsSubmitting(false);

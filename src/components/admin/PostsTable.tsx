@@ -13,6 +13,7 @@ import { ProjectService } from "@/services/projectService";
 import { categoryService } from "@/services/categoryService";
 import { PermissionGuard } from "@/components/auth/ProtectionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { toast } from "sonner";
 
 interface PostsTableProps {
   posts: Post[];
@@ -200,15 +201,15 @@ export default function PostsTable({
                 `✅ Found category: ${categoryId} -> ${category.name} (${categoryType})`
               );
             } else {
-              console.warn("❌ Category not found:", categoryId);
+              toast.error("Danh mục không tìm thấy");
               categoryMap[categoryId] = "Danh mục (không tìm thấy)";
               categoryDataMap[categoryId] = {
                 name: "Danh mục (không tìm thấy)",
                 type: "property",
               };
             }
-          } catch (error) {
-            console.error(`❌ Error fetching category ${categoryId}:`, error);
+          } catch {
+            toast.error("Lỗi không tải được danh mục");
             categoryMap[categoryId] = "Danh mục (lỗi)";
             categoryDataMap[categoryId] = {
               name: "Danh mục (lỗi)",
