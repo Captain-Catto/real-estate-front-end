@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { postService } from "../services/postsService";
 import { paymentService } from "../services/paymentService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 interface Package {
   id: string;
@@ -57,7 +57,7 @@ export default function ExtendPostModal({
       );
       setWalletBalance(walletData?.data?.balance || 0);
     } catch {
-      toast.error("Không thể tải dữ liệu");
+      showErrorToast("Không thể tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -65,12 +65,12 @@ export default function ExtendPostModal({
 
   const handleExtend = async () => {
     if (!selectedPackage) {
-      toast.error("Vui lòng chọn gói gia hạn");
+      showErrorToast("Vui lòng chọn gói gia hạn");
       return;
     }
 
     if (walletBalance < selectedPackage.price) {
-      toast.error("Số dư ví không đủ để thực hiện giao dịch");
+      showErrorToast("Số dư ví không đủ để thực hiện giao dịch");
       return;
     }
 
@@ -79,11 +79,11 @@ export default function ExtendPostModal({
 
       await postService.extendPost(post.id, selectedPackage.id);
 
-      toast.success("Gia hạn tin đăng thành công!");
+      showSuccessToast("Gia hạn tin đăng thành công!");
       onSuccess();
       onClose();
     } catch {
-      toast.error("Có lỗi xảy ra khi gia hạn tin đăng");
+      showErrorToast("Có lỗi xảy ra khi gia hạn tin đăng");
     } finally {
       setExtending(false);
     }

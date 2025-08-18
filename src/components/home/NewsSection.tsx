@@ -9,7 +9,7 @@ import {
   newsCategoryService,
   NewsCategory,
 } from "@/services/newsCategoryService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export default function NewsSectionOptimized() {
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function NewsSectionOptimized() {
 
         console.log("Loaded news categories:", response.data.length);
       } catch {
-        toast.error("Không thể tải danh mục tin tức");
+        showErrorToast("Không thể tải danh mục tin tức");
       }
     };
     loadInitialData();

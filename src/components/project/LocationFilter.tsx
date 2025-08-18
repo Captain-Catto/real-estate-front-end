@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { locationService } from "@/services/locationService";
 import { Location } from "@/types/location";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface LocationFilterProps {
   onLocationChange?: (
@@ -41,7 +41,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
         const data = await locationService.getProvinces();
         setProvinces(data);
       } catch {
-        toast.error("Không thể tải danh sách tỉnh/thành phố");
+        showErrorToast("Không thể tải danh sách tỉnh/thành phố");
       } finally {
         setLoading(false);
       }
@@ -62,7 +62,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
             setDistricts(data);
           }
         } catch {
-          toast.error("Không thể tải danh sách quận/huyện");
+          showErrorToast("Không thể tải danh sách quận/huyện");
         } finally {
           setLoading(false);
         }
@@ -91,7 +91,7 @@ export function LocationFilter({ onLocationChange }: LocationFilterProps) {
             setWards(data);
           }
         } catch {
-          toast.error("Không thể tải danh sách phường/xã");
+          showErrorToast("Không thể tải danh sách phường/xã");
         } finally {
           setLoading(false);
         }

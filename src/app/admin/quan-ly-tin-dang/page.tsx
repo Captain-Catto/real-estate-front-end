@@ -15,7 +15,7 @@ import {
   PostFilters,
   PostsStats as StatsType,
 } from "@/services/postsService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 function AdminPostsPageInternal() {
   const searchParams = useSearchParams();
@@ -51,7 +51,7 @@ function AdminPostsPageInternal() {
       setPosts(result.posts);
       setTotalPages(result.totalPages);
     } catch {
-      toast.error("Có lỗi xảy ra khi tải bài viết");
+      showErrorToast("Có lỗi xảy ra khi tải bài viết");
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ function AdminPostsPageInternal() {
       const statsData = await adminPostsService.getPostsStats();
       setStats(statsData);
     } catch {
-      toast.error("Có lỗi xảy ra khi tải thống kê bài viết");
+      showErrorToast("Có lỗi xảy ra khi tải thống kê bài viết");
     }
   };
 
@@ -81,9 +81,9 @@ function AdminPostsPageInternal() {
       await adminPostsService.approvePost(postId);
       fetchPosts();
       fetchStats();
-      toast.success("Đã duyệt tin đăng thành công!");
+      showSuccessToast("Đã duyệt tin đăng thành công!");
     } catch {
-      toast.error("Có lỗi xảy ra khi duyệt tin đăng!");
+      showErrorToast("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
 
@@ -92,9 +92,9 @@ function AdminPostsPageInternal() {
       await adminPostsService.rejectPost(postId, reason);
       fetchPosts();
       fetchStats();
-      toast.success("Đã từ chối tin đăng!");
+      showSuccessToast("Đã từ chối tin đăng!");
     } catch {
-      toast.error("Có lỗi xảy ra khi từ chối tin đăng!");
+      showErrorToast("Có lỗi xảy ra khi từ chối tin đăng!");
     }
   };
 
@@ -113,9 +113,9 @@ function AdminPostsPageInternal() {
           await adminPostsService.deletePost(postId);
           fetchPosts();
           fetchStats();
-          toast.success("Đã xóa vĩnh viễn tin đăng!");
+          showSuccessToast("Đã xóa vĩnh viễn tin đăng!");
         } catch {
-          toast.error("Có lỗi xảy ra khi xóa vĩnh viễn tin đăng!");
+          showErrorToast("Có lỗi xảy ra khi xóa vĩnh viễn tin đăng!");
         }
       }
     } else {
@@ -126,9 +126,9 @@ function AdminPostsPageInternal() {
           await adminPostsService.updatePostStatus(postId, "deleted");
           fetchPosts();
           fetchStats();
-          toast.success("Đã chuyển tin đăng vào thùng rác!");
+          showSuccessToast("Đã chuyển tin đăng vào thùng rác!");
         } catch {
-          toast.error("Có lỗi xảy ra khi chuyển tin đăng vào thùng rác!");
+          showErrorToast("Có lỗi xảy ra khi chuyển tin đăng vào thùng rác!");
         }
       }
     }

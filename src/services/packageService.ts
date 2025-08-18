@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface Package {
@@ -96,7 +96,7 @@ export const packageService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy danh sách gói dịch vụ thất bại");
+      showErrorToast("Lấy danh sách gói dịch vụ thất bại");
       return { success: false, data: { packages: [] } };
     }
   },
@@ -117,7 +117,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        toast.error("Lấy tất cả gói dịch vụ thất bại");
+        showErrorToast("Lấy tất cả gói dịch vụ thất bại");
         return { success: false, data: { packages: [] } };
       }
     },
@@ -138,7 +138,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        toast.error("Tạo gói dịch vụ thất bại");
+        showErrorToast("Tạo gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -160,7 +160,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        toast.error("Cập nhật gói dịch vụ thất bại");
+        showErrorToast("Cập nhật gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -176,7 +176,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        toast.error("Xóa gói dịch vụ thất bại");
+        showErrorToast("Xóa gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -198,7 +198,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        toast.error("Lấy thông tin gói dịch vụ thất bại");
+        showErrorToast("Lấy thông tin gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },

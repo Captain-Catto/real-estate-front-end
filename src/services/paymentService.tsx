@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface CreateVNPayPaymentRequest {
@@ -352,7 +352,7 @@ export const paymentService = {
 
       return data;
     } catch (error) {
-      toast.error("Lấy thông tin ví thất bại");
+      showErrorToast("Lấy thông tin ví thất bại");
 
       // If we have old cached data, return it as fallback
       if (walletInfoCache) {

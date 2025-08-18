@@ -1,5 +1,5 @@
 import { fetchWithAuth, API_BASE_URL } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface CustomerContact {
   _id: string;
@@ -98,7 +98,7 @@ class CustomerContactService {
       });
       return await response.json();
     } catch (error) {
-      toast.error("Không thể gửi yêu cầu gọi lại");
+      showErrorToast("Không thể gửi yêu cầu gọi lại");
       throw error;
     }
   }
@@ -114,7 +114,7 @@ class CustomerContactService {
       });
       return await response.json();
     } catch (error) {
-      toast.error("Không thể tạo liên hệ");
+      showErrorToast("Không thể tạo liên hệ");
       throw error;
     }
   }
@@ -141,7 +141,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Không thể tải danh sách liên hệ của bạn");
+      showErrorToast("Không thể tải danh sách liên hệ của bạn");
       throw error;
     }
   }
@@ -167,7 +167,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Không thể tải tất cả liên hệ");
+      showErrorToast("Không thể tải tất cả liên hệ");
       throw error;
     }
   }
@@ -195,7 +195,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Không thể tải liên hệ theo user");
+      showErrorToast("Không thể tải liên hệ theo user");
       throw error;
     }
   }
@@ -211,7 +211,7 @@ class CustomerContactService {
         return await this.getUserContacts(filters);
       }
     } catch (error) {
-      toast.error("Không thể tải liên hệ");
+      showErrorToast("Không thể tải liên hệ");
       throw error;
     }
   }
@@ -233,7 +233,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi cập nhật trạng thái liên hệ");
+      showErrorToast("Lỗi khi cập nhật trạng thái liên hệ");
       throw error;
     }
   }
@@ -255,7 +255,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi cập nhật ghi chú liên hệ");
+      showErrorToast("Lỗi khi cập nhật ghi chú liên hệ");
       throw error;
     }
   }
@@ -268,7 +268,7 @@ class CustomerContactService {
       });
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi xóa liên hệ");
+      showErrorToast("Lỗi khi xóa liên hệ");
       throw error;
     }
   }
@@ -284,7 +284,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi khôi phục liên hệ");
+      showErrorToast("Lỗi khi khôi phục liên hệ");
       throw error;
     }
   }
@@ -313,7 +313,7 @@ class CustomerContactService {
       );
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi xóa vĩnh viễn liên hệ");
+      showErrorToast("Lỗi khi xóa vĩnh viễn liên hệ");
       throw error;
     }
   }
@@ -326,7 +326,7 @@ class CustomerContactService {
       const response = await fetchWithAuth(`${this.baseUrl}/${contactId}`);
       return await response.json();
     } catch (error) {
-      toast.error("Lỗi khi lấy chi tiết liên hệ");
+      showErrorToast("Lỗi khi lấy chi tiết liên hệ");
       throw error;
     }
   }

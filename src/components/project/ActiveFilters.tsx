@@ -7,7 +7,7 @@ import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
 import { locationService } from "@/services/locationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ActiveFiltersProps {
   province?: string;
@@ -61,7 +61,7 @@ export function ActiveFilters({
         setPriceRanges(priceData);
         setAreaRanges(areaData);
       } catch {
-        toast.error("Không thể tải dữ liệu bộ lọc");
+        showErrorToast("Không thể tải dữ liệu bộ lọc");
       }
     };
     loadData();
@@ -90,7 +90,7 @@ export function ActiveFilters({
           }
         }
       } catch {
-        toast.error("Không thể chuyển đổi địa chỉ");
+        showErrorToast("Không thể chuyển đổi địa chỉ");
       }
     };
 

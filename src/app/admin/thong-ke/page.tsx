@@ -40,7 +40,7 @@ import {
   LineElement,
 } from "chart.js";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 // Register ChartJS components
 ChartJS.register(
   CategoryScale,
@@ -104,7 +104,7 @@ function StatsPage() {
       setTopLocations(locationsData);
       setUserRegistrationsChart(userRegistrationsData);
     } catch {
-      toast.error("Có lỗi xảy ra khi tải dữ liệu thống kê");
+      showErrorToast("Có lỗi xảy ra khi tải dữ liệu thống kê");
     } finally {
       setLoading(false);
     }
@@ -166,9 +166,9 @@ function StatsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("Xuất báo cáo thành công!");
+      showSuccessToast("Xuất báo cáo thành công!");
     } catch {
-      toast.error("Có lỗi xảy ra khi xuất báo cáo");
+      showErrorToast("Có lỗi xảy ra khi xuất báo cáo");
     } finally {
       setIsExporting(false);
     }
@@ -261,7 +261,7 @@ function StatsPage() {
       setTopLocations(locationsData);
       setUserRegistrationsChart(userRegistrationsData);
     } catch {
-      toast.error("Có lỗi xảy ra khi tải dữ liệu thống kê");
+      showErrorToast("Có lỗi xảy ra khi tải dữ liệu thống kê");
     } finally {
       setLoading(false);
     }

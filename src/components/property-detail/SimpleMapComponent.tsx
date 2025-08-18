@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface SimpleMapComponentProps {
   latitude: number;
@@ -37,7 +37,7 @@ const SimpleMapComponent: React.FC<SimpleMapComponentProps> = ({
   const handleMapError = () => {
     setIsLoading(false);
     setMapError(true);
-    toast.error("Không thể tải bản đồ");
+    showErrorToast("Không thể tải bản đồ");
   };
 
   if (mapError) {

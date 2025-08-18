@@ -6,7 +6,7 @@ import testImg from "@/assets/images/card-img.jpg";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
 import { newsService } from "@/services/newsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Types
 interface Article {
@@ -205,7 +205,7 @@ export function News({ initialArticles = [] }: NewsProps) {
           setPopularArticles(transformedPopular);
         }
       } catch {
-        toast.error("Không thể tải tin tức");
+        showErrorToast("Không thể tải tin tức");
         // No fallback to mock data - just keep empty arrays
       } finally {
         setLoading(false);
@@ -251,7 +251,7 @@ export function News({ initialArticles = [] }: NewsProps) {
         setPage(nextPage);
       }
     } catch {
-      toast.error("Không thể tải thêm tin tức");
+      showErrorToast("Không thể tải thêm tin tức");
     } finally {
       setLoading(false);
     }

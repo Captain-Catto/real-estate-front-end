@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { locationService } from "@/services/locationService";
 import { Location } from "@/types/location";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface LocationSearchProps {
   currentProvince?: string;
@@ -36,7 +36,7 @@ export function LocationSearch({
         const data = await locationService.getProvinces();
         setProvinces(data);
       } catch {
-        toast.error("Không thể tải danh sách tỉnh/thành phố");
+        showErrorToast("Không thể tải danh sách tỉnh/thành phố");
       }
     };
     loadProvinces();
@@ -50,7 +50,7 @@ export function LocationSearch({
           const data = await locationService.getDistricts(selectedProvince);
           setDistricts(data);
         } catch {
-          toast.error("Không thể tải danh sách quận/huyện");
+          showErrorToast("Không thể tải danh sách quận/huyện");
         }
       };
       loadDistricts();
@@ -71,7 +71,7 @@ export function LocationSearch({
           );
           setWards(data);
         } catch {
-          toast.error("Không thể tải danh sách phường/xã");
+          showErrorToast("Không thể tải danh sách phường/xã");
         }
       };
       loadWards();

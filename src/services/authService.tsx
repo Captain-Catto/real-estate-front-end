@@ -3,7 +3,7 @@ export const API_BASE_URL =
 
 import { store } from "@/store";
 import { setAccessToken } from "@/store/slices/authSlice";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface LoginRequest {
   email: string;
@@ -158,26 +158,16 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
           }
         }
       } catch {
-        toast.error("Lỗi làm mới token đăng nhập");
+        // Don't show toast here - let the caller handle refresh token errors
+        console.log("Token refresh failed");
       }
     }
 
     return response;
-  } catch {
-    toast.error("Lỗi kết nối mạng");
-
-    // Return a controlled error response
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message:
-          "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.",
-      }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+  } catch (error) {
+    // Don't show hardcoded toast here - let the caller handle errors
+    // Return a controlled error response for network issues only
+    showErrorToast(error, "Lỗi kết nối đến máy chủ");
   }
 };
 
@@ -194,7 +184,7 @@ export const refreshToken = async (): Promise<boolean> => {
       // Don't log errors for 401 or 403 status - these are expected when user is not logged in
       // or refresh token is expired/invalid
       if (response.status !== 401 && response.status !== 403) {
-        toast.error("Lỗi làm mới token đăng nhập");
+        showErrorToast("Lỗi làm mới token đăng nhập");
       }
       store.dispatch(setAccessToken(null));
       return false;
@@ -210,9 +200,9 @@ export const refreshToken = async (): Promise<boolean> => {
 
     store.dispatch(setAccessToken(null));
     return false;
-  } catch {
+  } catch (error: unknown) {
     // Only log unexpected errors (not 401s)
-    toast.error("Lỗi làm mới token đăng nhập");
+    showErrorToast(error, "Lỗi làm mới token đăng nhập");
     store.dispatch(setAccessToken(null));
     return false;
   }
@@ -408,9 +398,9 @@ export const authService = {
         console.log("Fetching fresh profile data");
       }
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`);
-      const data = await response.json();
+      const data = await response?.json();
 
-      if (!response.ok) {
+      if (!response?.ok) {
         throw new Error(data.message || "Failed to get profile");
       }
 
@@ -492,6 +482,7 @@ export const authService = {
   async changePassword(passwordData: {
     currentPassword: string;
     newPassword: string;
+    confirmPassword: string;
   }): Promise<ChangePasswordResponse> {
     try {
       const response = await fetchWithAuth(

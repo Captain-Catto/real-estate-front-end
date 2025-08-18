@@ -1,5 +1,4 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
 import { API_BASE_URL } from "@/services/authService";
 
 // Helper function to get auth token
@@ -66,7 +65,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to upload images");
       }
     } catch (error) {
-      toast.error("Upload hình ảnh thất bại");
+      // Don't show toast here - let the caller handle error display
       return [
         {
           success: false,
@@ -106,7 +105,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to upload image");
       }
     } catch (error) {
-      toast.error("Upload hình ảnh thất bại");
+      // Don't show toast here - let the caller handle error display
       return {
         success: false,
         message:
@@ -139,7 +138,7 @@ export const UploadService = {
         throw new Error(result.message || "Failed to delete image");
       }
     } catch (error) {
-      toast.error("Xóa hình ảnh thất bại");
+      // Don't show toast here - let the caller handle error display
       return {
         success: false,
         message:

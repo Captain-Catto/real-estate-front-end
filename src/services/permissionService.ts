@@ -1,7 +1,7 @@
 "use client";
 
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 // Helper function to get auth token
@@ -83,7 +83,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi tải danh sách quyền");
+      showErrorToast("Lỗi khi tải danh sách quyền");
       throw error;
     }
   },
@@ -106,7 +106,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi tải danh sách người dùng và quyền");
+      showErrorToast("Lỗi khi tải danh sách người dùng và quyền");
       throw error;
     }
   },
@@ -132,7 +132,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi tải quyền người dùng");
+      showErrorToast("Lỗi khi tải quyền người dùng");
       throw error;
     }
   },
@@ -162,7 +162,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi cập nhật quyền người dùng");
+      showErrorToast("Lỗi khi cập nhật quyền người dùng");
       throw error;
     }
   },
@@ -189,7 +189,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi tạo quyền người dùng");
+      showErrorToast("Lỗi khi tạo quyền người dùng");
       throw error;
     }
   },
@@ -215,7 +215,7 @@ export const permissionService = {
 
       return await response.json();
     } catch (error: unknown) {
-      toast.error("Lỗi khi xóa quyền người dùng");
+      showErrorToast("Lỗi khi xóa quyền người dùng");
       throw error;
     }
   },

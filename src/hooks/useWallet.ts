@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 import { paymentService } from "@/services/paymentService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 // import { formatPrice } from "@/utils/format";
 
 export interface WalletTransaction {
@@ -114,12 +114,12 @@ export const useWallet = () => {
         // Handle error with a generic message since response might not have message property
         const errorMessage = "Không thể tải thông tin ví";
         setError(errorMessage);
-        toast.error(errorMessage);
+        showErrorToast(errorMessage);
       }
     } catch {
       const errorMessage = "Lỗi khi tải thông tin ví";
       setError(errorMessage);
-      toast.error("Lỗi khi tải thông tin ví");
+      showErrorToast("Lỗi khi tải thông tin ví");
     } finally {
       setLoading(false);
     }
@@ -173,10 +173,10 @@ export const useWallet = () => {
           setHasMore(newTransactions.length > 0);
           setPage(pageNum);
         } else {
-          toast.error("Không thể tải lịch sử giao dịch");
+          showErrorToast("Không thể tải lịch sử giao dịch");
         }
       } catch {
-        toast.error("Lỗi khi tải lịch sử giao dịch");
+        showErrorToast("Lỗi khi tải lịch sử giao dịch");
       } finally {
         setTransactionsLoading(false);
       }
@@ -195,7 +195,7 @@ export const useWallet = () => {
   const deposit = useCallback(
     async (amount: number) => {
       if (!isAuthenticated) {
-        toast.error("Vui lòng đăng nhập để thực hiện giao dịch");
+        showErrorToast("Vui lòng đăng nhập để thực hiện giao dịch");
         return { success: false };
       }
 
@@ -213,12 +213,12 @@ export const useWallet = () => {
           window.location.href = response.data.paymentUrl;
           return { success: true, data: response.data };
         } else {
-          toast.error(response.message || "Không thể tạo giao dịch");
+          showErrorToast(response.message || "Không thể tạo giao dịch");
           return { success: false, error: response.message };
         }
       } catch {
         const errorMessage = "Lỗi khi nạp tiền vào ví";
-        toast.error("Lỗi khi nạp tiền vào ví");
+        showErrorToast("Lỗi khi nạp tiền vào ví");
         return { success: false, error: errorMessage };
       }
     },
@@ -237,7 +237,7 @@ export const useWallet = () => {
   const withdraw = useCallback(
     async (amount: number, bankInfo: BankInfo) => {
       if (!isAuthenticated) {
-        toast.error("Vui lòng đăng nhập để thực hiện giao dịch");
+        showErrorToast("Vui lòng đăng nhập để thực hiện giao dịch");
         return { success: false };
       }
 
@@ -257,16 +257,16 @@ export const useWallet = () => {
         };
 
         if (response.success) {
-          toast.success("Yêu cầu rút tiền đã được gửi!");
+          showSuccessToast("Yêu cầu rút tiền đã được gửi!");
           fetchWalletInfo(); // Refresh wallet info
           return { success: true, data: {} };
         } else {
-          toast.error(response.message || "Rút tiền không thành công");
+          showErrorToast(response.message || "Rút tiền không thành công");
           return { success: false, error: response.message };
         }
       } catch {
         const errorMessage = "Lỗi khi rút tiền từ ví";
-        toast.error("Lỗi khi rút tiền từ ví");
+        showErrorToast("Lỗi khi rút tiền từ ví");
         return { success: false, error: errorMessage };
       }
     },
@@ -282,12 +282,12 @@ export const useWallet = () => {
       if (response.success) {
         return { success: true, data: response.data };
       } else {
-        toast.error(response.message || "Không thể lấy chi tiết giao dịch");
+        showErrorToast(response.message || "Không thể lấy chi tiết giao dịch");
         return { success: false, error: response.message };
       }
     } catch {
       const errorMessage = "Lỗi khi lấy chi tiết giao dịch";
-      toast.error("Lỗi khi lấy chi tiết giao dịch");
+      showErrorToast("Lỗi khi lấy chi tiết giao dịch");
       return { success: false, error: errorMessage };
     }
   }, []);

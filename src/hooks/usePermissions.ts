@@ -5,7 +5,7 @@ import { useSidebar } from "@/hooks/useSidebar";
 import { usePathname } from "next/navigation";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { permissionService } from "@/services/permissionService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Global cache for permissions to avoid multiple API calls
 const permissionCache = new Map<
@@ -107,7 +107,7 @@ export function usePermissions() {
           setUserPermissions([]);
         }
       } catch {
-        toast.error("Lỗi khi lấy danh sách quyền");
+        showErrorToast("Lỗi khi lấy danh sách quyền");
         setUserPermissions([]);
       } finally {
         console.log("📋 usePermissions finally: setting loading false");

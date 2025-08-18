@@ -5,7 +5,7 @@ import { locationService, Location } from "@/services/locationService";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface SearchSectionOptimizedProps {
   searchType?: "buy" | "rent" | "project";
@@ -117,7 +117,7 @@ export default function SearchSection({
 
         console.log("Loaded provinces:", provincesData.length);
       } catch {
-        toast.error("Không thể tải dữ liệu ban đầu");
+        showErrorToast("Không thể tải dữ liệu ban đầu");
       }
     };
     loadInitialData();
@@ -169,7 +169,7 @@ export default function SearchSection({
           areaRanges: areaRanges.length,
         });
       } catch {
-        toast.error("Không thể tải dữ liệu loại tìm kiếm");
+        showErrorToast("Không thể tải dữ liệu loại tìm kiếm");
       }
     };
 

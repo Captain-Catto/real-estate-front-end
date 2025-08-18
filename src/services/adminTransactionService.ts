@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface AdminPayment {
@@ -108,7 +108,7 @@ export const AdminTransactionService = {
 
       return await response.json();
     } catch {
-      toast.error("Không thể tải danh sách thanh toán");
+      showErrorToast("Không thể tải danh sách thanh toán");
       throw new Error("Không thể tải danh sách thanh toán");
     }
   },
@@ -132,7 +132,7 @@ export const AdminTransactionService = {
 
       return null;
     } catch {
-      toast.error("Không thể tải thông tin thanh toán");
+      showErrorToast("Không thể tải thông tin thanh toán");
       throw new Error("Không thể tải thông tin thanh toán");
     }
   },
@@ -177,7 +177,7 @@ export const AdminTransactionService = {
       );
       return new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     } catch {
-      toast.error("Không thể xuất file thanh toán");
+      showErrorToast("Không thể xuất file thanh toán");
       throw new Error("Không thể xuất file thanh toán");
     }
   },

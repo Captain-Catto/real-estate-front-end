@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import { permissionService } from "@/services/permissionService";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminGuard from "@/components/auth/AdminGuard";
@@ -128,7 +128,6 @@ function EmployeePermissionManagement() {
       return;
     }
 
-    console.log("� Starting data fetch...");
     hasFetchedData.current = true;
     setIsLoading(true);
 
@@ -152,7 +151,7 @@ function EmployeePermissionManagement() {
           setEmployees(employeeUsers);
         }
       } catch {
-        toast.error("Lỗi khi tải dữ liệu nhân viên");
+        showErrorToast("Lỗi khi tải dữ liệu nhân viên");
         hasFetchedData.current = false;
       } finally {
         setIsLoading(false);
@@ -245,33 +244,15 @@ function EmployeePermissionManagement() {
           prev ? { ...prev, permissions: finalPermissions } : null
         );
 
-        toast.success(`Đã cập nhật quyền cho ${selectedEmployee.username}`);
+        showSuccessToast(`Đã cập nhật quyền cho ${selectedEmployee.username}`);
       } else {
-        toast.error("Lỗi khi cập nhật quyền: " + response.message);
+        showErrorToast("Lỗi khi cập nhật quyền: " + response.message);
       }
     } catch {
-      toast.error("Lỗi khi lưu quyền nhân viên");
+      showErrorToast("Lỗi khi lưu quyền nhân viên");
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Test toast function
-  const testToast = () => {
-    console.log("Testing toast notifications...");
-    toast.success("Test Toast Success", {
-      description: "This is a test success toast",
-      duration: 3000,
-      icon: "✅",
-    });
-
-    setTimeout(() => {
-      toast.error("Test Toast Error", {
-        description: "This is a test error toast",
-        duration: 3000,
-        icon: "❌",
-      });
-    }, 1000);
   };
 
   return (
@@ -279,16 +260,6 @@ function EmployeePermissionManagement() {
       title="Quản lý quyền Employee"
       description="Kích hoạt hoặc khóa các chức năng mà employee có thể thực hiện"
     >
-      {/* Test Toast Button - Remove after testing */}
-      <div className="mb-4">
-        <button
-          onClick={testToast}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-        >
-          Test Toast System
-        </button>
-      </div>
-
       {isLoading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

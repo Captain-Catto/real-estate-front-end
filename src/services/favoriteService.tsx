@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export const favoriteService = {
@@ -27,7 +27,7 @@ export const favoriteService = {
 
       return data;
     } catch {
-      toast.error("Không thể thêm vào yêu thích");
+      showErrorToast("Không thể thêm vào yêu thích");
       // Trả về response giả để UI có thể xử lý mà không bị crash
       return {
         success: false,
@@ -59,7 +59,7 @@ export const favoriteService = {
 
       return data;
     } catch {
-      toast.error("Không thể bỏ yêu thích");
+      showErrorToast("Không thể bỏ yêu thích");
       return {
         success: false,
         message: "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
@@ -80,7 +80,7 @@ export const favoriteService = {
 
       return await response.json();
     } catch {
-      toast.error("Không thể tải danh sách yêu thích");
+      showErrorToast("Không thể tải danh sách yêu thích");
       return {
         success: false,
         data: {

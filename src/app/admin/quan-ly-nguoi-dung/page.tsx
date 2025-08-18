@@ -7,7 +7,7 @@ import { Pagination } from "@/components/common/Pagination";
 import AdminGuard from "@/components/auth/AdminGuard";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import {
   UserGroupIcon,
   MagnifyingGlassIcon,
@@ -83,17 +83,17 @@ function UserManagementPage() {
           setTotalPages(usersResponse.data.pagination.totalPages);
         }
       } else {
-        toast.error("Lỗi khi tải danh sách người dùng");
+        showErrorToast("Lỗi khi tải danh sách người dùng");
         setUsers([]);
       }
 
       if (statsResponse.success) {
         setStats(statsResponse.data);
       } else {
-        toast.error("Lỗi khi tải thống kê người dùng");
+        showErrorToast("Lỗi khi tải thống kê người dùng");
       }
     } catch {
-      toast.error("Lỗi khi tải dữ liệu người dùng");
+      showErrorToast("Lỗi khi tải dữ liệu người dùng");
       setUsers([]);
     } finally {
       setLoading(false);
@@ -122,12 +122,14 @@ function UserManagementPage() {
             user._id === userId ? { ...user, status: newStatus } : user
           )
         );
-        toast.success("Cập nhật trạng thái thành công");
+        showSuccessToast("Cập nhật trạng thái thành công");
       } else {
-        toast.error(result.message || "Có lỗi xảy ra khi cập nhật trạng thái");
+        showErrorToast(
+          result.message || "Có lỗi xảy ra khi cập nhật trạng thái"
+        );
       }
     } catch {
-      toast.error("Lỗi khi cập nhật trạng thái người dùng");
+      showErrorToast("Lỗi khi cập nhật trạng thái người dùng");
     } finally {
       setIsProcessing(false);
     }
@@ -143,12 +145,12 @@ function UserManagementPage() {
         setUsers(users.filter((user) => user._id !== userToDelete));
         setShowDeleteModal(false);
         setUserToDelete(null);
-        toast.success("Xóa người dùng thành công");
+        showSuccessToast("Xóa người dùng thành công");
       } else {
-        toast.error(result.message || "Có lỗi xảy ra khi xóa người dùng");
+        showErrorToast(result.message || "Có lỗi xảy ra khi xóa người dùng");
       }
     } catch {
-      toast.error("Lỗi khi xóa người dùng");
+      showErrorToast("Lỗi khi xóa người dùng");
     } finally {
       setIsProcessing(false);
       setShowDeleteModal(false);
@@ -190,12 +192,14 @@ function UserManagementPage() {
         );
         setSelectedUser(result.data.user);
         setIsEditMode(false);
-        toast.success("Cập nhật thông tin người dùng thành công!");
+        showSuccessToast("Cập nhật thông tin người dùng thành công!");
       } else {
-        toast.error(result.message || "Có lỗi xảy ra khi cập nhật thông tin");
+        showErrorToast(
+          result.message || "Có lỗi xảy ra khi cập nhật thông tin"
+        );
       }
     } catch {
-      toast.error("Lỗi khi cập nhật thông tin người dùng");
+      showErrorToast("Lỗi khi cập nhật thông tin người dùng");
     } finally {
       setIsProcessing(false);
     }

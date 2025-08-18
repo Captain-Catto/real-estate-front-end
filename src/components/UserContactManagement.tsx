@@ -9,7 +9,7 @@ import {
 import LocationDisplay from "@/components/LocationDisplay";
 import { createPostSlug } from "../utils/postSlug";
 import { useAuth } from "@/store/hooks";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ContactFilters {
   page: number;
@@ -95,7 +95,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         if (customerContactService.getUserContacts) {
           response = await customerContactService.getUserContacts(params);
         } else {
-          toast.error("Có lỗi xảy ra khi lấy danh sách liên hệ");
+          showErrorToast("Có lỗi xảy ra khi lấy danh sách liên hệ");
           response = { success: false, data: { contacts: [], pagination: {} } };
         }
       }
@@ -113,7 +113,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         });
       }
     } catch (err) {
-      toast.error("Có lỗi xảy ra khi tải danh sách liên hệ");
+      showErrorToast("Có lỗi xảy ra khi tải danh sách liên hệ");
     } finally {
       setLoading(false);
     }
@@ -160,7 +160,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         await loadContacts();
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái liên hệ");
+      showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái liên hệ");
     }
   };
 
@@ -173,7 +173,7 @@ export function UserContactManagement({ userId }: UserContactManagementProps) {
         setSelectedContact(null);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi xóa liên hệ");
+      showErrorToast("Có lỗi xảy ra khi xóa liên hệ");
     }
   };
 

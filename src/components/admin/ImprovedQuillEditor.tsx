@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { nanoid } from "nanoid"; // Nếu không có, cần cài đặt: npm install nanoid
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface QuillEditorProps {
   value?: string;
@@ -296,7 +296,7 @@ export default function ImprovedQuillEditor({
           }
         }, 2000);
       } catch {
-        toast.error("Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
+        showErrorToast("Có lỗi xảy ra khi xử lý hình ảnh. Vui lòng thử lại!");
         removeLoadingElement();
         setImageDropdownActive(true);
       }
@@ -374,7 +374,7 @@ export default function ImprovedQuillEditor({
               );
             } catch {
               removeLoadingElement();
-              toast.error(
+              showErrorToast(
                 "Có lỗi xảy ra khi xử lý hình ảnh paste. Vui lòng thử lại!"
               );
             }

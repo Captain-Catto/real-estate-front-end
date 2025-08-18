@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface NotificationResponse {
@@ -133,7 +133,7 @@ export const notificationService = {
         const result = await response.json();
         return result;
       } catch (error) {
-        toast.error("Xem trước mục tiêu thông báo thất bại");
+        showErrorToast("Xem trước mục tiêu thông báo thất bại");
         throw error;
       }
     },
@@ -157,7 +157,7 @@ export const notificationService = {
         const result = await response.json();
         return result;
       } catch (error) {
-        toast.error("Tìm kiếm người dùng thất bại");
+        showErrorToast("Tìm kiếm người dùng thất bại");
         throw error;
       }
     },
@@ -186,7 +186,7 @@ export const notificationService = {
         const result = await response.json();
         return result;
       } catch (error) {
-        toast.error("Gửi thông báo hệ thống thất bại");
+        showErrorToast("Gửi thông báo hệ thống thất bại");
         throw error;
       }
     },

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { notificationService } from "@/services/notificationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface NotificationData {
   [key: string]: unknown;
@@ -80,7 +80,7 @@ export default function NotificationsPage() {
         setNotifications(convertedNotifications);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải thông báo");
+      showErrorToast("Có lỗi xảy ra khi tải thông báo");
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
         );
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi đánh dấu thông báo là đã đọc");
+      showErrorToast("Có lỗi xảy ra khi đánh dấu thông báo là đã đọc");
     }
   };
 

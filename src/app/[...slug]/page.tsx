@@ -8,7 +8,7 @@ import { locationService } from "@/services/locationService";
 import Header from "@/components/header/Header";
 import Footer from "@/components/footer/Footer";
 import { PropertyData } from "@/types/property";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface DynamicPageProps {
   params: Promise<{
@@ -265,8 +265,8 @@ export default async function DynamicPage({
       try {
         await postService.incrementViews(urlData.id);
         console.log("📊 View incremented for post:", urlData.id);
-      } catch {
-        toast.error("Có lỗi xảy ra khi tăng lượt xem!");
+      } catch (error: unknown) {
+        showErrorToast(error, "Có lỗi xảy ra khi tăng lượt xem!");
       }
 
       // Transform data như cũ
@@ -352,8 +352,8 @@ export default async function DynamicPage({
               ward: locationNames.ward || "",
             };
           }
-        } catch {
-          toast.error("Có lỗi xảy ra khi lấy thông tin địa điểm!");
+        } catch (error: unknown) {
+          showErrorToast(error, "Có lỗi xảy ra khi lấy thông tin địa điểm!");
           // Fallback đơn giản với URL slugs
           breadcrumbData = {
             city:
@@ -575,7 +575,7 @@ export default async function DynamicPage({
       // Sử dụng PropertyData để có kiểu dữ liệu nhất quán với component
       let posts: PropertyData[] = [];
       if (!response || !response.success) {
-        toast.error("Có lỗi xảy ra khi lấy bài viết");
+        showErrorToast(response?.message || "Có lỗi xảy ra khi lấy bài viết", "Có lỗi xảy ra khi lấy bài viết");
       } else {
         // Xử lý cả trường hợp data là mảng và object {posts: [...]}
         if (Array.isArray(response.data)) {
@@ -670,8 +670,8 @@ export default async function DynamicPage({
             ward: locationNames.ward || "",
           };
         }
-      } catch {
-        toast.error("Lỗi khi lấy dữ liệu địa điểm:");
+      } catch (error: unknown) {
+        showErrorToast(error, "Lỗi khi lấy dữ liệu địa điểm:");
 
         // Fallback đơn giản nếu API gặp lỗi
         breadcrumbData = {
@@ -737,8 +737,8 @@ export default async function DynamicPage({
         <h1 className="text-2xl font-bold mb-4">Đang tải...</h1>
       </div>
     );
-  } catch {
-    toast.error("Có lỗi xảy ra");
+  } catch (error: unknown) {
+    showErrorToast(error, "Có lỗi xảy ra");
 
     return (
       <div className="container mx-auto p-4 my-10 text-center">

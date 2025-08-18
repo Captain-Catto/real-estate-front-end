@@ -14,7 +14,7 @@ import { ArrowLeftIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Dynamically import Quill editor to avoid SSR issues
 const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
@@ -86,7 +86,7 @@ function CreateNewsPage() {
           }
         }
       } catch {
-        toast.error("Có lỗi xảy ra khi tải danh mục");
+        showErrorToast("Có lỗi xảy ra khi tải danh mục");
       } finally {
         setCategoriesLoading(false);
       }
@@ -165,10 +165,10 @@ function CreateNewsPage() {
         });
         console.log("Uploaded image successfully:", response.data.url);
       } else {
-        toast.error("Lỗi khi tải ảnh lên");
+        showErrorToast("Lỗi khi tải ảnh lên");
       }
     } catch {
-      toast.error("Lỗi khi tải ảnh lên");
+      showErrorToast("Lỗi khi tải ảnh lên");
     } finally {
       setUploading(false);
     }
@@ -257,7 +257,7 @@ function CreateNewsPage() {
         alert(response.message || "Có lỗi xảy ra khi tạo tin tức");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tạo tin tức");
+      showErrorToast("Có lỗi xảy ra khi tạo tin tức");
     } finally {
       setSaving(false);
     }

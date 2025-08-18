@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { locationService } from "@/services/locationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface LocationNameCache {
   [key: string]: string;
@@ -53,7 +53,7 @@ export const useLocationName = (provinceCode?: string, wardCode?: string) => {
         locationCache[cacheKey] = name;
         setLocationName(name);
       } catch {
-        toast.error("Không thể tải tên địa điểm");
+        showErrorToast("Không thể tải tên địa điểm");
         // Fallback to codes
         const fallback = wardCode
           ? `${wardCode}, ${provinceCode}`

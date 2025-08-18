@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import "quill/dist/quill.snow.css";
 // Thêm CSS tùy chỉnh cho QuillEditor
 import styles from "./QuillEditor.module.css";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface QuillEditorProps {
   value: string;
@@ -74,7 +74,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                     );
                     quillInstance.current.setSelection(range.index + 1);
                   } else {
-                    toast.error("Có lỗi xảy ra khi tải hình ảnh");
+                    showErrorToast("Có lỗi xảy ra khi tải hình ảnh");
                     // Xóa placeholder loading text
                     quillInstance.current.deleteText(range.index, 20);
                     quillInstance.current.insertText(
@@ -84,7 +84,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                     );
                   }
                 } catch {
-                  toast.error("Có lỗi xảy ra khi tải hình ảnh");
+                  showErrorToast("Có lỗi xảy ra khi tải hình ảnh");
                   // Xóa placeholder loading text
                   quillInstance.current.deleteText(range.index, 20);
                   quillInstance.current.insertText(
@@ -94,7 +94,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
                   );
                 }
               } catch {
-                toast.error("Có lỗi xảy ra khi xử lý hình ảnh");
+                showErrorToast("Có lỗi xảy ra khi xử lý hình ảnh");
               }
             }
           };
@@ -136,7 +136,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
               quillInstance.current.root.innerHTML
             );
           } catch {
-            toast.error("Có lỗi xảy ra khi thiết lập nội dung");
+            showErrorToast("Có lỗi xảy ra khi thiết lập nội dung");
           }
         }
 
@@ -174,7 +174,7 @@ const QuillEditor: React.FC<QuillEditorProps> = ({ value, onChange }) => {
             quillInstance.current.root.innerHTML
           );
         } catch {
-          toast.error("Có lỗi xảy ra khi cập nhật nội dung");
+          showErrorToast("Có lỗi xảy ra khi cập nhật nội dung");
         }
 
         // Khôi phục handler text-change sau khi cập nhật

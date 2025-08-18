@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { showErrorToast, showSuccessToast, showInfoToast } from "@/utils/errorHandler";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -51,21 +52,13 @@ export function FavoriteButton({
 
     // Validation
     if (!item?.id) {
-      toast.error("Không thể thực hiện thao tác này", {
-        description: "Thông tin bất động sản không hợp lệ",
-      });
+      showErrorToast("Thông tin bất động sản không hợp lệ", "Không thể thực hiện thao tác này");
       return;
     }
 
     // Check authentication
     if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để lưu tin", {
-        description: "Bạn cần đăng nhập để sử dụng tính năng này",
-        action: {
-          label: "Đăng nhập",
-          onClick: () => (window.location.href = "/dang-nhap"),
-        },
-      });
+      showErrorToast("Bạn cần đăng nhập để sử dụng tính năng này", "Vui lòng đăng nhập để lưu tin");
       return;
     }
 
@@ -87,36 +80,23 @@ export function FavoriteButton({
         const { action } = result.payload;
 
         if (action === "removed") {
-          toast.success("Đã xóa khỏi danh sách yêu thích", {
-            duration: 3000,
-          });
+          showSuccessToast("Đã xóa khỏi danh sách yêu thích");
         } else if (action === "added") {
-          toast.success("Đã thêm vào danh sách yêu thích", {
-            duration: 3000,
-          });
+          showSuccessToast("Đã thêm vào danh sách yêu thích");
           // Fetch full favorites data to update the placeholder with real data
           dispatch(fetchFavoritesAsync(true)); // Force refresh after adding
         } else if (action === "already_exists") {
-          toast.info("Tin này đã có trong danh sách yêu thích", {
-            duration: 3000,
-          });
+          showInfoToast("Tin này đã có trong danh sách yêu thích");
           // Also fetch to ensure we have the complete data
           dispatch(fetchFavoritesAsync(false)); // Don't force refresh if already exists
         }
       } else {
         // Handle error
         const errorMessage = result.payload as string;
-        toast.error("Không thể thực hiện thao tác", {
-          description: errorMessage || "Đã xảy ra lỗi, vui lòng thử lại sau",
-          duration: 3000,
-        });
+        showErrorToast(errorMessage, "Không thể thực hiện thao tác");
       }
     } catch (error) {
-      // Silent error - đã có toast.error tương ứng
-      toast.error("Không thể thực hiện thao tác", {
-        description: "Đã xảy ra lỗi, vui lòng thử lại sau",
-        duration: 3000,
-      });
+      showErrorToast(error, "Không thể thực hiện thao tác");
     }
   };
 

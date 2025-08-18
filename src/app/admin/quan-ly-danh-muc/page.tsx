@@ -6,7 +6,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AdminGuard from "@/components/auth/AdminGuard";
 import PermissionGuard from "@/components/auth/PermissionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import {
   Category,
   categoryService,
@@ -104,7 +104,7 @@ function AdminCategoryPageInternal() {
         setCategories(result.data.categories);
       }
     } catch {
-      toast.error("Lỗi khi tải danh sách danh mục");
+      showErrorToast("Lỗi khi tải danh sách danh mục");
     } finally {
       setLoading(false);
     }
@@ -121,11 +121,11 @@ function AdminCategoryPageInternal() {
         );
         setNewsCategories(sortedCategories);
       } else {
-        toast.error("Lỗi khi tải danh sách danh mục tin tức");
+        showErrorToast("Lỗi khi tải danh sách danh mục tin tức");
         setNewsCategories([]);
       }
     } catch {
-      toast.error("Lỗi khi tải danh sách danh mục tin tức");
+      showErrorToast("Lỗi khi tải danh sách danh mục tin tức");
       setNewsCategories([]);
     } finally {
       setLoading(false);
@@ -275,7 +275,7 @@ function AdminCategoryPageInternal() {
 
       closeModal();
     } catch {
-      toast.error("Lỗi khi lưu danh mục");
+      showErrorToast("Lỗi khi lưu danh mục");
     } finally {
       setSaving(false);
     }
@@ -291,7 +291,7 @@ function AdminCategoryPageInternal() {
       await categoryService.admin.delete(category._id);
       await fetchCategories();
     } catch {
-      toast.error("Lỗi khi xóa danh mục");
+      showErrorToast("Lỗi khi xóa danh mục");
     }
   };
 
@@ -308,7 +308,7 @@ function AdminCategoryPageInternal() {
       await newsCategoryService.deleteNewsCategory(categoryId);
       await fetchNewsCategories();
     } catch {
-      toast.error("Có lỗi xảy ra khi xóa danh mục tin tức");
+      showErrorToast("Có lỗi xảy ra khi xóa danh mục tin tức");
     }
   };
 
@@ -376,7 +376,7 @@ function AdminCategoryPageInternal() {
       await categoryService.admin.updateOrder(orders);
       await fetchCategories();
     } catch {
-      toast.error("Có lỗi xảy ra khi thay đổi thứ tự");
+      showErrorToast("Có lỗi xảy ra khi thay đổi thứ tự");
     }
   };
 
@@ -409,7 +409,7 @@ function AdminCategoryPageInternal() {
               : cat
           )
         );
-        toast.error("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
+        showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
       }
     } catch {
       // Nếu có lỗi, revert lại trạng thái cũ
@@ -420,7 +420,7 @@ function AdminCategoryPageInternal() {
             : cat
         )
       );
-      toast.error("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
+      showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái danh mục tin tức");
     }
   };
 
@@ -448,7 +448,7 @@ function AdminCategoryPageInternal() {
             : cat
         )
       );
-      toast.error("Có lỗi xảy ra khi thay đổi trạng thái");
+      showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái");
     }
   };
 

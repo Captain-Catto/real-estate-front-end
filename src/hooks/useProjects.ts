@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ProjectService } from "@/services/projectService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface UseProjectsOptions {
   search?: string;
@@ -111,7 +111,7 @@ export function useProjects(
       setTotalPages(response.pagination.totalPages);
       setCurrentPage(response.pagination.currentPage);
     } catch {
-      toast.error("Có lỗi xảy ra khi tải danh sách dự án");
+      showErrorToast("Có lỗi xảy ra khi tải danh sách dự án");
       setError("Có lỗi xảy ra khi tải danh sách dự án");
       setProjects([]);
       setTotalCount(0);

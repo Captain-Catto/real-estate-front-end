@@ -13,7 +13,7 @@ import { UploadService } from "@/services/uploadService";
 import dynamic from "next/dynamic";
 import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Dynamically import Quill editor to avoid SSR issues
 const EditorWrapper = dynamic(() => import("@/components/EditorWrapper"), {
@@ -85,7 +85,7 @@ function EditNewsPage() {
           setCategories(response.data);
         }
       } catch {
-        toast.error("Có lỗi xảy ra khi tải danh mục");
+        showErrorToast("Có lỗi xảy ra khi tải danh mục");
       } finally {
         setCategoriesLoading(false);
       }
@@ -127,11 +127,11 @@ function EditNewsPage() {
           isFeatured: newsData.isFeatured,
         });
       } else {
-        toast.error("Không tìm thấy tin tức");
+        showErrorToast("Không tìm thấy tin tức");
         router.push("/admin/quan-ly-tin-tuc");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải tin tức");
+      showErrorToast("Có lỗi xảy ra khi tải tin tức");
       router.push("/admin/quan-ly-tin-tuc");
     } finally {
       setLoading(false);
@@ -204,7 +204,7 @@ function EditNewsPage() {
         alert(response.message || "Có lỗi xảy ra");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật tin tức");
+      showErrorToast("Có lỗi xảy ra khi cập nhật tin tức");
     } finally {
       setSaving(false);
     }
@@ -222,7 +222,7 @@ function EditNewsPage() {
         alert(response.message || "Có lỗi xảy ra");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi xóa tin tức");
+      showErrorToast("Có lỗi xảy ra khi xóa tin tức");
     }
   };
 
@@ -449,7 +449,7 @@ function EditNewsPage() {
                             height={80}
                             className="w-32 h-20 object-cover rounded border"
                             onError={() => {
-                              toast.error("Không thể hiển thị ảnh mới");
+                              showErrorToast("Không thể hiển thị ảnh mới");
                             }}
                           />
                           <div className="flex items-center justify-between mt-1">
@@ -486,7 +486,7 @@ function EditNewsPage() {
                             height={80}
                             className="w-32 h-20 object-cover rounded border"
                             onError={() => {
-                              toast.error("Không thể tải ảnh từ URL");
+                              showErrorToast("Không thể tải ảnh từ URL");
                             }}
                           />
                           <div className="flex items-center justify-between mt-1">

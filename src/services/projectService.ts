@@ -5,7 +5,7 @@ import {
   ProjectListItem,
 } from "@/types/project";
 import { fetchWithAuth } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export const ProjectService = {
@@ -94,7 +94,7 @@ export const ProjectService = {
                       }
                     }
                   } catch (error) {
-                    toast.error("Lỗi khi tải thông tin chủ đầu tư");
+                    showErrorToast("Lỗi khi tải thông tin chủ đầu tư");
                   }
                 } else if (typeof project.developer === "object") {
                   // Developer is already an object
@@ -151,7 +151,7 @@ export const ProjectService = {
         },
       };
     } catch (error) {
-      toast.error("Lỗi khi tải danh sách dự án");
+      showErrorToast("Lỗi khi tải danh sách dự án");
       throw error;
     }
   },
@@ -212,7 +212,7 @@ export const ProjectService = {
 
       return [];
     } catch (error) {
-      toast.error("Lỗi khi tải danh sách dự án");
+      showErrorToast("Lỗi khi tải danh sách dự án");
       throw error;
     }
   },
@@ -259,7 +259,7 @@ export const ProjectService = {
 
       return null;
     } catch (error) {
-      toast.error("Lỗi khi tải thông tin dự án");
+      showErrorToast("Lỗi khi tải thông tin dự án");
       throw error;
     }
   },
@@ -340,7 +340,7 @@ export const ProjectService = {
       console.warn("❌ No project data in response");
       return null;
     } catch (error) {
-      toast.error("Lỗi khi tải thông tin dự án theo slug");
+      showErrorToast("Lỗi khi tải thông tin dự án theo slug");
       throw error;
     }
   },
@@ -369,7 +369,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to create project");
       }
     } catch (error) {
-      toast.error("Lỗi khi tạo dự án mới");
+      showErrorToast("Lỗi khi tạo dự án mới");
       throw error;
     }
   },
@@ -402,7 +402,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to update project");
       }
     } catch (error) {
-      toast.error("Lỗi khi cập nhật dự án");
+      showErrorToast("Lỗi khi cập nhật dự án");
       throw error;
     }
   },
@@ -425,7 +425,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to delete project");
       }
     } catch (error) {
-      toast.error("Lỗi khi xóa dự án");
+      showErrorToast("Lỗi khi xóa dự án");
       throw error;
     }
   },
@@ -525,7 +525,7 @@ export const ProjectService = {
 
       return projects;
     } catch (error) {
-      toast.error("Lỗi khi tải danh sách dự án cho lựa chọn");
+      showErrorToast("Lỗi khi tải danh sách dự án cho lựa chọn");
       return includePagination
         ? {
             projects: [],

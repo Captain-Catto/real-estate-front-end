@@ -5,7 +5,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 import { areaService, type AreaRange } from "@/services/areaService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 interface PaginationInfo {
   page: number;
@@ -51,7 +51,7 @@ function AreasManagementPageInternal() {
       setAreas(data.data);
       setPagination(data.pagination);
     } catch {
-      toast.error("Lỗi khi tải danh sách khoảng diện tích");
+      showErrorToast("Lỗi khi tải danh sách khoảng diện tích");
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,10 @@ function AreasManagementPageInternal() {
     try {
       if (editingArea && editingArea._id) {
         await areaService.update(editingArea._id, formData);
-        toast.success("Cập nhật khoảng diện tích thành công!");
+        showSuccessToast("Cập nhật khoảng diện tích thành công!");
       } else {
         await areaService.create(formData);
-        toast.success("Tạo khoảng diện tích thành công!");
+        showSuccessToast("Tạo khoảng diện tích thành công!");
       }
 
       setShowForm(false);
@@ -79,7 +79,7 @@ function AreasManagementPageInternal() {
       resetForm();
       fetchAreas();
     } catch {
-      toast.error("Lỗi khi lưu khoảng diện tích");
+      showErrorToast("Lỗi khi lưu khoảng diện tích");
     }
   };
 
@@ -120,11 +120,11 @@ function AreasManagementPageInternal() {
     try {
       if (area._id) {
         await areaService.delete(area._id);
-        toast.success("Xóa khoảng diện tích thành công!");
+        showSuccessToast("Xóa khoảng diện tích thành công!");
         fetchAreas();
       }
     } catch {
-      toast.error("Lỗi khi xóa khoảng diện tích");
+      showErrorToast("Lỗi khi xóa khoảng diện tích");
     }
   };
 
@@ -133,11 +133,11 @@ function AreasManagementPageInternal() {
     try {
       if (area._id) {
         await areaService.toggleStatus(area._id);
-        toast.success("Thay đổi trạng thái thành công!");
+        showSuccessToast("Thay đổi trạng thái thành công!");
         fetchAreas();
       }
     } catch {
-      toast.error("Lỗi khi thay đổi trạng thái");
+      showErrorToast("Lỗi khi thay đổi trạng thái");
     }
   };
 

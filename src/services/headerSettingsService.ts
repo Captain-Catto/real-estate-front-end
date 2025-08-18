@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface DropdownItem {
   id: string;
@@ -65,7 +65,7 @@ class HeaderSettingsService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy menu header công khai thất bại");
+      showErrorToast("Lấy menu header công khai thất bại");
       throw error;
     }
   }
@@ -85,7 +85,7 @@ class HeaderSettingsService {
       // If fetchWithAuth already returns parsed data
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Lấy menu header thất bại");
+      showErrorToast("Lấy menu header thất bại");
       throw error;
     }
   }
@@ -105,7 +105,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Tạo menu header thất bại");
+      showErrorToast("Tạo menu header thất bại");
       throw error;
     }
   }
@@ -125,7 +125,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Cập nhật menu header thất bại");
+      showErrorToast("Cập nhật menu header thất bại");
       throw error;
     }
   }
@@ -142,7 +142,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Xóa menu header thất bại");
+      showErrorToast("Xóa menu header thất bại");
       throw error;
     }
   }
@@ -162,7 +162,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Cập nhật thứ tự menu thất bại");
+      showErrorToast("Cập nhật thứ tự menu thất bại");
       throw error;
     }
   }
@@ -183,7 +183,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Chuyển trạng thái menu thất bại");
+      showErrorToast("Chuyển trạng thái menu thất bại");
       throw error;
     }
   }
@@ -200,7 +200,7 @@ class HeaderSettingsService {
 
       return response as HeaderSettingsResponse;
     } catch (error) {
-      toast.error("Khôi phục cài đặt mặc định thất bại");
+      showErrorToast("Khôi phục cài đặt mặc định thất bại");
       throw error;
     }
   }

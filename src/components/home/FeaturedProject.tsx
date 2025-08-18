@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Slider from "react-slick";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 // Import slick styles
@@ -53,7 +53,7 @@ export function FeaturedProject() {
           throw new Error(data.message || "Không thể tải dữ liệu dự án");
         }
       } catch {
-        toast.error("Không thể tải dữ liệu dự án nổi bật");
+        showErrorToast("Không thể tải dữ liệu dự án nổi bật");
         setError("Không thể tải dữ liệu dự án nổi bật");
       } finally {
         setLoading(false);

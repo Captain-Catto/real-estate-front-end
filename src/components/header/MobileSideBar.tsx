@@ -7,7 +7,7 @@ import {
   HeaderMenu,
 } from "@/services/headerSettingsService";
 import { newsService, NewsCategory } from "@/services/newsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import ActionButton from "./ActionButton";
 
 interface MobileSidebarProps {
@@ -74,7 +74,7 @@ export function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
           setHeaderMenus(activeMenus);
         }
       } catch {
-        toast.error("Không thể tải menu header");
+        showErrorToast("Không thể tải menu header");
         // Fallback to default menus - categories will be updated separately
         const fallbackMenus = [
           {

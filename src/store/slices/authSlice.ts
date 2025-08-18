@@ -156,7 +156,7 @@ export const logoutAsync = createAsyncThunk("auth/logout", async () => {
     return null;
   } catch {
     // Vẫn logout local nếu có lỗi từ server
-    toast.error("Có lỗi khi đăng xuất, nhưng đã đăng xuất khỏi thiết bị này");
+    console.log("Logout error, but logged out locally");
     return null;
   }
 });
@@ -167,9 +167,7 @@ export const logoutAllAsync = createAsyncThunk("auth/logoutAll", async () => {
     return null;
   } catch {
     // Vẫn logout local nếu có lỗi từ server
-    toast.error(
-      "Có lỗi khi đăng xuất tất cả thiết bị, nhưng đã đăng xuất khỏi thiết bị này"
-    );
+    console.log("Logout all error, but logged out locally");
     return null;
   }
 });
@@ -214,6 +212,35 @@ export const updateProfileAsync = createAsyncThunk(
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Cập nhật profile thất bại";
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const changePasswordAsync = createAsyncThunk(
+  "auth/changePassword",
+  async (
+    passwordData: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await authService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
+      });
+      if (response.success) {
+        return response.message;
+      } else {
+        return rejectWithValue(response.message);
+      }
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Đổi mật khẩu thất bại";
       return rejectWithValue(errorMessage);
     }
   }

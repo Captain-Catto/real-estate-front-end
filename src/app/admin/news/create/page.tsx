@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import NewsEditor from "@/components/admin/NewsEditor";
 import { UploadService } from "@/services/uploadService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -110,10 +110,10 @@ function CreateNewsPage() {
       console.log("Creating news with data:", createNewsData);
 
       // Giả lập thành công
-      toast.success("Tạo bài viết thành công!");
+      showSuccessToast("Tạo bài viết thành công!");
       router.push("/admin/news");
     } catch {
-      toast.error("Lỗi khi tạo bài viết mới");
+      showErrorToast("Lỗi khi tạo bài viết mới");
     } finally {
       setIsSubmitting(false);
     }

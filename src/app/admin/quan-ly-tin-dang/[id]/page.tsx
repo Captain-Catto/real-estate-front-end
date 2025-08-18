@@ -10,7 +10,7 @@ import EditPostModal from "@/components/modals/EditPostModal/EditPostModal";
 import { useEditPostModal } from "@/hooks/useEditPostModal";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 function AdminPostDetailPageInternalInternal() {
   const params = useParams();
   const router = useRouter();
@@ -39,7 +39,7 @@ function AdminPostDetailPageInternalInternal() {
         setError("Không tìm thấy bài viết");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải dữ liệu");
+      showErrorToast("Có lỗi xảy ra khi tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -49,9 +49,9 @@ function AdminPostDetailPageInternalInternal() {
     try {
       await adminPostsService.approvePost(postId);
       await fetchPost(postId);
-      toast.success("Đã duyệt tin đăng thành công!");
+      showSuccessToast("Đã duyệt tin đăng thành công!");
     } catch {
-      toast.error("Có lỗi xảy ra khi duyệt tin đăng!");
+      showErrorToast("Có lỗi xảy ra khi duyệt tin đăng!");
     }
   };
 
@@ -63,9 +63,9 @@ function AdminPostDetailPageInternalInternal() {
 
       await adminPostsService.rejectPost(postId, reason);
       await fetchPost(postId);
-      toast.success("Đã từ chối tin đăng!");
+      showSuccessToast("Đã từ chối tin đăng!");
     } catch {
-      toast.error("Có lỗi xảy ra khi từ chối tin đăng!");
+      showErrorToast("Có lỗi xảy ra khi từ chối tin đăng!");
     }
   };
 
@@ -122,7 +122,7 @@ function AdminPostDetailPageInternalInternal() {
 
       alert(message);
     } catch {
-      toast.error("Có lỗi xảy ra khi thay đổi trạng thái tin đăng!");
+      showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái tin đăng!");
     }
   };
 
@@ -137,7 +137,7 @@ function AdminPostDetailPageInternalInternal() {
         alert("Đã xóa vĩnh viễn tin đăng!");
         router.push("/admin/quan-ly-tin-dang");
       } catch {
-        toast.error("Có lỗi xảy ra khi xóa tin đăng!");
+        showErrorToast("Có lỗi xảy ra khi xóa tin đăng!");
       }
     }
   };

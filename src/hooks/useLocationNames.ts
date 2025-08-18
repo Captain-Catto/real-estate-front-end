@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { locationService, LocationNames } from "@/services/locationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export function useLocationNames(
   provinceCode?: string,
@@ -35,7 +35,7 @@ export function useLocationNames(
         console.log("📍 Location names from API:", names);
         setLocationNames(names);
       } catch {
-        toast.error("Không thể tải tên địa điểm");
+        showErrorToast("Không thể tải tên địa điểm");
         setLocationNames({});
       } finally {
         setLoading(false);

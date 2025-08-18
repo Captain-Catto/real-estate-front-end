@@ -15,7 +15,7 @@ import {
   type ProcessedSidebarGroup,
 } from "@/store/slices/sidebarSlice";
 import { permissionService } from "@/services/permissionService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 /**
  * Check if user has required permissions for an item
@@ -72,7 +72,7 @@ export function useSidebar() {
           setUserPermissions(response.data.permissions);
         }
       } catch {
-        toast.error("Không thể tải quyền người dùng");
+        showErrorToast("Không thể tải quyền người dùng");
         setUserPermissions([]);
       } finally {
         setPermissionsLoading(false);

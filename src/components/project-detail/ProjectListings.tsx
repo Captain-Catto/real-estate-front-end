@@ -5,7 +5,7 @@ import Link from "next/link";
 import { formatPriceByType, formatArea } from "@/utils/format";
 import { postService } from "@/services/postsService";
 import testImg from "@/assets/images/card-img.jpg";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface Listing {
   id: string;
@@ -98,12 +98,12 @@ export function ProjectListings({
             console.log("No listings found for project:", projectId);
           }
         } else {
-          toast.error("Không thể tải danh sách tin đăng");
+          showErrorToast("Không thể tải danh sách tin đăng");
           setListings([]);
           setHasMore(false);
         }
       } catch {
-        toast.error("Lỗi khi tải tin đăng của dự án");
+        showErrorToast("Lỗi khi tải tin đăng của dự án");
         setListings([]);
         setHasMore(false);
       } finally {
@@ -148,7 +148,7 @@ export function ProjectListings({
         });
       }
     } catch {
-      toast.error("Lỗi khi tải thêm tin đăng");
+      showErrorToast("Lỗi khi tải thêm tin đăng");
     } finally {
       setLoadingMore(false);
     }

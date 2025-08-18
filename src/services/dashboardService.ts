@@ -1,5 +1,5 @@
 import { fetchWithAuth, API_BASE_URL } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ContactRequestData {
   period: string;
@@ -40,7 +40,7 @@ class DashboardService {
         data: result.data as ContactRequestData[],
       };
     } catch (error: unknown) {
-      toast.error("Lấy thống kê yêu cầu liên hệ thất bại");
+      showErrorToast("Lấy thống kê yêu cầu liên hệ thất bại");
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -64,7 +64,7 @@ class DashboardService {
         data: result.data as TopPostData[],
       };
     } catch (error: unknown) {
-      toast.error("Lấy bài viết hàng đầu thất bại");
+      showErrorToast("Lấy bài viết hàng đầu thất bại");
       const errorMessage =
         error instanceof Error ? error.message : "Failed to get top posts";
       return {
@@ -84,7 +84,7 @@ class DashboardService {
         data: result.data as DashboardData,
       };
     } catch (error: unknown) {
-      toast.error("Lấy dữ liệu bảng điều khiển admin thất bại");
+      showErrorToast("Lấy dữ liệu bảng điều khiển admin thất bại");
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -129,7 +129,7 @@ class DashboardService {
         } as DashboardData,
       };
     } catch (error: unknown) {
-      toast.error("Lấy dữ liệu bảng điều khiển thất bại");
+      showErrorToast("Lấy dữ liệu bảng điều khiển thất bại");
       const errorMessage =
         error instanceof Error ? error.message : "Failed to get dashboard data";
       return {

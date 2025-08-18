@@ -3,7 +3,7 @@ import { Location } from "@/types/location";
 import { EditPostForm } from "@/types/editPost";
 import { ProjectService } from "@/services/projectService";
 import { categoryService, Category } from "@/services/categoryService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface BasicInfoStepProps {
   formData: EditPostForm & {
@@ -195,7 +195,7 @@ export default function BasicInfoStep({
           );
           isInitialProjectLoad.current = false; // Mark as no longer initial load
         } catch {
-          toast.error("Không thể tải danh sách dự án");
+          showErrorToast("Không thể tải danh sách dự án");
           setAvailableProjects([]);
         } finally {
           setProjectsLoading(false);
@@ -231,7 +231,7 @@ export default function BasicInfoStep({
 
         setCategories(filteredCategories);
       } catch {
-        toast.error("Không thể tải danh mục");
+        showErrorToast("Không thể tải danh mục");
         setCategories([]);
       } finally {
         setCategoriesLoading(false);

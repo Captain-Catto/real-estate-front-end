@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Pagination } from "@/components/common/Pagination";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import {
   ArrowLeftIcon,
   UserIcon,
@@ -97,11 +97,11 @@ function UserDetailPage() {
           status: response.data.user.status,
         });
       } else {
-        toast.error("Không thể tải thông tin người dùng");
+        showErrorToast("Không thể tải thông tin người dùng");
         router.push("/admin/quan-ly-nguoi-dung");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải thông tin người dùng");
+      showErrorToast("Có lỗi xảy ra khi tải thông tin người dùng");
       router.push("/admin/quan-ly-nguoi-dung");
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ function UserDetailPage() {
         setPostsTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải bài viết");
+      showErrorToast("Có lỗi xảy ra khi tải bài viết");
     } finally {
       setPostsLoading(false);
     }
@@ -144,7 +144,7 @@ function UserDetailPage() {
         setTransactionsTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải giao dịch");
+      showErrorToast("Có lỗi xảy ra khi tải giao dịch");
     } finally {
       setTransactionsLoading(false);
     }
@@ -162,7 +162,7 @@ function UserDetailPage() {
         setLogsTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải nhật ký");
+      showErrorToast("Có lỗi xảy ra khi tải nhật ký");
     } finally {
       setLogsLoading(false);
     }
@@ -206,7 +206,7 @@ function UserDetailPage() {
         setLocationNames((prev) => new Map(prev.set(cacheKey, fullAddress)));
         return fullAddress;
       } catch {
-        toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
+        showErrorToast("Có lỗi xảy ra khi lấy tên địa điểm");
         const fallback = `${wardCode || districtCode || provinceCode}`;
         setLocationNames((prev) => new Map(prev.set(cacheKey, fallback)));
         return fallback;
@@ -247,12 +247,12 @@ function UserDetailPage() {
       if (response.success && response.data) {
         setUser(response.data.user);
         setIsEditing(false);
-        toast.success("Cập nhật thông tin thành công!");
+        showSuccessToast("Cập nhật thông tin thành công!");
       } else {
-        toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
+        showErrorToast(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
+      showErrorToast("Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setIsProcessing(false);
     }
@@ -268,14 +268,14 @@ function UserDetailPage() {
       if (response.success) {
         setUser({ ...user, status: newStatus });
         setEditForm({ ...editForm, status: newStatus });
-        toast.success("Cập nhật trạng thái thành công");
+        showSuccessToast("Cập nhật trạng thái thành công");
       } else {
-        toast.error(
+        showErrorToast(
           response.message || "Có lỗi xảy ra khi cập nhật trạng thái"
         );
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái");
+      showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái");
     } finally {
       setIsProcessing(false);
     }
@@ -403,7 +403,7 @@ function UserDetailPage() {
 
           setDisplayName(fullAddress);
         } catch {
-          toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
+          showErrorToast("Có lỗi xảy ra khi lấy tên địa điểm");
           setDisplayName(fallback);
         } finally {
           setIsLoading(false);

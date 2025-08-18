@@ -2,7 +2,7 @@
  * Utility functions for creating SEO-friendly post slugs
  */
 
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Interface for location data
 interface LocationData {
@@ -107,7 +107,7 @@ export function createPostSlug(postData: PostSlugData): string {
         return `/${transactionType}/${provinceSlug}/${wardSlug}/${idSlug}`;
       }
     } catch {
-      toast.error("Lỗi không thể tạo slug cho bài viết");
+      showErrorToast("Lỗi không thể tạo slug cho bài viết");
     }
   }
 

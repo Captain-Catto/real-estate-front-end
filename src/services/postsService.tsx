@@ -1,6 +1,6 @@
 import { fetchWithAuth } from "./authService";
 import { categoryService } from "./categoryService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 // Xác nhận API URL
@@ -316,12 +316,12 @@ class PostService {
     errorMessage: string = "Đã xảy ra lỗi"
   ) {
     if (!response) {
-      toast.error("Không thể kết nối đến server");
+      showErrorToast("Không thể kết nối đến server");
       return null;
     }
 
     if (!response.ok) {
-      toast.error(errorMessage);
+      showErrorToast(errorMessage);
       return null;
     }
 
@@ -407,13 +407,13 @@ class PostService {
         const error = response
           ? await response.json()
           : { message: "Lỗi kết nối mạng" };
-        toast.error(error.message || "Tạo tin đăng thất bại");
+        showErrorToast(error.message || "Tạo tin đăng thất bại");
         throw new Error(error.message || "Failed to create post");
       }
 
       return await response.json();
     } catch (error) {
-      toast.error("Tạo tin đăng thất bại");
+      showErrorToast(error, "Tạo tin đăng thất bại");
       throw error;
     }
   }
@@ -451,12 +451,12 @@ class PostService {
       );
 
       if (!response) {
-        toast.error("Không thể kết nối đến server");
+        showErrorToast("Không thể kết nối đến server");
         throw new Error("Cannot connect to server");
       }
 
       if (!response.ok) {
-        toast.error("Lấy danh sách tin đăng thất bại");
+        showErrorToast("Lấy danh sách tin đăng thất bại");
         throw new Error("Failed to fetch user posts");
       }
       const result = await response.json();
@@ -464,7 +464,7 @@ class PostService {
 
       return result;
     } catch (error) {
-      toast.error("Đã xảy ra lỗi khi lấy danh sách tin đăng");
+      showErrorToast(error, "Đã xảy ra lỗi khi lấy danh sách tin đăng");
       throw error;
     }
   }
@@ -509,7 +509,7 @@ class PostService {
       });
 
       if (!response) {
-        toast.error("Không thể kết nối đến server");
+        showErrorToast("Không thể kết nối đến server");
         return { success: false, message: "Không thể kết nối đến server" };
       }
 
@@ -531,7 +531,7 @@ class PostService {
         } catch (parseError) {
           // Silent error for debugging
         }
-        toast.error(errorMessage);
+        showErrorToast(errorMessage);
         return { success: false, message: errorMessage };
       }
 
@@ -544,7 +544,7 @@ class PostService {
         return { success: true, message: "Post updated successfully" };
       }
     } catch (error) {
-      toast.error("Đã xảy ra lỗi khi cập nhật tin đăng");
+      showErrorToast(error, "Đã xảy ra lỗi khi cập nhật tin đăng");
       return { success: false, message: "Đã xảy ra lỗi khi cập nhật tin đăng" };
     }
   }
@@ -612,7 +612,7 @@ class PostService {
         return { success: true, message: "Post resubmitted successfully" };
       }
     } catch (error) {
-      toast.error("Gửi lại tin đăng thất bại");
+      showErrorToast(error, "Gửi lại tin đăng thất bại");
       throw error;
     }
   }
@@ -632,7 +632,7 @@ class PostService {
 
       return await validResponse.json();
     } catch (error) {
-      toast.error("Đã xảy ra lỗi khi xóa tin đăng");
+      showErrorToast(error, "Đã xảy ra lỗi khi xóa tin đăng");
       return { success: false, message: "Đã xảy ra lỗi khi xóa tin đăng" };
     }
   }
@@ -665,7 +665,7 @@ class PostService {
 
       return await validResponse.json();
     } catch (error) {
-      toast.error("Đã xảy ra lỗi khi gia hạn tin đăng");
+      showErrorToast("Đã xảy ra lỗi khi gia hạn tin đăng");
       return { success: false, message: "Đã xảy ra lỗi khi gia hạn tin đăng" };
     }
   }
@@ -680,7 +680,7 @@ class PostService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy danh sách gói dịch vụ thất bại");
+      showErrorToast("Lấy danh sách gói dịch vụ thất bại");
       throw error;
     }
   }
@@ -697,7 +697,7 @@ class PostService {
       console.log("Fetched post data:", data);
       return data;
     } catch (error) {
-      toast.error("Lấy thông tin tin đăng thất bại");
+      showErrorToast("Lấy thông tin tin đăng thất bại");
       throw error;
     }
   }
@@ -721,7 +721,7 @@ class PostService {
       console.log("Fetched similar posts:", data);
       return data;
     } catch (error) {
-      toast.error("Lấy danh sách tin đăng tương tự thất bại");
+      showErrorToast("Lấy danh sách tin đăng tương tự thất bại");
       throw error;
     }
   }
@@ -759,7 +759,7 @@ class PostService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy tin đăng theo danh mục thất bại");
+      showErrorToast("Lấy tin đăng theo danh mục thất bại");
       throw error;
     }
   }
@@ -818,7 +818,7 @@ class PostService {
 
       return await result;
     } catch (error) {
-      toast.error("Tìm kiếm tin đăng thất bại");
+      showErrorToast("Tìm kiếm tin đăng thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -870,7 +870,7 @@ class PostService {
 
       return result.data.posts; // Trả về mảng posts từ data
     } catch (error) {
-      toast.error("Lấy danh sách tin đăng thất bại");
+      showErrorToast("Lấy danh sách tin đăng thất bại");
       throw error;
     }
   }
@@ -881,7 +881,7 @@ class PostService {
       const category = await categoryService.getById(categoryId);
       return category?.name || "Không xác định";
     } catch (error) {
-      toast.error("Lấy tên danh mục thất bại");
+      showErrorToast("Lấy tên danh mục thất bại");
       return "Không xác định";
     }
   }
@@ -903,7 +903,7 @@ class PostService {
 
       return categoryMap;
     } catch (error) {
-      toast.error("Lấy tên danh mục thất bại");
+      showErrorToast("Lấy tên danh mục thất bại");
       return categoryIds.reduce((acc, id) => {
         acc[id] = "Không xác định";
         return acc;
@@ -920,7 +920,7 @@ class PostService {
         ? response.data.user.username
         : "Không xác định";
     } catch (error) {
-      toast.error("Lấy tên người dùng thất bại");
+      showErrorToast("Lấy tên người dùng thất bại");
       return "Không xác định";
     }
   }
@@ -954,7 +954,7 @@ class PostService {
 
       return userMap;
     } catch (error) {
-      toast.error("Lấy tên người dùng thất bại");
+      showErrorToast("Lấy tên người dùng thất bại");
       return userIds.reduce((acc, id) => {
         acc[id] = "Không xác định";
         return acc;
@@ -1024,7 +1024,7 @@ class PostService {
         },
       };
     } catch (error) {
-      toast.error("Lấy tin đăng theo dự án thất bại");
+      showErrorToast("Lấy tin đăng theo dự án thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -1152,7 +1152,7 @@ class PostService {
         },
       };
     } catch (error) {
-      toast.error("Lấy tin đăng theo dự án có lọc thất bại");
+      showErrorToast("Lấy tin đăng theo dự án có lọc thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -1196,7 +1196,7 @@ class PostService {
         data: { posts: [] },
       };
     } catch (error) {
-      toast.error("Lấy tin đăng nổi bật thất bại");
+      showErrorToast("Lấy tin đăng nổi bật thất bại");
 
       // Fallback to search API if featured endpoint fails
       try {
@@ -1378,7 +1378,7 @@ export class AdminPostsService {
         hasPrev: result.data.pagination.currentPage > 1,
       };
     } catch (error) {
-      toast.error("Lấy danh sách tin đăng thất bại");
+      showErrorToast("Lấy danh sách tin đăng thất bại");
       throw error;
     }
   }
@@ -1408,7 +1408,7 @@ export class AdminPostsService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      toast.error("Lấy thống kê tin đăng thất bại");
+      showErrorToast("Lấy thống kê tin đăng thất bại");
       // Return default stats if error
       return {
         total: 0,
@@ -1435,7 +1435,7 @@ export class AdminPostsService {
       const result = await response.json();
       return result.data.post;
     } catch (error) {
-      toast.error("Lấy thông tin tin đăng thất bại");
+      showErrorToast("Lấy thông tin tin đăng thất bại");
       throw error;
     }
   }
@@ -1458,7 +1458,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Duyệt tin đăng thất bại");
+      showErrorToast("Duyệt tin đăng thất bại");
       throw error;
     }
   }
@@ -1484,7 +1484,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Từ chối tin đăng thất bại");
+      showErrorToast("Từ chối tin đăng thất bại");
       throw error;
     }
   }
@@ -1506,7 +1506,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      toast.error("Xóa tin đăng thất bại");
+      showErrorToast("Xóa tin đăng thất bại");
       throw error;
     }
   }
@@ -1542,7 +1542,7 @@ export class AdminPostsService {
         return { success: true, message: "Post updated successfully" };
       }
     } catch (error) {
-      toast.error("Cập nhật tin đăng thất bại");
+      showErrorToast("Cập nhật tin đăng thất bại");
       throw error;
     }
   }
@@ -1585,7 +1585,7 @@ export class AdminPostsService {
         return { success: true, message: "Post status updated successfully" };
       }
     } catch (error) {
-      toast.error("Cập nhật trạng thái tin đăng thất bại");
+      showErrorToast("Cập nhật trạng thái tin đăng thất bại");
       throw error;
     }
   }
@@ -1619,7 +1619,7 @@ export class AdminPostsService {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lấy tin đăng công khai của người dùng thất bại");
+      showErrorToast("Lấy tin đăng công khai của người dùng thất bại");
       throw error;
     }
   }

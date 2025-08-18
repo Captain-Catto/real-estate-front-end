@@ -7,7 +7,7 @@ import {
   FavoriteButton,
   FavoriteItem,
 } from "@/components/common/FavoriteButton";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import testCardImg from "@/assets/images/card-img.jpg";
 import { formatPriceByType } from "@/utils/format";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
@@ -151,7 +151,7 @@ export function FeaturedProperties() {
           setFeaturedProperties(transformedProperties);
         }
       } catch {
-        toast.error("Không thể tải dữ liệu bất động sản nổi bật");
+        showErrorToast("Không thể tải dữ liệu bất động sản nổi bật");
         setError("Không thể tải dữ liệu bất động sản nổi bật");
       } finally {
         setLoading(false);

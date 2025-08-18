@@ -1,7 +1,7 @@
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./index";
 import { useCallback } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Import all slices
 import {
@@ -103,7 +103,7 @@ export const useStore = () => {
         "Failed to fetch user favorites (logged for debugging):",
         err
       );
-      toast.error("Không thể tải danh sách yêu thích");
+      showErrorToast("Không thể tải danh sách yêu thích");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated]);
@@ -127,7 +127,7 @@ export const useStore = () => {
           "Failed to add property to favorites (logged for debugging):",
           err
         );
-        toast.error("Không thể thêm vào danh sách yêu thích");
+        showErrorToast("Không thể thêm vào danh sách yêu thích");
         return false;
       }
     },
@@ -148,7 +148,7 @@ export const useStore = () => {
           "Failed to remove property from favorites (logged for debugging):",
           err
         );
-        toast.error("Không thể xóa khỏi danh sách yêu thích");
+        showErrorToast("Không thể xóa khỏi danh sách yêu thích");
         return false;
       }
     },
@@ -176,7 +176,7 @@ export const useStore = () => {
       await dispatch(fetchWalletInfo()).unwrap();
       return { success: true };
     } catch (err) {
-      toast.error("Không thể tải thông tin ví");
+      showErrorToast("Không thể tải thông tin ví");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated]);
@@ -191,7 +191,7 @@ export const useStore = () => {
         await dispatch(fetchTransactions({ page, limit })).unwrap();
         return { success: true };
       } catch (err) {
-        toast.error("Không thể tải lịch sử giao dịch");
+        showErrorToast("Không thể tải lịch sử giao dịch");
         return { success: false, error: err };
       }
     },
@@ -208,7 +208,7 @@ export const useStore = () => {
         const result = await dispatch(depositToWallet({ amount })).unwrap();
         return { success: true, data: result };
       } catch (err) {
-        toast.error("Không thể nạp tiền vào ví");
+        showErrorToast("Không thể nạp tiền vào ví");
         return { success: false, error: err };
       }
     },
@@ -227,7 +227,7 @@ export const useStore = () => {
         ).unwrap();
         return { success: true, data: result };
       } catch (err) {
-        toast.error("Không thể tải chi tiết giao dịch");
+        showErrorToast("Không thể tải chi tiết giao dịch");
         return { success: false, error: err };
       }
     },
@@ -263,7 +263,7 @@ export const useStore = () => {
       await dispatch(fetchNotifications(false)).unwrap();
       return { success: true };
     } catch (err) {
-      toast.error("Không thể tải thông báo");
+      showErrorToast("Không thể tải thông báo");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated]);
@@ -280,7 +280,7 @@ export const useStore = () => {
         ).unwrap();
         return true;
       } catch {
-        toast.error("Không thể đánh dấu thông báo đã đọc");
+        showErrorToast("Không thể đánh dấu thông báo đã đọc");
         return false;
       }
     },
@@ -296,7 +296,7 @@ export const useStore = () => {
       await (dispatch as any)(markAllNotificationsAsRead()).unwrap();
       return true;
     } catch {
-      toast.error("Không thể đánh dấu tất cả thông báo đã đọc");
+      showErrorToast("Không thể đánh dấu tất cả thông báo đã đọc");
       return false;
     }
   }, [dispatch, isAuthenticated]);
@@ -315,7 +315,7 @@ export const useStore = () => {
       await dispatch(fetchSidebarConfig()).unwrap();
       return { success: true };
     } catch {
-      toast.error("Không thể tải cấu hình sidebar");
+      showErrorToast("Không thể tải cấu hình sidebar");
       return { success: false };
     }
   }, [dispatch, isAuthenticated]);
@@ -332,7 +332,7 @@ export const useStore = () => {
         ).unwrap();
         return true;
       } catch {
-        toast.error("Không thể cập nhật mục sidebar");
+        showErrorToast("Không thể cập nhật mục sidebar");
         return false;
       }
     },
@@ -349,7 +349,7 @@ export const useStore = () => {
         await dispatch(addSidebarItem(item)).unwrap();
         return true;
       } catch {
-        toast.error("Không thể thêm mục sidebar");
+        showErrorToast("Không thể thêm mục sidebar");
         return false;
       }
     },
@@ -366,7 +366,7 @@ export const useStore = () => {
         await dispatch(deleteSidebarItem(itemId)).unwrap();
         return true;
       } catch {
-        toast.error("Không thể xóa mục sidebar");
+        showErrorToast("Không thể xóa mục sidebar");
         return false;
       }
     },
@@ -383,7 +383,7 @@ export const useStore = () => {
         await dispatch(reorderSidebarItems(items)).unwrap();
         return true;
       } catch {
-        toast.error("Không thể sắp xếp lại sidebar");
+        showErrorToast("Không thể sắp xếp lại sidebar");
         return false;
       }
     },

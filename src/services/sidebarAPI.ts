@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface SidebarMenuItem {
@@ -64,7 +64,7 @@ export class SidebarAPI {
       console.log("✅ Sidebar config loaded from API:", data);
       return data;
     } catch (error) {
-      toast.error("Lỗi khi tải cấu hình sidebar");
+      showErrorToast("Lỗi khi tải cấu hình sidebar");
       return {
         success: false,
         data: {
@@ -96,7 +96,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi tải danh sách cấu hình");
+      showErrorToast("Lỗi khi tải danh sách cấu hình");
       return {
         success: false,
         data: [],
@@ -124,7 +124,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi tạo cấu hình");
+      showErrorToast("Lỗi khi tạo cấu hình");
       return {
         success: false,
         data: {
@@ -160,7 +160,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi cập nhật cấu hình");
+      showErrorToast("Lỗi khi cập nhật cấu hình");
       return {
         success: false,
         data: {
@@ -192,7 +192,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi xóa cấu hình");
+      showErrorToast("Lỗi khi xóa cấu hình");
       return {
         success: false,
         data: false,
@@ -220,7 +220,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi đặt cấu hình mặc định");
+      showErrorToast("Lỗi khi đặt cấu hình mặc định");
       return {
         success: false,
         data: {
@@ -259,7 +259,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi sắp xếp menu");
+      showErrorToast("Lỗi khi sắp xếp menu");
       return {
         success: false,
         data: {
@@ -298,7 +298,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi thêm menu item");
+      showErrorToast("Lỗi khi thêm menu item");
       return {
         success: false,
         data: {
@@ -336,7 +336,7 @@ export class SidebarAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      toast.error("Lỗi khi xóa menu item");
+      showErrorToast("Lỗi khi xóa menu item");
       return {
         success: false,
         data: {

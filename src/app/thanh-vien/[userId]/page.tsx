@@ -19,7 +19,7 @@ import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
 import { adminPostsService, Post } from "@/services/postsService";
 import { getPublicUser } from "@/services/userService";
 import { locationService } from "@/services/locationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface PublicUser {
   id: string;
@@ -131,7 +131,7 @@ export default function UserDetailPage() {
 
       return fullAddress || "Không xác định";
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy địa chỉ đầy đủ");
+      showErrorToast("Có lỗi xảy ra khi lấy địa chỉ đầy đủ");
       return (
         post.location?.street || post.location?.province || "Không xác định"
       );
@@ -161,7 +161,7 @@ export default function UserDetailPage() {
         title: post.title,
       });
     } catch {
-      toast.error("Có lỗi xảy ra khi tạo slug bài viết");
+      showErrorToast("Có lỗi xảy ra khi tạo slug bài viết");
       // Fallback to simple format
       return `/${convertBackendTransactionType(post.type)}/chi-tiet/${
         post._id
@@ -262,7 +262,7 @@ export default function UserDetailPage() {
           }
         }
       } catch (err) {
-        toast.error("Có lỗi xảy ra khi lấy bài viết");
+        showErrorToast("Có lỗi xảy ra khi lấy bài viết");
       } finally {
         setPostsLoading(false);
         setLoadingMore(false);

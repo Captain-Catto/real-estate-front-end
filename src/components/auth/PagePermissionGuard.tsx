@@ -17,7 +17,7 @@ import { ReactNode } from "react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { useAuth } from "@/hooks/useAuth";
 
 interface PagePermissionGuardProps {
@@ -53,7 +53,7 @@ export function PagePermissionGuard({
     // Nếu không có user, chuyển hướng về login
     if (!user) {
       if (showToast) {
-        toast.error("Vui lòng đăng nhập để tiếp tục");
+        showErrorToast("Vui lòng đăng nhập để tiếp tục");
       }
       router.replace("/dang-nhap");
       return;
@@ -78,7 +78,7 @@ export function PagePermissionGuard({
 
     if (!hasPermission) {
       if (showToast) {
-        toast.error("Bạn không có quyền truy cập trang này");
+        showErrorToast("Bạn không có quyền truy cập trang này");
       }
       router.replace(redirectTo);
       return;
@@ -133,7 +133,7 @@ export function usePagePermissionCheck(
     // Nếu không có user, chuyển hướng về login
     if (!user) {
       if (showToast) {
-        toast.error("Vui lòng đăng nhập để tiếp tục");
+        showErrorToast("Vui lòng đăng nhập để tiếp tục");
       }
       router.replace("/dang-nhap");
       return;
@@ -163,7 +163,7 @@ export function usePagePermissionCheck(
 
     if (!permitted) {
       if (showToast) {
-        toast.error("Bạn không có quyền truy cập trang này");
+        showErrorToast("Bạn không có quyền truy cập trang này");
       }
       router.replace(redirectTo);
       return;

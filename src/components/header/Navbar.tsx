@@ -5,7 +5,7 @@ import {
   headerSettingsService,
   HeaderMenu,
 } from "@/services/headerSettingsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 // import { newsService, NewsCategory } from "@/services/newsService";
 
 export const Navbar = React.memo(() => {
@@ -70,7 +70,7 @@ export const Navbar = React.memo(() => {
           setHeaderMenus(activeMenus);
         }
       } catch {
-        toast.error("Không thể tải menu header");
+        showErrorToast("Không thể tải menu header");
         // Fallback to default menus - categories will be updated separately
         const fallbackMenus = [
           {

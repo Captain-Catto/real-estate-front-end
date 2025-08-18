@@ -13,7 +13,7 @@ import { ProjectDetailInfo } from "./ProjectDetailInfo";
 import { ProjectLocationInfo } from "./ProjectLocationInfo";
 import { ProjectService } from "@/services/projectService";
 import { Project } from "@/types/project";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { useLocationNames } from "@/hooks/useLocationNames";
 import Header from "../header/Header";
 import Footer from "../footer/Footer";
@@ -132,7 +132,7 @@ export default function ProjectDetail({ projectSlug }: ProjectDetailProps) {
           address: projectData.address,
         });
       } catch {
-        toast.error("Có lỗi xảy ra khi tải thông tin dự án");
+        showErrorToast("Có lỗi xảy ra khi tải thông tin dự án");
         setError("Có lỗi xảy ra khi tải thông tin dự án");
       } finally {
         setLoading(false);

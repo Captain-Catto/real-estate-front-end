@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface PriceRange {
@@ -49,7 +49,7 @@ export const priceRangeService = {
         })
       );
     } catch {
-      toast.error("Lỗi khi tải khoảng giá");
+      showErrorToast("Lỗi khi tải khoảng giá");
       return [];
     }
   },
@@ -99,7 +99,7 @@ export const priceRangeService = {
         })
       );
     } catch {
-      toast.error("Lỗi khi tải khoảng giá theo loại");
+      showErrorToast("Lỗi khi tải khoảng giá theo loại");
       return [];
     }
   },
@@ -121,7 +121,7 @@ export const priceRangeService = {
         null
       );
     } catch {
-      toast.error("Lỗi khi tìm khoảng giá");
+      showErrorToast("Lỗi khi tìm khoảng giá");
       return null;
     }
   },

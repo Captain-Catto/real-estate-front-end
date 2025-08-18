@@ -14,7 +14,7 @@ import {
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
 import { formatPriceByType } from "@/utils/format";
 import { Pagination } from "@/components/common/Pagination";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 export default function YeuThichPage() {
   const { user, accessToken, isAuthenticated } = useAuth();
@@ -122,25 +122,15 @@ export default function YeuThichPage() {
       setTimeout(() => {
         if (result) {
           // Hiển thị toast thành công
-          toast.success("Đã xóa khỏi danh sách yêu thích", {
-            duration: 3000, // 3 giây
-          });
+          showSuccessToast("Đã xóa khỏi danh sách yêu thích");
         } else {
-          toast.error("Không thể xóa khỏi danh sách yêu thích", {
-            duration: 3000,
-          });
+          showErrorToast("Không thể xóa khỏi danh sách yêu thích");
         }
       }, 100);
     } catch (error) {
-      // Dismiss loading toast
-      toast.dismiss(loadingToast);
-      console.log("Error removing favorite (logged for debugging):", error);
-
       // Thêm delay nhỏ cho error toast
       setTimeout(() => {
-        toast.error("Không thể xóa khỏi danh sách yêu thích", {
-          duration: 3000,
-        });
+        showErrorToast(error, "Không thể xóa khỏi danh sách yêu thích");
       }, 100);
     } finally {
       setIsRemoving(null);

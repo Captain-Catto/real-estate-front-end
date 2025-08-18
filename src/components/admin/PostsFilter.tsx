@@ -3,7 +3,7 @@ import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
 import { categoryService, Category } from "@/services/categoryService";
 import { packageService } from "@/services/packageService";
 import SearchableProjectSelect from "./SearchableProjectSelect";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface PostsFilterProps {
   filters: {
@@ -45,7 +45,7 @@ export default function PostsFilter({
           setPackages(packageList);
         }
       } catch {
-        toast.error("Lỗi không tải được gói bài viết");
+        showErrorToast("Lỗi không tải được gói bài viết");
       }
     };
 
@@ -65,7 +65,7 @@ export default function PostsFilter({
           console.log(`✅ Set ${categoryList.length} categories in filter`);
         }
       } catch {
-        toast.error("Lỗi không tải được danh mục");
+        showErrorToast("Lỗi không tải được danh mục");
       }
     };
 

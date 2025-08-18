@@ -6,7 +6,7 @@ import {
   newsService,
   NewsItem as ServiceNewsItem,
 } from "@/services/newsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export function ProjectNews() {
   const [news, setNews] = useState<ServiceNewsItem[]>([]);
@@ -25,7 +25,7 @@ export function ProjectNews() {
           setNews(response.data.news);
         }
       } catch {
-        toast.error("Không thể tải tin tức");
+        showErrorToast("Không thể tải tin tức");
         setError("Không thể tải tin tức");
       } finally {
         setLoading(false);

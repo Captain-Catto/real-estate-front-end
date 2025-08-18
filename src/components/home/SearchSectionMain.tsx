@@ -6,7 +6,7 @@ import { locationService, Location } from "@/services/locationService";
 import { categoryService, Category } from "@/services/categoryService";
 import { priceRangeService, PriceRange } from "@/services/priceService";
 import { areaService, AreaRange } from "@/services/areaService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Search tabs configuration
 const SEARCH_TABS = [
@@ -71,7 +71,7 @@ export default function SearchSectionMain() {
 
         console.log("Loaded provinces:", provincesData.length);
       } catch {
-        toast.error("Không thể tải dữ liệu ban đầu");
+        showErrorToast("Không thể tải dữ liệu ban đầu");
       }
     };
     loadInitialData();
@@ -122,7 +122,7 @@ export default function SearchSectionMain() {
           areaRanges: areaRanges.length,
         });
       } catch {
-        toast.error("Không thể tải dữ liệu loại tìm kiếm");
+        showErrorToast("Không thể tải dữ liệu loại tìm kiếm");
       }
     };
 

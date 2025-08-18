@@ -1,5 +1,5 @@
 import { refreshToken, getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface AdminStats {
@@ -124,7 +124,7 @@ export const AdminService = {
 
       return await response.json();
     } catch {
-      toast.error("Không thể tải thống kê admin");
+      showErrorToast("Không thể tải thống kê admin");
       // Return default response instead of throwing
       return {
         success: false,
@@ -168,7 +168,7 @@ export const AdminService = {
 
       return await response.json();
     } catch {
-      toast.error("Không thể tải hoạt động gần đây");
+      showErrorToast("Không thể tải hoạt động gần đây");
       // Return default response instead of throwing
       return {
         success: false,
@@ -200,7 +200,7 @@ export const AdminService = {
 
       return await response.json();
     } catch {
-      toast.error("Không thể tải bài đăng hàng đầu");
+      showErrorToast("Không thể tải bài đăng hàng đầu");
       // Return default response instead of throwing
       return {
         success: false,

@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -94,7 +94,7 @@ export const locationService = {
       }
 
       if (!result.success || !Array.isArray(result.data)) {
-        toast.error("Định dạng phản hồi API không mong đợi");
+        showErrorToast("Định dạng phản hồi API không mong đợi");
         return [];
       }
 
@@ -102,7 +102,7 @@ export const locationService = {
       console.log("Successfully fetched provinces", result.data.length);
       return result.data;
     } catch (error) {
-      toast.error("Lấy danh sách tỉnh thành thất bại");
+      showErrorToast("Lấy danh sách tỉnh thành thất bại");
 
       // Chỉ retry trong trường hợp có lỗi mạng thực sự
       if (
@@ -116,7 +116,7 @@ export const locationService = {
       }
 
       // Nếu đã hết số lần thử hoặc không phải lỗi mạng, trả về mảng rỗng thay vì throw error
-      toast.error(
+      showErrorToast(
         "Đã hết số lần thử hoặc lỗi không phải mạng. Trả về mảng rỗng."
       );
       return [];
@@ -137,17 +137,17 @@ export const locationService = {
         }
       );
       if (!response.ok) {
-        toast.error("Lấy thông tin tỉnh thành thất bại");
+        showErrorToast("Lấy thông tin tỉnh thành thất bại");
         return null;
       }
       const result: ApiResponse<Location> = await response.json();
       if (!result.success || !result.data) {
-        toast.error("Định dạng phản hồi API không mong đợi");
+        showErrorToast("Định dạng phản hồi API không mong đợi");
         return null;
       }
       return result.data;
     } catch (error) {
-      toast.error("Lấy thông tin tỉnh thành theo slug thất bại");
+      showErrorToast("Lấy thông tin tỉnh thành theo slug thất bại");
       return null;
     }
   },
@@ -174,7 +174,7 @@ export const locationService = {
       );
 
       if (!response.ok) {
-        toast.error("Lấy danh sách phường/xã thất bại");
+        showErrorToast("Lấy danh sách phường/xã thất bại");
 
         // For debugging, try to get the error response body
         try {
@@ -190,13 +190,13 @@ export const locationService = {
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        toast.error("Định dạng phản hồi API không mong đợi");
+        showErrorToast("Định dạng phản hồi API không mong đợi");
         return [];
       }
 
       return result.data;
     } catch (error) {
-      toast.error("Lấy danh sách phường/xã thất bại");
+      showErrorToast("Lấy danh sách phường/xã thất bại");
       if (retryCount > 0) {
         console.log(`Retrying getDistricts... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -222,7 +222,7 @@ export const locationService = {
         retryCount
       );
     } catch (error) {
-      toast.error("Lỗi trong getWards");
+      showErrorToast("Lỗi trong getWards");
       if (retryCount > 0) {
         console.log(`Retrying getWards... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -321,10 +321,10 @@ export const locationService = {
       }
 
       // Return empty array instead of throwing to avoid breaking SSR
-      toast.error("Tất cả phương thức lấy phường/xã đều thất bại");
+      showErrorToast("Tất cả phương thức lấy phường/xã đều thất bại");
       return [];
     } catch (error) {
-      toast.error("Lỗi trong getWardsFromProvince");
+      showErrorToast("Lỗi trong getWardsFromProvince");
       if (retryCount > 0) {
         console.log(`Retrying... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000)); // Đợi 1 giây
@@ -356,14 +356,14 @@ export const locationService = {
       );
 
       if (!provinceResponse.ok) {
-        toast.error("Lấy thông tin tỉnh thành thất bại");
+        showErrorToast("Lấy thông tin tỉnh thành thất bại");
         return null;
       }
 
       const provinceResult: ApiResponse<Location> =
         await provinceResponse.json();
       if (!provinceResult.success || !provinceResult.data) {
-        toast.error("Định dạng phản hồi API tỉnh thành không mong đợi");
+        showErrorToast("Định dạng phản hồi API tỉnh thành không mong đợi");
         return null;
       }
 
@@ -381,13 +381,13 @@ export const locationService = {
       );
 
       if (!wardsResponse.ok) {
-        toast.error("Lấy danh sách phường/xã thất bại");
+        showErrorToast("Lấy danh sách phường/xã thất bại");
         return null;
       }
 
       const wardsResult: ApiResponse<Location[]> = await wardsResponse.json();
       if (!wardsResult.success || !Array.isArray(wardsResult.data)) {
-        toast.error("Định dạng phản hồi API phường/xã không mong đợi");
+        showErrorToast("Định dạng phản hồi API phường/xã không mong đợi");
         return null;
       }
 
@@ -399,7 +399,7 @@ export const locationService = {
       // Return the ward as "district" for backward compatibility
       return ward || null;
     } catch (error) {
-      toast.error("Lấy phường/xã theo slug thất bại");
+      showErrorToast("Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -430,13 +430,13 @@ export const locationService = {
       );
 
       if (!response.ok) {
-        toast.error("Lấy danh sách phường/xã thất bại");
+        showErrorToast("Lấy danh sách phường/xã thất bại");
         return null;
       }
 
       const result: ApiResponse<Location[]> = await response.json();
       if (!result.success || !Array.isArray(result.data)) {
-        toast.error("Định dạng phản hồi API không mong đợi");
+        showErrorToast("Định dạng phản hồi API không mong đợi");
         return null;
       }
 
@@ -460,7 +460,7 @@ export const locationService = {
 
       return ward || null;
     } catch (error) {
-      toast.error("Lấy phường/xã theo slug thất bại");
+      showErrorToast("Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -486,7 +486,7 @@ export const locationService = {
 
       return province ? province.name : provinceSlug.replace(/-/g, " ");
     } catch (error) {
-      toast.error("Lấy tên tỉnh thành theo slug thất bại");
+      showErrorToast("Lấy tên tỉnh thành theo slug thất bại");
       return provinceSlug.replace(/-/g, " ");
     }
   },
@@ -515,7 +515,7 @@ export const locationService = {
 
       return district ? district.name : districtSlug.replace(/-/g, " ");
     } catch (error) {
-      toast.error("Lấy tên quận/huyện theo slug thất bại");
+      showErrorToast("Lấy tên quận/huyện theo slug thất bại");
       return districtSlug.replace(/-/g, " ");
     }
   },
@@ -570,7 +570,7 @@ export const locationService = {
 
       return ward ? ward.name : wardSlug.replace(/-/g, " ");
     } catch (error) {
-      toast.error("Lấy tên phường/xã theo slug thất bại");
+      showErrorToast("Lấy tên phường/xã theo slug thất bại");
       return wardSlug.replace(/-/g, " ");
     }
   },
@@ -610,20 +610,20 @@ export const locationService = {
       });
 
       if (!response.ok) {
-        toast.error("Lấy địa chỉ theo slug thất bại");
+        showErrorToast("Lấy địa chỉ theo slug thất bại");
         return null;
       }
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        toast.error("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
+        showErrorToast("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
         return null;
       }
 
       return result.data;
     } catch (error) {
-      toast.error("Lỗi trong getLocationBySlug");
+      showErrorToast("Lỗi trong getLocationBySlug");
       return null;
     }
   },
@@ -651,20 +651,20 @@ export const locationService = {
       });
 
       if (!response.ok) {
-        toast.error("Lấy breadcrumb từ API thất bại");
+        showErrorToast("Lấy breadcrumb từ API thất bại");
         return null;
       }
 
       const result = await response.json();
 
       if (!result.success || !result.data) {
-        toast.error("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
+        showErrorToast("Định dạng phản hồi không hợp lệ hoặc không có dữ liệu");
         return null;
       }
 
       return result.data;
     } catch (error) {
-      toast.error("Lỗi trong getBreadcrumbFromSlugApi");
+      showErrorToast("Lỗi trong getBreadcrumbFromSlugApi");
       return null;
     }
   },
@@ -872,7 +872,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          toast.error("Lỗi khi lấy dữ liệu tỉnh/thành");
+          showErrorToast("Lỗi khi lấy dữ liệu tỉnh/thành");
           // Fallback
           result.city = citySlug
             .replace(/^tinh-/, "")
@@ -1005,7 +1005,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          toast.error("Lỗi khi lấy dữ liệu phường/xã");
+          showErrorToast("Lỗi khi lấy dữ liệu phường/xã");
           // Fallback
           result.ward = wardSlug
             .replace(/^xa-/, "")
@@ -1030,7 +1030,7 @@ export const locationService = {
         district: result.district, // Luôn trống trong cấu trúc mới
       };
     } catch (error) {
-      toast.error("Lỗi xử lý breadcrumb");
+      showErrorToast("Lỗi xử lý breadcrumb");
 
       // Fallback an toàn
       const fallbackCity = citySlug
@@ -1075,7 +1075,7 @@ export const locationService = {
         const response = await fetchWithAuth(`${API_BASE_URL}/locations`);
         return await response.json();
       } catch (error) {
-        toast.error("Lấy danh sách tỉnh thành thất bại");
+        showErrorToast("Lấy danh sách tỉnh thành thất bại");
         return { success: false, data: [] };
       }
     },
@@ -1109,7 +1109,7 @@ export const locationService = {
         });
         return await response.json();
       } catch (error) {
-        toast.error("Thêm tỉnh thành thất bại");
+        showErrorToast("Thêm tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1149,7 +1149,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Cập nhật tỉnh thành thất bại");
+        showErrorToast("Cập nhật tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1165,7 +1165,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Xóa tỉnh thành thất bại");
+        showErrorToast("Xóa tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1191,7 +1191,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Thêm quận/huyện thất bại");
+        showErrorToast("Thêm quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1218,7 +1218,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Cập nhật quận/huyện thất bại");
+        showErrorToast("Cập nhật quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1237,7 +1237,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Xóa quận/huyện thất bại");
+        showErrorToast("Xóa quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1289,7 +1289,7 @@ export const locationService = {
 
         return result;
       } catch (error) {
-        toast.error("Thêm phường/xã thất bại");
+        showErrorToast("Thêm phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1333,7 +1333,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Cập nhật phường/xã thất bại");
+        showErrorToast("Cập nhật phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1353,7 +1353,7 @@ export const locationService = {
         );
         return await response.json();
       } catch (error) {
-        toast.error("Xóa phường/xã thất bại");
+        showErrorToast("Xóa phường/xã thất bại");
         return { success: false };
       }
     },

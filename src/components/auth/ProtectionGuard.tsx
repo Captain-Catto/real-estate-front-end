@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { UserRole } from "@/store/slices/authSlice";
@@ -247,7 +247,7 @@ export default function ProtectionGuard({
     // Handle access denied
     if (!accessGranted) {
       if (isPageGuard) {
-        if (showToast) toast.error(errorMessage);
+        if (showToast) showErrorToast(errorMessage);
         setHasAccess(false);
         setIsChecking(false);
         setShowUnauthorized(true);

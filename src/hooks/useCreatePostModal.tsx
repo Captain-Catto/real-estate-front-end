@@ -4,7 +4,7 @@ import { postService, CreatePostData } from "@/services/postsService";
 import { useAuth } from "@/store/hooks";
 import { paymentService } from "@/services/paymentService";
 import { categoryService, Category } from "@/services/categoryService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 interface FormData {
   // Basic Info
@@ -108,7 +108,7 @@ export function useCreatePostModal() {
           }));
         }
       } catch {
-        toast.error("Không thể tải danh sách danh mục");
+        showErrorToast("Không thể tải danh sách danh mục");
       }
     };
 
@@ -212,7 +212,7 @@ export function useCreatePostModal() {
       // Check if user has enough balance to pay for the package
       if (balance < selectedPackage.price) {
         // Show more detailed error message with option to add funds
-        toast.error(
+        showErrorToast(
           <div className="flex flex-col gap-2">
             <p>Số dư ví không đủ để thanh toán</p>
             <p className="text-sm">
@@ -227,10 +227,7 @@ export function useCreatePostModal() {
             >
               Nạp tiền vào ví
             </a>
-          </div>,
-          {
-            duration: 6000,
-          }
+          </div>
         );
         throw new Error(
           `Số dư ví không đủ để thanh toán. Số dư hiện tại: ${formattedBalance}. Vui lòng nạp thêm tiền vào ví.`
@@ -263,17 +260,8 @@ export function useCreatePostModal() {
       if (result && result.success) {
         // Skip payment for free package
         if (selectedPackage.price === 0 || selectedPackage.id === "free") {
-          toast.success(
-            <div>
-              <p className="font-medium">Đăng tin thành công!</p>
-              <p className="mt-1">Tin đăng của bạn đang chờ duyệt.</p>
-              <p className="mt-1 text-sm">
-                Gói: {selectedPackage.name} - {selectedPackage.duration} ngày
-                <br />
-                Miễn phí
-              </p>
-            </div>,
-            { duration: 5000 }
+          showSuccessToast(
+            `Đăng tin thành công! Tin đăng của bạn đang chờ duyệt. Gói: ${selectedPackage.name} - ${selectedPackage.duration} ngày (Miễn phí)`
           );
           closeModal();
           router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
@@ -294,20 +282,14 @@ export function useCreatePostModal() {
             await refreshWallet();
 
             // Step 5: Show success message with package details
-            toast.success(
-              <div>
-                <p className="font-medium">Đăng tin thành công!</p>
-                <p className="mt-1">
-                  Tin đăng của bạn đã được thanh toán và đang chờ duyệt.
-                </p>
-                <p className="mt-1 text-sm">
-                  Gói: {selectedPackage.name} - {selectedPackage.duration} ngày
-                  <br />
-                  Đã thanh toán: {selectedPackage.price.toLocaleString("vi-VN")}
-                  đ
-                </p>
-              </div>,
-              { duration: 5000 }
+            showSuccessToast(
+              `Đăng tin thành công! Tin đăng của bạn đã được thanh toán và đang chờ duyệt. Gói: ${
+                selectedPackage.name
+              } - ${
+                selectedPackage.duration
+              } ngày. Đã thanh toán: ${selectedPackage.price.toLocaleString(
+                "vi-VN"
+              )} đ`
             );
 
             closeModal();
@@ -318,15 +300,8 @@ export function useCreatePostModal() {
               paymentResult?.message ||
                 "Thanh toán không thành công, vui lòng thử lại"
             );
-            toast.error(
-              <div>
-                <p className="font-medium">Thanh toán không thành công</p>
-                <p className="mt-1">
-                  Tin đăng đã được tạo nhưng chưa được thanh toán. Vui lòng
-                  thanh toán trong mục quản lý tin.
-                </p>
-              </div>,
-              { duration: 6000 }
+            showErrorToast(
+              "Thanh toán không thành công. Tin đăng đã được tạo nhưng chưa được thanh toán. Vui lòng thanh toán trong mục quản lý tin."
             );
 
             // Still redirect user to manage their posts
@@ -334,7 +309,7 @@ export function useCreatePostModal() {
             router.push("/nguoi-dung/quan-ly-tin-rao-ban-cho-thue");
           }
         } catch {
-          toast.error("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
+          showErrorToast("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
           setPaymentError("Có lỗi xảy ra khi thanh toán, vui lòng thử lại");
 
           // Still redirect user to manage their posts where they can try payment again

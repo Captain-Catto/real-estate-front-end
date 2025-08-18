@@ -13,7 +13,7 @@ import { DeveloperService } from "@/services/developerService";
 import { locationService } from "@/services/locationService";
 import { categoryService } from "@/services/categoryService";
 import { Developer } from "@/types/developer";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import Header from "../header/Header";
 import { ActiveFilters } from "./ActiveFilters";
 import Footer from "../footer/Footer";
@@ -99,7 +99,7 @@ export function ProjectPage({
           }
         }
       } catch {
-        toast.error("Không thể chuyển đổi thông tin địa chỉ");
+        showErrorToast("Không thể chuyển đổi thông tin địa chỉ");
       }
     };
 
@@ -169,7 +169,7 @@ export function ProjectPage({
         console.log("Fetched developer data:", developerData);
         setDeveloper(developerData);
       } catch {
-        toast.error("Không thể tải thông tin chủ đầu tư");
+        showErrorToast("Không thể tải thông tin chủ đầu tư");
         setDeveloperError("Không thể tải thông tin chủ đầu tư");
       } finally {
         setLoadingDeveloper(false);

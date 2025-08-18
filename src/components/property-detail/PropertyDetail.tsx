@@ -13,7 +13,7 @@ import { DisplayMap } from "./DisplayMap";
 import SimilarPosts from "./SimilarPosts";
 import { formatPriceByType } from "@/utils/format";
 import { createListingSlug } from "@/utils/postSlug";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import CallBackButton from "../CallBackButton";
 
 interface PropertyDetailProps {
@@ -147,7 +147,7 @@ export function PropertyDetail({
             console.log("Project data fetched:", projectData);
           }
         } catch {
-          toast.error("Không thể tải thông tin dự án");
+          showErrorToast("Không thể tải thông tin dự án");
         } finally {
           setProjectLoading(false);
         }
@@ -184,7 +184,7 @@ export function PropertyDetail({
             console.log("Developer data fetched:", developerData);
           }
         } catch {
-          toast.error("Không thể tải thông tin chủ đầu tư");
+          showErrorToast("Không thể tải thông tin chủ đầu tư");
         } finally {
           setDeveloperLoading(false);
         }

@@ -26,7 +26,7 @@ import { locationService } from "@/services/locationService";
 import { postService } from "@/services/postsService";
 import { PermissionGuard } from "@/components/auth/ProtectionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface AdminPostDetailProps {
   post: {
@@ -131,7 +131,7 @@ export default function AdminPostDetail({
 
           setLocationName(name);
         } catch {
-          toast.error("Có lỗi xảy ra khi lấy tên địa điểm");
+          showErrorToast("Có lỗi xảy ra khi lấy tên địa điểm");
           // Fallback
           setLocationName(
             post.location.ward
@@ -159,7 +159,7 @@ export default function AdminPostDetail({
           const name = await postService.getCategoryName(post.category);
           setCategoryName(name);
         } catch {
-          toast.error("Có lỗi xảy ra khi lấy tên danh mục");
+          showErrorToast("Có lỗi xảy ra khi lấy tên danh mục");
           setCategoryName("Không xác định");
         }
       }
@@ -204,7 +204,7 @@ export default function AdminPostDetail({
             setRejectedByName(userNames[post.rejectedBy] || "Không xác định");
           }
         } catch {
-          toast.error("Có lỗi xảy ra khi lấy tên người dùng");
+          showErrorToast("Có lỗi xảy ra khi lấy tên người dùng");
           setAuthorName("Không xác định");
           setApprovedByName("Không xác định");
           setRejectedByName("Không xác định");

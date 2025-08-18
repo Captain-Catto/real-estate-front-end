@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ImprovedQuillEditor from "@/components/admin/ImprovedQuillEditor";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import { useRouter } from "next/navigation";
 
 // Service để gọi API
@@ -66,12 +66,12 @@ export default function NewsForm({ initialValues = {} }: NewsFormProps) {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      toast.error("Vui lòng nhập tiêu đề tin tức");
+      showErrorToast("Vui lòng nhập tiêu đề tin tức");
       return;
     }
 
     if (!formData.content.trim() || formData.content === "<p><br></p>") {
-      toast.error("Vui lòng nhập nội dung tin tức");
+      showErrorToast("Vui lòng nhập nội dung tin tức");
       return;
     }
 
@@ -123,10 +123,10 @@ export default function NewsForm({ initialValues = {} }: NewsFormProps) {
       // Gọi API tạo tin tức
       await newsService.createNews(newsData);
 
-      toast.success("Đăng tin thành công!");
+      showSuccessToast("Đăng tin thành công!");
       router.push("/admin/news");
     } catch {
-      toast.error("Lỗi khi đăng tin tức");
+      showErrorToast("Lỗi khi đăng tin tức");
     } finally {
       setIsSubmitting(false);
     }

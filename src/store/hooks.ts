@@ -1,7 +1,7 @@
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./index";
 import { useCallback } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import {
   fetchFavoritesAsync,
   toggleFavoriteAsync,
@@ -66,7 +66,7 @@ export const useFavorites = () => {
           "Failed to fetch user favorites (logged for debugging):",
           err
         );
-        toast.error("Không thể tải danh sách yêu thích");
+        showErrorToast("Không thể tải danh sách yêu thích");
         return false;
       }
     },
@@ -90,7 +90,7 @@ export const useFavorites = () => {
         return false;
       } catch (err) {
         console.log("Failed to toggle favorite (logged for debugging):", err);
-        toast.error("Không thể cập nhật trạng thái yêu thích");
+        showErrorToast("Không thể cập nhật trạng thái yêu thích");
         return false;
       }
     },
@@ -178,7 +178,7 @@ export const useWallet = () => {
       await dispatch(fetchWalletInfo()).unwrap();
       return { success: true };
     } catch (err) {
-      toast.error("Không thể làm mới thông tin ví");
+      showErrorToast("Không thể làm mới thông tin ví");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated]);
@@ -191,7 +191,7 @@ export const useWallet = () => {
       await dispatch(fetchTransactions({ page: 1, limit: 10 })).unwrap();
       return { success: true };
     } catch (err) {
-      toast.error("Không thể làm mới giao dịch");
+      showErrorToast("Không thể làm mới giao dịch");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated]);
@@ -204,7 +204,7 @@ export const useWallet = () => {
       await dispatch(fetchTransactions({ page: page + 1, limit: 10 })).unwrap();
       return { success: true };
     } catch (err) {
-      toast.error("Lỗi không thể tải thêm giao dịch");
+      showErrorToast("Lỗi không thể tải thêm giao dịch");
       return { success: false, error: err };
     }
   }, [dispatch, isAuthenticated, transactionsLoading, hasMore, page]);
@@ -228,7 +228,7 @@ export const useWallet = () => {
 
         return { success: true, data: result };
       } catch (err) {
-        toast.error("Lỗi không thể nạp tiền");
+        showErrorToast("Lỗi không thể nạp tiền");
         return { success: false, error: err };
       }
     },
@@ -243,7 +243,7 @@ export const useWallet = () => {
         ).unwrap();
         return { success: true, data: result };
       } catch (err) {
-        toast.error("Lỗi không thể lấy chi tiết giao dịch");
+        showErrorToast("Lỗi không thể lấy chi tiết giao dịch");
         return { success: false, error: err };
       }
     },
@@ -264,7 +264,7 @@ export const useWallet = () => {
         dispatch(fetchTransactions({ page: 1, limit: 10 })).unwrap(),
       ]);
     } catch (err) {
-      toast.error("Lỗi không thể khởi tạo ví");
+      showErrorToast("Lỗi không thể khởi tạo ví");
     }
   }, [dispatch, isAuthenticated]);
 

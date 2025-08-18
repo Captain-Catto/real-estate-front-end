@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { NewsArticleDetail } from "@/components/news/NewsArticleDetail";
 import { NewsCategoryPage } from "@/components/news/NewsCategoryPage";
 import { newsService } from "@/services/newsService";
@@ -88,7 +88,7 @@ export default function NewsSlugClient({ slug }: NewsSlugClientProps) {
       }
       return staticValidCategories.includes(category);
     } catch {
-      toast.error("Có lỗi xảy ra khi kiểm tra danh mục");
+      showErrorToast("Có lỗi xảy ra khi kiểm tra danh mục");
       return staticValidCategories.includes(category);
     }
   };
@@ -105,7 +105,7 @@ export default function NewsSlugClient({ slug }: NewsSlugClientProps) {
       }
       return null;
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy bài viết");
+      showErrorToast("Có lỗi xảy ra khi lấy bài viết");
       return null;
     }
   };
@@ -147,7 +147,7 @@ export default function NewsSlugClient({ slug }: NewsSlugClientProps) {
 
       return [];
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy bài viết");
+      showErrorToast("Có lỗi xảy ra khi lấy bài viết");
       return [];
     }
   };
@@ -243,10 +243,10 @@ export default function NewsSlugClient({ slug }: NewsSlugClientProps) {
         }
 
         // Not found - show 404
-        toast.error("Không tìm thấy bài viết");
+        showErrorToast("Không tìm thấy bài viết");
         router.push("/404");
       } catch {
-        toast.error("Có lỗi xảy ra");
+        showErrorToast("Có lỗi xảy ra");
         router.push("/404");
       }
 

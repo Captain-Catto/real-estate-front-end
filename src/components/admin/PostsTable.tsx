@@ -13,7 +13,7 @@ import { ProjectService } from "@/services/projectService";
 import { categoryService } from "@/services/categoryService";
 import { PermissionGuard } from "@/components/auth/ProtectionGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface PostsTableProps {
   posts: Post[];
@@ -201,7 +201,7 @@ export default function PostsTable({
                 `✅ Found category: ${categoryId} -> ${category.name} (${categoryType})`
               );
             } else {
-              toast.error("Danh mục không tìm thấy");
+              showErrorToast("Danh mục không tìm thấy");
               categoryMap[categoryId] = "Danh mục (không tìm thấy)";
               categoryDataMap[categoryId] = {
                 name: "Danh mục (không tìm thấy)",
@@ -209,7 +209,7 @@ export default function PostsTable({
               };
             }
           } catch {
-            toast.error("Lỗi không tải được danh mục");
+            showErrorToast("Lỗi không tải được danh mục");
             categoryMap[categoryId] = "Danh mục (lỗi)";
             categoryDataMap[categoryId] = {
               name: "Danh mục (lỗi)",

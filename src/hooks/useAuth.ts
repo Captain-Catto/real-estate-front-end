@@ -11,7 +11,7 @@ import {
   type UserRole,
 } from "@/store/slices/authSlice";
 import { LoginRequest, RegisterRequest } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 /**
  * Enhanced authentication hook that provides complete auth functionality
@@ -35,10 +35,10 @@ export const useAuth = () => {
     async (credentials: LoginRequest) => {
       try {
         const result = await dispatch(loginAsync(credentials)).unwrap();
-        toast.success("Đăng nhập thành công!");
+        showSuccessToast("Đăng nhập thành công!");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(typeof error === "string" ? error : "Đăng nhập thất bại");
+        showErrorToast(error, "Đăng nhập thất bại");
         return { success: false, error };
       }
     },
@@ -50,10 +50,10 @@ export const useAuth = () => {
     async (userData: RegisterRequest) => {
       try {
         const result = await dispatch(registerAsync(userData)).unwrap();
-        toast.success("Đăng ký thành công!");
+        showSuccessToast("Đăng ký thành công!");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(typeof error === "string" ? error : "Đăng ký thất bại");
+        showErrorToast(error, "Đăng ký thất bại");
         return { success: false, error };
       }
     },
@@ -64,10 +64,10 @@ export const useAuth = () => {
   const logout = useCallback(async () => {
     try {
       await dispatch(logoutAsync()).unwrap();
-      toast.success("Đăng xuất thành công");
+      showSuccessToast("Đăng xuất thành công");
       return true;
-    } catch {
-      toast.error("Đã xảy ra lỗi khi đăng xuất");
+    } catch (error: unknown) {
+      showErrorToast(error, "Đã xảy ra lỗi khi đăng xuất");
       return false;
     }
   }, [dispatch]);
@@ -76,10 +76,10 @@ export const useAuth = () => {
   const logoutAll = useCallback(async () => {
     try {
       await dispatch(logoutAllAsync()).unwrap();
-      toast.success("Đã đăng xuất khỏi tất cả thiết bị");
+      showSuccessToast("Đã đăng xuất khỏi tất cả thiết bị");
       return true;
-    } catch {
-      toast.error("Đã xảy ra lỗi khi đăng xuất");
+    } catch (error: unknown) {
+      showErrorToast(error, "Đã xảy ra lỗi khi đăng xuất");
       return false;
     }
   }, [dispatch]);
@@ -93,12 +93,10 @@ export const useAuth = () => {
     }) => {
       try {
         const result = await dispatch(updateProfileAsync(profileData)).unwrap();
-        toast.success("Cập nhật thông tin thành công");
+        showSuccessToast("Cập nhật thông tin thành công");
         return { success: true, data: result };
       } catch (error: unknown) {
-        toast.error(
-          typeof error === "string" ? error : "Cập nhật thông tin thất bại"
-        );
+        showErrorToast(error, "Cập nhật thông tin thất bại");
         return { success: false, error };
       }
     },

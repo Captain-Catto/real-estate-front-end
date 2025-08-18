@@ -1,5 +1,5 @@
 import { fetchWithAuth, API_BASE_URL } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface OverviewStats {
   totalUsers: number;
@@ -104,7 +104,7 @@ export const realStatsService = {
 
       return { ...defaultStats, ...result.data };
     } catch {
-      toast.error("Không thể tải thống kê tổng quan");
+      showErrorToast("Không thể tải thống kê tổng quan");
       // Return default values on error
       return {
         totalUsers: 0,
@@ -165,7 +165,7 @@ export const realStatsService = {
 
       return { ...defaultStats, ...result.data };
     } catch {
-      toast.error("Không thể tải thống kê theo thời gian");
+      showErrorToast("Không thể tải thống kê theo thời gian");
       // Return default values on error
       return {
         totalUsers: 0,

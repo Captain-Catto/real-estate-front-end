@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { createSelector } from "reselect";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import type { RootState } from "../index";
 import { API_BASE_URL } from "@/services/authService";
 
@@ -142,7 +142,7 @@ export const fetchNotifications = createAsyncThunk(
       }
       return result;
     } catch (error) {
-      toast.error("Không thể tải thông báo");
+      showErrorToast("Không thể tải thông báo");
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to fetch notifications"
       );
@@ -296,7 +296,7 @@ const notificationSlice = createSlice({
             (n: Notification) => !n.read
           ).length;
         } else {
-          toast.error("Định dạng dữ liệu thông báo không hợp lệ");
+          showErrorToast("Định dạng dữ liệu thông báo không hợp lệ");
           state.notifications = [];
           state.unreadCount = 0;
         }

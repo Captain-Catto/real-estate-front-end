@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { API_BASE_URL } from "@/services/authService";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface Category {
   _id: string;
@@ -31,7 +32,7 @@ class CategoryService {
       const data = await response.json();
       return data.data || [];
     } catch {
-      toast.error("Lỗi khi tải danh mục");
+      showErrorToast("Lỗi khi tải danh mục");
       return [];
     }
   }
@@ -61,7 +62,7 @@ class CategoryService {
       console.log(`📋 API Response data:`, data);
       return data.data || data || null;
     } catch {
-      toast.error("Lỗi khi tải chi tiết danh mục");
+      showErrorToast("Lỗi khi tải chi tiết danh mục");
       return null;
     }
   }
@@ -91,7 +92,7 @@ class CategoryService {
       console.log(`📋 API Response data for isProject=${isProject}:`, data);
       return data.data || [];
     } catch {
-      toast.error("Lỗi khi tải danh mục theo loại dự án");
+      showErrorToast("Lỗi khi tải danh mục theo loại dự án");
       return [];
     }
   }

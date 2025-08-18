@@ -14,7 +14,7 @@ import { Developer, UpdateDeveloperRequest } from "@/types/developer";
 import { UploadService } from "@/services/uploadService";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 interface DeveloperDetailPageProps {
   params: Promise<{
@@ -64,7 +64,7 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
           });
         }
       } catch {
-        toast.error("Có lỗi xảy ra khi lấy thông tin chủ đầu tư");
+        showErrorToast("Có lỗi xảy ra khi lấy thông tin chủ đầu tư");
         // If developer not found, redirect back
         router.push("/admin/quan-ly-chu-dau-tu");
       } finally {
@@ -107,7 +107,7 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
         }));
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi upload logo");
+      showErrorToast("Có lỗi xảy ra khi upload logo");
     } finally {
       setUploading(false);
     }
@@ -128,9 +128,9 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
         setDeveloper(data);
       }
       setEditing(false);
-      toast.success("Cập nhật thông tin thành công!");
+      showSuccessToast("Cập nhật thông tin thành công!");
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật thông tin");
+      showErrorToast("Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setSaving(false);
     }
@@ -144,7 +144,7 @@ function DeveloperDetailPage({ params }: DeveloperDetailPageProps) {
         await DeveloperService.deleteDeveloper(developer._id);
         router.push("/admin/quan-ly-chu-dau-tu");
       } catch {
-        toast.error("Có lỗi xảy ra khi xóa chủ đầu tư");
+        showErrorToast("Có lỗi xảy ra khi xóa chủ đầu tư");
       }
     }
   };

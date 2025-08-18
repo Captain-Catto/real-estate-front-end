@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface AreaRange {
@@ -82,7 +82,7 @@ export const areaService = {
       return result;
     } catch (error) {
       console.log("Error fetching areas (logged for debugging):", error);
-      toast.error("Lỗi khi tải danh sách khu vực");
+      showErrorToast("Lỗi khi tải danh sách khu vực");
       throw error;
     }
   },
@@ -104,12 +104,12 @@ export const areaService = {
           "Invalid API response format (logged for debugging):",
           result
         );
-        toast.error("Định dạng dữ liệu không hợp lệ");
+        showErrorToast("Định dạng dữ liệu không hợp lệ");
         return [];
       }
     } catch (error) {
       console.log("Error fetching area ranges (logged for debugging):", error);
-      toast.error("Lỗi khi tải khoảng diện tích");
+      showErrorToast("Lỗi khi tải khoảng diện tích");
       throw error;
     }
   },
@@ -131,7 +131,7 @@ export const areaService = {
           "Invalid API response format (logged for debugging):",
           result
         );
-        toast.error("Định dạng dữ liệu không hợp lệ");
+        showErrorToast("Định dạng dữ liệu không hợp lệ");
         return [];
       }
     } catch (error) {
@@ -139,7 +139,7 @@ export const areaService = {
         `Error fetching area ranges for type ${type} (logged for debugging):`,
         error
       );
-      toast.error(`Lỗi khi tải khoảng diện tích cho loại ${type}`);
+      showErrorToast(`Lỗi khi tải khoảng diện tích cho loại ${type}`);
       throw error;
     }
   },
@@ -163,7 +163,7 @@ export const areaService = {
         return null;
       }
     } catch (error) {
-      toast.error("Lỗi khi tải khoảng diện tích");
+      showErrorToast("Lỗi khi tải khoảng diện tích");
       throw error;
     }
   },
@@ -187,7 +187,7 @@ export const areaService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      toast.error("Lỗi khi tạo khu vực");
+      showErrorToast("Lỗi khi tạo khu vực");
       throw error;
     }
   },
@@ -210,7 +210,7 @@ export const areaService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      toast.error("Lỗi khi cập nhật khu vực");
+      showErrorToast("Lỗi khi cập nhật khu vực");
       throw error;
     }
   },
@@ -231,7 +231,7 @@ export const areaService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      toast.error("Lỗi khi xóa khu vực");
+      showErrorToast("Lỗi khi xóa khu vực");
       throw error;
     }
   },
@@ -257,7 +257,7 @@ export const areaService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      toast.error("Lỗi khi thay đổi trạng thái khu vực");
+      showErrorToast("Lỗi khi thay đổi trạng thái khu vực");
       throw error;
     }
   },

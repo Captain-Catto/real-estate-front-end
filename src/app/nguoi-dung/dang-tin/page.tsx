@@ -10,7 +10,7 @@ import PackageSelectionStep from "@/components/modals/EditPostModal/steps/Packag
 import { useAuth } from "@/hooks/useAuth"; // Update to use enhanced hook
 import { useRouter } from "next/navigation";
 import { locationService, Location } from "@/services/locationService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export default function DangTinPage() {
   const router = useRouter();
@@ -72,7 +72,7 @@ export default function DangTinPage() {
         const data = await locationService.getProvinces();
         setProvinces(data);
       } catch {
-        toast.error("Có lỗi xảy ra khi tải danh sách tỉnh/thành");
+        showErrorToast("Có lỗi xảy ra khi tải danh sách tỉnh/thành");
       } finally {
         setLocationLoading(false);
       }
@@ -92,7 +92,7 @@ export default function DangTinPage() {
           );
           setWards(data);
         } catch {
-          toast.error("Có lỗi xảy ra khi tải danh sách phường/xã");
+          showErrorToast("Có lỗi xảy ra khi tải danh sách phường/xã");
         } finally {
           setLocationLoading(false);
         }

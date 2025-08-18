@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 import { API_BASE_URL } from "@/services/authService";
 
@@ -192,7 +192,7 @@ export async function getUsers(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi tải danh sách người dùng");
+    showErrorToast("Lỗi khi tải danh sách người dùng");
     return {
       success: false,
       data: { users: [] },
@@ -214,7 +214,7 @@ export async function getUserStats(): Promise<UserStatsResponse> {
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi tải thống kê người dùng");
+    showErrorToast("Lỗi khi tải thống kê người dùng");
     return {
       success: false,
       data: {
@@ -243,7 +243,7 @@ export async function getUserById(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi tải thông tin người dùng");
+    showErrorToast("Lỗi khi tải thông tin người dùng");
     return {
       success: false,
       message: "Có lỗi xảy ra khi tải thông tin người dùng",
@@ -273,7 +273,7 @@ export async function updateUserStatus(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi cập nhật trạng thái người dùng");
+    showErrorToast("Lỗi khi cập nhật trạng thái người dùng");
     return {
       success: false,
       message:
@@ -304,7 +304,7 @@ export async function deleteUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi xóa người dùng");
+    showErrorToast("Lỗi khi xóa người dùng");
     return {
       success: false,
       message:
@@ -337,7 +337,7 @@ export async function updateUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi cập nhật thông tin người dùng");
+    showErrorToast("Lỗi khi cập nhật thông tin người dùng");
     return {
       success: false,
       message:
@@ -382,7 +382,7 @@ export async function getUserPosts(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi lấy danh sách tin đăng");
+    showErrorToast("Lỗi khi lấy danh sách tin đăng");
     return {
       success: false,
       data: {
@@ -433,7 +433,7 @@ export async function getUserPayments(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi lấy lịch sử giao dịch");
+    showErrorToast("Lỗi khi lấy lịch sử giao dịch");
     return {
       success: false,
       data: {
@@ -481,7 +481,7 @@ export async function getUserLogs(
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi lấy lịch sử thay đổi");
+    showErrorToast("Lỗi khi lấy lịch sử thay đổi");
     return {
       success: false,
       data: {
@@ -517,7 +517,7 @@ export async function getPublicUser(userId: string): Promise<{
     const data = await response.json();
     return data;
   } catch (error) {
-    toast.error("Lỗi khi lấy thông tin người dùng");
+    showErrorToast("Lỗi khi lấy thông tin người dùng");
     return {
       success: false,
       message:

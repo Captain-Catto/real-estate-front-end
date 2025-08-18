@@ -5,7 +5,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import { newsService } from "@/services/newsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 // Định nghĩa kiểu dữ liệu cho news
 interface TransformedNewsItem {
@@ -149,7 +149,7 @@ const FixedNewsSection = () => {
           "tin-tuc": hotNews.length > 0 ? hotNews : placeholderData["tin-tuc"],
         });
       } catch {
-        toast.error("Không thể tải tin tức");
+        showErrorToast("Không thể tải tin tức");
         // Keep placeholder data in case of error
       } finally {
         setIsLoading(false);

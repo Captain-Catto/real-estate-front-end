@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Category, categoryService } from "@/services/categoryService";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface NavbarCategoriesProps {
   type: "property" | "project";
@@ -32,7 +32,7 @@ export default function NavbarCategories({
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         setCategories(activeCategories);
       } catch (error) {
-        toast.error("Lấy danh sách danh mục thất bại");
+        showErrorToast("Lấy danh sách danh mục thất bại");
       } finally {
         setLoading(false);
       }

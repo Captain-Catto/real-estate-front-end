@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/store/hooks";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import { FavoriteItem } from "@/store/slices/favoritesSlices";
 import { formatPriceByType } from "@/utils/format";
 import NotificationDropdown from "@/components/notifications/NotificationDropdown";
@@ -67,7 +67,7 @@ export default function ActionButton() {
   const handleRemoveFavorite = async (itemId: string) => {
     try {
       await removeFavorite(itemId);
-      toast.success("Đã xóa khỏi danh sách yêu thích");
+      showSuccessToast("Đã xóa khỏi danh sách yêu thích");
 
       // Dispatch custom event to notify other components
       window.dispatchEvent(
@@ -79,9 +79,7 @@ export default function ActionButton() {
         })
       );
     } catch (error) {
-      // Log for debugging, show user-friendly message via toast
-      console.log("Remove favorite error (logged for debugging):", error);
-      toast.error("Có lỗi xảy ra khi xóa yêu thích");
+      showErrorToast(error, "Có lỗi xảy ra khi xóa yêu thích");
     }
   };
 

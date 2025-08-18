@@ -17,7 +17,7 @@ import {
   AdminPaymentStats,
   AdminPaymentFilters,
 } from "@/services/adminTransactionService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 function AdminTransactionsInternal() {
   const [transactions, setTransactions] = useState<AdminPayment[]>([]);
@@ -60,10 +60,10 @@ function AdminTransactionsInternal() {
           );
         }
       } else {
-        toast.error("Không thể tải danh sách giao dịch");
+        showErrorToast("Không thể tải danh sách giao dịch");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải giao dịch");
+      showErrorToast("Có lỗi xảy ra khi tải giao dịch");
     } finally {
       setLoading(false);
     }

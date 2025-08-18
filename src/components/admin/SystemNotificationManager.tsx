@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import {
   notificationService,
   type User,
@@ -62,11 +62,11 @@ export default function SystemNotificationManager() {
       if (result.success) {
         setPreviewData(result.data);
       } else {
-        toast.error(result.message || "Lỗi khi xem trước");
+        showErrorToast(result.message || "Lỗi khi xem trước");
       }
     } catch (error) {
-      // Silent error - đã có toast.error("Lỗi kết nối")
-      toast.error("Lỗi kết nối");
+      // Silent error - đã có showErrorToast("Lỗi kết nối")
+      showErrorToast("Lỗi kết nối");
     } finally {
       setPreviewLoading(false);
     }
@@ -86,11 +86,11 @@ export default function SystemNotificationManager() {
       if (result.success) {
         setSearchResults(result.data);
       } else {
-        toast.error(result.message || "Lỗi tìm kiếm");
+        showErrorToast(result.message || "Lỗi tìm kiếm");
       }
     } catch (error) {
-      // Silent error - đã có toast.error("Lỗi kết nối")
-      toast.error("Lỗi kết nối");
+      // Silent error - đã có showErrorToast("Lỗi kết nối")
+      showErrorToast("Lỗi kết nối");
     } finally {
       setSearchLoading(false);
     }
@@ -119,7 +119,7 @@ export default function SystemNotificationManager() {
   // Send notification
   const sendNotification = async () => {
     if (!formData.title.trim() || !formData.message.trim()) {
-      toast.error("Vui lòng nhập đầy đủ tiêu đề và nội dung");
+      showErrorToast("Vui lòng nhập đầy đủ tiêu đề và nội dung");
       return;
     }
 
@@ -127,7 +127,7 @@ export default function SystemNotificationManager() {
       formData.targetType === "specific" &&
       formData.targetUsers.length === 0
     ) {
-      toast.error("Vui lòng chọn ít nhất một người dùng");
+      showErrorToast("Vui lòng chọn ít nhất một người dùng");
       return;
     }
 
@@ -147,7 +147,7 @@ export default function SystemNotificationManager() {
       );
 
       if (result.success) {
-        toast.success(result.message || "Gửi thông báo thành công");
+        showSuccessToast(result.message || "Gửi thông báo thành công");
         // Reset form
         setFormData({
           title: "",
@@ -160,11 +160,10 @@ export default function SystemNotificationManager() {
         setShowActionButton(false);
         setPreviewData(null);
       } else {
-        toast.error(result.message || "Lỗi khi gửi thông báo");
+        showErrorToast(result.message || "Lỗi khi gửi thông báo");
       }
     } catch (error) {
-      // Silent error - đã có toast.error("Lỗi kết nối")
-      toast.error("Lỗi kết nối");
+      showErrorToast(error, "Lỗi kết nối");
     } finally {
       setLoading(false);
     }

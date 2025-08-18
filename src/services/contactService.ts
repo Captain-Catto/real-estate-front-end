@@ -1,5 +1,5 @@
 import { getAccessToken } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface ContactMessage {
@@ -61,7 +61,7 @@ class ContactService {
         message: result.message || "Contact message sent successfully",
       };
     } catch (error) {
-      toast.error("Gửi tin nhắn liên hệ thất bại");
+      showErrorToast("Gửi tin nhắn liên hệ thất bại");
       return {
         success: false,
         message:
@@ -86,7 +86,7 @@ class ContactService {
 
       return response;
     } catch (error) {
-      toast.error("Lỗi kết nối mạng");
+      showErrorToast("Lỗi kết nối mạng");
       throw error;
     }
   }
@@ -148,7 +148,7 @@ class ContactService {
         },
       };
     } catch (error) {
-      toast.error("Lấy danh sách tin nhắn liên hệ thất bại");
+      showErrorToast("Lấy danh sách tin nhắn liên hệ thất bại");
       throw error;
     }
   }
@@ -167,7 +167,7 @@ class ContactService {
       const result = await response.json();
       return result.data.message;
     } catch (error) {
-      toast.error("Lấy tin nhắn liên hệ thất bại");
+      showErrorToast("Lấy tin nhắn liên hệ thất bại");
       throw error;
     }
   }
@@ -196,7 +196,7 @@ class ContactService {
 
       return { success: true };
     } catch (error) {
-      toast.error("Cập nhật trạng thái tin nhắn thất bại");
+      showErrorToast("Cập nhật trạng thái tin nhắn thất bại");
       throw error;
     }
   }
@@ -222,7 +222,7 @@ class ContactService {
 
       return { success: true };
     } catch (error) {
-      toast.error("Trả lời tin nhắn liên hệ thất bại");
+      showErrorToast("Trả lời tin nhắn liên hệ thất bại");
       throw error;
     }
   }
@@ -244,7 +244,7 @@ class ContactService {
 
       return { success: true };
     } catch (error) {
-      toast.error("Xóa tin nhắn liên hệ thất bại");
+      showErrorToast("Xóa tin nhắn liên hệ thất bại");
       throw error;
     }
   }
@@ -275,7 +275,7 @@ class ContactService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      toast.error("Lấy thống kê tin nhắn liên hệ thất bại");
+      showErrorToast("Lấy thống kê tin nhắn liên hệ thất bại");
       // Return default stats if error
       return {
         total: 0,
@@ -312,7 +312,7 @@ class ContactService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      toast.error("Tạo log liên hệ thất bại");
+      showErrorToast("Tạo log liên hệ thất bại");
       throw error;
     }
   }
@@ -332,7 +332,7 @@ class ContactService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      toast.error("Lấy danh sách log liên hệ thất bại");
+      showErrorToast("Lấy danh sách log liên hệ thất bại");
       throw error;
     }
   }
@@ -358,7 +358,7 @@ class ContactService {
 
       return { success: true };
     } catch (error) {
-      toast.error("Cập nhật ghi chú log liên hệ thất bại");
+      showErrorToast("Cập nhật ghi chú log liên hệ thất bại");
       throw error;
     }
   }

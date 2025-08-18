@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/store/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -44,7 +44,7 @@ export default function RoleGuard({
     // If not authenticated, redirect to login
     if (!isAuthenticated) {
       if (showToast) {
-        toast.error("Vui lòng đăng nhập để tiếp tục");
+        showErrorToast("Vui lòng đăng nhập để tiếp tục");
       }
       router.push("/dang-nhap");
       return;
@@ -53,7 +53,7 @@ export default function RoleGuard({
     // If user doesn't have required role
     if (!hasRole(allowedRoles)) {
       if (showToast) {
-        toast.error("Bạn không có quyền truy cập vào trang này");
+        showErrorToast("Bạn không có quyền truy cập vào trang này");
       }
       router.push(redirectTo);
       return;

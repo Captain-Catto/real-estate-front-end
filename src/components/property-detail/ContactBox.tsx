@@ -6,7 +6,7 @@ import {
   contactService,
   CreateContactMessage,
 } from "@/services/contactService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ContactBoxProps {
   author: {
@@ -76,7 +76,7 @@ export function ContactBox({
         setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi gửi thông tin liên hệ");
+      showErrorToast("Có lỗi xảy ra khi gửi thông tin liên hệ");
       setErrorMessage("Có lỗi xảy ra khi gửi thông tin. Vui lòng thử lại!");
     } finally {
       setIsSubmitting(false);

@@ -7,7 +7,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 import PermissionGuard from "@/components/auth/PermissionGuard";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import {
   UserGroupIcon,
   HomeIcon,
@@ -57,7 +57,7 @@ function AdminDashboard() {
           pendingPosts: 45,
         });
       } catch {
-        toast.error("Lỗi khi tải thống kê dashboard");
+        showErrorToast("Lỗi khi tải thống kê dashboard");
       } finally {
         setLoading(false);
       }

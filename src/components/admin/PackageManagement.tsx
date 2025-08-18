@@ -6,7 +6,7 @@ import {
   Package,
   PackageFormData,
 } from "@/services/packageService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 const PackageManagement = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -40,10 +40,10 @@ const PackageManagement = () => {
       if (result.success) {
         setPackages(result.data.packages);
       } else {
-        toast.error("Lỗi khi tải danh sách gói");
+        showErrorToast("Lỗi khi tải danh sách gói");
       }
     } catch (error) {
-      toast.error("Lỗi kết nối server");
+      showErrorToast("Lỗi kết nối server");
     } finally {
       setLoading(false);
     }
@@ -55,15 +55,15 @@ const PackageManagement = () => {
       const result = await packageService.admin.createPackage(packageData);
 
       if (result.success) {
-        toast.success("Tạo gói thành công!");
+        showSuccessToast("Tạo gói thành công!");
         fetchPackages();
         setShowCreateForm(false);
         resetForm();
       } else {
-        toast.error(result.message || "Lỗi khi tạo gói");
+        showErrorToast(result.message || "Lỗi khi tạo gói");
       }
     } catch (error) {
-      toast.error("Lỗi kết nối server");
+      showErrorToast(error, "Lỗi kết nối server");
     }
   };
 
@@ -73,15 +73,15 @@ const PackageManagement = () => {
       const result = await packageService.admin.updatePackage(id, packageData);
 
       if (result.success) {
-        toast.success("Cập nhật gói thành công!");
+        showSuccessToast("Cập nhật gói thành công!");
         fetchPackages();
         setEditingPackage(null);
         resetForm();
       } else {
-        toast.error(result.message || "Lỗi khi cập nhật gói");
+        showErrorToast(result.message || "Lỗi khi cập nhật gói");
       }
     } catch (error) {
-      toast.error("Lỗi kết nối server");
+      showErrorToast(error, "Lỗi kết nối server");
     }
   };
 
@@ -93,13 +93,13 @@ const PackageManagement = () => {
       const result = await packageService.admin.deletePackage(id);
 
       if (result.success) {
-        toast.success("Xóa gói thành công!");
+        showSuccessToast("Xóa gói thành công!");
         fetchPackages();
       } else {
-        toast.error(result.message || "Lỗi khi xóa gói");
+        showErrorToast(result.message || "Lỗi khi xóa gói");
       }
     } catch (error) {
-      toast.error("Lỗi kết nối server");
+      showErrorToast(error, "Lỗi kết nối server");
     }
   };
 

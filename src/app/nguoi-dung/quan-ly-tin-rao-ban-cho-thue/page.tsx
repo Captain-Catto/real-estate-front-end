@@ -22,7 +22,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import ExtendPostModal from "@/components/modals/ExtendPostModal/ExtendPostModal";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 // Use Post interface from service
 type Post = ServicePost & {
@@ -80,7 +80,7 @@ export default function QuanLyTinDangPage() {
         const response = await postService.getUserPosts(params);
         setPosts(response.data?.posts || []);
       } catch {
-        toast.error("Không thể tải danh sách tin đăng");
+        showErrorToast("Không thể tải danh sách tin đăng");
       } finally {
         setIsLoading(false);
       }
@@ -105,11 +105,11 @@ export default function QuanLyTinDangPage() {
       // Delete the post
       await postService.deletePost(id);
       setPosts((prev) => prev.filter((post) => post._id !== id));
-      toast.success("Đã xóa tin đăng thành công");
+      showSuccessToast("Đã xóa tin đăng thành công");
       // Reload page to refresh data
       window.location.reload();
     } catch {
-      toast.error("Không thể xóa tin đăng");
+      showErrorToast("Không thể xóa tin đăng");
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useRef } from "react";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import { postService, adminPostsService } from "@/services/postsService";
 import { UploadService } from "@/services/uploadService";
 import { useAuth } from "@/store/hooks";
@@ -13,7 +14,6 @@ import {
   Location,
   AdminProvince,
 } from "@/services/locationService";
-import { toast } from "sonner";
 
 interface FormData {
   // Basic Info
@@ -155,7 +155,7 @@ export function useEditPostModal() {
         console.log("Active categories:", activeCategories);
         setCategories(activeCategories);
       } catch {
-        toast.error("Không thể tải danh sách loại bất động sản");
+        showErrorToast("Không thể tải danh sách loại bất động sản");
       }
     };
 
@@ -169,7 +169,7 @@ export function useEditPostModal() {
         const result = await ProjectService.getProjects();
         setProjects(result || []);
       } catch {
-        toast.error("Không thể tải danh sách dự án");
+        showErrorToast("Không thể tải danh sách dự án");
       }
     };
 
@@ -207,11 +207,11 @@ export function useEditPostModal() {
           );
           setProvinces(transformedProvinces);
         } else {
-          toast.error("Dữ liệu tỉnh thành không hợp lệ");
+          showErrorToast("Dữ liệu tỉnh thành không hợp lệ");
           setProvinces([]);
         }
       } catch {
-        toast.error("Không thể tải danh sách tỉnh thành");
+        showErrorToast("Không thể tải danh sách tỉnh thành");
         setProvinces([]);
       } finally {
         setLocationLoading(false);
@@ -252,7 +252,7 @@ export function useEditPostModal() {
               province.code
             );
           } else {
-            toast.error("Không tìm thấy tỉnh thành");
+            showErrorToast("Không tìm thấy tỉnh thành");
             setWards([]);
             setLocationLoading(false);
             return;
@@ -263,7 +263,7 @@ export function useEditPostModal() {
         const result = await locationService.getWardsFromProvince(provinceCode);
         setWards(result || []);
       } catch {
-        toast.error("Không thể tải danh sách phường xã");
+        showErrorToast("Không thể tải danh sách phường xã");
         setWards([]);
       } finally {
         setLocationLoading(false);
@@ -541,22 +541,22 @@ export function useEditPostModal() {
 
       if (result.success) {
         if (editingPost.status === "rejected") {
-          toast.success("Tin đăng đã được gửi lại để chờ duyệt!");
+          showSuccessToast("Tin đăng đã được gửi lại để chờ duyệt!");
         } else {
-          toast.success("Cập nhật tin đăng thành công!");
+          showSuccessToast("Cập nhật tin đăng thành công!");
         }
         close();
         // Refresh page or navigate
         router.refresh();
       } else {
         if (editingPost.status === "rejected") {
-          toast.error(result.message || "Có lỗi xảy ra khi gửi lại tin đăng");
+          showErrorToast(result.message || "Có lỗi xảy ra khi gửi lại tin đăng");
         } else {
-          toast.error(result.message || "Có lỗi xảy ra khi cập nhật tin đăng");
+          showErrorToast(result.message || "Có lỗi xảy ra khi cập nhật tin đăng");
         }
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật tin đăng");
+      showErrorToast("Có lỗi xảy ra khi cập nhật tin đăng");
     } finally {
       setIsSubmitting(false);
     }
@@ -606,7 +606,7 @@ export function useEditPostModal() {
             throw new Error("No images were uploaded successfully");
           }
         } catch {
-          toast.error("Không thể upload hình ảnh. Vui lòng thử lại.");
+          showErrorToast("Không thể upload hình ảnh. Vui lòng thử lại.");
           return;
         }
       }
@@ -670,9 +670,9 @@ export function useEditPostModal() {
         // Update local state
         setExistingImages(finalImagesList);
 
-        toast.success("Hình ảnh đã được cập nhật thành công!");
+        showSuccessToast("Hình ảnh đã được cập nhật thành công!");
       } catch {
-        toast.error("Có lỗi khi cập nhật hình ảnh vào bài đăng.");
+        showErrorToast("Có lỗi khi cập nhật hình ảnh vào bài đăng.");
         return;
       }
 
@@ -685,14 +685,14 @@ export function useEditPostModal() {
       } else {
         console.log("✅ Edit complete - images updated successfully");
         // For other statuses, just finish the edit process
-        toast.success("Tin đăng đã được cập nhật thành công!");
+        showSuccessToast("Tin đăng đã được cập nhật thành công!");
         setTimeout(() => {
           close();
           window.location.reload(); // Refresh to see updated images
         }, 1000);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi xử lý hình ảnh");
+      showErrorToast("Có lỗi xảy ra khi xử lý hình ảnh");
     } finally {
       setIsSubmitting(false);
     }
@@ -747,18 +747,18 @@ export function useEditPostModal() {
 
       if (result.success) {
         if (editingPost.status === "rejected") {
-          toast.success("Tin đăng đã được gửi lại để chờ duyệt!");
+          showSuccessToast("Tin đăng đã được gửi lại để chờ duyệt!");
         } else {
-          toast.success("Cập nhật gói tin thành công!");
+          showSuccessToast("Cập nhật gói tin thành công!");
         }
         close();
         refreshWallet();
         router.refresh();
       } else {
-        toast.error(result.message || "Có lỗi xảy ra khi cập nhật gói tin");
+        showErrorToast(result.message || "Có lỗi xảy ra khi cập nhật gói tin");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật gói tin");
+      showErrorToast("Có lỗi xảy ra khi cập nhật gói tin");
       setPaymentError("Có lỗi xảy ra khi thanh toán");
     } finally {
       setIsSubmitting(false);

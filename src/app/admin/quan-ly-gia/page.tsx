@@ -5,7 +5,7 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggablePriceTable from "@/components/admin/DraggablePriceTable";
 import { fetchWithAuth } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -61,10 +61,10 @@ function PricesManagementInternalContent() {
         setPrices(data.data);
         setTotalPages(data.pagination?.totalPages || 1);
       } else {
-        toast.error("Có lỗi xảy ra khi lấy danh sách khoảng giá");
+        showErrorToast("Có lỗi xảy ra khi lấy danh sách khoảng giá");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải dữ liệu");
+      showErrorToast("Có lỗi xảy ra khi tải dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ function PricesManagementInternalContent() {
         alert("Lỗi: " + data.message);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tạo khoảng giá");
+      showErrorToast("Có lỗi xảy ra khi tạo khoảng giá");
     }
   };
 
@@ -143,7 +143,7 @@ function PricesManagementInternalContent() {
         alert("Lỗi: " + data.message);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật khoảng giá");
+      showErrorToast("Có lỗi xảy ra khi cập nhật khoảng giá");
     }
   };
 
@@ -166,7 +166,7 @@ function PricesManagementInternalContent() {
         alert("Lỗi: " + data.message);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi xóa khoảng giá");
+      showErrorToast("Có lỗi xảy ra khi xóa khoảng giá");
     }
   };
 
@@ -195,7 +195,7 @@ function PricesManagementInternalContent() {
         alert("Lỗi: " + data.message);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi thay đổi trạng thái khoảng giá");
+      showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái khoảng giá");
     }
   };
 
@@ -233,7 +233,7 @@ function PricesManagementInternalContent() {
         fetchPrices();
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật thứ tự");
+      showErrorToast("Có lỗi xảy ra khi cập nhật thứ tự");
       fetchPrices();
     }
   };

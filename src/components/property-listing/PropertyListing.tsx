@@ -13,7 +13,7 @@ import { locationService } from "@/services/locationService";
 import { PropertyData } from "@/types/property";
 import { formatPriceByType } from "@/utils/format";
 import { getPackageBadge, shouldShowBadge } from "@/utils/packageBadgeUtils";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { MdLocationOn } from "react-icons/md";
 
 interface PropertyListingProps {
@@ -216,7 +216,7 @@ export function PropertyListing({
           initialWard: wardData,
         });
       } catch {
-        toast.error("Không thể tải thông tin địa điểm");
+        showErrorToast("Không thể tải thông tin địa điểm");
         // Fallback to simple objects if API fails
         setLocationData({
           initialCity: location.city

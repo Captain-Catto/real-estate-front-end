@@ -27,7 +27,7 @@ import {
   CreateProjectRequest,
   UpdateProjectRequest,
 } from "@/types/project";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 function AdminProjectPage() {
   const router = useRouter();
@@ -218,7 +218,7 @@ function AdminProjectPage() {
         );
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy danh sách dự án");
+      showErrorToast("Có lỗi xảy ra khi lấy danh sách dự án");
     } finally {
       setLoading(false);
     }
@@ -230,7 +230,7 @@ function AdminProjectPage() {
       const data = await DeveloperService.getDevelopersForSelection();
       setDevelopers(data);
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy danh sách nhà phát triển");
+      showErrorToast("Có lỗi xảy ra khi lấy danh sách nhà phát triển");
     }
   };
 
@@ -240,7 +240,7 @@ function AdminProjectPage() {
       const data = await categoryService.getByProjectType(true); // Get project categories only
       setCategories(data);
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy danh sách danh mục");
+      showErrorToast("Có lỗi xảy ra khi lấy danh sách danh mục");
     }
   };
 
@@ -251,7 +251,7 @@ function AdminProjectPage() {
       const data = await locationService.getProvinces();
       setProvinces(data);
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy danh sách tỉnh");
+      showErrorToast("Có lỗi xảy ra khi lấy danh sách tỉnh");
     } finally {
       setLocationLoading((prev) => ({ ...prev, provinces: false }));
     }
@@ -264,7 +264,7 @@ function AdminProjectPage() {
       const data = await locationService.getWardsFromProvince(provinceCode);
       setWards(data);
     } catch {
-      toast.error("Có lỗi xảy ra khi lấy danh sách quận/huyện");
+      showErrorToast("Có lỗi xảy ra khi lấy danh sách quận/huyện");
     } finally {
       setLocationLoading((prev) => ({ ...prev, wards: false }));
     }
@@ -389,7 +389,7 @@ function AdminProjectPage() {
           }
         }
       } catch {
-        toast.error("Có lỗi xảy ra khi lấy thông tin chi tiết dự án");
+        showErrorToast("Có lỗi xảy ra khi lấy thông tin chi tiết dự án");
       } finally {
         setModalLoading(false);
       }
@@ -554,7 +554,7 @@ function AdminProjectPage() {
         }));
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi upload ảnh");
+      showErrorToast("Có lỗi xảy ra khi upload ảnh");
     } finally {
       setUploading(false);
     }
@@ -572,7 +572,7 @@ function AdminProjectPage() {
       // Try to delete from server (optional, don't block UI if fails)
       await UploadService.deleteImage(imageUrl);
     } catch {
-      toast.error("Có lỗi xảy ra khi xóa ảnh");
+      showErrorToast("Có lỗi xảy ra khi xóa ảnh");
     }
   };
 
@@ -646,7 +646,7 @@ function AdminProjectPage() {
         }
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi lưu dự án");
+      showErrorToast("Có lỗi xảy ra khi lưu dự án");
     }
   };
 
@@ -656,7 +656,7 @@ function AdminProjectPage() {
         await ProjectService.deleteProject(id);
         fetchProjects();
       } catch {
-        toast.error("Có lỗi xảy ra khi xóa dự án");
+        showErrorToast("Có lỗi xảy ra khi xóa dự án");
       }
     }
   };

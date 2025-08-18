@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "./authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import {
   Developer,
   DeveloperForSelection,
@@ -58,7 +58,7 @@ export const DeveloperService = {
         },
       };
     } catch (error) {
-      toast.error("Không thể tải danh sách chủ đầu tư");
+      showErrorToast("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },
@@ -114,7 +114,7 @@ export const DeveloperService = {
         },
       };
     } catch (error) {
-      toast.error("Không thể tải danh sách chủ đầu tư");
+      showErrorToast("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },
@@ -136,7 +136,7 @@ export const DeveloperService = {
 
       return null;
     } catch (error) {
-      toast.error("Không thể tải thông tin chủ đầu tư");
+      showErrorToast("Không thể tải thông tin chủ đầu tư");
       throw error;
     }
   },
@@ -159,7 +159,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to create developer");
       }
     } catch (error) {
-      toast.error("Không thể tạo chủ đầu tư");
+      showErrorToast("Không thể tạo chủ đầu tư");
       throw error;
     }
   },
@@ -185,7 +185,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to update developer");
       }
     } catch (error) {
-      toast.error("Không thể cập nhật chủ đầu tư");
+      showErrorToast("Không thể cập nhật chủ đầu tư");
       throw error;
     }
   },
@@ -205,7 +205,7 @@ export const DeveloperService = {
         throw new Error(result.message || "Failed to delete developer");
       }
     } catch (error) {
-      toast.error("Không thể xóa chủ đầu tư");
+      showErrorToast("Không thể xóa chủ đầu tư");
       throw error;
     }
   },
@@ -222,7 +222,7 @@ export const DeveloperService = {
       const developers = await response.json();
       return developers;
     } catch (error) {
-      toast.error("Không thể tải danh sách chủ đầu tư");
+      showErrorToast("Không thể tải danh sách chủ đầu tư");
       throw error;
     }
   },

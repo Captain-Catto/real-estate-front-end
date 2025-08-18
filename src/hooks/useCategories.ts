@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Category, categoryService } from "@/services/categoryService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface UseCategoriesOptions {
   type?: "all" | "property" | "project";
@@ -42,7 +42,7 @@ export function useCategories(options: UseCategoriesOptions = {}) {
 
       setCategories(result);
     } catch {
-      toast.error("Không thể tải danh sách danh mục");
+      showErrorToast("Không thể tải danh sách danh mục");
       setError("Failed to fetch categories");
     } finally {
       setLoading(false);

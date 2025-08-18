@@ -6,7 +6,7 @@ import Link from "next/link";
 import { paymentService, VNPayData } from "@/services/paymentService";
 import { useWallet } from "@/hooks/useWallet";
 import { triggerNotificationRefresh } from "@/hooks/useNotificationRefresh";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 function PaymentResultPageInternal() {
   const searchParams = useSearchParams();
@@ -205,10 +205,10 @@ function PaymentResultPageInternal() {
                   );
                 }
               } else {
-                toast.error("Số tiền không hợp lệ");
+                showErrorToast("Số tiền không hợp lệ");
               }
             } else {
-              toast.error("Thiếu orderId hoặc amount cho processWalletPayment");
+              showErrorToast("Thiếu orderId hoặc amount cho processWalletPayment");
             }
 
             // Update wallet balance immediately
@@ -256,10 +256,10 @@ function PaymentResultPageInternal() {
                 updateTimestamp
               );
             } catch {
-              toast.error("Có lỗi xảy ra khi phát sóng cập nhật ví");
+              showErrorToast("Có lỗi xảy ra khi phát sóng cập nhật ví");
             }
           } catch {
-            toast.error("Có lỗi xảy ra trong quá trình thanh toán");
+            showErrorToast("Có lỗi xảy ra trong quá trình thanh toán");
           }
         } else {
           setLoading(false);
@@ -327,7 +327,7 @@ function PaymentResultPageInternal() {
           if (updateResult.success) {
             console.log("Payment status updated successfully");
           } else {
-            toast.error("Cập nhật trạng thái thanh toán thất bại");
+            showErrorToast("Cập nhật trạng thái thanh toán thất bại");
           }
         } else {
           console.log(
@@ -340,7 +340,7 @@ function PaymentResultPageInternal() {
         setStatusChecked(true);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái thanh toán");
+      showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái thanh toán");
     } finally {
       setLoading(false);
     }
@@ -372,7 +372,7 @@ function PaymentResultPageInternal() {
           if (updateResponse.success) {
             console.log("Payment status updated to failed successfully");
           } else {
-            toast.error("Cập nhật trạng thái thanh toán thất bại");
+            showErrorToast("Cập nhật trạng thái thanh toán thất bại");
           }
         } else {
           console.log(
@@ -385,7 +385,7 @@ function PaymentResultPageInternal() {
         setStatusChecked(true);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái thanh toán");
+      showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái thanh toán");
     } finally {
       setLoading(false);
     }

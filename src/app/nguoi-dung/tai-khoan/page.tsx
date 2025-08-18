@@ -4,7 +4,9 @@ import { useAuth } from "@/store/hooks";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useAppDispatch } from "@/store/hooks";
-import { updateProfileAsync } from "@/store/slices/authSlice";
+import { updateProfileAsync, changePasswordAsync } from "@/store/slices/authSlice";
+import { UploadService } from "@/services/uploadService";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import {
   UserIcon,
   EnvelopeIcon,
@@ -44,10 +46,6 @@ export default function TaiKhoanPage() {
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -65,14 +63,11 @@ export default function TaiKhoanPage() {
       ...prev,
       [field]: value,
     }));
-    // Clear message when user starts typing
-    if (message) setMessage(null);
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdating(true);
-    setMessage(null);
 
     try {
       const updateData = {
@@ -81,14 +76,10 @@ export default function TaiKhoanPage() {
       };
 
       await dispatch(updateProfileAsync(updateData)).unwrap();
-      setMessage({ type: "success", text: "Cập nhật thông tin thành công!" });
+      showSuccessToast("Cập nhật thông tin thành công!");
       setIsEditing(false);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Có lỗi xảy ra khi cập nhật thông tin";
-      setMessage({ type: "error", text: errorMessage });
+    } catch (error: any) {      
+      showErrorToast(error, "Có lỗi xảy ra khi cập nhật thông tin");
     } finally {
       setIsUpdating(false);
     }
@@ -96,44 +87,39 @@ export default function TaiKhoanPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
 
     // Validate passwords
     if (formData.newPassword !== formData.confirmPassword) {
-      setMessage({ type: "error", text: "Mật khẩu xác nhận không khớp" });
+      showErrorToast("Mật khẩu xác nhận không khớp");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      setMessage({
-        type: "error",
-        text: "Mật khẩu mới phải có ít nhất 6 ký tự",
-      });
+      showErrorToast("Mật khẩu mới phải có ít nhất 6 ký tự");
       return;
     }
 
     setIsUpdating(true);
 
     try {
-      // TODO: Implement password change API call
-      console.log("Changing password...");
+      // Call change password API
+      const passwordData = {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword,
+      };
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await dispatch(changePasswordAsync(passwordData)).unwrap();
 
-      setMessage({ type: "success", text: "Đổi mật khẩu thành công!" });
+      showSuccessToast("Đổi mật khẩu thành công!");
       setFormData((prev) => ({
         ...prev,
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       }));
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Có lỗi xảy ra khi đổi mật khẩu";
-      setMessage({ type: "error", text: errorMessage });
+    } catch (error: any) {
+      showErrorToast(error, "Có lỗi xảy ra khi đổi mật khẩu");
     } finally {
       setIsUpdating(false);
     }
@@ -147,37 +133,33 @@ export default function TaiKhoanPage() {
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setMessage({
-        type: "error",
-        text: "Kích thước file không được vượt quá 5MB",
-      });
+      showErrorToast("Kích thước file không được vượt quá 5MB");
       return;
     }
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      setMessage({ type: "error", text: "Chỉ được phép upload file ảnh" });
+      showErrorToast("Chỉ được phép upload file ảnh");
       return;
     }
 
     setIsUpdating(true);
-    setMessage(null);
 
     try {
-      // TODO: Implement avatar upload
-      console.log("Uploading avatar...");
+      // Step 1: Upload image to S3
+      const uploadResult = await UploadService.uploadImage(file);
+      
+      if (!uploadResult.success || !uploadResult.data?.url) {
+        throw new Error(uploadResult.message || "Upload thất bại");
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Step 2: Update profile with new avatar URL
+      const updateData = { avatar: uploadResult.data.url };
+      await dispatch(updateProfileAsync(updateData)).unwrap();
 
-      setMessage({
-        type: "success",
-        text: "Cập nhật ảnh đại diện thành công!",
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Có lỗi xảy ra khi upload ảnh";
-      setMessage({ type: "error", text: errorMessage });
+      showSuccessToast("Cập nhật ảnh đại diện thành công!");
+    } catch (error: any) {
+      showErrorToast(error, "Có lỗi xảy ra khi upload ảnh");
     } finally {
       setIsUpdating(false);
     }
@@ -201,18 +183,6 @@ export default function TaiKhoanPage() {
         </p>
       </div>
 
-      {/* Message */}
-      {message && (
-        <div
-          className={`p-4 rounded-lg ${
-            message.type === "success"
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -271,7 +241,6 @@ export default function TaiKhoanPage() {
                           phoneNumber: user.phoneNumber || "",
                         }));
                       }
-                      setMessage(null);
                     }}
                     className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
                   >

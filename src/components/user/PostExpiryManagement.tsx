@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import PackageSelection from "../common/PackageSelection";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
@@ -36,7 +36,7 @@ function PostExpiryManagement() {
         setPosts(data.data.posts);
       }
     } catch {
-      toast.error("Không thể tải danh sách tin đăng");
+      showErrorToast("Không thể tải danh sách tin đăng");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ function PostExpiryManagement() {
         alert(`❌ ${data.message || "Lỗi khi gia hạn tin đăng"}`);
       }
     } catch {
-      toast.error("Lỗi kết nối server");
+      showErrorToast("Lỗi kết nối server");
     }
   };
 

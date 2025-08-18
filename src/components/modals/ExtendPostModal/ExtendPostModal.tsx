@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { postService } from "@/services/postsService";
 import { paymentService } from "@/services/paymentService";
-import { toast } from "sonner";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 
 interface Package {
   _id: string;
@@ -107,7 +107,7 @@ export default function ExtendPostModal({
       }
     } catch {
       // Silent error for extend post data loading
-      toast.error("Không thể tải thông tin gói dịch vụ");
+      showErrorToast("Không thể tải thông tin gói dịch vụ");
     } finally {
       setFetchingData(false);
     }
@@ -115,12 +115,12 @@ export default function ExtendPostModal({
 
   const handleExtend = async () => {
     if (!selectedPackage) {
-      toast.error("Vui lòng chọn gói dịch vụ");
+      showErrorToast("Vui lòng chọn gói dịch vụ");
       return;
     }
 
     if (walletBalance < selectedPackage.price) {
-      toast.error("Số dư ví không đủ để gia hạn tin đăng");
+      showErrorToast("Số dư ví không đủ để gia hạn tin đăng");
       return;
     }
 
@@ -132,7 +132,7 @@ export default function ExtendPostModal({
       );
 
       if (response.success) {
-        toast.success(
+        showSuccessToast(
           "Đã gia hạn tin đăng thành công. Tin đăng đang chờ duyệt."
         );
         // Refresh wallet balance after successful extend
@@ -151,7 +151,7 @@ export default function ExtendPostModal({
       }
     } catch (error) {
       // Error already handled by toast below
-      toast.error(
+      showErrorToast(
         error instanceof Error ? error.message : "Không thể gia hạn tin đăng"
       );
     } finally {

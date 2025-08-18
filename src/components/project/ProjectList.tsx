@@ -5,7 +5,7 @@ import { ProjectListItem } from "@/types/project";
 import { Pagination } from "@/components/common/Pagination";
 import { useLocationNames } from "@/hooks/useLocationNames";
 import Link from "next/link";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 interface ProjectListProps {
   title?: string;
@@ -88,7 +88,7 @@ export function ProjectList({
       setProjects(paginatedProjects);
       setTotalPages(Math.ceil(filteredProjects.length / pageSize));
     } catch {
-      toast.error("Có lỗi xảy ra khi tải danh sách dự án");
+      showErrorToast("Có lỗi xảy ra khi tải danh sách dự án");
       setError("Có lỗi xảy ra khi tải danh sách dự án");
     } finally {
       setLoading(false);

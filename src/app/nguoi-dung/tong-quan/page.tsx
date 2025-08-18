@@ -3,7 +3,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import {
   UserIcon,
   DocumentTextIcon,
@@ -94,7 +94,7 @@ export default function TongQuanPage() {
           if (response.success && response.data) {
             setChartData(response.data);
           } else {
-            toast.error("Không thể tải dữ liệu dashboard admin");
+            showErrorToast("Không thể tải dữ liệu dashboard admin");
             // Fallback to mock data on error
             setChartData({
               contactRequests: {
@@ -138,7 +138,7 @@ export default function TongQuanPage() {
           if (response.success && response.data) {
             setChartData(response.data);
           } else {
-            toast.error("Không thể tải dữ liệu dashboard người dùng");
+            showErrorToast("Không thể tải dữ liệu dashboard người dùng");
             // Fallback to mock data on error
             setChartData({
               contactRequests: {
@@ -202,7 +202,7 @@ export default function TongQuanPage() {
           }
         }
       } catch {
-        toast.error("Lỗi khi tải dữ liệu biểu đồ");
+        showErrorToast("Lỗi khi tải dữ liệu biểu đồ");
         // Set fallback mock data on error
       } finally {
         setLoading(false);

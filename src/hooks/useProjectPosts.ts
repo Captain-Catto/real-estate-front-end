@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { postService } from "@/services/postsService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 
 export interface ProjectPostFilters {
   type?: "ban" | "cho-thue";
@@ -94,7 +94,7 @@ export function useProjectPosts(
         setTotalPages(0);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải danh sách tin đăng");
+      showErrorToast("Có lỗi xảy ra khi tải danh sách tin đăng");
       setError("Có lỗi xảy ra khi tải danh sách tin đăng");
       setPosts([]);
       setTotalCount(0);

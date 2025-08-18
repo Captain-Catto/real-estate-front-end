@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { packageService, Package } from "@/services/packageService";
 
 interface PackageSelectionProps {
@@ -26,7 +26,7 @@ const PackageSelection = ({
         setPackages(result.data.packages);
       }
     } catch (error) {
-      toast.error("Lấy danh sách gói dịch vụ thất bại");
+      showErrorToast("Lấy danh sách gói dịch vụ thất bại");
     } finally {
       setLoading(false);
     }

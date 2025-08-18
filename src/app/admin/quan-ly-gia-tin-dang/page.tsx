@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import {
@@ -43,7 +43,7 @@ function AdminPackagesPageInternalContent() {
         setPackages(result.data.packages);
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tải gói dịch vụ");
+      showErrorToast("Có lỗi xảy ra khi tải gói dịch vụ");
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ function AdminPackagesPageInternalContent() {
         alert(result.message || "Có lỗi xảy ra khi tạo gói dịch vụ!");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi tạo gói dịch vụ!");
+      showErrorToast("Có lỗi xảy ra khi tạo gói dịch vụ!");
     }
   };
 
@@ -87,7 +87,7 @@ function AdminPackagesPageInternalContent() {
         alert(result.message || "Có lỗi xảy ra khi cập nhật gói dịch vụ!");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật gói dịch vụ!");
+      showErrorToast("Có lỗi xảy ra khi cập nhật gói dịch vụ!");
     }
   };
 
@@ -99,10 +99,10 @@ function AdminPackagesPageInternalContent() {
           alert("Xóa gói dịch vụ thành công!");
           fetchPackages();
         } else {
-          toast.error(result.message || "Có lỗi xảy ra khi xóa gói dịch vụ!");
+          showErrorToast(result.message || "Có lỗi xảy ra khi xóa gói dịch vụ!");
         }
       } catch {
-        toast.error("Có lỗi xảy ra khi xóa gói dịch vụ!");
+        showErrorToast("Có lỗi xảy ra khi xóa gói dịch vụ!");
       }
     }
   };
@@ -151,7 +151,7 @@ function AdminPackagesPageInternalContent() {
         alert(result.message || "Có lỗi xảy ra khi cập nhật trạng thái!");
       }
     } catch {
-      toast.error("Có lỗi xảy ra khi cập nhật trạng thái!");
+      showErrorToast("Có lỗi xảy ra khi cập nhật trạng thái!");
     }
   };
 

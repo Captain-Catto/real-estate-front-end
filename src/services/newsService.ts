@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "@/services/authService";
-import { toast } from "sonner";
+import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
 export interface NewsCategory {
@@ -136,7 +136,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy danh sách tin tức thất bại");
+      showErrorToast("Lấy danh sách tin tức thất bại");
       return {
         success: false,
         data: {
@@ -169,7 +169,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy tin tức theo slug thất bại");
+      showErrorToast("Lấy tin tức theo slug thất bại");
       return {
         success: false,
         data: {
@@ -195,7 +195,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy danh mục tin tức thất bại");
+      showErrorToast("Lấy danh mục tin tức thất bại");
       return {
         success: false,
         data: [],
@@ -224,7 +224,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy tin tức nổi bật thất bại");
+      showErrorToast("Lấy tin tức nổi bật thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -250,7 +250,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy tin tức hot thất bại");
+      showErrorToast("Lấy tin tức hot thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -307,7 +307,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy danh sách tin tức admin thất bại");
+      showErrorToast("Lấy danh sách tin tức admin thất bại");
       return {
         success: false,
         data: {
@@ -344,7 +344,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Tạo tin tức thất bại");
+      showErrorToast("Tạo tin tức thất bại");
       return {
         success: false,
         message: "Không thể tạo tin tức. Vui lòng thử lại sau.",
@@ -368,7 +368,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy tin tức theo ID thất bại");
+      showErrorToast("Lấy tin tức theo ID thất bại");
       return {
         success: false,
         data: {} as NewsItem,
@@ -396,7 +396,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Cập nhật tin tức thất bại");
+      showErrorToast("Cập nhật tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật tin tức. Vui lòng thử lại sau.",
@@ -418,7 +418,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Xóa tin tức thất bại");
+      showErrorToast("Xóa tin tức thất bại");
       return {
         success: false,
         message: "Không thể xóa tin tức. Vui lòng thử lại sau.",
@@ -449,7 +449,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Cập nhật trạng thái tin tức thất bại");
+      showErrorToast("Cập nhật trạng thái tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật trạng thái tin tức. Vui lòng thử lại sau.",
@@ -473,7 +473,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Lấy thống kê tin tức thất bại");
+      showErrorToast("Lấy thống kê tin tức thất bại");
       return {
         success: false,
         data: {
@@ -550,7 +550,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      toast.error("Upload ảnh tin tức thất bại");
+      showErrorToast("Upload ảnh tin tức thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Upload failed",

@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { toast } from "sonner";
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from "@/utils/errorHandler";
 import { customerContactService } from "@/services/customerContactService";
 
 interface CallBackButtonProps {
@@ -32,29 +36,29 @@ const CallBackButton: React.FC<CallBackButtonProps> = ({
       console.log("Response from createCallBackRequest:", response);
 
       if (response.success) {
-        toast.success(
+        showSuccessToast(
           "Yêu cầu liên hệ đã được gửi thành công! Chủ bài viết sẽ liên hệ với bạn sớm nhất."
         );
         setShowNoteModal(false);
         setNotes("");
       } else {
-        toast.error(response.message || "Có lỗi xảy ra, vui lòng thử lại");
+        showErrorToast(response.message || "Có lỗi xảy ra, vui lòng thử lại");
       }
     } catch (error: unknown) {
       // Log for debugging, but show user-friendly message via toast
       console.log("Call back request error (logged for debugging):", error);
 
       if (error instanceof Error && error.message.includes("401")) {
-        toast.error("Vui lòng đăng nhập để sử dụng tính năng này");
+        showErrorToast("Vui lòng đăng nhập để sử dụng tính năng này");
       } else if (
         error instanceof Error &&
         error.message.includes("already exists")
       ) {
-        toast.info(
+        showInfoToast(
           "Bạn đã gửi yêu cầu liên hệ cho bài viết này rồi. Chủ bài viết sẽ liên hệ với bạn sớm nhất!"
         );
       } else {
-        toast.error("Có lỗi xảy ra, vui lòng thử lại");
+        showErrorToast("Có lỗi xảy ra, vui lòng thử lại");
       }
     } finally {
       setIsLoading(false);
