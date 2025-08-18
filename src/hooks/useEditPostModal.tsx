@@ -184,7 +184,7 @@ export function useEditPostModal() {
         // Sử dụng API đã được cập nhật
         const API_URL =
           process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
-        const response = await fetch(`${API_URL}/api/locations/provinces`);
+        const response = await fetch(`${API_URL}/locations/provinces`);
         const result = await response.json();
 
         if (result.success && Array.isArray(result.data)) {
