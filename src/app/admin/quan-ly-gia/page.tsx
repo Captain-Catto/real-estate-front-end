@@ -5,7 +5,7 @@ import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import DraggablePriceTable from "@/components/admin/DraggablePriceTable";
 import { fetchWithAuth } from "@/services/authService";
-import { showErrorToast } from "@/utils/errorHandler";
+import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -51,17 +51,30 @@ function PricesManagementInternalContent() {
         `http://localhost:8080/api/admin/prices?page=${currentPage}&limit=10${typeParam}`
       );
 
-      const data = await response.json();
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      // Check response status first
       if (response.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        showErrorToast("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         window.location.href = "/dang-nhap";
         return;
       }
+
+      // Only parse JSON if response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       if (data.success) {
         setPrices(data.data);
         setTotalPages(data.pagination?.totalPages || 1);
       } else {
-        showErrorToast("Có lỗi xảy ra khi lấy danh sách khoảng giá");
+        showErrorToast(
+          data.message || "Có lỗi xảy ra khi lấy danh sách khoảng giá"
+        );
       }
     } catch {
       showErrorToast("Có lỗi xảy ra khi tải dữ liệu");
@@ -88,9 +101,17 @@ function PricesManagementInternalContent() {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
-        alert("Tạo khoảng giá thành công!");
+        showSuccessToast("Tạo khoảng giá thành công!");
         setShowForm(false);
         setFormData({
           name: "",
@@ -102,7 +123,7 @@ function PricesManagementInternalContent() {
         });
         fetchPrices();
       } else {
-        alert("Lỗi: " + data.message);
+        showErrorToast("Lỗi: " + (data.message || "Có lỗi xảy ra"));
       }
     } catch {
       showErrorToast("Có lỗi xảy ra khi tạo khoảng giá");
@@ -125,9 +146,17 @@ function PricesManagementInternalContent() {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
-        alert("Cập nhật khoảng giá thành công!");
+        showSuccessToast("Cập nhật khoảng giá thành công!");
         setShowForm(false);
         setEditingPrice(null);
         setFormData({
@@ -140,7 +169,7 @@ function PricesManagementInternalContent() {
         });
         fetchPrices();
       } else {
-        alert("Lỗi: " + data.message);
+        showErrorToast("Lỗi: " + (data.message || "Có lỗi xảy ra"));
       }
     } catch {
       showErrorToast("Có lỗi xảy ra khi cập nhật khoảng giá");
@@ -158,12 +187,20 @@ function PricesManagementInternalContent() {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
-        alert("Xóa khoảng giá thành công!");
+        showSuccessToast("Xóa khoảng giá thành công!");
         fetchPrices();
       } else {
-        alert("Lỗi: " + data.message);
+        showErrorToast("Lỗi: " + (data.message || "Có lỗi xảy ra"));
       }
     } catch {
       showErrorToast("Có lỗi xảy ra khi xóa khoảng giá");
@@ -183,16 +220,24 @@ function PricesManagementInternalContent() {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
-        alert(
+        showSuccessToast(
           `${
             !price.isActive ? "Kích hoạt" : "Vô hiệu hóa"
           } khoảng giá thành công!`
         );
         fetchPrices();
       } else {
-        alert("Lỗi: " + data.message);
+        showErrorToast("Lỗi: " + (data.message || "Có lỗi xảy ra"));
       }
     } catch {
       showErrorToast("Có lỗi xảy ra khi thay đổi trạng thái khoảng giá");
@@ -225,11 +270,21 @@ function PricesManagementInternalContent() {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data.success) {
         setPrices(updatedPrices);
       } else {
-        alert("Lỗi khi cập nhật thứ tự: " + data.message);
+        showErrorToast(
+          "Lỗi khi cập nhật thứ tự: " + (data.message || "Có lỗi xảy ra")
+        );
         fetchPrices();
       }
     } catch {
