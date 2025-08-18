@@ -8,6 +8,7 @@ import { fetchWithAuth } from "@/services/authService";
 import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
 import AdminGuard from "@/components/auth/AdminGuard";
 import { PERMISSIONS } from "@/constants/permissions";
+import { API_BASE_URL } from "@/services/authService";
 
 interface Price {
   _id: string;
@@ -48,7 +49,7 @@ function PricesManagementInternalContent() {
       }
       const typeParam = filterType !== "all" ? `&type=${filterType}` : "";
       const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices?page=${currentPage}&limit=10${typeParam}`
+        `${API_BASE_URL}/admin/prices?page=${currentPage}&limit=10${typeParam}`
       );
 
       if (!response) {
@@ -90,16 +91,13 @@ function PricesManagementInternalContent() {
   const handleCreatePrice = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetchWithAuth(
-        "http://localhost:8080/api/admin/prices",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetchWithAuth(`${API_BASE_URL}/admin/prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response) {
         throw new Error("No response received");
@@ -136,7 +134,7 @@ function PricesManagementInternalContent() {
 
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices/${editingPrice._id}`,
+        `${API_BASE_URL}/admin/prices/${editingPrice._id}`,
         {
           method: "PUT",
           headers: {
@@ -181,7 +179,7 @@ function PricesManagementInternalContent() {
 
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices/${price._id}`,
+        `${API_BASE_URL}/admin/prices/${price._id}`,
         {
           method: "DELETE",
         }
@@ -210,7 +208,7 @@ function PricesManagementInternalContent() {
   const handleToggleStatus = async (price: Price) => {
     try {
       const response = await fetchWithAuth(
-        `http://localhost:8080/api/admin/prices/${price._id}/toggle-active`,
+        `${API_BASE_URL}/admin/prices/${price._id}/toggle-active`,
         {
           method: "PATCH",
           headers: {
@@ -260,7 +258,7 @@ function PricesManagementInternalContent() {
   const handleReorder = async (updatedPrices: Price[]) => {
     try {
       const response = await fetchWithAuth(
-        "http://localhost:8080/api/admin/prices/reorder",
+        `${API_BASE_URL}/admin/prices/reorder`,
         {
           method: "POST",
           headers: {
