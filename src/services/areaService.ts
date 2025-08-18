@@ -66,7 +66,7 @@ export const areaService = {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/areas?page=${page}&limit=${limit}${typeParam}`,
+        `${API_BASE_URL}/admin/areas?page=${page}&limit=${limit}${typeParam}`,
         {
           headers: {
             Authorization: `Bearer ${getAccessToken()}`,
@@ -157,7 +157,7 @@ export const areaService = {
   // Admin methods with authentication
   async create(data: CreateAreaData): Promise<AreaResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/areas`, {
+      const response = await fetch(`${API_BASE_URL}/admin/areas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -180,7 +180,7 @@ export const areaService = {
 
   async update(id: string, data: UpdateAreaData): Promise<AreaResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/areas/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/areas/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -203,7 +203,7 @@ export const areaService = {
 
   async delete(id: string): Promise<{ success: boolean; message?: string }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/areas/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/areas/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${getAccessToken()}`,
@@ -227,7 +227,7 @@ export const areaService = {
   ): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/admin/areas/${id}/toggle-status`,
+        `${API_BASE_URL}/admin/areas/${id}/toggle-status`,
         {
           method: "PATCH",
           headers: {
