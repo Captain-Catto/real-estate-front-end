@@ -238,7 +238,6 @@ export const locationService = {
 
       // Danh sách các endpoint theo thứ tự ưu tiên
       const endpoints = [
-        `${API_BASE_URL}/locations/wards-by-province/${provinceCode}`,
         `${API_BASE_URL}/locations/wards/${provinceCode}`,
         `${API_BASE_URL}/locations/districts/${provinceCode}`, // Endpoint cũ cho khả năng tương thích
       ];
