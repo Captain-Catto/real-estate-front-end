@@ -139,7 +139,7 @@ export default function LoginPageClient() {
               <span className="text-sm text-gray-600">
                 Bạn chưa có tài khoản?{" "}
                 <Link
-                  href="/register"
+                  href="/dang-ky"
                   className="text-[#e03c31] hover:underline font-bold"
                 >
                   Đăng ký
