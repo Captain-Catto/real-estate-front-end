@@ -48,7 +48,6 @@ export default function RegisterPageClient() {
     }
 
     const result = await register({
-      username: email.split("@")[0], // Lấy phần trước @ làm username
       email,
       password,
     });
