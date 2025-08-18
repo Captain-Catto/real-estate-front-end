@@ -46,6 +46,9 @@ export const newsCategoryService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/news/admin/categories`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 
@@ -63,6 +66,9 @@ export const newsCategoryService = {
         body: JSON.stringify(data),
       }
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 
@@ -81,6 +87,9 @@ export const newsCategoryService = {
         body: JSON.stringify(data),
       }
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 
@@ -99,6 +108,9 @@ export const newsCategoryService = {
         body: JSON.stringify({ isActive }),
       }
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 
@@ -112,6 +124,9 @@ export const newsCategoryService = {
         method: "DELETE",
       }
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 
@@ -129,6 +144,9 @@ export const newsCategoryService = {
         body: JSON.stringify({ orders }),
       }
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     return response.json();
   },
 

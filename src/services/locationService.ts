@@ -147,7 +147,7 @@ export const locationService = {
       }
       return result.data;
     } catch (error) {
-      showErrorToast("Lấy thông tin tỉnh thành theo slug thất bại");
+      showErrorToast(error, "Lấy thông tin tỉnh thành theo slug thất bại");
       return null;
     }
   },
@@ -176,14 +176,6 @@ export const locationService = {
       if (!response.ok) {
         showErrorToast("Lấy danh sách phường/xã thất bại");
 
-        // For debugging, try to get the error response body
-        try {
-          const errorBody = await response.text();
-          // Silent error for debugging
-        } catch {
-          // Silent error for debugging
-        }
-
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -196,7 +188,7 @@ export const locationService = {
 
       return result.data;
     } catch (error) {
-      showErrorToast("Lấy danh sách phường/xã thất bại");
+      showErrorToast(error, "Lấy danh sách phường/xã thất bại");
       if (retryCount > 0) {
         console.log(`Retrying getDistricts... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -222,7 +214,7 @@ export const locationService = {
         retryCount
       );
     } catch (error) {
-      showErrorToast("Lỗi trong getWards");
+      showErrorToast(error, "Lỗi trong getWards");
       if (retryCount > 0) {
         console.log(`Retrying getWards... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -281,31 +273,9 @@ export const locationService = {
             `Successfully fetched ${result.data.length} wards for province ${provinceCode} from ${endpoint}`
           );
           return result.data;
-        } catch (error) {
+        } catch {
           // Silent error for debugging
         }
-      }
-
-      // Nếu tất cả các endpoint đều thất bại và là trường hợp đặc biệt - Đồng Tháp province
-      if (provinceCode === "24") {
-        // Đồng Tháp province
-        console.log("Using hardcoded ward data for Đồng Tháp province");
-
-        // Danh sách các ward cho Đồng Tháp (vùng Tam Nông)
-        return [
-          {
-            _id: "tam_nong_dong_thap_id",
-            name: "Tam Nông",
-            code: "24001",
-            slug: "tam-nong",
-            type: "huyen",
-            name_with_type: "Huyện Tam Nông",
-            path: "Tam Nông, Đồng Tháp",
-            path_with_type: "Huyện Tam Nông, Tỉnh Đồng Tháp",
-            parent_code: "24",
-          },
-          // Thêm các ward khác nếu cần
-        ];
       }
 
       // Nếu tất cả đều thất bại và còn retry, thử lại
@@ -324,7 +294,7 @@ export const locationService = {
       showErrorToast("Tất cả phương thức lấy phường/xã đều thất bại");
       return [];
     } catch (error) {
-      showErrorToast("Lỗi trong getWardsFromProvince");
+      showErrorToast(error, "Lỗi trong getWardsFromProvince");
       if (retryCount > 0) {
         console.log(`Retrying... (${retryCount} attempts left)`);
         await new Promise((resolve) => setTimeout(resolve, 1000)); // Đợi 1 giây
@@ -399,7 +369,7 @@ export const locationService = {
       // Return the ward as "district" for backward compatibility
       return ward || null;
     } catch (error) {
-      showErrorToast("Lấy phường/xã theo slug thất bại");
+      showErrorToast(error, "Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -460,7 +430,7 @@ export const locationService = {
 
       return ward || null;
     } catch (error) {
-      showErrorToast("Lấy phường/xã theo slug thất bại");
+      showErrorToast(error, "Lấy phường/xã theo slug thất bại");
       return null;
     }
   },
@@ -486,7 +456,7 @@ export const locationService = {
 
       return province ? province.name : provinceSlug.replace(/-/g, " ");
     } catch (error) {
-      showErrorToast("Lấy tên tỉnh thành theo slug thất bại");
+      showErrorToast(error, "Lấy tên tỉnh thành theo slug thất bại");
       return provinceSlug.replace(/-/g, " ");
     }
   },
@@ -515,7 +485,7 @@ export const locationService = {
 
       return district ? district.name : districtSlug.replace(/-/g, " ");
     } catch (error) {
-      showErrorToast("Lấy tên quận/huyện theo slug thất bại");
+      showErrorToast(error, "Lấy tên quận/huyện theo slug thất bại");
       return districtSlug.replace(/-/g, " ");
     }
   },
@@ -570,7 +540,7 @@ export const locationService = {
 
       return ward ? ward.name : wardSlug.replace(/-/g, " ");
     } catch (error) {
-      showErrorToast("Lấy tên phường/xã theo slug thất bại");
+      showErrorToast(error, "Lấy tên phường/xã theo slug thất bại");
       return wardSlug.replace(/-/g, " ");
     }
   },
@@ -623,7 +593,7 @@ export const locationService = {
 
       return result.data;
     } catch (error) {
-      showErrorToast("Lỗi trong getLocationBySlug");
+      showErrorToast(error, "Lỗi trong getLocationBySlug");
       return null;
     }
   },
@@ -664,7 +634,7 @@ export const locationService = {
 
       return result.data;
     } catch (error) {
-      showErrorToast("Lỗi trong getBreadcrumbFromSlugApi");
+      showErrorToast(error, "Lỗi trong getBreadcrumbFromSlugApi");
       return null;
     }
   },
@@ -709,7 +679,7 @@ export const locationService = {
           };
         }
       }
-    } catch (error) {
+    } catch {
       // Silent error for debugging - sử dụng API fallback cũ
     }
     try {
@@ -872,7 +842,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          showErrorToast("Lỗi khi lấy dữ liệu tỉnh/thành");
+          showErrorToast(error, "Lỗi khi lấy dữ liệu tỉnh/thành");
           // Fallback
           result.city = citySlug
             .replace(/^tinh-/, "")
@@ -1005,7 +975,7 @@ export const locationService = {
             );
           }
         } catch (error) {
-          showErrorToast("Lỗi khi lấy dữ liệu phường/xã");
+          showErrorToast(error, "Lỗi khi lấy dữ liệu phường/xã");
           // Fallback
           result.ward = wardSlug
             .replace(/^xa-/, "")
@@ -1030,7 +1000,7 @@ export const locationService = {
         district: result.district, // Luôn trống trong cấu trúc mới
       };
     } catch (error) {
-      showErrorToast("Lỗi xử lý breadcrumb");
+      showErrorToast(error, "Lỗi xử lý breadcrumb");
 
       // Fallback an toàn
       const fallbackCity = citySlug
@@ -1073,9 +1043,12 @@ export const locationService = {
     }> => {
       try {
         const response = await fetchWithAuth(`${API_BASE_URL}/locations`);
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Lấy danh sách tỉnh thành thất bại");
+        showErrorToast(error, "Lấy danh sách tỉnh thành thất bại");
         return { success: false, data: [] };
       }
     },
@@ -1107,9 +1080,12 @@ export const locationService = {
           method: "POST",
           body: JSON.stringify(backendData),
         });
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Thêm tỉnh thành thất bại");
+        showErrorToast(error, "Thêm tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1147,9 +1123,12 @@ export const locationService = {
             body: JSON.stringify(backendData),
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Cập nhật tỉnh thành thất bại");
+        showErrorToast(error, "Cập nhật tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1163,9 +1142,12 @@ export const locationService = {
             method: "DELETE",
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Xóa tỉnh thành thất bại");
+        showErrorToast(error, "Xóa tỉnh thành thất bại");
         return { success: false };
       }
     },
@@ -1189,9 +1171,12 @@ export const locationService = {
             body: JSON.stringify(data),
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Thêm quận/huyện thất bại");
+        showErrorToast(error, "Thêm quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1216,9 +1201,12 @@ export const locationService = {
             body: JSON.stringify(data),
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Cập nhật quận/huyện thất bại");
+        showErrorToast(error, "Cập nhật quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1235,9 +1223,12 @@ export const locationService = {
             method: "DELETE",
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Xóa quận/huyện thất bại");
+        showErrorToast(error, "Xóa quận/huyện thất bại");
         return { success: false };
       }
     },
@@ -1280,6 +1271,9 @@ export const locationService = {
             body: JSON.stringify(backendData),
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
 
         const result = await response.json();
 
@@ -1289,7 +1283,7 @@ export const locationService = {
 
         return result;
       } catch (error) {
-        showErrorToast("Thêm phường/xã thất bại");
+        showErrorToast(error, "Thêm phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1331,9 +1325,12 @@ export const locationService = {
             body: JSON.stringify(backendData),
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Cập nhật phường/xã thất bại");
+        showErrorToast(error, "Cập nhật phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1351,9 +1348,12 @@ export const locationService = {
             method: "DELETE",
           }
         );
+        if (!response) {
+          throw new Error("No response received");
+        }
         return await response.json();
       } catch (error) {
-        showErrorToast("Xóa phường/xã thất bại");
+        showErrorToast(error, "Xóa phường/xã thất bại");
         return { success: false };
       }
     },
@@ -1446,7 +1446,7 @@ export const locationService = {
       }
 
       return result.data;
-    } catch (error) {
+    } catch {
       // Silent error for debugging - getLocationNames có fallback
       return {};
     }
@@ -1480,8 +1480,7 @@ export const locationService = {
 
       console.log("📍 Location name result:", fullAddress);
       return fullAddress;
-    } catch (error) {
-      // Silent error for debugging - có fallback trả về code
+    } catch {
       // Fallback: trả về code nếu không lấy được tên
       return wardCode ? `${wardCode}, ${provinceCode}` : provinceCode;
     }

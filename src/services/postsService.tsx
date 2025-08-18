@@ -3,9 +3,6 @@ import { categoryService } from "./categoryService";
 import { showErrorToast } from "@/utils/errorHandler";
 import { API_BASE_URL } from "@/services/authService";
 
-// Xác nhận API URL
-console.log("Posts Service API URL:", API_BASE_URL);
-
 // Post interface
 export interface Post {
   _id: string;
@@ -528,7 +525,7 @@ class PostService {
             const text = await response.text();
             // Silent error for debugging
           }
-        } catch (parseError) {
+        } catch {
           // Silent error for debugging
         }
         showErrorToast(errorMessage);
@@ -537,7 +534,7 @@ class PostService {
 
       try {
         return await response.json();
-      } catch (jsonError) {
+      } catch {
         // Silent error for debugging
         const text = await response.text();
         console.log("Raw response:", text);
@@ -597,7 +594,7 @@ class PostService {
             const text = await response.text();
             // Silent error for debugging
           }
-        } catch (parseError) {
+        } catch {
           // Silent error for debugging
         }
         throw new Error(errorMessage);
@@ -605,7 +602,7 @@ class PostService {
 
       try {
         return await response.json();
-      } catch (jsonError) {
+      } catch {
         // Silent error for debugging
         const text = await response.text();
         console.log("Raw response:", text);
@@ -622,6 +619,10 @@ class PostService {
       const response = await fetchWithAuth(`${API_BASE_URL}/posts/${postId}`, {
         method: "DELETE",
       });
+
+      if (!response) {
+        return { success: false, message: "No response received" };
+      }
 
       const validResponse = this.handleResponse(
         response,
@@ -656,6 +657,10 @@ class PostService {
         }
       );
 
+      if (!response) {
+        return { success: false, message: "No response received" };
+      }
+
       const validResponse = this.handleResponse(
         response,
         "Gia hạn tin đăng thất bại"
@@ -665,7 +670,7 @@ class PostService {
 
       return await validResponse.json();
     } catch (error) {
-      showErrorToast("Đã xảy ra lỗi khi gia hạn tin đăng");
+      showErrorToast(error, "Đã xảy ra lỗi khi gia hạn tin đăng");
       return { success: false, message: "Đã xảy ra lỗi khi gia hạn tin đăng" };
     }
   }
@@ -680,7 +685,7 @@ class PostService {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy danh sách gói dịch vụ thất bại");
+      showErrorToast(error, "Lấy danh sách gói dịch vụ thất bại");
       throw error;
     }
   }
@@ -697,7 +702,7 @@ class PostService {
       console.log("Fetched post data:", data);
       return data;
     } catch (error) {
-      showErrorToast("Lấy thông tin tin đăng thất bại");
+      showErrorToast(error, "Lấy thông tin tin đăng thất bại");
       throw error;
     }
   }
@@ -721,7 +726,7 @@ class PostService {
       console.log("Fetched similar posts:", data);
       return data;
     } catch (error) {
-      showErrorToast("Lấy danh sách tin đăng tương tự thất bại");
+      showErrorToast(error, "Lấy danh sách tin đăng tương tự thất bại");
       throw error;
     }
   }
@@ -739,10 +744,7 @@ class PostService {
       if (!response.ok) {
         console.warn("Failed to increment views for post:", postId);
       }
-    } catch (error) {
-      console.warn("Error incrementing views:", error);
-      // Don't throw error - views increment is not critical
-    }
+    } catch {}
   }
 
   // get posts by category (public)
@@ -759,7 +761,7 @@ class PostService {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy tin đăng theo danh mục thất bại");
+      showErrorToast(error, "Lấy tin đăng theo danh mục thất bại");
       throw error;
     }
   }
@@ -818,7 +820,7 @@ class PostService {
 
       return await result;
     } catch (error) {
-      showErrorToast("Tìm kiếm tin đăng thất bại");
+      showErrorToast(error, "Tìm kiếm tin đăng thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -870,7 +872,7 @@ class PostService {
 
       return result.data.posts; // Trả về mảng posts từ data
     } catch (error) {
-      showErrorToast("Lấy danh sách tin đăng thất bại");
+      showErrorToast(error, "Lấy danh sách tin đăng thất bại");
       throw error;
     }
   }
@@ -881,7 +883,7 @@ class PostService {
       const category = await categoryService.getById(categoryId);
       return category?.name || "Không xác định";
     } catch (error) {
-      showErrorToast("Lấy tên danh mục thất bại");
+      showErrorToast(error, "Lấy tên danh mục thất bại");
       return "Không xác định";
     }
   }
@@ -903,7 +905,7 @@ class PostService {
 
       return categoryMap;
     } catch (error) {
-      showErrorToast("Lấy tên danh mục thất bại");
+      showErrorToast(error, "Lấy tên danh mục thất bại");
       return categoryIds.reduce((acc, id) => {
         acc[id] = "Không xác định";
         return acc;
@@ -920,7 +922,7 @@ class PostService {
         ? response.data.user.username
         : "Không xác định";
     } catch (error) {
-      showErrorToast("Lấy tên người dùng thất bại");
+      showErrorToast(error, "Lấy tên người dùng thất bại");
       return "Không xác định";
     }
   }
@@ -942,7 +944,7 @@ class PostService {
                 ? response.data.user.username
                 : "Không xác định",
           };
-        } catch {
+        } catch (error) {
           return { id, name: "Không xác định" };
         }
       });
@@ -954,7 +956,7 @@ class PostService {
 
       return userMap;
     } catch (error) {
-      showErrorToast("Lấy tên người dùng thất bại");
+      showErrorToast(error, "Lấy tên người dùng thất bại");
       return userIds.reduce((acc, id) => {
         acc[id] = "Không xác định";
         return acc;
@@ -1024,7 +1026,7 @@ class PostService {
         },
       };
     } catch (error) {
-      showErrorToast("Lấy tin đăng theo dự án thất bại");
+      showErrorToast(error, "Lấy tin đăng theo dự án thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -1152,7 +1154,7 @@ class PostService {
         },
       };
     } catch (error) {
-      showErrorToast("Lấy tin đăng theo dự án có lọc thất bại");
+      showErrorToast(error, "Lấy tin đăng theo dự án có lọc thất bại");
       return {
         success: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -1196,7 +1198,7 @@ class PostService {
         data: { posts: [] },
       };
     } catch (error) {
-      showErrorToast("Lấy tin đăng nổi bật thất bại");
+      showErrorToast(error, "Lấy tin đăng nổi bật thất bại");
 
       // Fallback to search API if featured endpoint fails
       try {
@@ -1289,7 +1291,7 @@ class PostService {
             },
           };
         }
-      } catch (fallbackError) {
+      } catch {
         // Silent error for debugging
       }
 
@@ -1362,6 +1364,10 @@ export class AdminPostsService {
         `${API_BASE_URL}/admin/posts?${queryParams.toString()}`
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error("Failed to fetch posts");
       }
@@ -1378,7 +1384,7 @@ export class AdminPostsService {
         hasPrev: result.data.pagination.currentPage > 1,
       };
     } catch (error) {
-      showErrorToast("Lấy danh sách tin đăng thất bại");
+      showErrorToast(error, "Lấy danh sách tin đăng thất bại");
       throw error;
     }
   }
@@ -1387,6 +1393,27 @@ export class AdminPostsService {
   async getPostsStats(): Promise<PostsStats> {
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/admin/posts/stats`);
+
+      if (!response) {
+        // If no response, calculate stats from posts data
+        const allPosts = await this.getPosts({}, 1, 1000); // Get all posts
+        const posts: Post[] = allPosts.posts;
+        const totalPosts = posts.length;
+        const publishedPosts = posts.filter(
+          (p) => p.status === "active"
+        ).length;
+        const draftPosts = posts.filter((p) => p.status === "inactive").length;
+        const pendingPosts = posts.filter((p) => p.status === "pending").length;
+
+        return {
+          total: totalPosts,
+          active: publishedPosts,
+          pending: pendingPosts,
+          rejected: posts.filter((p) => p.status === "rejected").length,
+          expired: posts.filter((p) => p.status === "expired").length,
+          deleted: posts.filter((p) => p.status === "deleted").length,
+        };
+      }
 
       if (!response.ok) {
         // If no specific stats endpoint, calculate from posts data
@@ -1408,7 +1435,7 @@ export class AdminPostsService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      showErrorToast("Lấy thống kê tin đăng thất bại");
+      showErrorToast(error, "Lấy thống kê tin đăng thất bại");
       // Return default stats if error
       return {
         total: 0,
@@ -1428,6 +1455,10 @@ export class AdminPostsService {
         `${API_BASE_URL}/admin/posts/${postId}`
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error("Failed to fetch post");
       }
@@ -1435,7 +1466,7 @@ export class AdminPostsService {
       const result = await response.json();
       return result.data.post;
     } catch (error) {
-      showErrorToast("Lấy thông tin tin đăng thất bại");
+      showErrorToast(error, "Lấy thông tin tin đăng thất bại");
       throw error;
     }
   }
@@ -1451,6 +1482,10 @@ export class AdminPostsService {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to approve post");
@@ -1458,7 +1493,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Duyệt tin đăng thất bại");
+      showErrorToast(error, "Duyệt tin đăng thất bại");
       throw error;
     }
   }
@@ -1477,6 +1512,10 @@ export class AdminPostsService {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to reject post");
@@ -1484,7 +1523,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Từ chối tin đăng thất bại");
+      showErrorToast(error, "Từ chối tin đăng thất bại");
       throw error;
     }
   }
@@ -1499,6 +1538,10 @@ export class AdminPostsService {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to delete post");
@@ -1506,7 +1549,7 @@ export class AdminPostsService {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Xóa tin đăng thất bại");
+      showErrorToast(error, "Xóa tin đăng thất bại");
       throw error;
     }
   }
@@ -1528,6 +1571,10 @@ export class AdminPostsService {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to update post");
@@ -1535,14 +1582,14 @@ export class AdminPostsService {
 
       try {
         return await response.json();
-      } catch (jsonError) {
+      } catch {
         // Silent error for debugging
         const text = await response.text();
         console.log("Raw response:", text);
         return { success: true, message: "Post updated successfully" };
       }
     } catch (error) {
-      showErrorToast("Cập nhật tin đăng thất bại");
+      showErrorToast(error, "Cập nhật tin đăng thất bại");
       throw error;
     }
   }
@@ -1558,6 +1605,10 @@ export class AdminPostsService {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         let errorMessage = "Failed to update post status";
         try {
@@ -1567,10 +1618,10 @@ export class AdminPostsService {
             errorMessage = error.message || errorMessage;
           } else {
             // If not JSON, just get text
-            const text = await response.text();
+            // const text = await response.text();
             // Silent error for debugging
           }
-        } catch (parseError) {
+        } catch {
           // Silent error for debugging
         }
         throw new Error(errorMessage);
@@ -1578,14 +1629,14 @@ export class AdminPostsService {
 
       try {
         return await response.json();
-      } catch (jsonError) {
+      } catch {
         // Silent error for debugging
         const text = await response.text();
         console.log("Raw response:", text);
         return { success: true, message: "Post status updated successfully" };
       }
     } catch (error) {
-      showErrorToast("Cập nhật trạng thái tin đăng thất bại");
+      showErrorToast(error, "Cập nhật trạng thái tin đăng thất bại");
       throw error;
     }
   }
@@ -1619,7 +1670,7 @@ export class AdminPostsService {
       const data = await response.json();
       return data;
     } catch (error) {
-      showErrorToast("Lấy tin đăng công khai của người dùng thất bại");
+      showErrorToast(error, "Lấy tin đăng công khai của người dùng thất bại");
       throw error;
     }
   }

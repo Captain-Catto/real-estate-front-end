@@ -136,7 +136,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy danh sách tin tức thất bại");
+      showErrorToast(error, "Lấy danh sách tin tức thất bại");
       return {
         success: false,
         data: {
@@ -169,7 +169,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy tin tức theo slug thất bại");
+      showErrorToast(error, "Lấy tin tức theo slug thất bại");
       return {
         success: false,
         data: {
@@ -195,7 +195,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy danh mục tin tức thất bại");
+      showErrorToast(error, "Lấy danh mục tin tức thất bại");
       return {
         success: false,
         data: [],
@@ -224,7 +224,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy tin tức nổi bật thất bại");
+      showErrorToast(error, "Lấy tin tức nổi bật thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -250,7 +250,7 @@ export const newsService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy tin tức hot thất bại");
+      showErrorToast(error, "Lấy tin tức hot thất bại");
       return {
         success: false,
         data: { news: [] },
@@ -301,13 +301,17 @@ export const newsService = {
         },
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy danh sách tin tức admin thất bại");
+      showErrorToast(error, "Lấy danh sách tin tức admin thất bại");
       return {
         success: false,
         data: {
@@ -338,13 +342,17 @@ export const newsService = {
         body: JSON.stringify(data),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Tạo tin tức thất bại");
+      showErrorToast(error, "Tạo tin tức thất bại");
       return {
         success: false,
         message: "Không thể tạo tin tức. Vui lòng thử lại sau.",
@@ -362,13 +370,17 @@ export const newsService = {
         },
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy tin tức theo ID thất bại");
+      showErrorToast(error, "Lấy tin tức theo ID thất bại");
       return {
         success: false,
         data: {} as NewsItem,
@@ -390,13 +402,17 @@ export const newsService = {
         body: JSON.stringify(data),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Cập nhật tin tức thất bại");
+      showErrorToast(error, "Cập nhật tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật tin tức. Vui lòng thử lại sau.",
@@ -412,13 +428,17 @@ export const newsService = {
         method: "DELETE",
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Xóa tin tức thất bại");
+      showErrorToast(error, "Xóa tin tức thất bại");
       return {
         success: false,
         message: "Không thể xóa tin tức. Vui lòng thử lại sau.",
@@ -443,13 +463,17 @@ export const newsService = {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Cập nhật trạng thái tin tức thất bại");
+      showErrorToast(error, "Cập nhật trạng thái tin tức thất bại");
       return {
         success: false,
         message: "Không thể cập nhật trạng thái tin tức. Vui lòng thử lại sau.",
@@ -467,13 +491,17 @@ export const newsService = {
         },
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy thống kê tin tức thất bại");
+      showErrorToast(error, "Lấy thống kê tin tức thất bại");
       return {
         success: false,
         data: {
@@ -543,6 +571,10 @@ export const newsService = {
           body: formData,
         }
       );
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
         throw new Error("Upload failed");

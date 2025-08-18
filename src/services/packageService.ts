@@ -96,7 +96,7 @@ export const packageService = {
 
       return await response.json();
     } catch (error) {
-      showErrorToast("Lấy danh sách gói dịch vụ thất bại");
+      showErrorToast(error, "Lấy danh sách gói dịch vụ thất bại");
       return { success: false, data: { packages: [] } };
     }
   },
@@ -117,7 +117,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        showErrorToast("Lấy tất cả gói dịch vụ thất bại");
+        showErrorToast(error, "Lấy tất cả gói dịch vụ thất bại");
         return { success: false, data: { packages: [] } };
       }
     },
@@ -138,7 +138,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        showErrorToast("Tạo gói dịch vụ thất bại");
+        showErrorToast(error, "Tạo gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -160,7 +160,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        showErrorToast("Cập nhật gói dịch vụ thất bại");
+        showErrorToast(error, "Cập nhật gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -176,7 +176,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        showErrorToast("Xóa gói dịch vụ thất bại");
+        showErrorToast(error, "Xóa gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -198,7 +198,7 @@ export const packageService = {
 
         return await response.json();
       } catch (error) {
-        showErrorToast("Lấy thông tin gói dịch vụ thất bại");
+        showErrorToast(error, "Lấy thông tin gói dịch vụ thất bại");
         return { success: false, message: "Lỗi kết nối server" };
       }
     },
@@ -225,7 +225,7 @@ export const packageService = {
         return packageIds;
       }
       return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
-    } catch (error) {
+    } catch {
       // Silent error - có fallback cho priority types
       return ["free", "basic", "premium", "vip"]; // Fallback with all 4 package types
     }

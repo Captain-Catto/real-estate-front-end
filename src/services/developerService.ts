@@ -91,6 +91,10 @@ export const DeveloperService = {
       const url = `${API_BASE_URL}/developers/admin/list?${params.toString()}`;
       const response = await fetchWithAuth(url);
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -151,6 +155,10 @@ export const DeveloperService = {
         body: JSON.stringify(developerData),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -177,6 +185,10 @@ export const DeveloperService = {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -196,6 +208,10 @@ export const DeveloperService = {
       const response = await fetchWithAuth(`${API_BASE_URL}/developers/${id}`, {
         method: "DELETE",
       });
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       const result = await response.json();
 

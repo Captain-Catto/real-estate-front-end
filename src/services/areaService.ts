@@ -81,7 +81,6 @@ export const areaService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.log("Error fetching areas (logged for debugging):", error);
       showErrorToast("Lỗi khi tải danh sách khu vực");
       throw error;
     }
@@ -100,15 +99,10 @@ export const areaService = {
       if (result.success && result.data) {
         return result.data;
       } else {
-        console.log(
-          "Invalid API response format (logged for debugging):",
-          result
-        );
         showErrorToast("Định dạng dữ liệu không hợp lệ");
         return [];
       }
     } catch (error) {
-      console.log("Error fetching area ranges (logged for debugging):", error);
       showErrorToast("Lỗi khi tải khoảng diện tích");
       throw error;
     }
@@ -127,18 +121,10 @@ export const areaService = {
       if (result.success && result.data) {
         return result.data;
       } else {
-        console.log(
-          "Invalid API response format (logged for debugging):",
-          result
-        );
         showErrorToast("Định dạng dữ liệu không hợp lệ");
         return [];
       }
     } catch (error) {
-      console.log(
-        `Error fetching area ranges for type ${type} (logged for debugging):`,
-        error
-      );
       showErrorToast(`Lỗi khi tải khoảng diện tích cho loại ${type}`);
       throw error;
     }

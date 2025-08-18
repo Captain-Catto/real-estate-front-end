@@ -34,6 +34,9 @@ class DashboardService {
       const response = await fetchWithAuth(
         `${this.baseUrl}/contact-stats?period=${period}`
       );
+      if (!response) {
+        throw new Error("No response received");
+      }
       const result = await response.json();
       return {
         success: true,
@@ -58,6 +61,9 @@ class DashboardService {
       const response = await fetchWithAuth(
         `${this.baseUrl}/top-posts?limit=${limit}`
       );
+      if (!response) {
+        throw new Error("No response received");
+      }
       const result = await response.json();
       return {
         success: true,
@@ -78,6 +84,9 @@ class DashboardService {
   async getAdminDashboardData() {
     try {
       const response = await fetchWithAuth(`${this.baseUrl}/admin-data`);
+      if (!response) {
+        throw new Error("No response received");
+      }
       const result = await response.json();
       return {
         success: true,

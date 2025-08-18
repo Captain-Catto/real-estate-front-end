@@ -185,6 +185,10 @@ export async function getUsers(
     }`;
     const response = await fetchWithAuth(url);
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -192,7 +196,7 @@ export async function getUsers(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi tải danh sách người dùng");
+    showErrorToast(error, "Lỗi khi tải danh sách người dùng");
     return {
       success: false,
       data: { users: [] },
@@ -207,6 +211,10 @@ export async function getUserStats(): Promise<UserStatsResponse> {
     const url = `${API_BASE_URL}/admin/user-stats`;
     const response = await fetchWithAuth(url);
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -214,7 +222,7 @@ export async function getUserStats(): Promise<UserStatsResponse> {
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi tải thống kê người dùng");
+    showErrorToast(error, "Lỗi khi tải thống kê người dùng");
     return {
       success: false,
       data: {
@@ -236,6 +244,10 @@ export async function getUserById(
     const url = `${API_BASE_URL}/admin/users/${id}`;
     const response = await fetchWithAuth(url);
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -243,7 +255,7 @@ export async function getUserById(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi tải thông tin người dùng");
+    showErrorToast(error, "Lỗi khi tải thông tin người dùng");
     return {
       success: false,
       message: "Có lỗi xảy ra khi tải thông tin người dùng",
@@ -263,6 +275,10 @@ export async function updateUserStatus(
       body: JSON.stringify({ status }),
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -273,7 +289,7 @@ export async function updateUserStatus(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi cập nhật trạng thái người dùng");
+    showErrorToast(error, "Lỗi khi cập nhật trạng thái người dùng");
     return {
       success: false,
       message:
@@ -294,6 +310,10 @@ export async function deleteUser(
       method: "DELETE",
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -304,7 +324,7 @@ export async function deleteUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi xóa người dùng");
+    showErrorToast(error, "Lỗi khi xóa người dùng");
     return {
       success: false,
       message:
@@ -327,6 +347,10 @@ export async function updateUser(
       body: JSON.stringify(userData),
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -337,7 +361,7 @@ export async function updateUser(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi cập nhật thông tin người dùng");
+    showErrorToast(error, "Lỗi khi cập nhật thông tin người dùng");
     return {
       success: false,
       message:
@@ -372,6 +396,10 @@ export async function getUserPosts(
       method: "GET",
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -382,7 +410,7 @@ export async function getUserPosts(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi lấy danh sách tin đăng");
+    showErrorToast(error, "Lỗi khi lấy danh sách tin đăng");
     return {
       success: false,
       data: {
@@ -423,6 +451,10 @@ export async function getUserPayments(
       method: "GET",
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -433,7 +465,7 @@ export async function getUserPayments(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi lấy lịch sử giao dịch");
+    showErrorToast(error, "Lỗi khi lấy lịch sử giao dịch");
     return {
       success: false,
       data: {
@@ -471,6 +503,10 @@ export async function getUserLogs(
       method: "GET",
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(
@@ -481,7 +517,7 @@ export async function getUserLogs(
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi lấy lịch sử thay đổi");
+    showErrorToast(error, "Lỗi khi lấy lịch sử thay đổi");
     return {
       success: false,
       data: {
@@ -517,7 +553,7 @@ export async function getPublicUser(userId: string): Promise<{
     const data = await response.json();
     return data;
   } catch (error) {
-    showErrorToast("Lỗi khi lấy thông tin người dùng");
+    showErrorToast(error, "Lỗi khi lấy thông tin người dùng");
     return {
       success: false,
       message:

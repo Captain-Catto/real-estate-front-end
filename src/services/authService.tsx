@@ -1,9 +1,9 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
-
 import { store } from "@/store";
 import { setAccessToken } from "@/store/slices/authSlice";
 import { showErrorToast } from "@/utils/errorHandler";
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 export interface LoginRequest {
   email: string;
@@ -124,8 +124,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     const response = await fetch(url, requestConfig);
 
-    console.log("response trả về khi fetch:", response);
-
     // Handle 401 Unauthorized error
     if (response.status === 401) {
       try {
@@ -165,8 +163,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     return response;
   } catch (error) {
-    // Don't show hardcoded toast here - let the caller handle errors
-    // Return a controlled error response for network issues only
     showErrorToast(error, "Lỗi kết nối đến máy chủ");
   }
 };
@@ -398,11 +394,19 @@ export const authService = {
         console.log("Fetching fresh profile data");
       }
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`);
-      const data = await response?.json();
 
-      if (!response?.ok) {
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(data.message || "Không thể lấy thông tin profile");
         throw new Error(data.message || "Failed to get profile");
       }
+
+      const data = await response.json();
 
       // Cache the successful response
       profileCache = {
@@ -412,6 +416,12 @@ export const authService = {
 
       return data;
     } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw new Error(
         error instanceof Error ? error.message : "Lỗi khi lấy thông tin profile"
       );
@@ -439,11 +449,18 @@ export const authService = {
       const data = await response.json();
 
       if (!response.ok) {
+        showErrorToast(data.message || "Không thể lấy thông tin profile");
         throw new Error(data.message || "Failed to get profile");
       }
 
       return data;
     } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("Failed to get profile")
+      ) {
+        showErrorToast(error.message);
+      }
       throw new Error(
         error instanceof Error ? error.message : "Lỗi khi lấy thông tin profile"
       );
@@ -462,17 +479,30 @@ export const authService = {
         body: JSON.stringify(profileData),
       });
 
-      const data = await response.json();
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(data.message || "Cập nhật profile thất bại");
         throw new Error(data.message || "Failed to update profile");
       }
+
+      const data = await response.json();
 
       // Clear the profile cache
       profileCache = null;
 
       return data;
     } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw new Error(
         error instanceof Error ? error.message : "Cập nhật profile thất bại"
       );
@@ -493,14 +523,27 @@ export const authService = {
         }
       );
 
-      const data = await response.json();
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(data.message || "Đổi mật khẩu thất bại");
         throw new Error(data.message || "Failed to change password");
       }
 
+      const data = await response.json();
+
       return data;
     } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw new Error(
         error instanceof Error ? error.message : "Đổi mật khẩu thất bại"
       );
@@ -517,17 +560,30 @@ export const authService = {
         }
       );
 
-      const data = await response.json();
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(data.message || "Xóa tài khoản thất bại");
         throw new Error(data.message || "Failed to delete account");
       }
+
+      const data = await response.json();
 
       // Clear localStorage sau khi xóa tài khoản
       store.dispatch(setAccessToken(null));
 
       return data;
     } catch (error: unknown) {
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw new Error(
         error instanceof Error ? error.message : "Xóa tài khoản thất bại"
       );

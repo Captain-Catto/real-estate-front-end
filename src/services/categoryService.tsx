@@ -69,8 +69,8 @@ export const categoryService = {
       const result = await response.json();
       // Handle the nested structure
       return result.data?.categories || result.categories || [];
-    } catch {
-      showErrorToast("Không thể tải danh sách danh mục");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh sách danh mục");
       return [];
     }
   },
@@ -101,8 +101,8 @@ export const categoryService = {
       const result = await response.json();
       // Handle the nested structure
       return result.data?.categories || result.categories || [];
-    } catch {
-      showErrorToast("Không thể tải danh mục theo loại dự án");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh mục theo loại dự án");
       return [];
     }
   },
@@ -127,8 +127,8 @@ export const categoryService = {
 
       const result = await response.json();
       return result.data || null;
-    } catch {
-      showErrorToast("Không thể tải thông tin danh mục");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải thông tin danh mục");
       return null;
     }
   },
@@ -153,8 +153,8 @@ export const categoryService = {
 
       const result = await response.json();
       return result.data || null;
-    } catch {
-      showErrorToast("Không thể tải danh mục");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh mục");
       return null;
     }
   },
@@ -185,8 +185,8 @@ export const categoryService = {
         }
 
         return await response.json();
-      } catch {
-        showErrorToast("Không thể tải danh sách danh mục admin");
+      } catch (error) {
+        showErrorToast(error, "Không thể tải danh sách danh mục admin");
         throw new Error("Không thể tải danh sách danh mục admin");
       }
     },
@@ -212,8 +212,8 @@ export const categoryService = {
 
         const result = await response.json();
         return result.data;
-      } catch {
-        showErrorToast("Không thể tạo danh mục mới");
+      } catch (error) {
+        showErrorToast(error, "Không thể tạo danh mục mới");
         throw new Error("Không thể tạo danh mục mới");
       }
     },
@@ -239,8 +239,8 @@ export const categoryService = {
 
         const result = await response.json();
         return result.data;
-      } catch {
-        showErrorToast("Không thể cập nhật danh mục");
+      } catch (error) {
+        showErrorToast(error, "Không thể cập nhật danh mục");
         throw new Error("Không thể cập nhật danh mục");
       }
     },
@@ -261,8 +261,8 @@ export const categoryService = {
         if (!response.ok) {
           throw new Error(`Error deleting category: ${response.status}`);
         }
-      } catch {
-        showErrorToast("Không thể xóa danh mục");
+      } catch (error) {
+        showErrorToast(error, "Không thể xóa danh mục");
         throw new Error("Không thể xóa danh mục");
       }
     },
@@ -289,8 +289,8 @@ export const categoryService = {
             `Error updating categories order: ${response.status}`
           );
         }
-      } catch {
-        showErrorToast("Không thể cập nhật thứ tự danh mục");
+      } catch (error) {
+        showErrorToast(error, "Không thể cập nhật thứ tự danh mục");
         throw new Error("Không thể cập nhật thứ tự danh mục");
       }
     },
@@ -321,8 +321,8 @@ export const categoryService = {
 
       // Filter only active categories
       return categories.filter((cat: Category) => cat.isActive !== false);
-    } catch {
-      showErrorToast("Không thể tải danh sách danh mục đang hoạt động");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh sách danh mục đang hoạt động");
       return [];
     }
   },

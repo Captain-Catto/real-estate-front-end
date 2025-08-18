@@ -48,8 +48,8 @@ export const priceRangeService = {
           label: price.name, // Use name as label
         })
       );
-    } catch {
-      showErrorToast("Lỗi khi tải khoảng giá");
+    } catch (error) {
+      showErrorToast(error, "Lỗi khi tải khoảng giá");
       return [];
     }
   },
@@ -98,8 +98,8 @@ export const priceRangeService = {
           label: price.name, // Use name as label
         })
       );
-    } catch {
-      showErrorToast("Lỗi khi tải khoảng giá theo loại");
+    } catch (error) {
+      showErrorToast(error, "Lỗi khi tải khoảng giá theo loại");
       return [];
     }
   },
@@ -120,8 +120,8 @@ export const priceRangeService = {
         ranges.find((range) => range.slug === value || range.value === value) ||
         null
       );
-    } catch {
-      showErrorToast("Lỗi khi tìm khoảng giá");
+    } catch (error) {
+      showErrorToast(error, "Lỗi khi tìm khoảng giá");
       return null;
     }
   },

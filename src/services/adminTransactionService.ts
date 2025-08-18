@@ -107,8 +107,8 @@ export const AdminTransactionService = {
       }
 
       return await response.json();
-    } catch {
-      showErrorToast("Không thể tải danh sách thanh toán");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh sách thanh toán");
       throw new Error("Không thể tải danh sách thanh toán");
     }
   },
@@ -131,8 +131,8 @@ export const AdminTransactionService = {
       }
 
       return null;
-    } catch {
-      showErrorToast("Không thể tải thông tin thanh toán");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải thông tin thanh toán");
       throw new Error("Không thể tải thông tin thanh toán");
     }
   },
@@ -176,8 +176,8 @@ export const AdminTransactionService = {
         data.data.payments
       );
       return new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    } catch {
-      showErrorToast("Không thể xuất file thanh toán");
+    } catch (error) {
+      showErrorToast(error, "Không thể xuất file thanh toán");
       throw new Error("Không thể xuất file thanh toán");
     }
   },

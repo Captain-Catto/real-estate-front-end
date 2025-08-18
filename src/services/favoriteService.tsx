@@ -14,6 +14,10 @@ export const favoriteService = {
         body: JSON.stringify({ postId }),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -26,8 +30,8 @@ export const favoriteService = {
       }
 
       return data;
-    } catch {
-      showErrorToast("Không thể thêm vào yêu thích");
+    } catch (error) {
+      showErrorToast(error, "Không thể thêm vào yêu thích");
       // Trả về response giả để UI có thể xử lý mà không bị crash
       return {
         success: false,
@@ -46,6 +50,10 @@ export const favoriteService = {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -58,8 +66,8 @@ export const favoriteService = {
       }
 
       return data;
-    } catch {
-      showErrorToast("Không thể bỏ yêu thích");
+    } catch (error) {
+      showErrorToast(error, "Không thể bỏ yêu thích");
       return {
         success: false,
         message: "Không thể kết nối đến máy chủ. Vui lòng thử lại sau.",
@@ -74,13 +82,17 @@ export const favoriteService = {
         `${API_BASE_URL}/favorites?page=${page}&limit=${limit}`
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
       }
 
       return await response.json();
-    } catch {
-      showErrorToast("Không thể tải danh sách yêu thích");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải danh sách yêu thích");
       return {
         success: false,
         data: {
@@ -98,6 +110,10 @@ export const favoriteService = {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/favorites/check/${postId}`
       );
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);
@@ -120,6 +136,10 @@ export const favoriteService = {
   async getFavoriteStats() {
     try {
       const response = await fetchWithAuth(`${API_BASE_URL}/favorites/stats`);
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (!response.ok) {
         throw new Error(`Server responded with status: ${response.status}`);

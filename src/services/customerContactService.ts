@@ -82,6 +82,25 @@ export interface CreateContactRequest {
 class CustomerContactService {
   private baseUrl = `${API_BASE_URL}/customer-contacts`;
 
+  // Helper method to handle response validation
+  private async handleResponse<T>(
+    response: Response | undefined,
+    errorMessage: string
+  ): Promise<T> {
+    if (!response) {
+      showErrorToast("Không thể kết nối đến máy chủ");
+      throw new Error("No response received");
+    }
+
+    if (!response.ok) {
+      const data = await response.json();
+      showErrorToast(data.message || errorMessage);
+      throw new Error(data.message || errorMessage);
+    }
+
+    return await response.json();
+  }
+
   // Tạo yêu cầu callback mới (cho người dùng thường)
   async createCallBackRequest(
     postId: string,
@@ -96,9 +115,26 @@ class CustomerContactService {
           notes,
         }),
       });
+
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(data.message || "Không thể gửi yêu cầu gọi lại");
+        throw new Error(data.message || "Failed to create callback request");
+      }
+
       return await response.json();
     } catch (error) {
-      showErrorToast("Không thể gửi yêu cầu gọi lại");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -112,9 +148,26 @@ class CustomerContactService {
         method: "POST",
         body: JSON.stringify(data),
       });
+
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        const responseData = await response.json();
+        showErrorToast(responseData.message || "Không thể tạo liên hệ");
+        throw new Error(responseData.message || "Failed to create contact");
+      }
+
       return await response.json();
     } catch (error) {
-      showErrorToast("Không thể tạo liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -139,9 +192,28 @@ class CustomerContactService {
       const response = await fetchWithAuth(
         `${this.baseUrl}/my-contacts?${params.toString()}`
       );
+
+      if (!response) {
+        showErrorToast("Không thể kết nối đến máy chủ");
+        throw new Error("No response received");
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        showErrorToast(
+          data.message || "Không thể tải danh sách liên hệ của bạn"
+        );
+        throw new Error(data.message || "Failed to get user contacts");
+      }
+
       return await response.json();
     } catch (error) {
-      showErrorToast("Không thể tải danh sách liên hệ của bạn");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -165,9 +237,18 @@ class CustomerContactService {
       const response = await fetchWithAuth(
         `${this.baseUrl}/all?${params.toString()}`
       );
-      return await response.json();
+
+      return await this.handleResponse<ContactResponse>(
+        response,
+        "Không thể tải tất cả liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Không thể tải tất cả liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -193,9 +274,18 @@ class CustomerContactService {
       const response = await fetchWithAuth(
         `${this.baseUrl}/user/${userId}?${params.toString()}`
       );
-      return await response.json();
+
+      return await this.handleResponse<ContactResponse>(
+        response,
+        "Không thể tải liên hệ theo user"
+      );
     } catch (error) {
-      showErrorToast("Không thể tải liên hệ theo user");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -231,9 +321,18 @@ class CustomerContactService {
           }),
         }
       );
-      return await response.json();
+
+      return await this.handleResponse<SingleContactResponse>(
+        response,
+        "Lỗi khi cập nhật trạng thái liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Lỗi khi cập nhật trạng thái liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -253,9 +352,18 @@ class CustomerContactService {
           }),
         }
       );
-      return await response.json();
+
+      return await this.handleResponse<SingleContactResponse>(
+        response,
+        "Lỗi khi cập nhật ghi chú liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Lỗi khi cập nhật ghi chú liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -266,9 +374,18 @@ class CustomerContactService {
       const response = await fetchWithAuth(`${this.baseUrl}/${contactId}`, {
         method: "DELETE",
       });
-      return await response.json();
+
+      return await this.handleResponse<SingleContactResponse>(
+        response,
+        "Lỗi khi xóa liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Lỗi khi xóa liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -282,9 +399,18 @@ class CustomerContactService {
           method: "PUT",
         }
       );
-      return await response.json();
+
+      return await this.handleResponse<SingleContactResponse>(
+        response,
+        "Lỗi khi khôi phục liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Lỗi khi khôi phục liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -311,9 +437,18 @@ class CustomerContactService {
           method: "DELETE",
         }
       );
-      return await response.json();
+
+      return await this.handleResponse<SingleContactResponse>(
+        response,
+        "Lỗi khi xóa vĩnh viễn liên hệ"
+      );
     } catch (error) {
-      showErrorToast("Lỗi khi xóa vĩnh viễn liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }
@@ -324,9 +459,19 @@ class CustomerContactService {
   ): Promise<{ success: boolean; data: CustomerContact; message?: string }> {
     try {
       const response = await fetchWithAuth(`${this.baseUrl}/${contactId}`);
-      return await response.json();
+
+      return await this.handleResponse<{
+        success: boolean;
+        data: CustomerContact;
+        message?: string;
+      }>(response, "Lỗi khi lấy chi tiết liên hệ");
     } catch (error) {
-      showErrorToast("Lỗi khi lấy chi tiết liên hệ");
+      if (
+        error instanceof Error &&
+        !error.message.includes("No response received")
+      ) {
+        showErrorToast(error.message);
+      }
       throw error;
     }
   }

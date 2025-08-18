@@ -171,8 +171,8 @@ const handleResponse = async (response: Response) => {
 
     try {
       errorData = JSON.parse(errorText);
-    } catch {
-      errorData = { message: errorText || "Network error" };
+    } catch (error) {
+      showErrorToast(error, "Lỗi không xác định");
     }
 
     // Silent error for debugging API response
@@ -217,6 +217,10 @@ export const paymentService = {
       }
     );
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     return handleResponse(response);
   },
 
@@ -255,6 +259,10 @@ export const paymentService = {
       `${API_BASE_URL}/payments/history${queryString ? `?${queryString}` : ""}`
     );
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     return handleResponse(response);
   },
 
@@ -264,6 +272,10 @@ export const paymentService = {
       `${API_BASE_URL}/payments/check-status/${orderId}`
     );
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     return handleResponse(response);
   },
 
@@ -272,6 +284,10 @@ export const paymentService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/payments/details/${orderId}`
     );
+
+    if (!response) {
+      throw new Error("No response received");
+    }
 
     return handleResponse(response);
   },
@@ -297,7 +313,7 @@ export const paymentService = {
           bc.close();
         }
       }
-    } catch (e) {
+    } catch {
       // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
@@ -308,6 +324,10 @@ export const paymentService = {
         body: JSON.stringify(vnpayData),
       }
     );
+
+    if (!response) {
+      throw new Error("No response received");
+    }
 
     return handleResponse(response);
   },
@@ -342,6 +362,11 @@ export const paymentService = {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/payments/wallet-info`
       );
+
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const data = await handleResponse(response);
 
       // Cache successful response
@@ -375,6 +400,10 @@ export const paymentService = {
       method: "POST",
     });
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     // Broadcast wallet update
     try {
       if (typeof window !== "undefined") {
@@ -386,7 +415,7 @@ export const paymentService = {
           bc.close();
         }
       }
-    } catch (e) {
+    } catch {
       // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
@@ -411,6 +440,10 @@ export const paymentService = {
       }
     );
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     // Broadcast wallet update
     try {
       if (typeof window !== "undefined") {
@@ -422,7 +455,7 @@ export const paymentService = {
           bc.close();
         }
       }
-    } catch (e) {
+    } catch {
       // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 
@@ -451,6 +484,11 @@ export const paymentService = {
         queryString ? `?${queryString}` : ""
       }`
     );
+
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     return handleResponse(response);
   },
 
@@ -487,6 +525,10 @@ export const paymentService = {
       }
     );
 
+    if (!response) {
+      throw new Error("No response received");
+    }
+
     // Broadcast wallet update
     try {
       if (typeof window !== "undefined") {
@@ -498,7 +540,7 @@ export const paymentService = {
           bc.close();
         }
       }
-    } catch (e) {
+    } catch {
       // Silent error for debugging - broadcasting wallet update không quan trọng
     }
 

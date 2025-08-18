@@ -23,7 +23,7 @@ export const trackPageView = async (path: string) => {
     if (!response.ok) {
       // Silent fail - don't interrupt user experience for tracking
     }
-  } catch {
+  } catch (error) {
     // Silent fail - don't interrupt user experience for tracking
   }
 };

@@ -94,7 +94,7 @@ export const ProjectService = {
                       }
                     }
                   } catch (error) {
-                    showErrorToast("Lỗi khi tải thông tin chủ đầu tư");
+                    showErrorToast(error, "Lỗi khi tải thông tin chủ đầu tư");
                   }
                 } else if (typeof project.developer === "object") {
                   // Developer is already an object
@@ -151,7 +151,7 @@ export const ProjectService = {
         },
       };
     } catch (error) {
-      showErrorToast("Lỗi khi tải danh sách dự án");
+      showErrorToast(error, "Lỗi khi tải danh sách dự án");
       throw error;
     }
   },
@@ -212,7 +212,7 @@ export const ProjectService = {
 
       return [];
     } catch (error) {
-      showErrorToast("Lỗi khi tải danh sách dự án");
+      showErrorToast(error, "Lỗi khi tải danh sách dự án");
       throw error;
     }
   },
@@ -259,7 +259,7 @@ export const ProjectService = {
 
       return null;
     } catch (error) {
-      showErrorToast("Lỗi khi tải thông tin dự án");
+      showErrorToast(error, "Lỗi khi tải thông tin dự án");
       throw error;
     }
   },
@@ -340,7 +340,7 @@ export const ProjectService = {
       console.warn("❌ No project data in response");
       return null;
     } catch (error) {
-      showErrorToast("Lỗi khi tải thông tin dự án theo slug");
+      showErrorToast(error, "Lỗi khi tải thông tin dự án theo slug");
       throw error;
     }
   },
@@ -354,6 +354,10 @@ export const ProjectService = {
         method: "POST",
         body: JSON.stringify(projectData),
       });
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       const result = await response.json();
 
@@ -369,7 +373,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to create project");
       }
     } catch (error) {
-      showErrorToast("Lỗi khi tạo dự án mới");
+      showErrorToast(error, "Lỗi khi tạo dự án mới");
       throw error;
     }
   },
@@ -388,6 +392,10 @@ export const ProjectService = {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -402,7 +410,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to update project");
       }
     } catch (error) {
-      showErrorToast("Lỗi khi cập nhật dự án");
+      showErrorToast(error, "Lỗi khi cập nhật dự án");
       throw error;
     }
   },
@@ -417,6 +425,10 @@ export const ProjectService = {
         }
       );
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       const result = await response.json();
 
       if (response.ok && result.success) {
@@ -425,7 +437,7 @@ export const ProjectService = {
         throw new Error(result.message || "Failed to delete project");
       }
     } catch (error) {
-      showErrorToast("Lỗi khi xóa dự án");
+      showErrorToast(error, "Lỗi khi xóa dự án");
       throw error;
     }
   },
@@ -525,7 +537,7 @@ export const ProjectService = {
 
       return projects;
     } catch (error) {
-      showErrorToast("Lỗi khi tải danh sách dự án cho lựa chọn");
+      showErrorToast(error, "Lỗi khi tải danh sách dự án cho lựa chọn");
       return includePagination
         ? {
             projects: [],

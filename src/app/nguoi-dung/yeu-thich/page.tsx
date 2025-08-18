@@ -15,6 +15,7 @@ import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
 import { formatPriceByType } from "@/utils/format";
 import { Pagination } from "@/components/common/Pagination";
 import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
+import { toast } from "sonner";
 
 export default function YeuThichPage() {
   const { user, accessToken, isAuthenticated } = useAuth();

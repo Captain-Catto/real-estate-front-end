@@ -77,6 +77,9 @@ export const realStatsService = {
       const response = await fetchWithAuth(
         `${API_BASE_URL}/admin/stats/overview`
       );
+      if (!response) {
+        throw new Error("No response received");
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch overview stats");
       }
@@ -103,8 +106,8 @@ export const realStatsService = {
       };
 
       return { ...defaultStats, ...result.data };
-    } catch {
-      showErrorToast("Không thể tải thống kê tổng quan");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải thống kê tổng quan");
       // Return default values on error
       return {
         totalUsers: 0,
@@ -138,6 +141,9 @@ export const realStatsService = {
         url += `?startDate=${startDate}&endDate=${endDate}`;
       }
       const response = await fetchWithAuth(url);
+      if (!response) {
+        throw new Error("No response received");
+      }
       if (!response.ok) {
         throw new Error("Failed to fetch overview stats");
       }
@@ -164,8 +170,8 @@ export const realStatsService = {
       };
 
       return { ...defaultStats, ...result.data };
-    } catch {
-      showErrorToast("Không thể tải thống kê theo thời gian");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải thống kê theo thời gian");
       // Return default values on error
       return {
         totalUsers: 0,
@@ -193,6 +199,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/revenue-chart?period=${period}`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch revenue chart");
     }
@@ -211,6 +220,9 @@ export const realStatsService = {
       url += `&startDate=${startDate}&endDate=${endDate}`;
     }
     const response = await fetchWithAuth(url);
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch revenue chart");
     }
@@ -223,6 +235,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/posts-chart`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch posts chart");
     }
@@ -235,6 +250,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/property-types-chart`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch property types chart");
     }
@@ -247,6 +265,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/top-locations`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch top locations");
     }
@@ -259,6 +280,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/recent-activities`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch recent activities");
     }
@@ -271,6 +295,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/user-chart?period=${period}`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch user chart");
     }
@@ -289,6 +316,9 @@ export const realStatsService = {
       url += `&startDate=${startDate}&endDate=${endDate}`;
     }
     const response = await fetchWithAuth(url);
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch user chart");
     }
@@ -309,6 +339,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/contact-stats`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch contact stats");
     }
@@ -330,6 +363,9 @@ export const realStatsService = {
     const response = await fetchWithAuth(
       `${API_BASE_URL}/admin/stats/payment-stats`
     );
+    if (!response) {
+      throw new Error("No response received");
+    }
     if (!response.ok) {
       throw new Error("Failed to fetch payment stats");
     }

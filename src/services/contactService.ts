@@ -275,7 +275,7 @@ class ContactService {
       const result = await response.json();
       return result.data;
     } catch (error) {
-      showErrorToast("Lấy thống kê tin nhắn liên hệ thất bại");
+      showErrorToast(error, "Lấy thống kê tin nhắn liên hệ thất bại");
       // Return default stats if error
       return {
         total: 0,

@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 import { paymentService } from "@/services/paymentService";
-import { showErrorToast, showSuccessToast } from "@/utils/errorHandler";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showInfoToast,
+} from "@/utils/errorHandler";
 // import { formatPrice } from "@/utils/format";
 
 export interface WalletTransaction {
@@ -244,7 +248,7 @@ export const useWallet = () => {
       try {
         // This is a placeholder since withdrawFromWallet doesn't exist in paymentService
         // In a real implementation, you would call the appropriate API endpoint
-        toast.info(
+        showInfoToast(
           `Chức năng rút ${formatPrice(amount)} vào tài khoản ${
             bankInfo.bankName
           } đang được phát triển`

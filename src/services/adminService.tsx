@@ -123,8 +123,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch {
-      showErrorToast("Không thể tải thống kê admin");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải thống kê admin");
       // Return default response instead of throwing
       return {
         success: false,
@@ -167,8 +167,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch {
-      showErrorToast("Không thể tải hoạt động gần đây");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải hoạt động gần đây");
       // Return default response instead of throwing
       return {
         success: false,
@@ -199,8 +199,8 @@ export const AdminService = {
       }
 
       return await response.json();
-    } catch {
-      showErrorToast("Không thể tải bài đăng hàng đầu");
+    } catch (error) {
+      showErrorToast(error, "Không thể tải bài đăng hàng đầu");
       // Return default response instead of throwing
       return {
         success: false,

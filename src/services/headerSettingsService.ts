@@ -77,6 +77,10 @@ class HeaderSettingsService {
         method: "GET",
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       // Parse JSON if fetchWithAuth returns Response object
       if (response instanceof Response) {
         return await response.json();
@@ -99,6 +103,10 @@ class HeaderSettingsService {
         body: JSON.stringify(data),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (response instanceof Response) {
         return await response.json();
       }
@@ -119,6 +127,10 @@ class HeaderSettingsService {
         body: JSON.stringify(data),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (response instanceof Response) {
         return await response.json();
       }
@@ -135,6 +147,10 @@ class HeaderSettingsService {
       const response = await fetchWithAuth(`${this.baseUrl}/${id}`, {
         method: "DELETE",
       });
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (response instanceof Response) {
         return await response.json();
@@ -155,6 +171,10 @@ class HeaderSettingsService {
         method: "PUT",
         body: JSON.stringify({ menus }),
       });
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (response instanceof Response) {
         return await response.json();
@@ -177,6 +197,10 @@ class HeaderSettingsService {
         body: JSON.stringify({ isActive }),
       });
 
+      if (!response) {
+        throw new Error("No response received");
+      }
+
       if (response instanceof Response) {
         return await response.json();
       }
@@ -193,6 +217,10 @@ class HeaderSettingsService {
       const response = await fetchWithAuth(`${this.baseUrl}/reset`, {
         method: "POST",
       });
+
+      if (!response) {
+        throw new Error("No response received");
+      }
 
       if (response instanceof Response) {
         return await response.json();
