@@ -183,7 +183,7 @@ export function useEditPostModal() {
         setLocationLoading(true);
         // Sử dụng API đã được cập nhật
         const API_URL =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+          process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
         const response = await fetch(`${API_URL}/api/locations/provinces`);
         const result = await response.json();
 
@@ -550,9 +550,13 @@ export function useEditPostModal() {
         router.refresh();
       } else {
         if (editingPost.status === "rejected") {
-          showErrorToast(result.message || "Có lỗi xảy ra khi gửi lại tin đăng");
+          showErrorToast(
+            result.message || "Có lỗi xảy ra khi gửi lại tin đăng"
+          );
         } else {
-          showErrorToast(result.message || "Có lỗi xảy ra khi cập nhật tin đăng");
+          showErrorToast(
+            result.message || "Có lỗi xảy ra khi cập nhật tin đăng"
+          );
         }
       }
     } catch {
