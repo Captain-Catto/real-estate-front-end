@@ -50,6 +50,8 @@ export const restoreAuthAsync = createAsyncThunk(
   "auth/restoreAuth",
   async (_, { rejectWithValue }) => {
     try {
+      console.log("🔄 Starting authentication restore...");
+
       // Try to refresh the access token using the HTTP-only cookie
       const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: "POST",
@@ -57,18 +59,23 @@ export const restoreAuthAsync = createAsyncThunk(
         headers: { "Content-Type": "application/json" },
       });
 
+      console.log(`📊 Refresh response status: ${response.status}`);
+
       if (!response.ok) {
         // Refresh token is invalid or expired
+        console.log("❌ Refresh token invalid or expired");
         return rejectWithValue("No valid refresh token found");
       }
 
       const data = await response.json();
+      console.log("✅ Refresh token successful");
 
       if (data.success && data.data?.accessToken) {
+        console.log("🔑 Got new access token, fetching user profile...");
+
         // Get user profile with the new access token directly
-        // We'll set both token and user in the reducer, not here
+        // IMPORTANT: Don't use fetchWithAuth here to avoid infinite loops
         try {
-          // Use fetchWithAuth from authService but with the new token directly
           const profileResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
             method: "GET",
             headers: {
@@ -78,26 +85,34 @@ export const restoreAuthAsync = createAsyncThunk(
             credentials: "include",
           });
 
+          console.log(`📊 Profile response status: ${profileResponse.status}`);
+
           if (!profileResponse.ok) {
+            console.log("❌ Failed to get user profile");
             return rejectWithValue("Failed to get user profile");
           }
 
           const profileData = await profileResponse.json();
 
           if (profileData.success) {
+            console.log("✅ Profile fetch successful, authentication restored");
             return {
               accessToken: data.data.accessToken,
               user: profileData.data.user,
             };
           } else {
+            console.log("❌ Profile response not successful");
             return rejectWithValue("Failed to get user profile");
           }
-        } catch {
+        } catch (profileError) {
+          console.error("❌ Profile fetch error:", profileError);
           return rejectWithValue("Failed to fetch user profile");
         }
       }
+      console.log("❌ Invalid refresh token response structure");
       return rejectWithValue("Invalid refresh token response");
     } catch (error: unknown) {
+      console.error("❌ Authentication restore error:", error);
       const errorMessage =
         error instanceof Error
           ? error.message
@@ -421,6 +436,7 @@ const authSlice = createSlice({
       .addCase(restoreAuthAsync.pending, (state) => {
         state.loading = true;
         state.error = null;
+        console.log("🔄 Restore auth pending...");
       })
       .addCase(restoreAuthAsync.fulfilled, (state, action) => {
         state.loading = false;
@@ -430,14 +446,16 @@ const authSlice = createSlice({
         state.error = null;
         state.sessionExpired = false;
         state.isInitialized = true;
+        console.log("✅ Restore auth successful");
       })
-      .addCase(restoreAuthAsync.rejected, (state) => {
+      .addCase(restoreAuthAsync.rejected, (state, action) => {
         state.loading = false;
         state.user = null;
         state.accessToken = null;
         state.isAuthenticated = false;
-        state.error = null;
+        state.error = null; // Don't set error for failed restore - it's expected
         state.isInitialized = true;
+        console.log("ℹ️ Restore auth failed (normal):", action.payload);
       });
 
     // Get Profile

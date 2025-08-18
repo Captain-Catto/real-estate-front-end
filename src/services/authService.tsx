@@ -82,7 +82,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     if (process.env.NODE_ENV === "development") {
       console.log(
-        `Fetching ${url.split("/").slice(-2).join("/")} (token ${
+        `🌐 Fetching ${url.split("/").slice(-2).join("/")} (token ${
           token ? "exists" : "missing"
         })`
       );
@@ -123,12 +123,33 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
     const response = await fetch(url, requestConfig);
 
-    // Handle 401 Unauthorized error
+    // Handle 401 Unauthorized error - but avoid infinite loops
     if (response.status === 401) {
+      console.log("🔄 Got 401, attempting token refresh...");
+
+      // Add flag to prevent infinite retry loops
+      const alreadyRetried = (
+        options as RequestInit & { _authRetried?: boolean }
+      )._authRetried;
+      if (alreadyRetried) {
+        console.log(
+          "❌ Already retried auth, not retrying again to prevent loop"
+        );
+        // Clear token and redirect if in browser
+        store.dispatch(setAccessToken(null));
+        if (typeof window !== "undefined" && !url.includes("/admin/")) {
+          setTimeout(() => {
+            window.location.href = "/dang-nhap?session=expired";
+          }, 1000);
+        }
+        return response;
+      }
+
       try {
         const refreshed = await refreshToken();
 
         if (refreshed) {
+          console.log("✅ Token refreshed, retrying original request...");
           // Get new token from Redux store and retry
           const newToken = getAccessToken();
 
@@ -138,12 +159,17 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
               Authorization: `Bearer ${newToken}`,
             };
 
-            return fetch(url, {
+            // Mark this request as already retried to prevent infinite loops
+            const retryConfig: RequestInit & { _authRetried?: boolean } = {
               ...requestConfig,
               headers: newHeaders,
-            });
+              _authRetried: true,
+            };
+
+            return fetch(url, retryConfig);
           }
         } else {
+          console.log("❌ Token refresh failed");
           // Clear token on failed refresh
           store.dispatch(setAccessToken(null));
 
@@ -154,14 +180,15 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
             }, 1000);
           }
         }
-      } catch {
-        // Don't show toast here - let the caller handle refresh token errors
-        console.log("Token refresh failed");
+      } catch (refreshError) {
+        console.error("❌ Token refresh error:", refreshError);
+        store.dispatch(setAccessToken(null));
       }
     }
 
     return response;
   } catch (error) {
+    console.error("❌ Fetch error:", error);
     showErrorToast(error, "Lỗi kết nối đến máy chủ");
   }
 };
@@ -169,17 +196,24 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 // Refresh token function
 export const refreshToken = async (): Promise<boolean> => {
   try {
+    console.log("🔄 Attempting to refresh access token...");
+
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
     });
 
+    console.log(`📊 Refresh token response status: ${response.status}`);
+
     if (!response.ok) {
       // Don't log errors for 401 or 403 status - these are expected when user is not logged in
       // or refresh token is expired/invalid
       if (response.status !== 401 && response.status !== 403) {
+        console.error(`❌ Unexpected refresh token error: ${response.status}`);
         showErrorToast("Lỗi làm mới token đăng nhập");
+      } else {
+        console.log("ℹ️ Refresh token expired or invalid, user needs to login");
       }
       store.dispatch(setAccessToken(null));
       return false;
@@ -188,15 +222,18 @@ export const refreshToken = async (): Promise<boolean> => {
     const data = await response.json();
 
     if (data.success && data.data?.accessToken) {
+      console.log("✅ Access token refreshed successfully");
       // Lưu token mới vào Redux store
       store.dispatch(setAccessToken(data.data.accessToken));
       return true;
     }
 
+    console.log("❌ Invalid refresh token response structure");
     store.dispatch(setAccessToken(null));
     return false;
   } catch (error: unknown) {
     // Only log unexpected errors (not 401s)
+    console.error("❌ Refresh token request failed:", error);
     showErrorToast(error, "Lỗi làm mới token đăng nhập");
     store.dispatch(setAccessToken(null));
     return false;
@@ -366,36 +403,43 @@ export const authService = {
         profileCache &&
         Date.now() - profileCache.timestamp < PROFILE_CACHE_DURATION
       ) {
-        // EMERGENCY FIX: Disable console.log to prevent infinite logging
-        // console.log("Using cached profile data");
+        if (process.env.NODE_ENV === "development") {
+          console.log("📄 Using cached profile data");
+        }
         return profileCache.data;
       }
 
-      // Handle concurrent requests
+      // Handle concurrent requests - prevent multiple simultaneous calls
       if (isProfileFetching) {
-        // EMERGENCY FIX: Disable console.log to prevent infinite logging
-        // console.log("Profile request already in progress");
+        if (process.env.NODE_ENV === "development") {
+          console.log("⏳ Profile request already in progress, waiting...");
+        }
         const startTime = Date.now();
-        while (isProfileFetching && Date.now() - startTime < 3000) {
+        while (isProfileFetching && Date.now() - startTime < 5000) {
+          // Increased timeout to 5s
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
 
         // If cache was populated during wait, return it
         if (profileCache) {
+          console.log("📄 Returning profile data populated during wait");
           return profileCache.data;
         }
+
+        // If still no cache after waiting, proceed with fresh request
+        console.log("⚠️ No cache after wait, proceeding with fresh request");
       }
 
       // Set fetching flag
       isProfileFetching = true;
 
       if (process.env.NODE_ENV === "development") {
-        console.log("Fetching fresh profile data");
+        console.log("🔄 Fetching fresh profile data");
       }
       const response = await fetchWithAuth(`${API_BASE_URL}/auth/profile`);
 
       if (!response) {
-        showErrorToast("Không thể kết nối đến máy chủ");
+        console.error("❌ No response received from profile endpoint");
         throw new Error("No response received");
       }
 
