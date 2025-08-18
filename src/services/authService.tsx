@@ -11,7 +11,6 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  username: string;
   email: string;
   password: string;
 }
@@ -586,6 +585,54 @@ export const authService = {
       }
       throw new Error(
         error instanceof Error ? error.message : "Xóa tài khoản thất bại"
+      );
+    }
+  },
+
+  // Forgot Password
+  async forgotPassword(
+    email: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Gửi email thất bại"
+      );
+    }
+  },
+
+  // Reset Password
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, newPassword, confirmPassword }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Reset password error:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Đặt lại mật khẩu thất bại"
       );
     }
   },

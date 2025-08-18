@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { authService } from "@/services/authService";
 
 interface ResetPasswordPageClientProps {
   token: string;
@@ -14,18 +15,42 @@ export default function ResetPasswordPageClient({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Reset password clicked:", {
-      password,
-      confirmPassword,
-      token,
-    });
-    // Simulate success for demo
-    setSuccess(true);
-    // TODO: Implement reset password logic later
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await authService.resetPassword(
+        token,
+        password,
+        confirmPassword
+      );
+
+      if (response.success) {
+        setSuccess(true);
+      } else {
+        setError(response.message || "Có lỗi xảy ra, vui lòng thử lại");
+      }
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra, vui lòng thử lại"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -117,6 +142,12 @@ export default function ResetPasswordPageClient({
               <p className="mb-6 text-gray-600 text-center">
                 Nhập mật khẩu mới cho tài khoản của bạn.
               </p>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Password field */}
@@ -227,15 +258,36 @@ export default function ResetPasswordPageClient({
                 {/* Submit button */}
                 <button
                   type="submit"
-                  className="w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] active:bg-[#b01f16] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgb(200, 40, 30)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "rgb(224, 60, 49)";
-                  }}
+                  disabled={loading}
+                  className="w-full py-3 text-white rounded-lg transition bg-[#e03c31] hover:bg-[#c8281e] active:bg-[#b01f16] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Đặt lại mật khẩu
+                  {loading ? (
+                    <div className="flex items-center justify-center">
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Đang xử lý...
+                    </div>
+                  ) : (
+                    "Đặt lại mật khẩu"
+                  )}
                 </button>
 
                 {/* Back to login link */}
